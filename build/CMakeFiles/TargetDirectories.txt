@@ -1,7 +1,0 @@
-C:/msys64/home/skraby/FIT/game/build/CMakeFiles/imgui_lib.dir
-C:/msys64/home/skraby/FIT/game/build/CMakeFiles/unnamed_strategy.dir
-C:/msys64/home/skraby/FIT/game/build/CMakeFiles/sim_test.dir
-C:/msys64/home/skraby/FIT/game/build/CMakeFiles/edit_cache.dir
-C:/msys64/home/skraby/FIT/game/build/CMakeFiles/rebuild_cache.dir
-C:/msys64/home/skraby/FIT/game/build/_deps/nlohmann_json-build/CMakeFiles/edit_cache.dir
-C:/msys64/home/skraby/FIT/game/build/_deps/nlohmann_json-build/CMakeFiles/rebuild_cache.dir

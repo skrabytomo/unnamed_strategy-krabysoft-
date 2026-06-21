@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"C:/msys64/home/skraby/FIT/game/build/_deps/nlohmann_json-subbuild/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

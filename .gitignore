@@ -1,0 +1,9 @@
+build/
+saves/*.db
+saves/*.db-shm
+saves/*.db-wal
+*.o
+*.a
+*.so
+*.exe
+compile_commands.json
