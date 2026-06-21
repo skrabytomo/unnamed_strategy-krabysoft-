@@ -330,6 +330,9 @@ void Game::updateWorldMap(float dt)
 
     updateHeroMovement(dt);
 
+    // Update particles
+    m_particles.update(dt);
+
     // Advance pickup effects (float upward, fade out)
     for (auto& e : m_pickupEffects) e.t -= dt;
     m_pickupEffects.erase(
@@ -924,6 +927,14 @@ void Game::doEndTurn()
                             m_pendingLevelUps = h.level - oldLvl5;
                             m_showLevelUpModal = true;
                             { ScriptContext lvCtx; lvCtx.heroId = h.id; m_triggers.fire(TriggerType::HeroLevel, lvCtx); }
+                            // Level-up particle burst at hero's screen position
+                            {
+                                float hwx, hwy;
+                                m_hexRenderer.grid().hexToWorld(h.pos, hwx, hwy);
+                                float hsx, hsy;
+                                m_camera.worldToScreen(hwx, hwy, hsx, hsy);
+                                m_particles.emit(hsx, hsy, ParticlePreset::LevelUp);
+                            }
                         }
                         m_weeklyEventHeadline = "Battle Hardened";
                         m_weeklyEventBody = "Tales of your deeds spread: +"
@@ -2741,6 +2752,9 @@ void Game::renderWorldOverlay()
             dl->AddText({sx - 10.0f, sy - 30.0f}, IM_COL32(255, 200, 60, 255), "[G]");
     }
 
+    // ── Particles ────────────────────────────────────────────────────────────
+    m_particles.render(dl);
+
     // ── Pickup effects (floating text) ────────────────────────────────────────
     for (const auto& e : m_pickupEffects) {
         float alpha = std::min(1.0f, e.t);
@@ -4064,6 +4078,11 @@ void Game::pushPickupEffect(HexCoord pos, const char* text, ImU32 col)
     float wx, wy;
     m_hexRenderer.grid().hexToWorld(pos, wx, wy);
     m_pickupEffects.push_back({wx, wy, 2.0f, text, col});
+
+    // Emit matching particles at screen position
+    float sx, sy;
+    m_camera.worldToScreen(wx, wy, sx, sy);
+    m_particles.emit(sx, sy, ParticlePreset::Pickup, 8);
 }
 
 // ── Quest popup ───────────────────────────────────────────────────────────────

@@ -124,6 +124,8 @@ void Game::updateCombat(float dt)
     }
 
     // Advance floating damage effect timers
+    m_particles.update(dt);
+
     for (auto& ef : m_combatDmgEffects) ef.t -= dt;
     m_combatDmgEffects.erase(
         std::remove_if(m_combatDmgEffects.begin(), m_combatDmgEffects.end(),
@@ -741,6 +743,9 @@ void Game::renderCombatBoard()
         }
     }
 
+    // Particles
+    m_particles.render(dl);
+
     // Floating damage numbers
     for (const auto& ef : m_combatDmgEffects) {
         float alpha = std::min(1.0f, ef.t);
@@ -877,6 +882,26 @@ void Game::renderSpellPanel()
             act.spellId      = sid;
             act.targetUnitId = m_spellTargetId;
             m_audio.playSound("spell");
+            // Emit spell particles at the target unit's board position
+            if (const CombatUnit* tgt = m_combat.grid().getUnit(m_spellTargetId)) {
+                float wx, wy;
+                m_combat.grid().hexGrid().hexToWorld(tgt->pos, wx, wy);
+                float psx = wx * m_combatBoardScale + m_combatBoardOffX;
+                float psy = wy * m_combatBoardScale + m_combatBoardOffY;
+                const SpellDef* sd = findSpell(sid);
+                ParticlePreset pp = ParticlePreset::SpellLight;
+                if (sd) {
+                    switch (sd->school) {
+                    case SpellSchool::Blood:   pp = ParticlePreset::SpellBlood;  break;
+                    case SpellSchool::Death:   pp = ParticlePreset::SpellDark;   break;
+                    case SpellSchool::Nature:  pp = ParticlePreset::SpellNature; break;
+                    case SpellSchool::Forge:   pp = ParticlePreset::SpellRune;   break;
+                    case SpellSchool::Flesh:   pp = ParticlePreset::SpellFlesh;  break;
+                    default:                   pp = ParticlePreset::SpellLight;  break;
+                    }
+                }
+                m_particles.emit(psx, psy, pp);
+            }
             m_combat.submitAction(act);
             m_showSpellPanel = false;
         }
@@ -1258,12 +1283,13 @@ void Game::enterCombat(Hero& playerHero,
     m_combatDmgEffects.clear();
     m_combat.setDamageCallback([this](uint32_t targetId, int dmg, HexCoord pos) {
         m_audio.playSound("hit");
-        if (!m_settingsShowDmgNums) { (void)targetId; return; }
-        // Convert hex pos to board pixel pos for floating text
+        // Convert hex pos to board pixel pos
         float wx, wy;
         m_combat.grid().hexGrid().hexToWorld(pos, wx, wy);
         float sx = wx * m_combatBoardScale + m_combatBoardOffX;
         float sy = wy * m_combatBoardScale + m_combatBoardOffY;
+        m_particles.emit(sx, sy, ParticlePreset::Hit);
+        if (!m_settingsShowDmgNums) { (void)targetId; return; }
         m_combatDmgEffects.push_back({sx, sy, 1.5f, dmg, false});
         (void)targetId;
     });

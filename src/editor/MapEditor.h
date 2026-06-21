@@ -130,6 +130,10 @@ private:
     // Terrain brush radius (1=single, 2=radius-1 7 tiles, 3=radius-2 19 tiles)
     int m_brushRadius = 1;
 
+    // Resource tool state
+    ResourceType m_resType   = ResourceType::Gold;
+    int          m_resAmount = 250;  // sensible default for Gold mine
+
     // WorldObject tool state
     WorldObjectType m_objType         = WorldObjectType::XPShrine;
     int             m_objValue        = 100;

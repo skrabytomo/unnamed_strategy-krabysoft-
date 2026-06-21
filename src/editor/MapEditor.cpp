@@ -263,15 +263,33 @@ void MapEditor::drawResourcePanel(std::vector<ResourceNode>& resources)
 {
     if (m_tool != EditorTool::Resource) return;
     ImGui::SetNextWindowPos({4.f, 30.f}, ImGuiCond_Always);
-    ImGui::SetNextWindowSize({180.f, 200.f}, ImGuiCond_Always);
+    ImGui::SetNextWindowSize({200.f, 280.f}, ImGuiCond_Always);
     ImGui::Begin("Resources", nullptr,
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoSavedSettings);
 
+    // Type selector
+    static const char* kResNames[] = {
+        "Gold", "Iron", "FaithStones", "BloodEssence",
+        "VerdantSap", "Mercury"
+    };
+    static const int kDefaultAmounts[] = { 250, 3, 2, 2, 2, 2 };
+    int typeIdx = static_cast<int>(m_resType);
+    if (typeIdx < 0 || typeIdx >= 6) typeIdx = 0;
+    if (ImGui::Combo("Type", &typeIdx, kResNames, 6)) {
+        m_resType   = static_cast<ResourceType>(typeIdx);
+        m_resAmount = kDefaultAmounts[typeIdx];
+    }
+    ImGui::InputInt("Amount", &m_resAmount);
+    if (m_resAmount < 1) m_resAmount = 1;
+
+    ImGui::Separator();
     ImGui::Text("Placed: %d", (int)resources.size());
-    for (auto& r : resources)
-        ImGui::Text("  [%u] type=%d (%d,%d)", r.id,
-                    static_cast<int>(r.type), r.pos.q, r.pos.r);
+    for (auto& r : resources) {
+        int rt = static_cast<int>(r.type);
+        const char* rn = (rt >= 0 && rt < 6) ? kResNames[rt] : "?";
+        ImGui::Text("  [%u] %s x%d (%d,%d)", r.id, rn, r.amount, r.pos.q, r.pos.r);
+    }
     ImGui::Separator();
     ImGui::TextWrapped("Click a land hex to place a resource node.");
     ImGui::End();
@@ -508,8 +526,8 @@ void MapEditor::placeResource(HexCoord h, HexMap& map,
     ResourceNode r;
     r.id     = m_nextResourceId++;
     r.pos    = h;
-    r.type   = ResourceType::Gold;
-    r.amount = 3;
+    r.type   = m_resType;
+    r.amount = m_resAmount;
     resources.push_back(r);
     tile->resourceId = r.id;
 }

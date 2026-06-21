@@ -491,7 +491,7 @@ void Game::renderArtifactForge()
                 off += std::snprintf(costStr + off, sizeof(costStr) - off,
                                      "%d%s ", needed, (rt < 6 ? kRNames[rt] : "?"));
             }
-            char btnLabel[96];
+            char btnLabel[192];
             std::snprintf(btnLabel, sizeof(btnLabel), "Craft %s  [%s]  (%s)",
                           art->name.c_str(), kSlotNames[slotIdx], costStr);
             if (ImGui::Button(btnLabel, ImVec2(-1, 0))) {
@@ -634,7 +634,7 @@ void Game::renderTavern()
             const HeroClassDef* cls = m_classRegistry.getClass(dh.classId);
             char hdr[64];
             std::snprintf(hdr, sizeof(hdr), "%s  L%d  [%s]",
-                          dh.name.c_str(), dh.level, cls ? cls->name : "?");
+                          dh.name.c_str(), dh.level, cls ? cls->name.c_str() : "?");
             ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.4f, 1.0f), "%s", hdr);
             ImGui::TextDisabled("  XP: %d  ATK: %d  DEF: %d",
                                 dh.xp, dh.attack, dh.defense);
@@ -667,7 +667,7 @@ void Game::renderTavern()
         // Candidate header
         char hdr[64];
         std::snprintf(hdr, sizeof(hdr), "%s  [%s]", cand.name.c_str(),
-                      cls ? cls->name : "Unknown");
+                      cls ? cls->name.c_str() : "Unknown");
         ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.4f, 1.0f), "%s", hdr);
 
         // Specialty description

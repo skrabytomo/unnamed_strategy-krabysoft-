@@ -43,6 +43,7 @@
 #include "../hero/Artifacts.h"
 #include "../world/WorldObject.h"
 #include "../audio/AudioManager.h"
+#include "../renderer/ParticleSystem.h"
 
 class Game
 {
@@ -446,7 +447,8 @@ private:
     std::vector<WeekChoiceOption> m_weekChoiceOptions;
 
     // ── Audio ─────────────────────────────────────────────────────────────────
-    AudioManager m_audio;
+    AudioManager    m_audio;
+    ParticleSystem  m_particles;
 
     // ── World map time (for object idle animations) ───────────────────────────
     float m_mapTime = 0.0f;
