@@ -1,0 +1,603 @@
+#include "TownScreen.h"
+#include <sstream>
+#include <algorithm>
+#include <imgui.h>
+
+bool TownScreen::init(int sw, int sh)
+{
+    buildLayout(sw, sh);
+    return true;
+}
+
+void TownScreen::buildLayout(int sw, int sh)
+{
+    m_screenW = sw; m_screenH = sh;
+
+    float pw = sw * 0.88f, ph = sh * 0.88f;
+    float px = (sw - pw) * 0.5f, py = (sh - ph) * 0.5f;
+
+    m_mainPanel = Panel({px, py, pw, ph});
+
+    // Close button — larger and clearly labeled
+    m_closeBtn = Button("EXIT TOWN", {px + pw - 110.0f, py + 4.0f, 104.0f, 28.0f},
+                         [this]{ close(); if(onClose) onClose(); });
+    m_closeBtn.colorBorder = UIColor::hex(UITheme::DANGER_RED, 0.7f);
+    m_closeBtn.colorText   = UIColor::hex(UITheme::DANGER_RED);
+
+    // Building tree — left 55%
+    m_buildPanel = Panel({px + 4, py + 36, pw * 0.55f - 4, ph - 44});
+    m_buildPanel.title = "Buildings";
+
+    // Recruit panel — top right
+    m_recruitPanel = Panel({px + pw*0.55f + 4, py + 36, pw*0.45f - 8, ph*0.55f});
+    m_recruitPanel.title = "Recruit";
+
+    // Income panel — bottom right
+    m_incomePanel = Panel({px + pw*0.55f + 4, py + 36 + ph*0.55f + 4,
+                           pw*0.45f - 8, ph*0.45f - 44});
+    m_incomePanel.title = "Weekly Income";
+}
+
+void TownScreen::open(Town* town, Resources* playerRes, const BuildingRegistry* registry,
+                      Hero* visitingHero, int currentWeek, int blueprintDiscount)
+{
+    m_town              = town;
+    m_playerRes         = playerRes;
+    m_registry          = registry;
+    m_hero              = visitingHero;
+    m_open              = true;
+    m_currentWeek       = currentWeek;
+    m_blueprintDiscount = blueprintDiscount;
+
+    m_mainPanel.title = town->name + " — " + [town]{
+        switch(town->faction) {
+            case FactionId::HolyOrder:     return "Holy Order";
+            case FactionId::Bloodsworn:    return "Bloodsworn";
+            case FactionId::Thornkin:      return "Thornkin";
+            case FactionId::EternalEmpire: return "Eternal Empire";
+            case FactionId::CrimsonWardens:return "Crimson Wardens";
+            case FactionId::Voidkin:       return "Voidkin";
+            case FactionId::IronAssembly:  return "Iron Assembly";
+            case FactionId::Amalgamate:    return "Amalgamate";
+            case FactionId::Convergence:   return "Convergence";
+            default: return "Unknown";
+        }
+    }();
+
+    rebuildBuildingButtons();
+    rebuildRecruitButtons();
+}
+
+void TownScreen::rebuildBuildingButtons()
+{
+    // Building buttons are now rendered inline via ImGui in drawBuildingTree().
+    m_buildBtns.clear();
+}
+
+void TownScreen::rebuildRecruitButtons()
+{
+    m_recruitBtns.clear();
+    if (!m_town) return;
+
+    float x = m_recruitPanel.bounds.x + 8;
+    float y = m_recruitPanel.bounds.y + 28;
+    float bw = m_recruitPanel.bounds.w - 16;
+
+    for (auto& dw : m_town->dwellings) {
+        if (dw.available <= 0) continue;
+
+        // Look up unit name from registry
+        std::string unitName = "T" + std::to_string(dw.tier);
+        int costPerUnit = 0;
+        if (m_registry) {
+            for (const auto& ud : m_registry->units()) {
+                if (ud.faction == m_town->faction && ud.tier == dw.tier
+                    && ud.path == dw.path) {
+                    unitName   = ud.name;
+                    costPerUnit = ud.cost.get(ResourceType::Gold);
+                    break;
+                }
+            }
+        }
+        bool efficient = m_hero && m_hero->efficientSpecialty;
+        int effectiveCostPerUnit = efficient ? static_cast<int>(costPerUnit * 0.8f) : costPerUnit;
+
+        RecruitBtn rb;
+        rb.tier      = dw.tier;
+        rb.available = dw.available;
+
+        // Build stat tooltip
+        if (m_registry) {
+            for (const auto& ud : m_registry->units()) {
+                if (ud.faction == m_town->faction && ud.tier == dw.tier && ud.path == dw.path) {
+                    rb.defId = ud.id;
+                    std::ostringstream ts;
+                    ts << ud.name << "  |  ";
+                    ts << "ATK " << ud.attack << "  DEF " << ud.defense;
+                    ts << "  HP " << ud.hp << "  Dmg " << ud.damage_min << "-" << ud.damage_max;
+                    ts << "  Spd " << ud.speed;
+                    if (ud.range > 0) ts << "  Rng " << ud.range << " (" << ud.shots << " shots)";
+                    if (ud.flying)     ts << "  [Flying]";
+                    if (ud.vampiric)   ts << "  [Vampiric]";
+                    if (ud.regenerates) ts << "  [Regenerates]";
+                    if (efficient)
+                        ts << "  |  " << effectiveCostPerUnit << "g each (-20% Efficient)";
+                    else
+                        ts << "  |  " << costPerUnit << "g each";
+                    rb.statTip = ts.str();
+                    break;
+                }
+            }
+        }
+
+        std::string label = unitName
+            + "  x" + std::to_string(dw.available)
+            + "  (" + std::to_string(effectiveCostPerUnit * dw.available) + "g)"
+            + (efficient ? " [Efficient]" : "");
+        rb.btn = Button(label, {x, y, bw, 26.0f});
+        rb.btn.colorBorder = UIColor::hex(UITheme::NATURE_GREEN, 0.6f);
+
+        int capturedTier = dw.tier;
+        UpgradePath capturedPath = dw.path;
+        rb.btn.onClick = [this, capturedTier, capturedPath]{
+            if (!m_town || !m_playerRes || !m_registry) return;
+            const UnitDef* matchedUd = nullptr;
+            for (const auto& ud : m_registry->units()) {
+                if (ud.faction == m_town->faction && ud.tier == capturedTier
+                    && ud.path == capturedPath) {
+                    matchedUd = &ud; break;
+                }
+            }
+            if (!matchedUd) return;
+
+            // Route to garrison or hero army based on toggle (hero required for army)
+            bool useGarrison = m_recruitToGarrison || !m_hero;
+            std::vector<UnitStack>& target = useGarrison ? m_town->garrison : m_hero->army;
+            bool alreadyHasStack = false;
+            for (const auto& s : target)
+                if (s.defId == matchedUd->id) { alreadyHasStack = true; break; }
+            if (!alreadyHasStack && target.size() >= 7) return;
+
+            float costMult = (m_hero && m_hero->efficientSpecialty) ? 0.8f : 1.0f;
+            int recruited = m_town->recruit(capturedTier, 999, *m_playerRes, m_registry->units(), costMult);
+            if (recruited > 0) {
+                bool merged = false;
+                for (auto& s : target)
+                    if (s.defId == matchedUd->id) { s.count += recruited; merged = true; break; }
+                if (!merged)
+                    target.push_back({matchedUd->id, recruited});
+            }
+            rebuildRecruitButtons();
+        };
+
+        m_recruitBtns.push_back(rb);
+        y += 30.0f;
+        if (y + 26 > m_recruitPanel.bounds.bottom() - 4) break;
+    }
+}
+
+void TownScreen::draw(UIRenderer& rdr)
+{
+    if (!m_open) return;
+
+    // Dim background
+    rdr.drawRect({0,0,(float)m_screenW,(float)m_screenH},
+                 UIColor::rgba(0,0,0,0.6f));
+
+    // Faction artwork — fills the entire right column (recruit + income panels)
+    if (m_townBannerTex) {
+        float rx  = m_recruitPanel.bounds.x;
+        float ry  = m_recruitPanel.bounds.y;
+        float rw  = m_recruitPanel.bounds.w;
+        // Span from top of recruit panel to bottom of income panel
+        float rh  = (m_incomePanel.bounds.y + m_incomePanel.bounds.h) - ry;
+
+        ImDrawList* dl = ImGui::GetBackgroundDrawList();
+        dl->AddImageRounded(m_townBannerTex, {rx + 2, ry + 2}, {rx + rw - 2, ry + rh - 2},
+                            {0,0}, {1,1}, IM_COL32(255, 255, 255, 215), 6.0f);
+        // Dark gradient over the bottom 40% so income text stays readable
+        float gradStart = ry + rh * 0.60f;
+        dl->AddRectFilledMultiColor(
+            {rx + 2, gradStart}, {rx + rw - 2, ry + rh - 2},
+            IM_COL32(0,0,0,0), IM_COL32(0,0,0,0),
+            IM_COL32(0,0,0,190), IM_COL32(0,0,0,190));
+        // Semi-transparent panel header stripe at top so "Recruit" title reads
+        dl->AddRectFilled({rx + 2, ry + 2}, {rx + rw - 2, ry + 24},
+                          IM_COL32(0, 0, 0, 120));
+    }
+
+    m_mainPanel.draw(rdr);
+    drawBuildingTree(rdr);
+    drawRecruitPanel(rdr);
+    drawIncomePanel(rdr);
+    m_closeBtn.draw(rdr);
+    // Draw tooltip via ImGui foreground draw list so it appears above all ImGui windows
+    if (m_tooltip.visible && !m_tooltip.text.empty()) {
+        ImDrawList* fdl = ImGui::GetForegroundDrawList();
+        float tx = m_tooltip.bounds.x + 4.0f;
+        float ty = m_tooltip.bounds.y - 4.0f;
+        ImVec2 tsz = ImGui::CalcTextSize(m_tooltip.text.c_str(), nullptr, false, 320.0f);
+        float pad = 6.0f;
+        fdl->AddRectFilled({tx - pad, ty - pad},
+                           {tx + tsz.x + pad, ty + tsz.y + pad},
+                           IM_COL32(18, 14, 8, 228), 4.0f);
+        fdl->AddRect({tx - pad, ty - pad},
+                     {tx + tsz.x + pad, ty + tsz.y + pad},
+                     IM_COL32(180, 145, 55, 200), 4.0f);
+        fdl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), {tx, ty},
+                     IM_COL32(240, 225, 175, 255),
+                     m_tooltip.text.c_str(), nullptr, 320.0f);
+    }
+}
+
+void TownScreen::drawBuildingTree(UIRenderer& rdr)
+{
+    m_buildPanel.draw(rdr);
+    if (!m_town || !m_registry || !m_playerRes) return;
+
+    ImGui::SetNextWindowPos({m_buildPanel.bounds.x, m_buildPanel.bounds.y});
+    ImGui::SetNextWindowSize({m_buildPanel.bounds.w, m_buildPanel.bounds.h});
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0,0,0,0));
+    ImGui::PushStyleColor(ImGuiCol_Border,   ImVec4(0,0,0,0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6, 28));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,   ImVec2(4, 3));
+
+    ImGui::Begin("##build_tree", nullptr,
+        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+
+    const float bw = (ImGui::GetContentRegionAvail().x - 4.0f) * 0.5f - 2.0f;
+    const float bh = 36.0f;
+
+    auto costStr = [](const Resources& cost) -> std::string {
+        std::string s;
+        if (cost.get(ResourceType::Gold) > 0)
+            s += std::to_string(cost.get(ResourceType::Gold)) + "g";
+        for (int ri = 1; ri < RESOURCE_COUNT; ++ri) {
+            auto rt = static_cast<ResourceType>(ri);
+            int v = cost.get(rt);
+            if (v > 0) {
+                if (!s.empty()) s += " ";
+                s += std::to_string(v) + resourceName(rt)[0];
+            }
+        }
+        return s.empty() ? "free" : s;
+    };
+
+    int  col        = 0;
+    bool needRebuild = false;
+
+    for (const auto& def : m_registry->buildings()) {
+        if (def.faction != FactionId::None && def.faction != m_town->faction) continue;
+
+        bool built      = m_town->hasBuilding(def.id);
+        bool limitReach = m_town->builtToday >= 1;
+        bool prereqMet  = m_town->canBuild(def.id, m_registry->buildings(),
+                                            m_currentWeek, m_blueprintDiscount);
+        bool affordable = m_playerRes->canAfford(def.cost);
+
+        std::string label;
+        if (built) {
+            label = "[BUILT] " + def.name;
+        } else if (limitReach && prereqMet) {
+            label = "[1/day] " + def.name + "  [" + costStr(def.cost) + "]";
+        } else if (!prereqMet && m_currentWeek > 0 && def.minWeek > 0) {
+            int effectiveMin = std::max(1, def.minWeek - m_blueprintDiscount);
+            if (m_currentWeek < effectiveMin)
+                label = "[Wk" + std::to_string(effectiveMin) + "] " + def.name + " " + costStr(def.cost);
+            else
+                label = def.name + "  [" + costStr(def.cost) + "]";
+        } else {
+            label = def.name + (built ? "" : "  [" + costStr(def.cost) + "]");
+        }
+
+        if (built) {
+            ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.08f,0.20f,0.08f,0.6f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.10f,0.25f,0.10f,0.7f));
+            ImGui::PushStyleColor(ImGuiCol_Text,          ImVec4(0.45f,0.62f,0.45f,1.0f));
+        } else if (!prereqMet || limitReach) {
+            ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.14f,0.14f,0.14f,0.7f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f,0.18f,0.18f,0.7f));
+            ImGui::PushStyleColor(ImGuiCol_Text,          ImVec4(0.38f,0.38f,0.38f,1.0f));
+        } else if (!affordable) {
+            ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.28f,0.08f,0.08f,0.7f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f,0.10f,0.10f,0.7f));
+            ImGui::PushStyleColor(ImGuiCol_Text,          ImVec4(0.85f,0.30f,0.30f,1.0f));
+        } else {
+            ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.22f,0.18f,0.06f,0.8f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30f,0.24f,0.08f,0.9f));
+            ImGui::PushStyleColor(ImGuiCol_Text,          ImVec4(0.90f,0.80f,0.30f,1.0f));
+        }
+
+        if (col == 1) ImGui::SameLine(0, 4);
+
+        bool clicked = false;
+        if (built || limitReach || !prereqMet) ImGui::BeginDisabled();
+        std::string btnId = label + "##b" + std::to_string(def.id);
+        if (ImGui::Button(btnId.c_str(), {bw, bh})) clicked = true;
+        if (built || limitReach || !prereqMet) ImGui::EndDisabled();
+
+        ImGui::PopStyleColor(3);
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::BeginTooltip();
+            ImGui::Text("%s", def.name.c_str());
+            if (!def.description.empty())
+                ImGui::TextDisabled("%s", def.description.c_str());
+            if (!built) {
+                ImGui::Separator();
+                ImGui::Text("Cost: %s", costStr(def.cost).c_str());
+            }
+            ImGui::EndTooltip();
+        }
+
+        col = 1 - col;
+
+        if (clicked) {
+            m_town->build(def.id, m_registry->buildings(), *m_playerRes);
+            needRebuild = true;
+        }
+    }
+
+    ImGui::End();
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(2);
+
+    if (needRebuild) rebuildRecruitButtons();
+}
+
+void TownScreen::drawRecruitPanel(UIRenderer& rdr)
+{
+    m_recruitPanel.draw(rdr);
+
+    // ── HoMM3-style creature recruitment cards (ImGui) ──────────────────────
+    ImGui::SetNextWindowPos({m_recruitPanel.bounds.x, m_recruitPanel.bounds.y});
+    ImGui::SetNextWindowSize({m_recruitPanel.bounds.w, m_recruitPanel.bounds.h});
+    ImGui::PushStyleColor(ImGuiCol_WindowBg,  ImVec4(0,0,0,0));
+    ImGui::PushStyleColor(ImGuiCol_Border,    ImVec4(0,0,0,0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6,28));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,   ImVec2(4,4));
+
+    ImGui::Begin("##recruit_cards", nullptr,
+        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+
+    // Recruit destination toggle
+    {
+        float halfW = (m_recruitPanel.bounds.w - 20.0f) * 0.5f - 2.0f;
+        bool toArmy = !m_recruitToGarrison;
+        if (toArmy) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f,0.4f,0.2f,1.f));
+        else        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f,0.18f,0.18f,1.f));
+        if (ImGui::Button("-> Hero Army", {halfW, 18})) m_recruitToGarrison = false;
+        ImGui::PopStyleColor();
+        ImGui::SameLine(0, 4);
+        if (!toArmy) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f,0.25f,0.1f,1.f));
+        else         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f,0.18f,0.18f,1.f));
+        if (ImGui::Button("-> Garrison", {halfW, 18})) m_recruitToGarrison = true;
+        ImGui::PopStyleColor();
+    }
+
+    if (!m_town || !m_registry || m_town->dwellings.empty()) {
+        ImGui::TextDisabled("No units available");
+        ImGui::TextDisabled("Build a unit dwelling in Buildings");
+    } else {
+        // 2-column card grid
+        const float cardW  = (m_recruitPanel.bounds.w - 20.0f) * 0.5f;
+        const float cardH  = 110.0f;
+        const float sprW   = 56.0f;
+
+        // Faction color tint for card headers
+        auto factionHdr = [](FactionId f) -> ImVec4 {
+            switch (f) {
+            case FactionId::HolyOrder:     return {0.85f,0.80f,0.35f,1.f};
+            case FactionId::CrimsonWardens:return {0.80f,0.20f,0.20f,1.f};
+            case FactionId::Thornkin:      return {0.25f,0.65f,0.25f,1.f};
+            case FactionId::EternalEmpire: return {0.50f,0.30f,0.70f,1.f};
+            case FactionId::Bloodsworn:    return {0.70f,0.10f,0.10f,1.f};
+            case FactionId::Voidkin:       return {0.20f,0.55f,0.70f,1.f};
+            case FactionId::IronAssembly:  return {0.55f,0.55f,0.60f,1.f};
+            case FactionId::Amalgamate:    return {0.50f,0.35f,0.20f,1.f};
+            case FactionId::Convergence:   return {0.60f,0.50f,0.30f,1.f};
+            default:                       return {0.60f,0.60f,0.60f,1.f};
+            }
+        };
+        ImVec4 hdrCol = factionHdr(m_town->faction);
+
+        int col = 0;
+        for (auto& dw : m_town->dwellings) {
+            // Find matching unit definition
+            const UnitDef* ud = nullptr;
+            if (m_registry) {
+                for (const auto& u : m_registry->units()) {
+                    if (u.faction == m_town->faction && u.tier == dw.tier && u.path == dw.path) {
+                        ud = &u; break;
+                    }
+                }
+            }
+            if (!ud) continue;
+
+            if (col == 1) ImGui::SameLine();
+            col = (col + 1) % 2;
+
+            ImGui::PushID(dw.buildingId);
+            ImGui::BeginGroup();
+
+            // Card background
+            ImVec2 cardMin = ImGui::GetCursorScreenPos();
+            ImVec2 cardMax = {cardMin.x + cardW, cardMin.y + cardH};
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            dl->AddRectFilled(cardMin, cardMax, IM_COL32(18,20,28,240), 4.0f);
+            dl->AddRect(cardMin, cardMax,
+                IM_COL32((int)(hdrCol.x*200),(int)(hdrCol.y*200),(int)(hdrCol.z*200),180), 4.0f, 0, 1.5f);
+
+            // Unit sprite (first idle frame)
+            ImTextureID spr = (dw.tier >= 1 && dw.tier <= MAX_TIERS)
+                              ? m_unitTex[dw.tier - 1] : nullptr;
+            if (spr) {
+                float u0 = 0.0f, u1 = 1.0f / 8.0f; // first of 8 frames
+                dl->AddImage(spr,
+                    {cardMin.x + 2, cardMin.y + 18},
+                    {cardMin.x + 2 + sprW, cardMin.y + 18 + sprW},
+                    {u0, 0}, {u1, 1});
+            } else {
+                dl->AddRectFilled({cardMin.x+2, cardMin.y+18},
+                                  {cardMin.x+2+sprW, cardMin.y+18+sprW},
+                                  IM_COL32(30,30,40,200), 3.0f);
+                dl->AddText({cardMin.x + 16, cardMin.y + 42},
+                            IM_COL32((int)(hdrCol.x*255),(int)(hdrCol.y*255),(int)(hdrCol.z*255),180),
+                            ("T" + std::to_string(dw.tier)).c_str());
+            }
+
+            // Unit name header
+            ImGui::SetCursorScreenPos({cardMin.x + 4, cardMin.y + 2});
+            ImGui::PushStyleColor(ImGuiCol_Text,
+                ImVec4(hdrCol.x, hdrCol.y, hdrCol.z, 1.0f));
+            ImGui::TextUnformatted(ud->name.c_str());
+            ImGui::PopStyleColor();
+
+            // Stats column (right of sprite)
+            float sx2 = cardMin.x + sprW + 6, sy2 = cardMin.y + 18;
+            const float rowH = 13.0f;
+            auto statRow = [&](const char* label, int val) {
+                char buf[32];
+                std::snprintf(buf, sizeof(buf), "%s %d", label, val);
+                dl->AddText({sx2, sy2}, IM_COL32(200,200,210,255), buf);
+                sy2 += rowH;
+            };
+            statRow("ATK", ud->attack);
+            statRow("DEF", ud->defense);
+            char dmgBuf[24];
+            std::snprintf(dmgBuf, sizeof(dmgBuf), "DMG %d-%d", ud->damage_min, ud->damage_max);
+            dl->AddText({sx2, sy2}, IM_COL32(200,200,210,255), dmgBuf); sy2 += rowH;
+            statRow("HP ", ud->hp);
+            statRow("SPD", ud->speed);
+            statRow("GRW", dw.available);
+
+            // Available + cost
+            ImGui::SetCursorScreenPos({cardMin.x + 4, cardMin.y + cardH - 28});
+            bool canAfford = m_playerRes &&
+                             m_playerRes->get(ResourceType::Gold) >= ud->cost.get(ResourceType::Gold) * dw.available;
+            ImGui::TextDisabled("Avail: %d  (%dg)", dw.available,
+                                ud->cost.get(ResourceType::Gold) * dw.available);
+
+            // Recruit button
+            ImGui::SetCursorScreenPos({cardMin.x + 4, cardMin.y + cardH - 14});
+            bool hasUnits = (dw.available > 0);
+            if (!hasUnits || !canAfford) ImGui::BeginDisabled();
+
+            ImGui::PushStyleColor(ImGuiCol_Button,
+                ImVec4(hdrCol.x*0.3f, hdrCol.y*0.3f, hdrCol.z*0.3f, 0.9f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+                ImVec4(hdrCol.x*0.5f, hdrCol.y*0.5f, hdrCol.z*0.5f, 1.0f));
+
+            if (ImGui::Button("Recruit All##btn", {cardW - 8.0f, 12.0f})) {
+                const UnitDef* mu = ud;
+                bool useGarrison = m_recruitToGarrison || !m_hero;
+                std::vector<UnitStack>& target = useGarrison ? m_town->garrison : m_hero->army;
+                bool alreadyHasStack = false;
+                for (const auto& s : target)
+                    if (s.defId == mu->id) { alreadyHasStack = true; break; }
+                if (m_playerRes && (alreadyHasStack || target.size() < 7)) {
+                    float costMult = (m_hero && m_hero->efficientSpecialty) ? 0.8f : 1.0f;
+                    int recruited = m_town->recruit(dw.tier, 999, *m_playerRes,
+                                                    m_registry->units(), costMult);
+                    if (recruited > 0) {
+                        bool merged = false;
+                        for (auto& s : target)
+                            if (s.defId == mu->id) { s.count += recruited; merged = true; break; }
+                        if (!merged) target.push_back({mu->id, recruited});
+                        rebuildRecruitButtons();
+                    }
+                }
+            }
+
+            ImGui::PopStyleColor(2);
+            if (!hasUnits || !canAfford) ImGui::EndDisabled();
+
+            // Dummy to consume the card area
+            ImGui::SetCursorScreenPos({cardMin.x, cardMax.y + 4});
+            ImGui::EndGroup();
+            ImGui::PopID();
+        }
+    }
+
+    ImGui::End();
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(2);
+}
+
+void TownScreen::drawIncomePanel(UIRenderer& rdr)
+{
+    // Panel border only — no opaque background so faction art shows through
+    m_incomePanel.draw(rdr);
+    if (!m_town) return;
+
+    float bh = m_incomePanel.bounds.h;
+    float x  = m_incomePanel.bounds.x + 8;
+    // Start text in the lower 45% where the dark gradient covers the art
+    float y  = m_incomePanel.bounds.y + bh * 0.57f;
+
+    for (int i = 0; i < RESOURCE_COUNT; ++i) {
+        int income = m_town->weeklyIncome.amounts[i];
+        if (income == 0) continue;
+        std::string line = std::string(resourceName(static_cast<ResourceType>(i)))
+                         + ": +" + std::to_string(income) + "/week";
+        rdr.drawText(line, x, y, UIColor::hex(UITheme::GOLD), 12.0f);
+        y += 16.0f;
+    }
+}
+
+bool TownScreen::onMouseMove(float x, float y) {
+    if (!m_open) return false;
+    m_closeBtn.onMouseMove(x, y);
+
+    m_tooltip.hide();
+    for (auto& bb : m_buildBtns) {
+        bb.btn.onMouseMove(x, y);
+        if (!bb.built && m_registry && bb.btn.bounds.contains(x, y)) {
+            const BuildingDef* bd = m_registry->getBuildingDef(bb.buildingId);
+            if (bd) {
+                std::string tip = bd->name + ": ";
+                if (!bd->description.empty()) tip += bd->description + "  |  ";
+                tip += "Cost: ";
+                bool first = true;
+                for (int i = 0; i < RESOURCE_COUNT; ++i) {
+                    int v = bd->cost.amounts[i];
+                    if (v <= 0) continue;
+                    if (!first) tip += ", ";
+                    tip += std::to_string(v) + " " + resourceName(static_cast<ResourceType>(i));
+                    first = false;
+                }
+                if (first) tip += "free";
+                m_tooltip.show(tip, x, y - 10.0f);
+            }
+        }
+    }
+
+    for (auto& rb : m_recruitBtns) {
+        rb.btn.onMouseMove(x, y);
+        if (!rb.statTip.empty() && rb.btn.bounds.contains(x, y))
+            m_tooltip.show(rb.statTip, x, y - 10.0f);
+    }
+    return m_mainPanel.bounds.contains(x, y);
+}
+
+bool TownScreen::onMouseDown(float x, float y) {
+    if (!m_open) return false;
+    if (m_closeBtn.onMouseDown(x, y)) return true;
+    for (auto& bb : m_buildBtns)   if (bb.btn.onMouseDown(x, y)) return true;
+    for (auto& rb : m_recruitBtns) if (rb.btn.onMouseDown(x, y)) return true;
+    return m_mainPanel.bounds.contains(x, y);
+}
+
+bool TownScreen::onMouseUp(float x, float y) {
+    if (!m_open) return false;
+    m_closeBtn.onMouseUp(x, y);
+    // Snapshot vectors before iterating — onClick fires rebuildBuildingButtons()
+    // which clears m_buildBtns mid-loop, invalidating range-for iterators.
+    auto buildSnap   = m_buildBtns;
+    auto recruitSnap = m_recruitBtns;
+    for (auto& bb : buildSnap)   bb.btn.onMouseUp(x, y);
+    for (auto& rb : recruitSnap) rb.btn.onMouseUp(x, y);
+    return m_mainPanel.bounds.contains(x, y);
+}

@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/msys64/home/skraby/FIT/game/build/_deps/imgui-subbuild/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

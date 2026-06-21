@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/msys64/home/skraby/FIT/game/build/cmake_install.cmake",
+		"C:/msys64/home/skraby/FIT/game/build/_deps/nlohmann_json-build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

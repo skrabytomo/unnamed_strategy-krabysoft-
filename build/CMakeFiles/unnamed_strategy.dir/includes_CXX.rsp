@@ -1,0 +1,1 @@
+-IC:/msys64/home/skraby/FIT/game/src -IC:/msys64/home/skraby/FIT/game/third_party -I"C:/msys64/home/skraby/FIT/game/build/_deps/nlohmann_json-src/include" -I"C:/msys64/home/skraby/FIT/game/build/_deps/imgui-src" -I"C:/msys64/home/skraby/FIT/game/build/_deps/imgui-src/backends" -isystem C:/msys64/ucrt64/include/SDL2
