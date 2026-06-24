@@ -830,6 +830,22 @@ void Game::doEndTurn()
                                         eHero.army.erase(eHero.army.begin() + weakIdx);
                                 }
                                 eHero.movePool = 0; // done retreating for this turn
+                            } else if (t.ownerId == eHero.id) {
+                                // Stepped into own town — recruit immediately and keep moving
+                                for (auto& dw : t.dwellings) {
+                                    if (dw.available <= 0) continue;
+                                    for (const auto& ud : unitDefs) {
+                                        if (ud.faction == t.faction && ud.tier == dw.tier && ud.path == dw.path) {
+                                            int n = dw.available; dw.available = 0;
+                                            bool merged = false;
+                                            for (auto& s : eHero.army)
+                                                if (s.defId == ud.id) { s.count += n; merged = true; break; }
+                                            if (!merged && eHero.army.size() < 7)
+                                                eHero.army.push_back({ud.id, n});
+                                            break;
+                                        }
+                                    }
+                                }
                             } else if (t.ownerId == 0) {
                                 t.ownerId = eHero.id;
                                 gLog("Enemy %s captured %s\n", eHero.name.c_str(), t.name.c_str());
