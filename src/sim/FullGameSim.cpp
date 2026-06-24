@@ -246,7 +246,7 @@ static void aiCollectObjects(Hero& hero, std::vector<WorldObject>& objects,
     }
 }
 
-// Run all movement for one AI hero for its turn.
+// Run all movement for one AI hero for its turn (score-based goal selection).
 static void aiHeroTurn(Hero& hero, Hero& opponent,
                         std::vector<Town>& towns,
                         std::vector<ResourceNode>& resources,
@@ -254,72 +254,107 @@ static void aiHeroTurn(Hero& hero, Hero& opponent,
                         HexMap& map,
                         const std::vector<UnitDef>& udefs,
                         const HeroClassRegistry& reg,
-                        bool isPlayer2)
+                        bool /*isPlayer2*/)
 {
     hero.movePool = hero.maxMove;
-
     aiRecruit(hero, towns, udefs);
 
-    int myStr  = heroStrength(hero, udefs);
-    int oppStr = heroStrength(opponent, udefs);
-
-    bool veryWeak  = (myStr * 10 < oppStr * 4);
-    bool aggressive= (myStr * 10 >= oppStr * 5) || (oppStr > 0 && oppStr < 350);
+    // Faction key resources (each faction's most important secondary resource)
+    static const ResourceType kFacRes[9] = {
+        ResourceType::FaithStones, ResourceType::FaithStones,
+        ResourceType::VerdantSap,  ResourceType::Mercury,
+        ResourceType::BloodEssence,ResourceType::Mercury,
+        ResourceType::Iron,        ResourceType::BloodEssence,
+        ResourceType::Gold,
+    };
+    int oppFIdx = static_cast<int>(opponent.faction);
+    ResourceType denialRes = (oppFIdx >= 0 && oppFIdx < 9)
+                           ? kFacRes[oppFIdx] : ResourceType::Gold;
 
     while (hero.movePool > 0) {
-        HexCoord goal = {};
-        bool goalSet  = false;
+        int myStr  = heroStrength(hero, udefs);
+        int oppStr = heroStrength(opponent, udefs);
+        float strRatio = oppStr > 0 ? (float)myStr / oppStr : 99.f;
 
-        auto tryGoal = [&](HexCoord pos, int bias = 0) {
-            int d = HexGrid::distance(hero.pos, pos) - bias;
-            if (!goalSet || d < HexGrid::distance(hero.pos, goal) - 0) {
-                goal = pos; goalSet = true;
-            }
+        bool hardRetreat = strRatio < 0.4f;
+        bool softRetreat = strRatio < 0.6f;
+        bool dominant    = strRatio >= 1.2f;
+
+        struct Candidate { HexCoord pos; float score; };
+        std::vector<Candidate> cands;
+
+        auto add = [&](HexCoord pos, float value) {
+            int d = std::max(1, HexGrid::distance(hero.pos, pos));
+            cands.push_back({pos, value / d});
         };
 
-        if (veryWeak) {
-            // Retreat to own town
+        if (hardRetreat) {
+            // Only safe goal: own town
             for (const auto& t : towns)
-                if (t.ownerId == hero.id) tryGoal(t.pos, 5);
+                if (t.ownerId == hero.id) add(t.pos, 500.f);
         } else {
-            // Faction-key resource denial
-            static const ResourceType kFacRes[9] = {
-                ResourceType::FaithStones, ResourceType::FaithStones,
-                ResourceType::VerdantSap,  ResourceType::Mercury,
-                ResourceType::BloodEssence,ResourceType::Mercury,
-                ResourceType::Iron,        ResourceType::BloodEssence,
-                ResourceType::Gold,
-            };
-            int oppFIdx = static_cast<int>(opponent.faction);
-            ResourceType denialRes = (oppFIdx >= 0 && oppFIdx < 9)
-                                   ? kFacRes[oppFIdx] : ResourceType::Gold;
+            // Own town to recruit (if town has units and hero has room)
+            for (const auto& t : towns) {
+                if (t.ownerId != hero.id) continue;
+                bool hasUnits = false;
+                for (const auto& dw : t.dwellings) if (dw.available > 0) { hasUnits = true; break; }
+                if (hasUnits && (int)hero.army.size() < 7) add(t.pos, 250.f);
+            }
 
+            // Unclaimed towns
+            for (const auto& t : towns) {
+                if (t.ownerId == 0)               add(t.pos, 150.f);
+                else if (t.ownerId != hero.id)    add(t.pos, 200.f); // enemy town
+            }
+
+            // Resource nodes
             for (const auto& r : resources) {
                 if (r.ownedBy == hero.id) continue;
-                int bias = (r.type == denialRes) ? 8 : 3;
-                tryGoal(r.pos, bias);
+                float val = (r.type == denialRes) ? 120.f : 60.f;
+                add(r.pos, val);
             }
+
+            // World objects
             for (const auto& obj : objects) {
                 if (obj.collected) continue;
-                if (obj.type == WorldObjectType::XPShrine ||
-                    obj.type == WorldObjectType::ForestShrine ||
-                    obj.type == WorldObjectType::StatShrine  ||
-                    obj.type == WorldObjectType::ArtifactChest ||
-                    obj.type == WorldObjectType::TreasureChest) {
-                    tryGoal(obj.pos, 2);
+                float val = 0.f;
+                switch (obj.type) {
+                case WorldObjectType::ArtifactChest:  val = 80.f; break;
+                case WorldObjectType::TreasureChest:  val = 70.f; break;
+                case WorldObjectType::XPShrine:
+                case WorldObjectType::ForestShrine:
+                case WorldObjectType::StatShrine:     val = 50.f; break;
+                default: break;
                 }
+                if (val > 0.f) add(obj.pos, val);
             }
-            for (const auto& t : towns)
-                if (t.ownerId == 0) tryGoal(t.pos);
-            if (aggressive || !goalSet)
-                tryGoal(opponent.pos);
+
+            // Opponent hero
+            if (!softRetreat) {
+                int dist = HexGrid::distance(hero.pos, opponent.pos);
+                if (dominant || dist <= 8)
+                    add(opponent.pos, 300.f);
+            }
         }
 
-        if (!goalSet) break;
+        if (cands.empty()) break;
 
+        // Pick highest-scored candidate
+        std::sort(cands.begin(), cands.end(),
+                  [](const Candidate& a, const Candidate& b){ return a.score > b.score; });
+
+        HexCoord goal    = cands[0].pos;
         HexCoord prevPos = hero.pos;
         aiHeroMoveToward(hero, goal, map);
-        if (hero.pos == prevPos) break; // stuck
+        if (hero.pos == prevPos) {
+            // Try next candidate if stuck
+            bool moved = false;
+            for (size_t ci = 1; ci < cands.size(); ++ci) {
+                aiHeroMoveToward(hero, cands[ci].pos, map);
+                if (hero.pos != prevPos) { moved = true; break; }
+            }
+            if (!moved) break;
+        }
 
         aiCollectObjects(hero, objects, resources, map, reg);
 
@@ -328,13 +363,15 @@ static void aiHeroTurn(Hero& hero, Hero& opponent,
         if (tile && tile->townId != 0) {
             for (auto& t : towns) {
                 if (t.id != tile->townId) continue;
-                if (t.ownerId == 0)
-                    t.ownerId = hero.id;
+                if (t.ownerId == 0 || t.ownerId != hero.id)
+                    t.ownerId = hero.id; // capture neutral or enemy
+                // Recruit immediately on stepping into own town
+                if (t.ownerId == hero.id) aiRecruit(hero, towns, udefs);
                 break;
             }
         }
 
-        if (hero.pos == opponent.pos) break; // combat will be resolved externally
+        if (hero.pos == opponent.pos) break; // combat resolved externally
     }
 }
 

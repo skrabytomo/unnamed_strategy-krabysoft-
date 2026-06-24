@@ -69,7 +69,12 @@ bool SimDB::createSchema()
         );
         CREATE INDEX IF NOT EXISTS idx_snap_match ON turn_snapshots(match_id);
     )";
-    return execSQL(kSchema);
+    if (!execSQL(kSchema)) return false;
+    // Migration: silently add combat_decided if this is an old DB missing it
+    sqlite3_exec(m_db,
+        "ALTER TABLE matches ADD COLUMN combat_decided INTEGER NOT NULL DEFAULT 1;",
+        nullptr, nullptr, nullptr);
+    return true;
 }
 
 bool SimDB::execSQL(const char* sql) const
