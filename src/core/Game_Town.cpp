@@ -935,17 +935,15 @@ void Game::enterTown(Town* town)
             ? (ImTextureID)(uintptr_t)m_townTex[fid].id() : nullptr);
         m_townScreen.setBuildingIconTex(m_buildingIconTex.ok()
             ? (ImTextureID)(uintptr_t)m_buildingIconTex.id() : nullptr);
-        // Non-faction-specific shared buildings
-        static const struct { int bid; int texIdx; } kSharedArt[] = {
-            { BID::FORT,      0 },
-            { BID::MARKET,    1 },
-            { BID::TOWN_HALL, 2 },
-            { BID::CITY_HALL, 3 },
+        // Per-faction single-tier buildings
+        auto setFA = [&](int bid, const Texture* tex) {
+            m_townScreen.setBuildingArt(bid,
+                tex[fid].ok() ? (ImTextureID)(uintptr_t)tex[fid].id() : nullptr);
         };
-        for (auto& e : kSharedArt)
-            m_townScreen.setBuildingArt(e.bid,
-                m_sharedBuildingTex[e.texIdx].ok()
-                    ? (ImTextureID)(uintptr_t)m_sharedBuildingTex[e.texIdx].id() : nullptr);
+        setFA(BID::FORT,      m_fortTex);
+        setFA(BID::MARKET,    m_marketTex);
+        setFA(BID::TOWN_HALL, m_townHallTex);
+        setFA(BID::CITY_HALL, m_cityHallTex);
 
         // Faction-specific mage guild art
         static const int kMageGuildBIDs[MAGE_GUILD_TIERS] = {

@@ -135,15 +135,24 @@ bool Game::init(const std::string& title, int width, int height)
     // Load building category icon atlas
     m_buildingIconTex.load(m_basePath + "assets/buildings/icons_buildings.png", true, false);
 
-    // Load non-faction-specific building art: fort, market, town_hall, city_hall
-    static const char* kSharedBuildingFiles[NUM_SHARED_BUILDING_ART] = {
-        "assets/buildings/fort.png",       // [0]
-        "assets/buildings/market.png",     // [1]
-        "assets/buildings/town_hall.png",  // [2]
-        "assets/buildings/city_hall.png",  // [3]
+    // Load per-faction single-tier building art (3x3 spritesheet, row-major faction order)
+    static const struct { const char* dir; const char* base; } kFactionBuildings[] = {
+        { "fort",      "fort"      },
+        { "market",    "market"    },
+        { "town_hall", "town_hall" },
+        { "city_hall", "city_hall" },
     };
-    for (int i = 0; i < NUM_SHARED_BUILDING_ART; ++i)
-        m_sharedBuildingTex[i].load(m_basePath + kSharedBuildingFiles[i], false, false);
+    auto loadFactionTiles = [&](Texture* tex, const char* dir, const char* base) {
+        for (int f = 0; f < NUM_FACTIONS; ++f) {
+            char buf[128];
+            std::snprintf(buf, sizeof(buf), "assets/buildings/%s/%s_f%d.png", dir, base, f);
+            tex[f].load(m_basePath + buf, false, false);
+        }
+    };
+    loadFactionTiles(m_fortTex,     "fort",      "fort");
+    loadFactionTiles(m_marketTex,   "market",    "market");
+    loadFactionTiles(m_townHallTex, "town_hall", "town_hall");
+    loadFactionTiles(m_cityHallTex, "city_hall", "city_hall");
 
     // Load per-faction mage guild art: mage_guild/mage_guild_f{0-8}_t{1-4}.png
     for (int f = 0; f < NUM_FACTIONS; ++f)

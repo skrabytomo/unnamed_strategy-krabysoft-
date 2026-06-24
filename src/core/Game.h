@@ -257,10 +257,12 @@ private:
     // File: assets/buildings/icons_buildings.png  (384×64, 6 cols × 1 row)
     Texture           m_buildingIconTex;
 
-    // ── Per-building art (shared buildings keyed by BID) ──────────────────────
-    // Non-faction-specific: fort, market, town_hall, city_hall
-    static constexpr int NUM_SHARED_BUILDING_ART = 4;
-    Texture           m_sharedBuildingTex[NUM_SHARED_BUILDING_ART];
+    // ── Per-faction single-tier buildings [faction] ───────────────────────────
+    // fort, market, town_hall, city_hall — each has 9 faction variants
+    Texture m_fortTex[NUM_FACTIONS];
+    Texture m_marketTex[NUM_FACTIONS];
+    Texture m_townHallTex[NUM_FACTIONS];
+    Texture m_cityHallTex[NUM_FACTIONS];
 
     // ── Per-faction mage guild art [faction][tier-1] ──────────────────────────
     // Files: assets/buildings/mage_guild/mage_guild_f{0-8}_t{1-4}.png
