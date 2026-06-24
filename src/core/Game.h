@@ -258,12 +258,20 @@ private:
     Texture           m_buildingIconTex;
 
     // ── Per-building art (shared buildings keyed by BID) ──────────────────────
-    // Files: assets/buildings/fort.png, market.png, warehouse.png,
-    //        warehouse_t2.png, warehouse_t3.png, town_hall.png,
-    //        city_hall.png, mage_guild.png, mage_guild_t2.png,
-    //        mage_guild_t3.png, mage_guild_t4.png
-    static constexpr int NUM_SHARED_BUILDING_ART = 11;
+    // Non-faction-specific: fort, market, town_hall, city_hall
+    static constexpr int NUM_SHARED_BUILDING_ART = 4;
     Texture           m_sharedBuildingTex[NUM_SHARED_BUILDING_ART];
+
+    // ── Per-faction mage guild art [faction][tier-1] ──────────────────────────
+    // Files: assets/buildings/mage_guild/mage_guild_f{0-8}_t{1-4}.png
+    static constexpr int NUM_FACTIONS      = 9;
+    static constexpr int MAGE_GUILD_TIERS  = 4;
+    Texture m_mageGuildTex[NUM_FACTIONS][MAGE_GUILD_TIERS];
+
+    // ── Per-faction warehouse art [faction][tier-1] ───────────────────────────
+    // Files: assets/buildings/warehouse/warehouse_f{0-8}_t{1-3}.png
+    static constexpr int WAREHOUSE_TIERS   = 3;
+    Texture m_warehouseTex[NUM_FACTIONS][WAREHOUSE_TIERS];
 
     // ── Per-unit combat animators (keyed by CombatUnit id) ───────────────────
     std::unordered_map<uint32_t, SpriteAnimator> m_combatAnimators;

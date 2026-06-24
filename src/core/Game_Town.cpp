@@ -935,25 +935,35 @@ void Game::enterTown(Town* town)
             ? (ImTextureID)(uintptr_t)m_townTex[fid].id() : nullptr);
         m_townScreen.setBuildingIconTex(m_buildingIconTex.ok()
             ? (ImTextureID)(uintptr_t)m_buildingIconTex.id() : nullptr);
-        // Wire shared building art (BID 1=Fort, 2=Market, 3-8=Warehouse variants,
-        // 11=Town Hall, 12=City Hall, 5-10=Mage Guild tiers)
+        // Non-faction-specific shared buildings
         static const struct { int bid; int texIdx; } kSharedArt[] = {
-            { BID::FORT,           0 },
-            { BID::MARKET,         1 },
-            { BID::WAREHOUSE,      2 },
-            { BID::WAREHOUSE_T2,   3 },
-            { BID::WAREHOUSE_T3,   4 },
-            { BID::TOWN_HALL,      5 },
-            { BID::CITY_HALL,      6 },
-            { BID::MAGE_GUILD,     7 },
-            { BID::MAGE_GUILD_T2,  8 },
-            { BID::MAGE_GUILD_T3,  9 },
-            { BID::MAGE_GUILD_T4, 10 },
+            { BID::FORT,      0 },
+            { BID::MARKET,    1 },
+            { BID::TOWN_HALL, 2 },
+            { BID::CITY_HALL, 3 },
         };
         for (auto& e : kSharedArt)
             m_townScreen.setBuildingArt(e.bid,
                 m_sharedBuildingTex[e.texIdx].ok()
                     ? (ImTextureID)(uintptr_t)m_sharedBuildingTex[e.texIdx].id() : nullptr);
+
+        // Faction-specific mage guild art
+        static const int kMageGuildBIDs[MAGE_GUILD_TIERS] = {
+            BID::MAGE_GUILD, BID::MAGE_GUILD_T2, BID::MAGE_GUILD_T3, BID::MAGE_GUILD_T4
+        };
+        for (int t = 0; t < MAGE_GUILD_TIERS; ++t)
+            m_townScreen.setBuildingArt(kMageGuildBIDs[t],
+                m_mageGuildTex[fid][t].ok()
+                    ? (ImTextureID)(uintptr_t)m_mageGuildTex[fid][t].id() : nullptr);
+
+        // Faction-specific warehouse art
+        static const int kWarehouseBIDs[WAREHOUSE_TIERS] = {
+            BID::WAREHOUSE, BID::WAREHOUSE_T2, BID::WAREHOUSE_T3
+        };
+        for (int t = 0; t < WAREHOUSE_TIERS; ++t)
+            m_townScreen.setBuildingArt(kWarehouseBIDs[t],
+                m_warehouseTex[fid][t].ok()
+                    ? (ImTextureID)(uintptr_t)m_warehouseTex[fid][t].id() : nullptr);
         for (int t = 0; t < NUM_UNIT_TIERS; ++t)
             m_townScreen.setUnitTex(t, m_unitTex[fid][t].ok()
                 ? (ImTextureID)(uintptr_t)m_unitTex[fid][t].id() : nullptr);
