@@ -922,11 +922,31 @@ void Game::renderSpellPanel()
         // Draw icon over the card
         ImVec2 icoPos = {cardPos.x + 6.0f, cardPos.y + (CARD_H - ICON_SZ) * 0.5f};
         if (m_spellIconTex.ok()) {
-            int   idx = sid - 1;
-            float u0  = (idx % 5) * 0.2f, v0 = (idx / 5) * 0.2f;
+            // Atlas layout: 5 cols × N rows, each row = one school, 5 spells per row.
+            // Row 0: Light  (IDs  1- 4)   → atlas col = slot within school (0-3)
+            // Row 1: Blood  (IDs 11-14)
+            // Row 2: Death  (IDs 21-24, +Venomous Cloud 24 col 4)
+            // Row 3: Nature (IDs 30-34)   ← need row 3 in atlas
+            // Row 4: Forge  (IDs 40-44)   ← need row 4
+            // Row 5: Flesh  (IDs 50-54)   ← need row 5
+            // Row 6: Neutral(IDs 60-62)   ← need row 6
+            // Current atlas is 5×5 (rows 0-4 exist; rows 5-6 missing).
+            int row = 0, col = 0;
+            if      (sid >= 1  && sid <= 4)  { row = 0; col = sid - 1; }
+            else if (sid >= 11 && sid <= 14) { row = 1; col = sid - 11; }
+            else if (sid >= 21 && sid <= 25) { row = 2; col = sid - 21; }
+            else if (sid >= 30 && sid <= 34) { row = 3; col = sid - 30; }
+            else if (sid >= 40 && sid <= 44) { row = 4; col = sid - 40; }
+            else if (sid >= 50 && sid <= 54) { row = 5; col = sid - 50; }
+            else if (sid >= 60 && sid <= 62) { row = 6; col = sid - 60; }
+            // Clamp to atlas bounds (5 rows exist; rows 5-6 fall back to row 4)
+            static const int kAtlasRows = 5;
+            if (row >= kAtlasRows) row = kAtlasRows - 1;
+            float u0 = col * 0.2f, v0 = row * (1.0f / kAtlasRows);
+            float u1 = u0 + 0.2f,  v1 = v0 + (1.0f / kAtlasRows);
             dl2->AddImageRounded((ImTextureID)(uintptr_t)m_spellIconTex.id(),
                 icoPos, {icoPos.x + ICON_SZ, icoPos.y + ICON_SZ},
-                {u0, v0}, {u0+0.2f, v0+0.2f}, IM_COL32_WHITE, ICON_SZ * 0.5f);
+                {u0, v0}, {u1, v1}, IM_COL32_WHITE, ICON_SZ * 0.5f);
         } else {
             dl2->AddCircleFilled({icoPos.x + ICON_SZ*0.5f, icoPos.y + ICON_SZ*0.5f},
                 ICON_SZ*0.5f, IM_COL32((int)(sc.x*200),(int)(sc.y*200),(int)(sc.z*200),200));
