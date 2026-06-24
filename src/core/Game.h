@@ -253,6 +253,10 @@ private:
     // File: assets/towns/faction_N.png  (N=0-8)
     Texture           m_townTex[NUM_FACTIONS];
 
+    // ── Building category icon atlas ───────────────────────────────────────────
+    // File: assets/buildings/icons_buildings.png  (384×64, 6 cols × 1 row)
+    Texture           m_buildingIconTex;
+
     // ── Per-unit combat animators (keyed by CombatUnit id) ───────────────────
     std::unordered_map<uint32_t, SpriteAnimator> m_combatAnimators;
 

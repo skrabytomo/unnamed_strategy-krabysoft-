@@ -132,6 +132,9 @@ bool Game::init(const std::string& title, int width, int height)
         m_townTex[i].load(m_basePath + rel, false, false);
     }
 
+    // Load building category icon atlas
+    m_buildingIconTex.load(m_basePath + "assets/buildings/icons_buildings.png", true, false);
+
     // Load combat board terrain backgrounds (assets/terrain/combat/NAME.png)
     static const char* kTerrainBgName[NUM_TERRAIN_TYPES] = {
         "plains", "forest", "highland", "corrupted", "toxic",

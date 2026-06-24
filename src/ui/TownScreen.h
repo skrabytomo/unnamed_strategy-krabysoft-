@@ -72,6 +72,10 @@ private:
     // Faction art for the town screen banner (set from Game)
     ImTextureID m_townBannerTex = nullptr;
 
+    // Building category icon atlas: 6 cols × 1 row (64×64 each)
+    // Column order matches BuildingCategory enum: Dwelling/Support/Economy/Special/Fort/MageGuild
+    ImTextureID m_buildingIconTex = nullptr;
+
     // Unit sprite textures [tier-1] for the recruit panel
     static constexpr int MAX_TIERS = 6;
     ImTextureID m_unitTex[MAX_TIERS] = {};
@@ -80,7 +84,8 @@ private:
     bool m_recruitToGarrison = false;
 
 public:
-    void setTownBannerTex(ImTextureID t) { m_townBannerTex = t; }
+    void setTownBannerTex(ImTextureID t)    { m_townBannerTex    = t; }
+    void setBuildingIconTex(ImTextureID t)  { m_buildingIconTex  = t; }
     void setUnitTex(int tierIdx, ImTextureID t) {
         if (tierIdx >= 0 && tierIdx < MAX_TIERS) m_unitTex[tierIdx] = t;
     }

@@ -932,6 +932,8 @@ void Game::enterTown(Town* town)
         int fid = std::clamp(static_cast<int>(town->faction), 0, NUM_FACTIONS - 1);
         m_townScreen.setTownBannerTex(m_townTex[fid].ok()
             ? (ImTextureID)(uintptr_t)m_townTex[fid].id() : nullptr);
+        m_townScreen.setBuildingIconTex(m_buildingIconTex.ok()
+            ? (ImTextureID)(uintptr_t)m_buildingIconTex.id() : nullptr);
         for (int t = 0; t < NUM_UNIT_TIERS; ++t)
             m_townScreen.setUnitTex(t, m_unitTex[fid][t].ok()
                 ? (ImTextureID)(uintptr_t)m_unitTex[fid][t].id() : nullptr);

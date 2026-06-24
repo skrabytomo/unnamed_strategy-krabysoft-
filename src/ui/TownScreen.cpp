@@ -246,8 +246,11 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
 
-    const float bw = (ImGui::GetContentRegionAvail().x - 4.0f) * 0.5f - 2.0f;
-    const float bh = 36.0f;
+    const float bw  = (ImGui::GetContentRegionAvail().x - 4.0f) * 0.5f - 2.0f;
+    const float bh  = 36.0f;
+    const float iSz = 28.0f;  // icon size drawn inside each button
+    // UV column width per category in the 6-column icon atlas
+    static constexpr float kIconUvW = 1.0f / 6.0f;
 
     auto costStr = [](const Resources& cost) -> std::string {
         std::string s;
@@ -314,7 +317,28 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
         bool clicked = false;
         if (built || limitReach || !prereqMet) ImGui::BeginDisabled();
         std::string btnId = label + "##b" + std::to_string(def.id);
-        if (ImGui::Button(btnId.c_str(), {bw, bh})) clicked = true;
+
+        // Reserve left space for icon by indenting the label with spaces when icon is available
+        if (m_buildingIconTex) {
+            std::string paddedId = "     " + label + "##b" + std::to_string(def.id);
+            if (ImGui::Button(paddedId.c_str(), {bw, bh})) clicked = true;
+        } else {
+            if (ImGui::Button(btnId.c_str(), {bw, bh})) clicked = true;
+        }
+
+        // Overlay building category icon on top of the button (drawn after so it's on top)
+        if (m_buildingIconTex) {
+            ImVec2 btnMin = ImGui::GetItemRectMin();
+            float  u0     = kIconUvW * static_cast<int>(def.category);
+            float  u1     = u0 + kIconUvW;
+            float  iX     = btnMin.x + 3.0f;
+            float  iY     = btnMin.y + (bh - iSz) * 0.5f;
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            dl->AddImage(m_buildingIconTex, {iX, iY}, {iX + iSz, iY + iSz},
+                         {u0, 0.0f}, {u1, 1.0f},
+                         built ? IM_COL32(180,220,180,200) : IM_COL32(255,255,255,210));
+        }
+
         if (built || limitReach || !prereqMet) ImGui::EndDisabled();
 
         ImGui::PopStyleColor(3);
