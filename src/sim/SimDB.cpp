@@ -48,13 +48,14 @@ bool SimDB::createSchema()
 {
     static const char* kSchema = R"(
         CREATE TABLE IF NOT EXISTS matches (
-            id       INTEGER PRIMARY KEY AUTOINCREMENT,
-            f1       INTEGER NOT NULL,
-            f2       INTEGER NOT NULL,
-            winner   INTEGER NOT NULL,
-            end_week INTEGER NOT NULL,
-            seed     INTEGER NOT NULL,
-            run_ts   INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            f1              INTEGER NOT NULL,
+            f2              INTEGER NOT NULL,
+            winner          INTEGER NOT NULL,
+            end_week        INTEGER NOT NULL,
+            seed            INTEGER NOT NULL,
+            combat_decided  INTEGER NOT NULL DEFAULT 1,
+            run_ts          INTEGER NOT NULL DEFAULT (strftime('%s','now'))
         );
         CREATE TABLE IF NOT EXISTS turn_snapshots (
             match_id    INTEGER NOT NULL REFERENCES matches(id),
@@ -83,13 +84,13 @@ bool SimDB::execSQL(const char* sql) const
     return true;
 }
 
-int64_t SimDB::insertMatch(FactionId f1, FactionId f2, int winner, int endWeek, uint32_t seed)
+int64_t SimDB::insertMatch(FactionId f1, FactionId f2, int winner, int endWeek, uint32_t seed, int combatDecided)
 {
     if (!m_db) return 0;
     char sql[256];
     std::snprintf(sql, sizeof(sql),
-        "INSERT INTO matches(f1,f2,winner,end_week,seed) VALUES(%d,%d,%d,%d,%u);",
-        static_cast<int>(f1), static_cast<int>(f2), winner, endWeek, seed);
+        "INSERT INTO matches(f1,f2,winner,end_week,seed,combat_decided) VALUES(%d,%d,%d,%d,%u,%d);",
+        static_cast<int>(f1), static_cast<int>(f2), winner, endWeek, seed, combatDecided);
     if (!execSQL(sql)) return 0;
     return sqlite3_last_insert_rowid(m_db);
 }

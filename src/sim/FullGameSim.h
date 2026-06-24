@@ -20,9 +20,10 @@ public:
 
     struct Result
     {
-        int       winner    = 0;          // 1 or 2; 0 = draw / timeout
-        int       endWeek   = 0;
-        FactionId winFaction = FactionId::None;
+        int       winner        = 0;   // 1 or 2; 0 = true draw (equal strength)
+        int       endWeek       = 0;
+        bool      combatDecided = false; // true = winner decided by actual combat
+        FactionId winFaction    = FactionId::None;
         std::vector<TurnSnapshot> snapshots;
     };
 

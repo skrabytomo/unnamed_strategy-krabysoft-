@@ -28,7 +28,8 @@ public:
     bool isOpen() const { return m_db != nullptr; }
 
     // Insert a completed match record. Returns new match id (>0) or 0 on error.
-    int64_t insertMatch(FactionId f1, FactionId f2, int winner, int endWeek, uint32_t seed);
+    // combat_decided: 1 = winner found via actual combat, 0 = strength tiebreak at timeout
+    int64_t insertMatch(FactionId f1, FactionId f2, int winner, int endWeek, uint32_t seed, int combatDecided);
 
     // Insert per-turn snapshot rows for a match.
     void insertSnapshots(int64_t matchId, const std::vector<TurnSnapshot>& snaps);

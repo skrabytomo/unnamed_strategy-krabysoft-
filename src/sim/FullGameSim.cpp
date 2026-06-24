@@ -396,6 +396,7 @@ FullGameSim::Result FullGameSim::run(const Config& cfg)
     int week = 1;
     bool p1Alive = true;
     bool p2Alive = true;
+    bool combatDecided = false;
 
     CombatEngine engine;
     engine.setSilent(true);
@@ -501,8 +502,8 @@ FullGameSim::Result FullGameSim::run(const Config& cfg)
 
                 if (!units1.empty() && !units2.empty()) {
                     engine.startBattle(h1, units1, h2, units2);
-                    engine.setPlayerAI(AIDifficulty::Standard);
-                    engine.setEnemyAI(AIDifficulty::Standard);
+                    engine.setPlayerAI(AIDifficulty::Tactical);
+                    engine.setEnemyAI(AIDifficulty::Tactical);
                     CombatPhase finalPhase = engine.runHeadless(200);
 
                     // Extract surviving unit counts from the combat grid
@@ -523,9 +524,11 @@ FullGameSim::Result FullGameSim::run(const Config& cfg)
                     if (finalPhase == CombatPhase::Victory) {
                         h2.army.clear();
                         p2Alive = false;
+                        combatDecided = true;
                     } else if (finalPhase == CombatPhase::Defeat) {
                         h1.army.clear();
                         p1Alive = false;
+                        combatDecided = true;
                     } else {
                         // Timeout — tiebreak by remaining HP pool
                         if (hp1 >= hp2) {
@@ -567,18 +570,60 @@ FullGameSim::Result FullGameSim::run(const Config& cfg)
         }
     }
 
-    // Determine winner — tiebreak by army strength if both/neither survived
+    // Force a final battle if both heroes survived the week limit
+    if (p1Alive && p2Alive && !h1.army.empty() && !h2.army.empty()) {
+        std::vector<CombatUnit> units1, units2;
+        auto buildUnits = [&](const Hero& h, const std::vector<UnitStack>& army,
+                               std::vector<CombatUnit>& out, bool isPlayer) {
+            for (const auto& st : army) {
+                for (const auto& ud : udefs) {
+                    if (ud.id != st.defId) continue;
+                    CombatUnit cu;
+                    cu.defId     = ud.id;   cu.name      = ud.name;
+                    cu.count     = st.count; cu.hp        = ud.hp;
+                    cu.maxHp     = ud.hp;    cu.attack    = ud.attack + h.attack;
+                    cu.defense   = ud.defense + h.defense;
+                    cu.speed     = ud.speed;  cu.damageMin = ud.damage_min;
+                    cu.damageMax = ud.damage_max; cu.range = ud.range;
+                    cu.shots     = ud.shots;  cu.shotsLeft = ud.shots;
+                    cu.flying    = ud.flying; cu.vampiric  = ud.vampiric;
+                    cu.regenerates = ud.regenerates; cu.tags = ud.tags;
+                    cu.isPlayer  = isPlayer;
+                    out.push_back(cu); break;
+                }
+            }
+        };
+        buildUnits(h1, h1.army, units1, true);
+        buildUnits(h2, h2.army, units2, false);
+        if (!units1.empty() && !units2.empty()) {
+            engine.startBattle(h1, units1, h2, units2);
+            engine.setPlayerAI(AIDifficulty::Tactical);
+            engine.setEnemyAI(AIDifficulty::Tactical);
+            CombatPhase fp = engine.runHeadless(200);
+            int hp1 = 0, hp2 = 0;
+            for (const auto& cu : engine.grid().units()) {
+                if (!cu.alive || cu.count <= 0) continue;
+                (cu.isPlayer ? hp1 : hp2) += cu.count * cu.hp;
+            }
+            if (fp == CombatPhase::Victory)      { p2Alive = false; combatDecided = true; }
+            else if (fp == CombatPhase::Defeat)  { p1Alive = false; combatDecided = true; }
+            else if (hp1 >= hp2)                 { p2Alive = false; }
+            else                                 { p1Alive = false; }
+        }
+    }
+
+    // Determine winner
     if (p1Alive && !p2Alive) {
         result.winner = 1; result.winFaction = cfg.f1;
     } else if (p2Alive && !p1Alive) {
         result.winner = 2; result.winFaction = cfg.f2;
     } else {
-        // Both alive (timeout) or both dead — break tie by army strength
         int s1 = heroStrength(h1, udefs), s2 = heroStrength(h2, udefs);
         if (s1 > s2)      { result.winner = 1; result.winFaction = cfg.f1; }
         else if (s2 > s1) { result.winner = 2; result.winFaction = cfg.f2; }
         else              { result.winner = 0; result.winFaction = FactionId::None; }
     }
+    result.combatDecided = combatDecided;
 
     result.endWeek = week - 1;
     return result;

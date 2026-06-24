@@ -142,7 +142,7 @@ int main(int argc, char* argv[])
             else draws++;
 
             if (useDB) {
-                int64_t matchId = db.insertMatch(f1, f2, res.winner, res.endWeek, cfg.seed);
+                int64_t matchId = db.insertMatch(f1, f2, res.winner, res.endWeek, cfg.seed, res.combatDecided ? 1 : 0);
                 if (matchId > 0 && useSnapshots && !res.snapshots.empty())
                     db.insertSnapshots(matchId, res.snapshots);
             }
