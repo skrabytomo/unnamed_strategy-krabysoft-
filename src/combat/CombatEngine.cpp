@@ -814,7 +814,8 @@ bool CombatEngine::submitAction(const CombatAction& action)
             }
         }
 
-        auto result = DamageCalc::attack(*unit, *target, m_grid);
+        bool wasRanged = (unit->range > 0 && HexGrid::distance(unit->pos, target->pos) > 1);
+        auto result = DamageCalc::attack(*unit, *target, m_grid, false, wasRanged);
         if (csBonus) unit->attack -= 2;
 
         std::ostringstream ss;
@@ -897,7 +898,7 @@ bool CombatEngine::submitAction(const CombatAction& action)
             }
         }
 
-        auto result = DamageCalc::attack(*unit, *target, m_grid);
+        auto result = DamageCalc::attack(*unit, *target, m_grid, false, true);
         if (csShotBonus) unit->attack -= 2;
 
         std::ostringstream ss;
@@ -1181,7 +1182,7 @@ void CombatEngine::aiActPassive(CombatUnit& unit)
     // Ranged: shoot if in range and have shots
     if (unit.range > 0 && unit.shotsLeft > 0 && dist <= unit.range) {
         unit.shotsLeft--;
-        auto result = DamageCalc::attack(unit, *target, m_grid);
+        auto result = DamageCalc::attack(unit, *target, m_grid, false, true);
         std::ostringstream ss;
         ss << unit.name << " shoots " << target->name << " for " << result.damage;
         addLog(ss.str());
@@ -1250,7 +1251,7 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
     // Ranged: shoot nearest enemy if in range and have shots
     if (unit.range > 0 && unit.shotsLeft > 0 && bestDist <= unit.range) {
         unit.shotsLeft--;
-        auto result = DamageCalc::attack(unit, *target, m_grid);
+        auto result = DamageCalc::attack(unit, *target, m_grid, false, true);
         std::ostringstream ss;
         ss << unit.name << " shoots " << target->name << " for " << result.damage << " dmg";
         if (result.killed) ss << " (" << result.killed << " killed)";
@@ -1353,7 +1354,7 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
         }
         if (shtTarget) {
             unit.shotsLeft--;
-            auto result = DamageCalc::attack(unit, *shtTarget, m_grid);
+            auto result = DamageCalc::attack(unit, *shtTarget, m_grid, false, true);
             std::ostringstream ss;
             ss << unit.name << " shoots " << shtTarget->name << " for " << result.damage;
             addLog(ss.str());
@@ -1430,7 +1431,7 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
             int nowDist = HexGrid::distance(unit.pos, target->pos);
             if (unit.range > 0 && unit.shotsLeft > 0 && nowDist <= unit.range && target->alive) {
                 unit.shotsLeft--;
-                auto result = DamageCalc::attack(unit, *target, m_grid);
+                auto result = DamageCalc::attack(unit, *target, m_grid, false, true);
                 std::ostringstream ss;
                 ss << unit.name << " moves+shoots " << target->name << " for " << result.damage;
                 addLog(ss.str());

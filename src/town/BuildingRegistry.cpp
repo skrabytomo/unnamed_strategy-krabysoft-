@@ -1069,8 +1069,8 @@ void BuildingRegistry::init()
 
     // ── VOIDKIN ───────────────────────────────────────────────────────────────
     { BuildingDef b; b.id=BID::VK_NEXUS; b.name="Void Nexus";
-      b.description="Town Hall - +1000 Gold weekly, +2 unit growth"; b.category=BuildingCategory::Economy;
-      b.faction=F::Voidkin; b.cost=goldAndRes(500,ResourceType::VerdantSap,2); b.weeklyIncome=gold(1000); b.growthBonus=2;
+      b.description="Town Hall - +1000 Gold, +2 VerdantSap weekly, +2 unit growth"; b.category=BuildingCategory::Economy;
+      b.faction=F::Voidkin; b.cost=gold(500); b.weeklyIncome=goldAndRes(1000,ResourceType::VerdantSap,2); b.growthBonus=2;
       m_buildings.push_back(b); }
     { BuildingDef b; b.id=BID::VK_T1; b.name="Wisp Hollow"; b.tier=1; b.weeklyGrowth=13;
       b.description="Produces Void Wisps"; b.category=BuildingCategory::UnitDwelling;
@@ -1078,7 +1078,7 @@ void BuildingRegistry::init()
       b.upgradeA=BID::VK_T1_A; b.upgradeB=BID::VK_T1_B; m_buildings.push_back(b); }
     { BuildingDef b; b.id=BID::VK_T2; b.name="Phase Den"; b.tier=2; b.weeklyGrowth=10;
       b.description="Produces Phase Walkers"; b.category=BuildingCategory::UnitDwelling;
-      b.faction=F::Voidkin; b.cost=goldAndRes(600,ResourceType::VerdantSap,1);
+      b.faction=F::Voidkin; b.cost=gold(600);
       b.prerequisites={BID::VK_T1};
       b.upgradeA=BID::VK_T2_A; b.upgradeB=BID::VK_T2_B; m_buildings.push_back(b); }
     { BuildingDef b; b.id=BID::VK_T3; b.name="Rift Arch"; b.tier=3; b.weeklyGrowth=7;
@@ -1187,7 +1187,9 @@ void BuildingRegistry::init()
       b.prerequisites={BID::VK_RIFT_GATE}; m_buildings.push_back(b); }
 
     addUnit(6001,"Void Wisp",      F::Voidkin,1,P::None, 18,3,3,1, 3,6, gold(70),        T::Void|T::Flying, true);
+    m_units.back().range = 3; m_units.back().shots = 2;
     addUnit(6002,"Phase Walker",   F::Voidkin,2,P::None, 24,5,6,2, 6,6, goldAndRes(130,ResourceType::VerdantSap,1), T::Void|T::Flying, true);
+    m_units.back().range = 4; m_units.back().shots = 1;
     addUnit(6003,"Rift Archer",    F::Voidkin,3,P::None, 28,6,5,4, 9,7, goldAndRes(205,ResourceType::VerdantSap,1), T::Void|T::Flying, true);
     m_units.back().range = 5; m_units.back().shots = 5;
     addUnit(6004,"Void Stalker",   F::Voidkin,4,P::None, 44,9,9,9,15,10,goldAndRes(360,ResourceType::VerdantSap,2), T::Void|T::Flying, true);
