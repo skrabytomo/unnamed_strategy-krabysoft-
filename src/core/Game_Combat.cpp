@@ -939,8 +939,8 @@ void Game::renderSpellPanel()
             else if (sid >= 40 && sid <= 44) { row = 4; col = sid - 40; }
             else if (sid >= 50 && sid <= 54) { row = 5; col = sid - 50; }
             else if (sid >= 60 && sid <= 62) { row = 6; col = sid - 60; }
-            // Clamp to atlas bounds (5 rows exist; rows 5-6 fall back to row 4)
-            static const int kAtlasRows = 5;
+            // Clamp to atlas bounds (7 rows now exist; all schools covered)
+            static const int kAtlasRows = 7;
             if (row >= kAtlasRows) row = kAtlasRows - 1;
             float u0 = col * 0.2f, v0 = row * (1.0f / kAtlasRows);
             float u1 = u0 + 0.2f,  v1 = v0 + (1.0f / kAtlasRows);
