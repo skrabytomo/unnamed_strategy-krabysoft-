@@ -264,7 +264,6 @@ private:
 
     // ── Per-faction mage guild art [faction][tier-1] ──────────────────────────
     // Files: assets/buildings/mage_guild/mage_guild_f{0-8}_t{1-4}.png
-    static constexpr int NUM_FACTIONS      = 9;
     static constexpr int MAGE_GUILD_TIERS  = 4;
     Texture m_mageGuildTex[NUM_FACTIONS][MAGE_GUILD_TIERS];
 
