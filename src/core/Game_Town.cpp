@@ -1,6 +1,7 @@
 #include "Game.h"
 #include <cstdio>
 #include <algorithm>
+#include "../town/BuildingRegistry.h"
 #include "../magic/SpellRegistry.h"
 #include "../world/HexGrid.h"
 #include "../world/FogOfWar.h"
@@ -934,6 +935,21 @@ void Game::enterTown(Town* town)
             ? (ImTextureID)(uintptr_t)m_townTex[fid].id() : nullptr);
         m_townScreen.setBuildingIconTex(m_buildingIconTex.ok()
             ? (ImTextureID)(uintptr_t)m_buildingIconTex.id() : nullptr);
+        // Wire shared building art (BID 1=Fort, 2=Market, 3-8=Warehouse variants,
+        // 11=Town Hall, 12=City Hall, 5-10=Mage Guild tiers)
+        static const struct { int bid; int texIdx; } kSharedArt[] = {
+            { BID::FORT,          0 },
+            { BID::MARKET,        1 },
+            { BID::WAREHOUSE,     2 }, { BID::WAREHOUSE_T2, 2 }, { BID::WAREHOUSE_T3, 2 },
+            { BID::TOWN_HALL,     3 },
+            { BID::CITY_HALL,     4 },
+            { BID::MAGE_GUILD,    5 }, { BID::MAGE_GUILD_T2, 5 },
+            { BID::MAGE_GUILD_T3, 5 }, { BID::MAGE_GUILD_T4, 5 },
+        };
+        for (auto& e : kSharedArt)
+            m_townScreen.setBuildingArt(e.bid,
+                m_sharedBuildingTex[e.texIdx].ok()
+                    ? (ImTextureID)(uintptr_t)m_sharedBuildingTex[e.texIdx].id() : nullptr);
         for (int t = 0; t < NUM_UNIT_TIERS; ++t)
             m_townScreen.setUnitTex(t, m_unitTex[fid][t].ok()
                 ? (ImTextureID)(uintptr_t)m_unitTex[fid][t].id() : nullptr);

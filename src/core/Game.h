@@ -257,6 +257,11 @@ private:
     // File: assets/buildings/icons_buildings.png  (384×64, 6 cols × 1 row)
     Texture           m_buildingIconTex;
 
+    // ── Per-building art (shared buildings keyed by BID) ──────────────────────
+    // Files: assets/buildings/fort.png, market.png, warehouse.png, etc.
+    static constexpr int NUM_SHARED_BUILDING_ART = 6;
+    Texture           m_sharedBuildingTex[NUM_SHARED_BUILDING_ART]; // fort/market/warehouse/townhall/cityhall/mageguild
+
     // ── Per-unit combat animators (keyed by CombatUnit id) ───────────────────
     std::unordered_map<uint32_t, SpriteAnimator> m_combatAnimators;
 

@@ -5,6 +5,7 @@
 #include "../data/Resources.h"
 #include "../hero/Hero.h"
 #include <functional>
+#include <unordered_map>
 #include <imgui.h>
 
 class TownScreen
@@ -76,6 +77,9 @@ private:
     // Column order matches BuildingCategory enum: Dwelling/Support/Economy/Special/Fort/MageGuild
     ImTextureID m_buildingIconTex = nullptr;
 
+    // Per-building art keyed by BID (optional — shown in tooltip preview + button thumbnail)
+    std::unordered_map<int, ImTextureID> m_buildingArt;
+
     // Unit sprite textures [tier-1] for the recruit panel
     static constexpr int MAX_TIERS = 6;
     ImTextureID m_unitTex[MAX_TIERS] = {};
@@ -86,6 +90,7 @@ private:
 public:
     void setTownBannerTex(ImTextureID t)    { m_townBannerTex    = t; }
     void setBuildingIconTex(ImTextureID t)  { m_buildingIconTex  = t; }
+    void setBuildingArt(int bid, ImTextureID t) { if (t) m_buildingArt[bid] = t; }
     void setUnitTex(int tierIdx, ImTextureID t) {
         if (tierIdx >= 0 && tierIdx < MAX_TIERS) m_unitTex[tierIdx] = t;
     }

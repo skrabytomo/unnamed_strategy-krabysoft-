@@ -135,6 +135,18 @@ bool Game::init(const std::string& title, int width, int height)
     // Load building category icon atlas
     m_buildingIconTex.load(m_basePath + "assets/buildings/icons_buildings.png", true, false);
 
+    // Load per-building shared art (fort/market/warehouse/townhall/cityhall/mageguild)
+    static const char* kSharedBuildingFiles[NUM_SHARED_BUILDING_ART] = {
+        "assets/buildings/fort.png",
+        "assets/buildings/market.png",
+        "assets/buildings/warehouse.png",
+        "assets/buildings/town_hall.png",
+        "assets/buildings/city_hall.png",
+        "assets/buildings/mage_guild.png",
+    };
+    for (int i = 0; i < NUM_SHARED_BUILDING_ART; ++i)
+        m_sharedBuildingTex[i].load(m_basePath + kSharedBuildingFiles[i], false, false);
+
     // Load combat board terrain backgrounds (assets/terrain/combat/NAME.png)
     static const char* kTerrainBgName[NUM_TERRAIN_TYPES] = {
         "plains", "forest", "highland", "corrupted", "toxic",

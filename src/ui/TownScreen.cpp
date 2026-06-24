@@ -314,29 +314,32 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
 
         if (col == 1) ImGui::SameLine(0, 4);
 
+        // Look up per-building art first, fall back to category icon atlas
+        auto artIt = m_buildingArt.find(def.id);
+        ImTextureID artTex = (artIt != m_buildingArt.end()) ? artIt->second : nullptr;
+        bool hasIcon = artTex || m_buildingIconTex;
+
         bool clicked = false;
         if (built || limitReach || !prereqMet) ImGui::BeginDisabled();
-        std::string btnId = label + "##b" + std::to_string(def.id);
 
-        // Reserve left space for icon by indenting the label with spaces when icon is available
-        if (m_buildingIconTex) {
-            std::string paddedId = "     " + label + "##b" + std::to_string(def.id);
-            if (ImGui::Button(paddedId.c_str(), {bw, bh})) clicked = true;
-        } else {
-            if (ImGui::Button(btnId.c_str(), {bw, bh})) clicked = true;
-        }
+        // Pad label so icon doesn't overlap text
+        std::string btnId = (hasIcon ? "      " : "") + label + "##b" + std::to_string(def.id);
+        if (ImGui::Button(btnId.c_str(), {bw, bh})) clicked = true;
 
-        // Overlay building category icon on top of the button (drawn after so it's on top)
-        if (m_buildingIconTex) {
+        // Overlay icon on button — per-building art takes priority over category atlas
+        if (hasIcon) {
             ImVec2 btnMin = ImGui::GetItemRectMin();
-            float  u0     = kIconUvW * static_cast<int>(def.category);
-            float  u1     = u0 + kIconUvW;
-            float  iX     = btnMin.x + 3.0f;
-            float  iY     = btnMin.y + (bh - iSz) * 0.5f;
+            float  iX = btnMin.x + 3.0f;
+            float  iY = btnMin.y + (bh - iSz) * 0.5f;
             ImDrawList* dl = ImGui::GetWindowDrawList();
-            dl->AddImage(m_buildingIconTex, {iX, iY}, {iX + iSz, iY + iSz},
-                         {u0, 0.0f}, {u1, 1.0f},
-                         built ? IM_COL32(180,220,180,200) : IM_COL32(255,255,255,210));
+            ImU32 tint = built ? IM_COL32(180,220,180,200) : IM_COL32(255,255,255,220);
+            if (artTex) {
+                dl->AddImage(artTex, {iX, iY}, {iX + iSz, iY + iSz}, {0,0}, {1,1}, tint);
+            } else {
+                float u0 = kIconUvW * static_cast<int>(def.category);
+                dl->AddImage(m_buildingIconTex, {iX, iY}, {iX + iSz, iY + iSz},
+                             {u0, 0.0f}, {u0 + kIconUvW, 1.0f}, tint);
+            }
         }
 
         if (built || limitReach || !prereqMet) ImGui::EndDisabled();
@@ -345,6 +348,12 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
 
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::BeginTooltip();
+            // Show building art preview if available
+            if (artTex) {
+                ImGui::Image(artTex, {128, 128});
+                ImGui::SameLine();
+                ImGui::BeginGroup();
+            }
             ImGui::Text("%s", def.name.c_str());
             if (!def.description.empty())
                 ImGui::TextDisabled("%s", def.description.c_str());
@@ -352,6 +361,7 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
                 ImGui::Separator();
                 ImGui::Text("Cost: %s", costStr(def.cost).c_str());
             }
+            if (artTex) ImGui::EndGroup();
             ImGui::EndTooltip();
         }
 
