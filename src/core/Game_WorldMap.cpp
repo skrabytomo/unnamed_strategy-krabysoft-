@@ -3596,6 +3596,49 @@ void Game::renderHeroInspect()
             int t = static_cast<int>(s.tier);
             ImGui::Text("  %s (%s)", sd ? sd->name.c_str() : "?", (t >= 0 && t <= 2) ? tierStr[t] : "?");
         }
+
+        // Archetype label
+        static const int kMight[] = { SkillID::OFFENSE, SkillID::DEFENSE_SKILL, SkillID::ARCHERY,
+            SkillID::LEADERSHIP, SkillID::TACTICS, SkillID::LOGISTICS,
+            SkillID::SCOUTING, SkillID::FIRST_AID, SkillID::LUCK };
+        static const int kMagic[] = { SkillID::LIGHT_MAGIC, SkillID::BLOOD_MAGIC,
+            SkillID::DEATH_MAGIC, SkillID::NATURE_MAGIC, SkillID::FORGE_MAGIC, SkillID::FLESH_MAGIC };
+        int mightN = 0, magicN = 0;
+        for (int sid : kMight) if (hero.skills.hasSkill(sid)) ++mightN;
+        for (int sid : kMagic) if (hero.skills.hasSkill(sid)) ++magicN;
+
+        const char* archetypeLabel   = nullptr;
+        ImVec4      archetypeColour  = {1,1,1,1};
+        if      (mightN >= 5 && magicN == 0)         { archetypeLabel = "★ PURE MIGHT";  archetypeColour = {1.0f,0.75f,0.2f,1}; }
+        else if (magicN >= 4 && mightN <= 1)         { archetypeLabel = "★ PURE MAGIC";  archetypeColour = {0.6f,0.5f,1.0f,1}; }
+        else if (mightN >= 3 && magicN >= 2)         { archetypeLabel = "★ WARLORD";     archetypeColour = {0.8f,0.3f,0.3f,1}; }
+        else if (mightN >= 4)                        { archetypeLabel = "Might Build";    archetypeColour = {1.0f,0.85f,0.5f,1}; }
+        else if (mightN >= 2)                        { archetypeLabel = "Might Synergy";  archetypeColour = {0.9f,0.8f,0.5f,1}; }
+        else if (magicN >= 3)                        { archetypeLabel = "Magic Synergy";  archetypeColour = {0.7f,0.6f,1.0f,1}; }
+        else if (magicN >= 2)                        { archetypeLabel = "Dual Magic";     archetypeColour = {0.7f,0.6f,1.0f,1}; }
+
+        if (archetypeLabel) {
+            ImGui::Spacing();
+            ImGui::TextColored(archetypeColour, "%s", archetypeLabel);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                if (mightN >= 5 && magicN == 0)
+                    ImGui::TextUnformatted("+1 Speed and +10% HP to all units in combat");
+                else if (magicN >= 4 && mightN <= 1)
+                    ImGui::TextUnformatted("+3 to all casting stats, spells cost -1 mana");
+                else if (mightN >= 3 && magicN >= 2)
+                    ImGui::TextUnformatted("+1 Morale and +1 Luck to all units in combat");
+                else if (mightN >= 4)
+                    ImGui::TextUnformatted("+2 ATK/DEF to all units in combat");
+                else if (mightN >= 2)
+                    ImGui::TextUnformatted("+1 ATK/DEF to all units in combat");
+                else if (magicN >= 3)
+                    ImGui::TextUnformatted("+2 to all casting stats");
+                else if (magicN >= 2)
+                    ImGui::TextUnformatted("+1 to all casting stats");
+                ImGui::EndTooltip();
+            }
+        }
     }
 
     {
