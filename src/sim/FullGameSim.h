@@ -16,6 +16,9 @@ public:
         uint32_t  seed         = 42;
         int       maxWeeks     = 30;
         bool      recordSnapshots = false;
+        bool      useMCTS         = false;  // slower but smarter hero decisions
+        int       mctsSimulations = 20;
+        int       mctsRolloutWeeks= 3;
     };
 
     struct Result

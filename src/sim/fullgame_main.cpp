@@ -36,6 +36,7 @@ static void printUsage()
         "  --snapshots      Record per-turn data in DB\n"
         "  --db PATH        Output SQLite DB path (default: fullgame_results.db)\n"
         "  --no-db          Don't write to database\n"
+        "  --mcts           Use MCTS goal selection (slower, smarter AI)\n"
         "\nFaction indices: 0=HolyOrder 1=CrimsonWardens 2=Thornkin 3=EternalEmpire\n"
         "                  4=Bloodsworn 5=Voidkin 6=IronAssembly 7=Amalgamate 8=Convergence\n"
     );
@@ -49,6 +50,7 @@ int main(int argc, char* argv[])
     bool     allVsAll        = true;
     bool     useSnapshots    = false;
     bool     useDB           = true;
+    bool     useMCTS         = false;
     int      f1Idx           = 0;
     int      f2Idx           = 1;
     std::string dbPath       = "fullgame_results.db";
@@ -73,6 +75,8 @@ int main(int argc, char* argv[])
             dbPath = argv[++i];
         else if (std::strcmp(argv[i], "--no-db") == 0)
             useDB = false;
+        else if (std::strcmp(argv[i], "--mcts") == 0)
+            useMCTS = true;
         else if (std::strcmp(argv[i], "--help") == 0) {
             printUsage(); return 0;
         }
@@ -134,6 +138,7 @@ int main(int argc, char* argv[])
             cfg.seed            = baseSeed + static_cast<uint32_t>(g * 997 + fi * 31 + fj);
             cfg.maxWeeks        = maxWeeks;
             cfg.recordSnapshots = useSnapshots;
+            cfg.useMCTS         = useMCTS;
 
             FullGameSim::Result res = sim.run(cfg);
 

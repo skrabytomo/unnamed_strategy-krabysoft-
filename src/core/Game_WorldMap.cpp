@@ -647,65 +647,72 @@ void Game::doEndTurn()
                 // Retreat when very weak regardless of role
                 bool veryWeak   = (eiStr * 10 <  plStr * 4);
 
-                while (eHero.movePool > 0) {
-                    HexCoord goal = {};
-                    bool goalSet = false;
+                // Graduated retreat thresholds
+                float strRatio = plStr > 0 ? (float)eiStr / plStr : 99.f;
+                bool softRetreat = strRatio < 0.6f;
+                bool dominant    = strRatio >= 1.2f;
+                bool playerGhostWalk = playerHero.ghostWalkSpecialty;
 
-                    auto tryGoal = [&](HexCoord pos, int bias = 0) {
-                        int d = HexGrid::distance(eHero.pos, pos) - bias;
-                        if (!goalSet || d < HexGrid::distance(eHero.pos, goal)) {
-                            goal = pos; goalSet = true;
-                        }
+                while (eHero.movePool > 0) {
+                    // Score-based candidate selection: value / distance
+                    struct Cand { HexCoord pos; float score; };
+                    std::vector<Cand> cands;
+                    auto add = [&](HexCoord pos, float val) {
+                        int d = std::max(1, HexGrid::distance(eHero.pos, pos));
+                        cands.push_back({pos, val / d});
                     };
 
                     if (veryWeak) {
-                        // Retreat: head to nearest owned town to regroup / garrison
                         for (const auto& t : m_towns)
-                            if (t.ownerId == eHero.id) tryGoal(t.pos, 5);
+                            if (t.ownerId == eHero.id) add(t.pos, 500.f);
                     } else if (isDefender) {
-                        // Defender: patrol within reach of nearest owned town
                         for (const auto& r : m_resources)
-                            if (r.ownedBy != eHero.id) tryGoal(r.pos, 3);
+                            if (r.ownedBy != eHero.id) add(r.pos, 60.f);
                         for (const auto& t : m_towns)
-                            if (t.ownerId == eHero.id) tryGoal(t.pos, 0);
+                            if (t.ownerId == eHero.id) add(t.pos, 80.f);
                     } else {
-                        // Deny player's faction-key resource mines first (bias 8 = very high priority)
+                        // Own town to recruit
+                        for (const auto& t : m_towns) {
+                            if (t.ownerId != eHero.id) continue;
+                            bool hasU = false;
+                            for (const auto& dw : t.dwellings) if (dw.available > 0) { hasU = true; break; }
+                            if (hasU && (int)eHero.army.size() < 7) add(t.pos, 250.f);
+                        }
+                        // Towns
+                        for (const auto& t : m_towns) {
+                            if (t.ownerId == 0)  add(t.pos, 150.f);
+                            else if (t.ownerId == 1) add(t.pos, 200.f);
+                        }
+                        // Resources
                         for (const auto& r : m_resources) {
                             if (r.ownedBy == eHero.id) continue;
-                            int bias = (r.type == denialRes) ? 8 : 3;
-                            tryGoal(r.pos, bias);
+                            add(r.pos, r.type == denialRes ? 120.f : 60.f);
                         }
-                        // Valuable world objects (XP, spells, stat boosts, artifacts)
+                        // World objects
                         for (const auto& obj : m_worldObjects) {
                             if (obj.collected) continue;
-                            if (obj.type == WorldObjectType::XPShrine      ||
-                                obj.type == WorldObjectType::SpellScroll   ||
-                                obj.type == WorldObjectType::StatShrine    ||
-                                obj.type == WorldObjectType::ArtifactChest ||
-                                obj.type == WorldObjectType::TreasureChest ||
-                                obj.type == WorldObjectType::ForestShrine  ||
-                                obj.type == WorldObjectType::SwampAltar) {
-                                tryGoal(obj.pos, 2);
-                            }
+                            float val = 0.f;
+                            if (obj.type == WorldObjectType::ArtifactChest)  val = 80.f;
+                            else if (obj.type == WorldObjectType::TreasureChest) val = 70.f;
+                            else if (obj.type == WorldObjectType::XPShrine   ||
+                                     obj.type == WorldObjectType::ForestShrine||
+                                     obj.type == WorldObjectType::StatShrine  ||
+                                     obj.type == WorldObjectType::SpellScroll ||
+                                     obj.type == WorldObjectType::SwampAltar)  val = 50.f;
+                            if (val > 0.f) add(obj.pos, val);
                         }
-                        // Neutral towns
-                        for (const auto& t : m_towns) {
-                            if (t.ownerId != 0) continue;
-                            tryGoal(t.pos);
-                        }
-                        // GhostWalk: enemy AI cannot target the player hero directly
-                        bool playerGhostWalk = playerHero.ghostWalkSpecialty;
-                        // Player towns / hero (raider always pursues; economic only if aggressive)
-                        if (aggressive || !goalSet) {
-                            if (!playerGhostWalk) tryGoal(playerHero.pos);
-                            if (aggressive) {
-                                for (const auto& t : m_towns)
-                                    if (t.ownerId == 1) tryGoal(t.pos);
-                            }
+                        // Player hero
+                        if (!softRetreat && !playerGhostWalk) {
+                            int dist = HexGrid::distance(eHero.pos, playerHero.pos);
+                            if (dominant || dist <= 8 || isRaider)
+                                add(playerHero.pos, 300.f);
                         }
                     }
 
-                    if (!goalSet) break;
+                    if (cands.empty()) break;
+                    std::sort(cands.begin(), cands.end(),
+                              [](const Cand& a, const Cand& b){ return a.score > b.score; });
+                    HexCoord goal = cands[0].pos;
 
                     auto costFn = [this, &eHero, aggressive](HexCoord c) -> int {
                         const HexTile* t = m_map.getTile(c);
