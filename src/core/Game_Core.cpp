@@ -135,14 +135,19 @@ bool Game::init(const std::string& title, int width, int height)
     // Load building category icon atlas
     m_buildingIconTex.load(m_basePath + "assets/buildings/icons_buildings.png", true, false);
 
-    // Load per-building shared art (fort/market/warehouse/townhall/cityhall/mageguild)
+    // Load per-building shared art (each tier gets its own file)
     static const char* kSharedBuildingFiles[NUM_SHARED_BUILDING_ART] = {
-        "assets/buildings/fort.png",
-        "assets/buildings/market.png",
-        "assets/buildings/warehouse.png",
-        "assets/buildings/town_hall.png",
-        "assets/buildings/city_hall.png",
-        "assets/buildings/mage_guild.png",
+        "assets/buildings/fort.png",          // [0]  BID::FORT
+        "assets/buildings/market.png",         // [1]  BID::MARKET
+        "assets/buildings/warehouse.png",      // [2]  BID::WAREHOUSE
+        "assets/buildings/warehouse_t2.png",   // [3]  BID::WAREHOUSE_T2
+        "assets/buildings/warehouse_t3.png",   // [4]  BID::WAREHOUSE_T3
+        "assets/buildings/town_hall.png",      // [5]  BID::TOWN_HALL
+        "assets/buildings/city_hall.png",      // [6]  BID::CITY_HALL
+        "assets/buildings/mage_guild.png",     // [7]  BID::MAGE_GUILD
+        "assets/buildings/mage_guild_t2.png",  // [8]  BID::MAGE_GUILD_T2
+        "assets/buildings/mage_guild_t3.png",  // [9]  BID::MAGE_GUILD_T3
+        "assets/buildings/mage_guild_t4.png",  // [10] BID::MAGE_GUILD_T4
     };
     for (int i = 0; i < NUM_SHARED_BUILDING_ART; ++i)
         m_sharedBuildingTex[i].load(m_basePath + kSharedBuildingFiles[i], false, false);

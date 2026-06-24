@@ -938,13 +938,17 @@ void Game::enterTown(Town* town)
         // Wire shared building art (BID 1=Fort, 2=Market, 3-8=Warehouse variants,
         // 11=Town Hall, 12=City Hall, 5-10=Mage Guild tiers)
         static const struct { int bid; int texIdx; } kSharedArt[] = {
-            { BID::FORT,          0 },
-            { BID::MARKET,        1 },
-            { BID::WAREHOUSE,     2 }, { BID::WAREHOUSE_T2, 2 }, { BID::WAREHOUSE_T3, 2 },
-            { BID::TOWN_HALL,     3 },
-            { BID::CITY_HALL,     4 },
-            { BID::MAGE_GUILD,    5 }, { BID::MAGE_GUILD_T2, 5 },
-            { BID::MAGE_GUILD_T3, 5 }, { BID::MAGE_GUILD_T4, 5 },
+            { BID::FORT,           0 },
+            { BID::MARKET,         1 },
+            { BID::WAREHOUSE,      2 },
+            { BID::WAREHOUSE_T2,   3 },
+            { BID::WAREHOUSE_T3,   4 },
+            { BID::TOWN_HALL,      5 },
+            { BID::CITY_HALL,      6 },
+            { BID::MAGE_GUILD,     7 },
+            { BID::MAGE_GUILD_T2,  8 },
+            { BID::MAGE_GUILD_T3,  9 },
+            { BID::MAGE_GUILD_T4, 10 },
         };
         for (auto& e : kSharedArt)
             m_townScreen.setBuildingArt(e.bid,
