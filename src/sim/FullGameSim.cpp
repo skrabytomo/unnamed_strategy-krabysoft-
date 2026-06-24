@@ -503,34 +503,38 @@ FullGameSim::Result FullGameSim::run(const Config& cfg)
                     engine.startBattle(h1, units1, h2, units2);
                     engine.setPlayerAI(AIDifficulty::Standard);
                     engine.setEnemyAI(AIDifficulty::Standard);
-                    CombatPhase finalPhase = engine.runHeadless(40);
+                    CombatPhase finalPhase = engine.runHeadless(200);
 
                     // Extract surviving unit counts from the combat grid
                     h1.army.clear();
                     h2.army.clear();
+                    int hp1 = 0, hp2 = 0;
                     for (const auto& cu : engine.grid().units()) {
                         if (!cu.alive || cu.count <= 0) continue;
                         if (cu.isPlayer) {
                             h1.army.push_back({cu.defId, cu.count});
+                            hp1 += cu.count * cu.hp;
                         } else {
                             h2.army.push_back({cu.defId, cu.count});
+                            hp2 += cu.count * cu.hp;
                         }
                     }
 
                     if (finalPhase == CombatPhase::Victory) {
-                        // h1 won
                         h2.army.clear();
                         p2Alive = false;
                     } else if (finalPhase == CombatPhase::Defeat) {
-                        // h2 won
                         h1.army.clear();
                         p1Alive = false;
                     } else {
-                        // Timeout / draw
-                        h1.army.clear();
-                        h2.army.clear();
-                        p1Alive = false;
-                        p2Alive = false;
+                        // Timeout — tiebreak by remaining HP pool
+                        if (hp1 >= hp2) {
+                            h2.army.clear();
+                            p2Alive = false;
+                        } else {
+                            h1.army.clear();
+                            p1Alive = false;
+                        }
                     }
                 }
             }
