@@ -30,6 +30,7 @@ private:
     void rebuildBuildingButtons();
     void rebuildRecruitButtons();
     void drawBuildingTree(UIRenderer& rdr);
+    void drawPanorama(UIRenderer& rdr);
     void drawRecruitPanel(UIRenderer& rdr);
     void drawIncomePanel(UIRenderer& rdr);
 
@@ -86,6 +87,9 @@ private:
 
     // Recruit destination toggle
     bool m_recruitToGarrison = false;
+
+    // Building view mode: true = panorama grid, false = list
+    bool m_panoramaMode = true;
 
 public:
     void setTownBannerTex(ImTextureID t)    { m_townBannerTex    = t; }

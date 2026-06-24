@@ -207,7 +207,8 @@ void TownScreen::draw(UIRenderer& rdr)
     }
 
     m_mainPanel.draw(rdr);
-    drawBuildingTree(rdr);
+    if (m_panoramaMode) drawPanorama(rdr);
+    else                drawBuildingTree(rdr);
     drawRecruitPanel(rdr);
     drawIncomePanel(rdr);
     m_closeBtn.draw(rdr);
@@ -266,6 +267,11 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
         }
         return s.empty() ? "free" : s;
     };
+
+    // View toggle
+    if (ImGui::Button("Panorama View")) { m_panoramaMode = true; }
+    ImGui::SameLine();
+    ImGui::TextDisabled("— click to build");
 
     int  col        = 0;
     bool needRebuild = false;
@@ -380,6 +386,185 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
     if (needRebuild) rebuildRecruitButtons();
 }
 
+void TownScreen::drawPanorama(UIRenderer& rdr)
+{
+    m_buildPanel.draw(rdr);
+    if (!m_town || !m_registry || !m_playerRes) return;
+
+    ImGui::SetNextWindowPos({m_buildPanel.bounds.x, m_buildPanel.bounds.y});
+    ImGui::SetNextWindowSize({m_buildPanel.bounds.w, m_buildPanel.bounds.h});
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0,0,0,0));
+    ImGui::PushStyleColor(ImGuiCol_Border,   ImVec4(0,0,0,0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6, 28));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,   ImVec2(5, 5));
+
+    ImGui::Begin("##panorama_view", nullptr,
+        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+
+    // Town banner as subtle tinted background
+    if (m_townBannerTex) {
+        ImVec2 wMin = ImGui::GetWindowPos();
+        ImVec2 wSz  = ImGui::GetWindowSize();
+        ImGui::GetWindowDrawList()->AddImage(
+            m_townBannerTex, wMin, {wMin.x + wSz.x, wMin.y + wSz.y},
+            {0,0}, {1,1}, IM_COL32(255,255,255,55));
+        // Darken top strip for buttons to remain readable
+        ImGui::GetWindowDrawList()->AddRectFilled(
+            wMin, {wMin.x + wSz.x, wMin.y + 24}, IM_COL32(0,0,0,140));
+    }
+
+    if (ImGui::Button("List View")) m_panoramaMode = false;
+    ImGui::SameLine();
+    ImGui::TextDisabled("— click a building to construct");
+
+    auto costStr = [](const Resources& cost) -> std::string {
+        std::string s;
+        if (cost.get(ResourceType::Gold) > 0)
+            s += std::to_string(cost.get(ResourceType::Gold)) + "g";
+        for (int ri = 1; ri < RESOURCE_COUNT; ++ri) {
+            auto rt = static_cast<ResourceType>(ri);
+            int v = cost.get(rt);
+            if (v > 0) {
+                if (!s.empty()) s += " ";
+                s += std::to_string(v) + resourceName(rt)[0];
+            }
+        }
+        return s.empty() ? "free" : s;
+    };
+
+    const float avail  = ImGui::GetContentRegionAvail().x;
+    const float cardW  = (avail - 10.0f) / 3.0f;
+    const float artSz  = cardW - 8.0f;
+    const float nameH  = 30.0f;
+    const float cardH  = artSz + nameH;
+
+    int col = 0;
+    bool needRebuild = false;
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+
+    for (const auto& def : m_registry->buildings()) {
+        if (def.faction != FactionId::None && def.faction != m_town->faction) continue;
+
+        bool built      = m_town->hasBuilding(def.id);
+        bool limitReach = m_town->builtToday >= 1;
+        bool prereqMet  = m_town->canBuild(def.id, m_registry->buildings(),
+                                            m_currentWeek, m_blueprintDiscount);
+        bool affordable = m_playerRes->canAfford(def.cost);
+        bool canBuild   = prereqMet && affordable && !built && !limitReach;
+
+        auto artIt     = m_buildingArt.find(def.id);
+        ImTextureID artTex = (artIt != m_buildingArt.end()) ? artIt->second : nullptr;
+
+        if (col > 0) ImGui::SameLine(0, 5);
+
+        ImGui::BeginGroup();
+        ImVec2 cMin = ImGui::GetCursorScreenPos();
+        ImVec2 cMax = {cMin.x + cardW, cMin.y + cardH};
+
+        // Card background
+        ImU32 bgCol = built      ? IM_COL32(15, 40, 15, 220)
+                    : canBuild   ? IM_COL32(40, 32, 8,  220)
+                    : prereqMet  ? IM_COL32(45, 10, 10, 200)
+                                 : IM_COL32(12, 12, 18, 210);
+        dl->AddRectFilled(cMin, cMax, bgCol, 5.0f);
+
+        // Art or category icon
+        ImU32 artTint = built      ? IM_COL32(180,255,180,240)
+                      : canBuild   ? IM_COL32(255,255,255,255)
+                      : prereqMet  ? IM_COL32(200,100,100,180)
+                                   : IM_COL32(90, 90, 90,  160);
+        ImVec2 artMin = {cMin.x + 4, cMin.y + 4};
+        ImVec2 artMax = {cMin.x + 4 + artSz, cMin.y + 4 + artSz};
+
+        if (artTex) {
+            dl->AddImageRounded(artTex, artMin, artMax, {0,0},{1,1}, artTint, 4.0f);
+        } else if (m_buildingIconTex) {
+            static constexpr float kUvW = 1.0f / 6.0f;
+            float u0 = kUvW * static_cast<int>(def.category);
+            dl->AddImageRounded(m_buildingIconTex, artMin, artMax,
+                                {u0,0},{u0+kUvW,1}, artTint, 4.0f);
+        } else {
+            dl->AddRectFilled(artMin, artMax, IM_COL32(30,30,40,200), 4.0f);
+        }
+
+        // Status badge overlay (top-right corner of art)
+        if (built) {
+            dl->AddRectFilled({artMax.x-34, artMin.y+2},{artMax.x-2, artMin.y+14},
+                              IM_COL32(20,120,20,220), 3.0f);
+            dl->AddText({artMax.x-32, artMin.y+3}, IM_COL32(150,255,150,255), "BUILT");
+        } else if (!prereqMet) {
+            dl->AddRectFilled({artMax.x-34, artMin.y+2},{artMax.x-2, artMin.y+14},
+                              IM_COL32(30,30,30,220), 3.0f);
+            dl->AddText({artMax.x-32, artMin.y+3}, IM_COL32(100,100,100,255), "LOCK");
+        } else if (!affordable) {
+            dl->AddRectFilled({artMax.x-34, artMin.y+2},{artMax.x-2, artMin.y+14},
+                              IM_COL32(100,20,20,220), 3.0f);
+            dl->AddText({artMax.x-32, artMin.y+3}, IM_COL32(255,100,100,255), "COST");
+        }
+
+        // Name + cost below art
+        ImGui::SetCursorScreenPos({cMin.x + 4, cMin.y + 4 + artSz + 3});
+        ImGui::PushStyleColor(ImGuiCol_Text,
+            built ? ImVec4(0.45f,0.75f,0.45f,1.f)
+          : canBuild ? ImVec4(0.92f,0.82f,0.30f,1.f)
+          : ImVec4(0.45f,0.45f,0.45f,1.f));
+        ImGui::TextUnformatted(def.name.c_str());
+        ImGui::PopStyleColor();
+
+        if (!built) {
+            ImGui::SetCursorScreenPos({cMin.x + 4, cMin.y + 4 + artSz + 16});
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f,0.55f,0.3f,0.9f));
+            std::string cs = costStr(def.cost);
+            ImGui::TextUnformatted(cs.c_str());
+            ImGui::PopStyleColor();
+        }
+
+        // Invisible clickable overlay on art area
+        ImGui::SetCursorScreenPos(artMin);
+        std::string btnId = "##pan" + std::to_string(def.id);
+        ImGui::InvisibleButton(btnId.c_str(), {artSz, artSz});
+
+        bool hovered = ImGui::IsItemHovered();
+        if (hovered) {
+            ImU32 hlCol = canBuild ? IM_COL32(220,190,60,220) : IM_COL32(140,140,140,180);
+            dl->AddRect(cMin, cMax, hlCol, 5.0f, 0, 2.0f);
+            ImGui::BeginTooltip();
+            if (artTex) { ImGui::Image(artTex, {96,96}); ImGui::SameLine(); ImGui::BeginGroup(); }
+            ImGui::Text("%s", def.name.c_str());
+            if (!def.description.empty()) ImGui::TextDisabled("%s", def.description.c_str());
+            ImGui::Separator();
+            if (built)
+                ImGui::TextColored({0.4f,0.8f,0.4f,1.f}, "Already built");
+            else {
+                ImGui::Text("Cost: %s", costStr(def.cost).c_str());
+                if (!prereqMet)  ImGui::TextColored({0.6f,0.4f,0.4f,1.f}, "Prerequisites not met");
+                else if (limitReach) ImGui::TextColored({0.6f,0.6f,0.2f,1.f}, "Already built today");
+                else if (!affordable) ImGui::TextColored({0.8f,0.3f,0.3f,1.f}, "Cannot afford");
+                else ImGui::TextColored({0.4f,0.9f,0.4f,1.f}, "Click to build");
+            }
+            if (artTex) ImGui::EndGroup();
+            ImGui::EndTooltip();
+        }
+
+        if (ImGui::IsItemClicked() && canBuild) {
+            m_town->build(def.id, m_registry->buildings(), *m_playerRes);
+            needRebuild = true;
+        }
+
+        ImGui::SetCursorScreenPos({cMin.x, cMax.y + 5});
+        ImGui::EndGroup();
+
+        col = (col + 1) % 3;
+    }
+
+    ImGui::End();
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(2);
+
+    if (needRebuild) rebuildRecruitButtons();
+}
+
 void TownScreen::drawRecruitPanel(UIRenderer& rdr)
 {
     m_recruitPanel.draw(rdr);
@@ -417,8 +602,8 @@ void TownScreen::drawRecruitPanel(UIRenderer& rdr)
     } else {
         // 2-column card grid
         const float cardW  = (m_recruitPanel.bounds.w - 20.0f) * 0.5f;
-        const float cardH  = 110.0f;
-        const float sprW   = 56.0f;
+        const float cardH  = 130.0f;
+        const float sprW   = 80.0f;
 
         // Faction color tint for card headers
         auto factionHdr = [](FactionId f) -> ImVec4 {
@@ -490,7 +675,7 @@ void TownScreen::drawRecruitPanel(UIRenderer& rdr)
             ImGui::PopStyleColor();
 
             // Stats column (right of sprite)
-            float sx2 = cardMin.x + sprW + 6, sy2 = cardMin.y + 18;
+            float sx2 = cardMin.x + sprW + 8, sy2 = cardMin.y + 18;
             const float rowH = 13.0f;
             auto statRow = [&](const char* label, int val) {
                 char buf[32];
@@ -508,14 +693,14 @@ void TownScreen::drawRecruitPanel(UIRenderer& rdr)
             statRow("GRW", dw.available);
 
             // Available + cost
-            ImGui::SetCursorScreenPos({cardMin.x + 4, cardMin.y + cardH - 28});
+            ImGui::SetCursorScreenPos({cardMin.x + 4, cardMin.y + cardH - 32});
             bool canAfford = m_playerRes &&
                              m_playerRes->get(ResourceType::Gold) >= ud->cost.get(ResourceType::Gold) * dw.available;
             ImGui::TextDisabled("Avail: %d  (%dg)", dw.available,
                                 ud->cost.get(ResourceType::Gold) * dw.available);
 
             // Recruit button
-            ImGui::SetCursorScreenPos({cardMin.x + 4, cardMin.y + cardH - 14});
+            ImGui::SetCursorScreenPos({cardMin.x + 4, cardMin.y + cardH - 16});
             bool hasUnits = (dw.available > 0);
             if (!hasUnits || !canAfford) ImGui::BeginDisabled();
 
