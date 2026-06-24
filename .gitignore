@@ -2,6 +2,9 @@ build/
 saves/*.db
 saves/*.db-shm
 saves/*.db-wal
+*.db
+*.db-shm
+*.db-wal
 *.o
 *.a
 *.so
