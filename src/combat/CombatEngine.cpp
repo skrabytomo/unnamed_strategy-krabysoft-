@@ -47,6 +47,13 @@ void CombatEngine::addLog(const std::string& msg)
     gLog("[Combat] %s\n", msg.c_str());
 }
 
+void CombatEngine::logMoraleSurge(const CombatUnit& u)
+{
+    addLog(u.name + " morale surge \xe2\x80\x94 bonus action!");
+    if (m_moraleCb) m_moraleCb(u.id, u.pos);
+}
+
+
 // ── Start battle ───────────────────────────────────────────────────────────────
 void CombatEngine::startBattle(
     const Hero& playerHero, const std::vector<CombatUnit>& playerUnits,
@@ -636,8 +643,10 @@ void CombatEngine::advanceTurn()
     if (next) {
         // Regeneration: restore full HP of top unit at start of turn
         if (next->regenerates && next->alive) {
+            int regained = next->maxHp - next->hp;
             next->hp = next->maxHp;
             addLog(next->name + " regenerates!");
+            if (regained > 0 && m_healCb) m_healCb(next->id, regained, next->pos);
         }
         m_phase = next->isPlayer ? CombatPhase::PlayerTurn : CombatPhase::EnemyTurn;
         if (!next->isPlayer) processAITurn();
@@ -761,7 +770,7 @@ bool CombatEngine::submitAction(const CombatAction& action)
             return true;
 
         if (result.moraleTrigger) {
-            addLog(unit->name + " morale surge — bonus action!");
+            logMoraleSurge(*unit);
             unit->hasActed = false;
             unit->hasMoved = false;
         } else {
@@ -922,6 +931,7 @@ bool CombatEngine::submitAction(const CombatAction& action)
                     int healed = potency;
                     t->hp = std::min(t->maxHp, t->hp + healed);
                     ss << " → " << t->name << " healed " << healed;
+                    if (m_healCb) m_healCb(t->id, healed, t->pos);
                     break;
                 }
                 case SpellEffect::AttackBuff: {
@@ -1099,7 +1109,7 @@ void CombatEngine::aiActPassive(CombatUnit& unit)
         addLog(ss.str());
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
-            addLog(unit.name + " morale surge — bonus action!");
+            logMoraleSurge(unit);
             unit.hasActed = false; unit.hasMoved = false; return;
         }
         unit.hasActed = true; advanceTurn(); return;
@@ -1114,7 +1124,7 @@ void CombatEngine::aiActPassive(CombatUnit& unit)
         applyWardenMarkSplash(unit, tpos, tid, result.damage);
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
-            addLog(unit.name + " morale surge — bonus action!");
+            logMoraleSurge(unit);
             unit.hasActed = false; unit.hasMoved = false; return;
         }
         unit.hasActed = true; advanceTurn(); return;
@@ -1137,7 +1147,7 @@ void CombatEngine::aiActPassive(CombatUnit& unit)
                 applyWardenMarkSplash(unit, tpos, tid, result.damage);
                 if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
                 if (result.moraleTrigger) {
-                    addLog(unit.name + " morale surge — bonus action!");
+                    logMoraleSurge(unit);
                     unit.hasActed = false; unit.hasMoved = false; return;
                 }
                 unit.hasActed = true; advanceTurn(); return;
@@ -1169,7 +1179,7 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
         addLog(ss.str());
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
-            addLog(unit.name + " morale surge — bonus action!");
+            logMoraleSurge(unit);
             unit.hasActed = false; unit.hasMoved = false; return;
         }
         unit.hasActed = true; advanceTurn(); return;
@@ -1185,7 +1195,7 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
         applyWardenMarkSplash(unit, tpos, tid, result.damage);
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
-            addLog(unit.name + " morale surge — bonus action!");
+            logMoraleSurge(unit);
             unit.hasActed = false; unit.hasMoved = false; return;
         }
         unit.hasActed = true; advanceTurn(); return;
@@ -1213,7 +1223,7 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
                 applyWardenMarkSplash(unit, tpos, tid, result.damage);
                 if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
                 if (result.moraleTrigger) {
-                    addLog(unit.name + " morale surge — bonus action!");
+                    logMoraleSurge(unit);
                     unit.hasActed = false; unit.hasMoved = false; return;
                 }
                 unit.hasActed = true; advanceTurn(); return;
@@ -1271,7 +1281,7 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
             addLog(ss.str());
             if (!shtTarget->alive) { addLog(shtTarget->name + " destroyed!"); processKillEvents(unit, *shtTarget, result); }
             if (result.moraleTrigger) {
-                addLog(unit.name + " morale surge — bonus action!");
+                logMoraleSurge(unit);
                 unit.hasActed = false; unit.hasMoved = false; return;
             }
             unit.hasActed = true; advanceTurn(); return;
@@ -1302,7 +1312,7 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
         applyWardenMarkSplash(unit, tpos, tid, result.damage);
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
-            addLog(unit.name + " morale surge — bonus action!");
+            logMoraleSurge(unit);
             unit.hasActed = false; unit.hasMoved = false; return;
         }
         unit.hasActed = true; advanceTurn(); return;
@@ -1348,7 +1358,7 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
                 addLog(ss.str());
                 if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
                 if (result.moraleTrigger) {
-                    addLog(unit.name + " morale surge — bonus action!");
+                    logMoraleSurge(unit);
                     unit.hasActed = false; unit.hasMoved = false; return;
                 }
                 unit.hasActed = true; advanceTurn(); return;
@@ -1363,7 +1373,7 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
                 applyWardenMarkSplash(unit, tpos, tid, result.damage);
                 if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
                 if (result.moraleTrigger) {
-                    addLog(unit.name + " morale surge — bonus action!");
+                    logMoraleSurge(unit);
                     unit.hasActed = false; unit.hasMoved = false; return;
                 }
                 unit.hasActed = true; advanceTurn(); return;
@@ -1388,7 +1398,7 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
             applyWardenMarkSplash(unit, tpos, tid, result.damage);
             if (!adj->alive) { addLog(adj->name + " destroyed!"); processKillEvents(unit, *adj, result); }
             if (result.moraleTrigger) {
-                addLog(unit.name + " morale surge — bonus action!");
+                logMoraleSurge(unit);
                 unit.hasActed = false; unit.hasMoved = false; return;
             }
             unit.hasActed = true; advanceTurn(); return;
@@ -1544,6 +1554,7 @@ void CombatEngine::processRoundStartEffects()
             ss << u.name << " takes " << dmg << " poison damage";
             if (!u.alive) ss << " and perishes!";
             addLog(ss.str());
+            if (m_dmgCb) m_dmgCb(u.id, dmg, u.pos);
             --u.poisonRounds;
             if (u.poisonRounds == 0) u.poisonDamage = 0;
         }
@@ -1554,6 +1565,7 @@ void CombatEngine::processRoundStartEffects()
             ss << u.name << " takes " << dmg << " burn damage";
             if (!u.alive) ss << " and is incinerated!";
             addLog(ss.str());
+            if (m_dmgCb) m_dmgCb(u.id, dmg, u.pos);
             --u.burnRounds;
             if (u.burnRounds == 0) u.burnDamage = 0;
         }
@@ -2099,7 +2111,7 @@ void CombatEngine::tryEnemyHeroSpell()
             }
             case SpellEffect::Heal: {
                 int healed = std::min(potency, t->maxHp - t->hp);
-                if (healed > 0) t->hp += healed;
+                if (healed > 0) { t->hp += healed; if (m_healCb) m_healCb(t->id, healed, t->pos); }
                 ss << " → " << t->name << " healed " << healed;
                 break;
             }

@@ -1293,6 +1293,24 @@ void Game::enterCombat(Hero& playerHero,
         m_combatDmgEffects.push_back({sx, sy, 1.5f, dmg, false});
         (void)targetId;
     });
+    m_combat.setHealCallback([this](uint32_t targetId, int amount, HexCoord pos) {
+        float wx, wy;
+        m_combat.grid().hexGrid().hexToWorld(pos, wx, wy);
+        float sx = wx * m_combatBoardScale + m_combatBoardOffX;
+        float sy = wy * m_combatBoardScale + m_combatBoardOffY;
+        m_particles.emit(sx, sy, ParticlePreset::Heal);
+        if (m_settingsShowDmgNums)
+            m_combatDmgEffects.push_back({sx, sy, 1.5f, amount, true});
+        (void)targetId;
+    });
+    m_combat.setMoraleCallback([this](uint32_t unitId, HexCoord pos) {
+        float wx, wy;
+        m_combat.grid().hexGrid().hexToWorld(pos, wx, wy);
+        float sx = wx * m_combatBoardScale + m_combatBoardOffX;
+        float sy = wy * m_combatBoardScale + m_combatBoardOffY;
+        m_particles.emit(sx, sy, ParticlePreset::Morale, 10);
+        (void)unitId;
+    });
     // Build sprite animators for every unit
     m_combatAnimators.clear();
     const auto& unitDefs = m_registry.units();
