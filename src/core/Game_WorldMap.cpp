@@ -1024,20 +1024,20 @@ void Game::doEndTurn()
                       BID::MAGE_GUILD_T2, BID::HO_T4_BASE, BID::HO_T4_A,
                       BID::CITY_HALL, BID::HO_T5_BASE, BID::HO_T5_A,
                       BID::HO_RELIQUARY, BID::HO_T6_BASE, BID::HO_T6_A },
-                    // CrimsonWardens (1): Economy first, T2 early (ranged), Warden Brand
-                    { BID::CW_HALL, BID::CW_T1, BID::MARKET, BID::CW_T2, BID::CW_T2_A,
+                    // CrimsonWardens (1): Economy first, T1_A upgrade, T2 early (ranged), Warden Brand
+                    { BID::CW_HALL, BID::CW_T1, BID::CW_T1_A, BID::MARKET, BID::CW_T2, BID::CW_T2_A,
                       BID::FORT, BID::CW_WARDEN_BRAND, BID::CW_T3, BID::CW_T3_A,
                       BID::TOWN_HALL, BID::CW_DEATH_ALTAR, BID::CW_T4, BID::CW_T4_A,
-                      BID::CITY_HALL, BID::CW_T5, BID::CW_T5_A, BID::CW_T6 },
-                    // Thornkin (2): Symbiosis Web early, then grove, key upgrades (PathA=paired)
-                    { BID::TK_GROVE_HEART, BID::TK_T1, BID::TK_SYMBIOSIS_WEB,
+                      BID::CITY_HALL, BID::CW_T5, BID::CW_T5_A, BID::CW_T6, BID::CW_T6_A },
+                    // Thornkin (2): Symbiosis Web early, T1_A upgrade, key upgrades (PathA=paired)
+                    { BID::TK_GROVE_HEART, BID::TK_T1, BID::TK_T1_A, BID::TK_SYMBIOSIS_WEB,
                       BID::MARKET, BID::TK_T2, BID::TK_T2_A,
                       BID::TK_ANCIENT_CIRCLE, BID::FORT, BID::TK_T3, BID::TK_T3_A,
                       BID::TOWN_HALL, BID::TK_T4, BID::TK_T4_A,
                       BID::CITY_HALL, BID::TK_T5, BID::TK_T5_A, BID::TK_T6 },
-                    // EternalEmpire (3): Necropolis + Monument (second-life) ASAP
-                    { BID::EE_THRONE, BID::EE_T1, BID::EE_NECROPOLIS,
-                      BID::FORT, BID::EE_T2, BID::MARKET,
+                    // EternalEmpire (3): Necropolis + Monument (second-life) ASAP, T1/T2 upgrades
+                    { BID::EE_THRONE, BID::EE_T1, BID::EE_T1_A, BID::EE_NECROPOLIS,
+                      BID::FORT, BID::EE_T2, BID::EE_T2_A, BID::MARKET,
                       BID::EE_MONUMENT, BID::EE_T3, BID::EE_T3_A,
                       BID::TOWN_HALL, BID::EE_T4, BID::EE_T4_A,
                       BID::MAGE_GUILD, BID::CITY_HALL, BID::EE_T5, BID::EE_T5_A,
@@ -1048,8 +1048,8 @@ void Game::doEndTurn()
                       BID::BS_BLOOD_ALTAR, BID::BS_WAR_SHRINE,
                       BID::TOWN_HALL, BID::BS_T4, BID::BS_T4_A,
                       BID::CITY_HALL, BID::BS_T5, BID::BS_T5_A, BID::BS_T6 },
-                    // Voidkin (5): Market gate, Mage Guild (spell-dependent), Void Lens
-                    { BID::VK_NEXUS, BID::MARKET, BID::VK_T1,
+                    // Voidkin (5): Market gate, Mage Guild (spell-dependent), T1_A, Void Lens
+                    { BID::VK_NEXUS, BID::MARKET, BID::VK_T1, BID::VK_T1_A,
                       BID::MAGE_GUILD, BID::VK_T2, BID::VK_T2_A,
                       BID::FORT, BID::VK_RIFT_GATE, BID::VK_T3, BID::VK_T3_A,
                       BID::TOWN_HALL, BID::VK_VOID_LENS, BID::VK_T4, BID::VK_T4_A,
@@ -1066,11 +1066,12 @@ void Game::doEndTurn()
                       BID::AM_T3, BID::AM_T3_A, BID::TOWN_HALL, BID::AM_FLESH_VAULT,
                       BID::AM_T4, BID::AM_T4_A, BID::CITY_HALL,
                       BID::AM_T5, BID::AM_T5_A, BID::AM_T6 },
-                    // Convergence (8): Economy + dwellings, Mage Guild for mirror utility
-                    { BID::CV_SYNTHESIS_HUB, BID::CV_T1, BID::MARKET, BID::CV_T2,
-                      BID::FORT, BID::MAGE_GUILD, BID::CV_T3, BID::TOWN_HALL,
-                      BID::CV_T4, BID::CV_RESONANCE_WELL, BID::CITY_HALL,
-                      BID::CV_T5, BID::CV_MIRROR_CHAMBER, BID::CV_T6 },
+                    // Convergence (8): Economy + all dwellings + path-A upgrades
+                    { BID::CV_SYNTHESIS_HUB, BID::CV_T1, BID::CV_T1_A, BID::MARKET,
+                      BID::CV_T2, BID::CV_T2_A, BID::FORT, BID::MAGE_GUILD,
+                      BID::CV_T3, BID::CV_T3_A, BID::TOWN_HALL,
+                      BID::CV_T4, BID::CV_T4_A, BID::CV_RESONANCE_WELL, BID::CITY_HALL,
+                      BID::CV_T5, BID::CV_T5_A, BID::CV_MIRROR_CHAMBER, BID::CV_T6, BID::CV_T6_A },
                 };
 
                 for (auto& town : m_towns) {
