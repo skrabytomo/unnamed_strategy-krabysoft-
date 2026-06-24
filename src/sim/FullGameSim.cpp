@@ -567,10 +567,18 @@ FullGameSim::Result FullGameSim::run(const Config& cfg)
         }
     }
 
-    // Determine winner
-    if (p1Alive && !p2Alive)      { result.winner = 1; result.winFaction = cfg.f1; }
-    else if (p2Alive && !p1Alive) { result.winner = 2; result.winFaction = cfg.f2; }
-    else                          { result.winner = 0; result.winFaction = FactionId::None; }
+    // Determine winner — tiebreak by army strength if both/neither survived
+    if (p1Alive && !p2Alive) {
+        result.winner = 1; result.winFaction = cfg.f1;
+    } else if (p2Alive && !p1Alive) {
+        result.winner = 2; result.winFaction = cfg.f2;
+    } else {
+        // Both alive (timeout) or both dead — break tie by army strength
+        int s1 = heroStrength(h1, udefs), s2 = heroStrength(h2, udefs);
+        if (s1 > s2)      { result.winner = 1; result.winFaction = cfg.f1; }
+        else if (s2 > s1) { result.winner = 2; result.winFaction = cfg.f2; }
+        else              { result.winner = 0; result.winFaction = FactionId::None; }
+    }
 
     result.endWeek = week - 1;
     return result;
