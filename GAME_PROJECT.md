@@ -129,7 +129,20 @@ Each unit building has **2 upgrade paths** — changes unit stats and/or abiliti
 - Support buildings: boost growth rate, combat stats, school power proficiency
 - Economy buildings: roads between towns (travel speed/income bonus), infrastructure (passive resource income)
 
-### Siege
+### Siege Camp *(implemented 2026-06-23)*
+When a hero moves adjacent to an enemy town with a garrison, a prompt appears:
+- **Attack Now** — immediate combat (normal)
+- **Lay Siege** — hero camps outside town, blocking the defender from leaving; all allied heroes who also park adjacent join the assault when "End Turn" fires
+- **Retreat** — cancel, hero keeps remaining movement
+
+At end of turn, all camped heroes combine armies and auto-attack the town. The besieged town can **Fortify** (button visible in town screen while under siege, one use per siege turn): +4 DEF to all garrison units, +2 wall HP rounds, +3 tower damage per shot.
+
+Siege state on `Town`: `underSiege`, `siegeFortified`, `fortifyDefBonus/WallBonus/TowerBonus`.
+Siege camp state on `Hero`: `isSiegeCamping`, `siegeTargetTownId`.
+
+**Files:** `Game_WorldMap.cpp` (`renderSiegeCampPrompt`, `renderSiegeIndicator`, `triggerSiegeCombat`, doEndTurn siege loop), `Game_Town.cpp` (Fortify button in service bar), `Hero.h`, `Town.h`.
+
+### Siege (planned engine features)
 - Separate siege battle map
 - Destructible walls with HP
 - Siege engines destroy wall sections
@@ -226,6 +239,15 @@ Fixed options: S / M / L / XL
 - Faction penalty terrain = expensive movement
 - Roads between towns reduce movement cost
 
+### March Ability *(implemented 2026-06-23)*
+When a hero is selected and not adjacent to an enemy town, a **March** button appears (bottom-right HUD panel):
+- Costs 25% of current remaining movement points
+- Grants +10% max move pool at the start of next week
+- 1-week cooldown (tracked via `Hero::marchCooldownWeek`)
+- Useful for aggressive pushes or rapid mine capture
+
+**Files:** `Hero.h` (marchCooldownWeek, marchBonusActive), `Game_WorldMap.cpp` (`renderMarchButton`, week-start bonus application in doEndTurn).
+
 ### Fog of War
 - Unexplored only (HoMM3 style) — explored tiles stay visible
 
@@ -309,9 +331,22 @@ PathA upgrade dwellings are included for T2–T6 tiers. Falls back to generic dw
 ---
 
 ## MULTIPLAYER
-- **Deferred** — single player only for initial build
-- ENet already in stack for future implementation
-- Add post-launch: LAN first, then IP connect
+
+### 2-Player Hot-Seat *(implemented 2026-06-23)*
+Both players share one machine, alternating turns on the same screen.
+
+**How it works:**
+- New Game menu has a mode toggle: "vs AI" (default) or "2-Player Hot-Seat"
+- P2 picks their own faction and hero class before game starts
+- Each "End Turn" hands off to the other player; a handoff screen covers the map so P2 can't see P1's fog
+- P2 controls enemy heroes directly by clicking them and clicking move targets
+- Fog of war is rebuilt from each player's hero vision when their turn starts
+- P2 has a separate resource pool (`m_player2Resources`); income flows from P2's towns/mines
+
+**Files:** `Game.h` (m_hotSeatMode, m_hotSeatP2Turn, m_player2Resources), `Game_WorldMap.cpp` (doEndTurn alternation + P2 input), `Game_Core.cpp` (startNewGame setup), `Game_MainMenu.cpp` (mode picker), `Game_Town.cpp` (renderHotSeatHandoff)
+
+### LAN / Online
+- Deferred — ENet in stack for future implementation
 
 ---
 
@@ -327,6 +362,10 @@ PathA upgrade dwellings are included for T2–T6 tiers. Falls back to generic dw
 | Procedural world generator | ✅ Full |
 | Town building system, upgrade paths | ✅ Full |
 | AI heuristics (combat: Passive/Standard/Tactical; world-map: movement, town builds) | ✅ Full |
+| 2-Player Hot-Seat multiplayer | ✅ Full |
+| Siege camp + Fortify mechanic | ✅ Full |
+| March ability (hero movement burst) | ✅ Full |
+| Headless balance sim (fullgame_sim, SQLite results, all-vs-all report) | ✅ Full |
 | Save/load, SQLite hideout state | ✅ Full |
 | Lua scripting integration | ✅ Full |
 | Map editor (ImGui) | ✅ Full |

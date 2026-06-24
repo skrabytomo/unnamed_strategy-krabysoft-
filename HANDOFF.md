@@ -33,6 +33,11 @@ See GAME_PROJECT.md for full design document.
 | World-map AI (combat) | src/combat/CombatEngine.cpp — Passive / Standard / Tactical | ✅ |
 | World-map AI (movement) | src/core/Game_WorldMap.cpp — strength-aware pathing, mine/object capture | ✅ |
 | World-map AI (town builds) | src/core/Game_WorldMap.cpp — faction-priority build orders + PathA upgrades | ✅ |
+| **2-Player Hot-Seat** | Game.h (m_hotSeatMode/P2Turn/m_player2Resources), Game_WorldMap.cpp doEndTurn + input, Game_Core.cpp startNewGame, Game_MainMenu.cpp | ✅ |
+| **Siege Camp mechanic** | Hero::isSiegeCamping/siegeTargetTownId, Town::underSiege/siegeFortified/fortifyBonuses, Game_WorldMap.cpp renderSiegeCampPrompt/renderSiegeIndicator/triggerSiegeCombat | ✅ |
+| **Fortify button** | Town screen service bar (Game_Town.cpp), one use per siege turn, +4 DEF/+2 wall HP/+3 tower dmg | ✅ |
+| **March ability** | Hero::marchCooldownWeek/marchBonusActive, renderMarchButton() in Game_WorldMap.cpp — costs 25% move, gives +10% next week, 1-week CD | ✅ |
+| **Balance sim** | src/sim/FullGameSim.cpp + SimDB.cpp + fullgame_main.cpp — headless AI vs AI, SQLite results, all-vs-all balance report | ✅ |
 
 ## Architecture overview
 
