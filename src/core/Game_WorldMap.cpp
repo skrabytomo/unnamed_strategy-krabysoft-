@@ -1001,8 +1001,8 @@ void Game::doEndTurn()
                 // Entries tried in order; first that satisfies prereqs & resources gets built.
                 // PathA upgrade dwellings are included for key tiers (T3-T5).
                 static const std::vector<int> kBuildOrder[9] = {
-                    // HolyOrder (0): Fort early, Mage Guild for spells, Light Shrine, key upgrades
-                    { BID::FORT, BID::HO_HALL, BID::HO_T1_BASE, BID::MARKET,
+                    // HolyOrder (0): Hall + T1 dwelling first, then Fort
+                    { BID::HO_HALL, BID::HO_T1_BASE, BID::FORT, BID::MARKET,
                       BID::MAGE_GUILD, BID::HO_LIGHT_SHRINE, BID::HO_T2_BASE,
                       BID::TOWN_HALL, BID::HO_T3_BASE, BID::HO_T3_A,
                       BID::MAGE_GUILD_T2, BID::HO_T4_BASE, BID::HO_T4_A,
@@ -1050,10 +1050,11 @@ void Game::doEndTurn()
                       BID::AM_T3, BID::AM_T3_A, BID::TOWN_HALL, BID::AM_FLESH_VAULT,
                       BID::AM_T4, BID::AM_T4_A, BID::CITY_HALL,
                       BID::AM_T5, BID::AM_T5_A, BID::AM_T6 },
-                    // Convergence (8): Balanced — economy + Mage Guild (mirrors others)
-                    { BID::CV_SYNTHESIS_HUB, BID::MARKET, BID::FORT,
-                      BID::MAGE_GUILD, BID::TOWN_HALL, BID::CITY_HALL,
-                      BID::CV_RESONANCE_WELL, BID::CV_MIRROR_CHAMBER },
+                    // Convergence (8): Economy + dwellings, Mage Guild for mirror utility
+                    { BID::CV_SYNTHESIS_HUB, BID::CV_T1, BID::MARKET, BID::CV_T2,
+                      BID::FORT, BID::MAGE_GUILD, BID::CV_T3, BID::TOWN_HALL,
+                      BID::CV_T4, BID::CV_RESONANCE_WELL, BID::CITY_HALL,
+                      BID::CV_T5, BID::CV_MIRROR_CHAMBER, BID::CV_T6 },
                 };
 
                 for (auto& town : m_towns) {

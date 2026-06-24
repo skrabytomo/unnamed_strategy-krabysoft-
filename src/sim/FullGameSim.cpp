@@ -45,8 +45,9 @@ static const std::vector<int> kBuildOrder[9] = {
     { AM_GRAFTING_HALL, AM_T1, AM_T1_A, MARKET, AM_T2, AM_T2_A, FORT, AM_MERGE_CHAMBER,
       AM_T3, AM_T3_A, TOWN_HALL, AM_FLESH_VAULT, AM_T4, AM_T4_A, CITY_HALL,
       AM_T5, AM_T5_A, AM_T6 },
-    { CV_SYNTHESIS_HUB, MARKET, FORT, MAGE_GUILD, TOWN_HALL, CITY_HALL,
-      CV_RESONANCE_WELL, CV_MIRROR_CHAMBER },
+    { CV_SYNTHESIS_HUB, CV_T1, MARKET, CV_T2, FORT, MAGE_GUILD,
+      CV_T3, TOWN_HALL, CV_T4, CV_RESONANCE_WELL, CITY_HALL,
+      CV_T5, CV_MIRROR_CHAMBER, CV_T6 },
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
