@@ -1,4 +1,5 @@
 #include "FullGameSim.h"
+#include "MCTSHero.h"
 #include "../world/WorldGen.h"
 #include "../world/HexMap.h"
 #include "../world/HexGrid.h"
@@ -246,7 +247,7 @@ static void aiCollectObjects(Hero& hero, std::vector<WorldObject>& objects,
     }
 }
 
-// Run all movement for one AI hero for its turn (score-based goal selection).
+// Run all movement for one AI hero for its turn (score-based + MCTS goal selection).
 static void aiHeroTurn(Hero& hero, Hero& opponent,
                         std::vector<Town>& towns,
                         std::vector<ResourceNode>& resources,
@@ -254,6 +255,7 @@ static void aiHeroTurn(Hero& hero, Hero& opponent,
                         HexMap& map,
                         const std::vector<UnitDef>& udefs,
                         const HeroClassRegistry& reg,
+                        const BuildingRegistry& breg,
                         bool /*isPlayer2*/)
 {
     hero.movePool = hero.maxMove;
@@ -339,11 +341,27 @@ static void aiHeroTurn(Hero& hero, Hero& opponent,
 
         if (cands.empty()) break;
 
-        // Pick highest-scored candidate
+        // Sort by score, then let MCTS pick the best among top candidates
         std::sort(cands.begin(), cands.end(),
                   [](const Candidate& a, const Candidate& b){ return a.score > b.score; });
 
-        HexCoord goal    = cands[0].pos;
+        std::vector<HexCoord> topPositions;
+        for (const auto& c : cands) topPositions.push_back(c.pos);
+
+        GameSnapshot snap;
+        snap.hero      = hero;
+        snap.opponent  = opponent;
+        snap.towns     = towns;
+        snap.resources = resources;
+        snap.objects   = objects;
+
+        MCTSHero::Params mctsParams;
+        mctsParams.simulations  = 20;
+        mctsParams.rolloutWeeks = 3;
+        mctsParams.seed         = static_cast<int>(hero.pos.q * 997 + hero.pos.r * 31 + hero.movePool);
+
+        HexCoord goal    = MCTSHero::selectGoal(topPositions, snap, map, udefs,
+                                                 breg, reg, mctsParams);
         HexCoord prevPos = hero.pos;
         aiHeroMoveToward(hero, goal, map);
         if (hero.pos == prevPos) {
@@ -477,8 +495,8 @@ FullGameSim::Result FullGameSim::run(const Config& cfg)
             h1.movePool = h1.maxMove;
             h2.movePool = h2.maxMove;
 
-            aiHeroTurn(h1, h2, towns, resnodes, objects, map, udefs, classReg, false);
-            aiHeroTurn(h2, h1, towns, resnodes, objects, map, udefs, classReg, true);
+            aiHeroTurn(h1, h2, towns, resnodes, objects, map, udefs, classReg, reg, false);
+            aiHeroTurn(h2, h1, towns, resnodes, objects, map, udefs, classReg, reg, true);
 
             // Resolve combat when heroes occupy same hex
             if (h1.pos == h2.pos && !h1.army.empty() && !h2.army.empty()) {

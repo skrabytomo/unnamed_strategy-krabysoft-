@@ -137,6 +137,7 @@ target_compile_features(sim_test PRIVATE cxx_std_20)
 set(FULLGAME_SOURCES
     src/sim/fullgame_main.cpp
     src/sim/FullGameSim.cpp
+    src/sim/MCTSHero.cpp
     src/sim/SimDB.cpp
     src/core/DevLog.cpp
     src/combat/CombatEngine.cpp
