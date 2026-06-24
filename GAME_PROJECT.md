@@ -86,6 +86,23 @@ Hero naturally scales 1-2 casting stats based on class/faction. Others accessibl
 - Skills unlock sub-abilities at Advanced and Master tier
 - Cross-class skills possible via wildcard offers — always weaker without matching casting stat
 
+### Skill Archetype System *(implemented 2026-06-22)*
+Skills are categorized as **Might** (1xx: Offense, Defense, Archery, Leadership, Tactics, Logistics, Scouting, First Aid, Luck) or **Magic** (2xx–7xx: school skills). Stacking same-category skills gives compound bonuses applied at combat start:
+
+| Condition | Bonus |
+|-----------|-------|
+| 2–3 Might skills | +1 ATK/DEF to all units |
+| 4+ Might skills | +2 ATK/DEF to all units |
+| 2 Magic schools | +1 to all casting stats |
+| 3+ Magic schools | +2 to all casting stats |
+
+**Archetype bonuses** (mutually exclusive — checked after flat bonuses):
+- **Pure Might** (≥5 Might, 0 Magic): +1 Speed and +10% HP to all units
+- **Pure Magic** (≥4 Magic, ≤1 Might): +3 to all casting stats (stacks with combo bonus)
+- **Warlord** (≥3 Might AND ≥2 Magic): +1 Morale and +1 Luck to all units
+
+Implementation: `CombatEngine::initCombat()` → `applyArchetype` lambda (after `applySkills`).
+
 ---
 
 ## COMBAT SYSTEM
@@ -262,6 +279,35 @@ Fixed options: S / M / L / XL
 
 ---
 
+## AI DESIGN *(updated 2026-06-22)*
+
+### Philosophy
+Omniscient AI — sees full map, no fog. Players accept this as "the AI is stronger," not unfair. The cheating is **informational only** (no stat inflation, no teleportation). The goal is an opponent that plays faction-optimally, not one that wins via rubber-banding.
+
+### Combat AI (implemented)
+Three difficulty levels in `src/combat/CombatEngine.cpp`:
+- **Passive**: random targets — tutorial difficulty
+- **Standard**: nearest enemy, pathfind and attack
+- **Tactical**: focus lowest total-HP stack, ranged units kite melee, prefer Attack tiles
+
+### World-Map AI (implemented)
+Enemy heroes (`m_enemyHeroes`) take a turn each day in `Game_WorldMap.cpp`:
+- Recruit from adjacent owned towns (free, immediate)
+- Strength comparison (hero + army value): aggressive if ≥70% of player, retreat if <40%
+- Move toward: unowned mines → world objects (XP/spells/artifacts) → neutral towns → player if aggressive
+- Collect objects with meaningful effects (XP → level up, stat shrines, spell scrolls)
+
+### Town Building AI (implemented)
+Each new week, AI towns build one building from a **faction-specific priority list** (`kBuildOrder[9]` in `Game_WorldMap.cpp`). Priority reflects faction strategy:
+- HolyOrder: Fort → Mage Guild early (spell-dependent)
+- Bloodsworn: T1/T2 fast + Blood Altar (aggressive early)
+- IronAssembly: Blueprint Vault early + PathA (Runic line)
+- Voidkin: Market first (economy-gated faction)
+- etc.
+PathA upgrade dwellings are included for T2–T6 tiers. Falls back to generic dwelling order if priority list exhausted.
+
+---
+
 ## MULTIPLAYER
 - **Deferred** — single player only for initial build
 - ENet already in stack for future implementation
@@ -280,7 +326,7 @@ Fixed options: S / M / L / XL
 | Weakness matrix, faction passives | ✅ Full |
 | Procedural world generator | ✅ Full |
 | Town building system, upgrade paths | ✅ Full |
-| AI heuristics (weighted scoring) | ✅ Full |
+| AI heuristics (combat: Passive/Standard/Tactical; world-map: movement, town builds) | ✅ Full |
 | Save/load, SQLite hideout state | ✅ Full |
 | Lua scripting integration | ✅ Full |
 | Map editor (ImGui) | ✅ Full |

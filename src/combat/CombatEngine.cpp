@@ -275,6 +275,84 @@ void CombatEngine::startBattle(
     applySkills(m_playerHero, true);
     applySkills(m_enemyHero,  false);
 
+    // ── Skill archetype bonuses — compound rewards for committed playstyle ─────
+    auto applyArchetype = [this](Hero& hero, bool isPlayer) {
+        const HeroSkills& skills = hero.skills;
+
+        static const int kMight[] = {
+            SkillID::OFFENSE, SkillID::DEFENSE_SKILL, SkillID::ARCHERY,
+            SkillID::LEADERSHIP, SkillID::TACTICS, SkillID::LOGISTICS,
+            SkillID::SCOUTING, SkillID::FIRST_AID, SkillID::LUCK
+        };
+        static const int kMagic[] = {
+            SkillID::LIGHT_MAGIC, SkillID::BLOOD_MAGIC, SkillID::DEATH_MAGIC,
+            SkillID::NATURE_MAGIC, SkillID::FORGE_MAGIC, SkillID::FLESH_MAGIC
+        };
+
+        int mightCount = 0, magicCount = 0;
+        for (int sid : kMight) if (skills.hasSkill(sid)) ++mightCount;
+        for (int sid : kMagic) if (skills.hasSkill(sid)) ++magicCount;
+
+        if (mightCount == 0 && magicCount == 0) return;
+
+        // Flat combo bonuses — stacking more skills of same type gives unit bonuses
+        int mightBonus = (mightCount >= 4) ? 2 : (mightCount >= 2) ? 1 : 0;
+        int magicBonus = (magicCount >= 3) ? 2 : (magicCount >= 2) ? 1 : 0;
+
+        if (mightBonus > 0) {
+            for (auto& u : m_grid.units()) {
+                if (u.isPlayer != isPlayer || !u.alive) continue;
+                u.attack  += mightBonus;
+                u.defense += mightBonus;
+            }
+            addLog(hero.name + " Might synergy (x" + std::to_string(mightCount)
+                   + "): +" + std::to_string(mightBonus) + " ATK/DEF to all units");
+        }
+        if (magicBonus > 0) {
+            hero.lightPower  += magicBonus;
+            hero.bloodPower  += magicBonus;
+            hero.deathPower  += magicBonus;
+            hero.naturePower += magicBonus;
+            hero.forgePower  += magicBonus;
+            hero.fleshPower  += magicBonus;
+            addLog(hero.name + " Magic synergy (x" + std::to_string(magicCount)
+                   + "): +" + std::to_string(magicBonus) + " to all casting stats");
+        }
+
+        // Archetype bonuses — pure commitment gets a special bonus
+        bool pureMight = (mightCount >= 5 && magicCount == 0);
+        bool pureMagic = (magicCount >= 4 && mightCount <= 1);
+        bool warlord   = (!pureMight && !pureMagic && mightCount >= 3 && magicCount >= 2);
+
+        if (pureMight) {
+            for (auto& u : m_grid.units()) {
+                if (u.isPlayer != isPlayer || !u.alive) continue;
+                u.speed += 1;
+                int hpGain = (u.hp + 9) / 10;
+                u.hp    += hpGain;
+                u.maxHp += (u.maxHp + 9) / 10;
+            }
+            addLog(hero.name + " PURE MIGHT: all units +1 Speed, +10% HP");
+        } else if (pureMagic) {
+            hero.lightPower  += 3;
+            hero.bloodPower  += 3;
+            hero.deathPower  += 3;
+            hero.naturePower += 3;
+            hero.forgePower  += 3;
+            hero.fleshPower  += 3;
+            addLog(hero.name + " PURE MAGIC: +3 to all casting stats");
+        } else if (warlord) {
+            for (auto& u : m_grid.units()) {
+                if (u.isPlayer != isPlayer || !u.alive) continue;
+                u.morale = std::min(100, u.morale + 1);
+                u.luck   = std::min(5, u.luck + 1);
+            }
+            addLog(hero.name + " WARLORD: all units +1 Morale, +1 Luck");
+        }
+    };
+    applyArchetype(m_playerHero, true);
+    applyArchetype(m_enemyHero,  false);
+
     // Harmony specialty (Warsinger) — each unit adjacent to an ally gets +1 ATK/DEF
     auto applyHarmony = [this](const Hero& hero, bool isPlayer) {
         if (!hero.harmonySpecialty) return;

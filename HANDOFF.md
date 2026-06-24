@@ -29,6 +29,10 @@ See GAME_PROJECT.md for full design document.
 | Audio | src/audio/AudioManager.cpp (SDL_mixer) | ✅ |
 | Combat simulator | src/sim/Simulator.cpp, ArmyBuilder.cpp (standalone sim_test binary) | ✅ |
 | Turn manager | src/core/TurnManager.cpp — 7-day week, income, end turn | ✅ |
+| Skill archetype system | src/combat/CombatEngine.cpp (`applyArchetype` in `initCombat`) | ✅ |
+| World-map AI (combat) | src/combat/CombatEngine.cpp — Passive / Standard / Tactical | ✅ |
+| World-map AI (movement) | src/core/Game_WorldMap.cpp — strength-aware pathing, mine/object capture | ✅ |
+| World-map AI (town builds) | src/core/Game_WorldMap.cpp — faction-priority build orders + PathA upgrades | ✅ |
 
 ## Architecture overview
 

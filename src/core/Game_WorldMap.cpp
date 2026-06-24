@@ -814,7 +814,7 @@ void Game::doEndTurn()
             else
                 saveGame("saves/save" + std::to_string(m_activeSlot) + ".json");
 
-            // ── AI town building: one building per week, priority dwellings ──────────
+            // ── AI town building: faction-specific priority order ─────────────────
             {
                 Resources richRes;
                 richRes.add(ResourceType::Gold,         999999);
@@ -826,12 +826,84 @@ void Game::doEndTurn()
 
                 const auto& allBuildings = m_registry.buildings();
 
+                // Faction-specific build order — first buildable entry wins each week.
+                // Entries tried in order; first that satisfies prereqs & resources gets built.
+                // PathA upgrade dwellings are included for key tiers (T3-T5).
+                static const std::vector<int> kBuildOrder[9] = {
+                    // HolyOrder (0): Fort early, Mage Guild for spells, Light Shrine, key upgrades
+                    { BID::FORT, BID::HO_HALL, BID::HO_T1_BASE, BID::MARKET,
+                      BID::MAGE_GUILD, BID::HO_LIGHT_SHRINE, BID::HO_T2_BASE,
+                      BID::TOWN_HALL, BID::HO_T3_BASE, BID::HO_T3_A,
+                      BID::MAGE_GUILD_T2, BID::HO_T4_BASE, BID::HO_T4_A,
+                      BID::CITY_HALL, BID::HO_T5_BASE, BID::HO_T5_A,
+                      BID::HO_RELIQUARY, BID::HO_T6_BASE, BID::HO_T6_A },
+                    // CrimsonWardens (1): Economy first, T2 early (ranged), Warden Brand
+                    { BID::CW_HALL, BID::CW_T1, BID::MARKET, BID::CW_T2, BID::CW_T2_A,
+                      BID::FORT, BID::CW_WARDEN_BRAND, BID::CW_T3, BID::CW_T3_A,
+                      BID::TOWN_HALL, BID::CW_DEATH_ALTAR, BID::CW_T4, BID::CW_T4_A,
+                      BID::CITY_HALL, BID::CW_T5, BID::CW_T5_A, BID::CW_T6 },
+                    // Thornkin (2): Symbiosis Web early, then grove, key upgrades (PathA=paired)
+                    { BID::TK_GROVE_HEART, BID::TK_T1, BID::TK_SYMBIOSIS_WEB,
+                      BID::MARKET, BID::TK_T2, BID::TK_T2_A,
+                      BID::TK_ANCIENT_CIRCLE, BID::FORT, BID::TK_T3, BID::TK_T3_A,
+                      BID::TOWN_HALL, BID::TK_T4, BID::TK_T4_A,
+                      BID::CITY_HALL, BID::TK_T5, BID::TK_T5_A, BID::TK_T6 },
+                    // EternalEmpire (3): Necropolis + Monument (second-life) ASAP
+                    { BID::EE_THRONE, BID::EE_T1, BID::EE_NECROPOLIS,
+                      BID::FORT, BID::EE_T2, BID::MARKET,
+                      BID::EE_MONUMENT, BID::EE_T3, BID::EE_T3_A,
+                      BID::TOWN_HALL, BID::EE_T4, BID::EE_T4_A,
+                      BID::MAGE_GUILD, BID::CITY_HALL, BID::EE_T5, BID::EE_T5_A,
+                      BID::EE_T6 },
+                    // Bloodsworn (4): Aggression-first — fast T1/T2, Blood Altar early
+                    { BID::BS_WAR_HALL, BID::BS_T1, BID::BS_T1_A, BID::BS_T2, BID::BS_T2_A,
+                      BID::FORT, BID::MARKET, BID::BS_T3, BID::BS_T3_A,
+                      BID::BS_BLOOD_ALTAR, BID::BS_WAR_SHRINE,
+                      BID::TOWN_HALL, BID::BS_T4, BID::BS_T4_A,
+                      BID::CITY_HALL, BID::BS_T5, BID::BS_T5_A, BID::BS_T6 },
+                    // Voidkin (5): Market gate, Mage Guild (spell-dependent), Void Lens
+                    { BID::VK_NEXUS, BID::MARKET, BID::VK_T1,
+                      BID::MAGE_GUILD, BID::VK_T2, BID::VK_T2_A,
+                      BID::FORT, BID::VK_RIFT_GATE, BID::VK_T3, BID::VK_T3_A,
+                      BID::TOWN_HALL, BID::VK_VOID_LENS, BID::VK_T4, BID::VK_T4_A,
+                      BID::CITY_HALL, BID::VK_T5, BID::VK_T5_A, BID::VK_T6 },
+                    // IronAssembly (6): Blueprint Vault early, Overclock, PathA (Runic line)
+                    { BID::IA_FORGE_HALL, BID::FORT, BID::IA_T1, BID::IA_T1_A,
+                      BID::IA_BLUEPRINT_VAULT, BID::MARKET, BID::IA_T2, BID::IA_T2_A,
+                      BID::WAREHOUSE, BID::IA_OVERCLOCK, BID::IA_T3, BID::IA_T3_A,
+                      BID::TOWN_HALL, BID::WAREHOUSE_T2, BID::IA_T4, BID::IA_T4_A,
+                      BID::CITY_HALL, BID::IA_T5, BID::IA_T5_A, BID::IA_T6 },
+                    // Amalgamate (7): Merge Chamber early (Adaptation), economy
+                    { BID::AM_GRAFTING_HALL, BID::AM_T1, BID::AM_T1_A, BID::MARKET,
+                      BID::AM_T2, BID::AM_T2_A, BID::FORT, BID::AM_MERGE_CHAMBER,
+                      BID::AM_T3, BID::AM_T3_A, BID::TOWN_HALL, BID::AM_FLESH_VAULT,
+                      BID::AM_T4, BID::AM_T4_A, BID::CITY_HALL,
+                      BID::AM_T5, BID::AM_T5_A, BID::AM_T6 },
+                    // Convergence (8): Balanced — economy + Mage Guild (mirrors others)
+                    { BID::CV_SYNTHESIS_HUB, BID::MARKET, BID::FORT,
+                      BID::MAGE_GUILD, BID::TOWN_HALL, BID::CITY_HALL,
+                      BID::CV_RESONANCE_WELL, BID::CV_MIRROR_CHAMBER },
+                };
+
                 for (auto& town : m_towns) {
                     if (town.ownerId <= 1) continue;
                     town.builtToday = 0;
 
                     bool built = false;
-                    // Priority 1: lowest unbought base dwelling (tier 1-6)
+                    int fIdx = static_cast<int>(town.faction);
+
+                    // Try faction priority list first
+                    if (fIdx >= 0 && fIdx < 9) {
+                        for (int bid : kBuildOrder[fIdx]) {
+                            Resources tmp = richRes;
+                            if (town.build(bid, allBuildings, tmp)) {
+                                gLog("AI %s built BID=%d (priority)\n", town.name.c_str(), bid);
+                                built = true; break;
+                            }
+                        }
+                    }
+
+                    // Fallback: lowest unbought base dwelling tier
                     for (int tier = 1; tier <= 6 && !built; ++tier) {
                         for (const auto& def : allBuildings) {
                             if (def.category != BuildingCategory::UnitDwelling) continue;
@@ -845,7 +917,7 @@ void Game::doEndTurn()
                             }
                         }
                     }
-                    // Priority 2: fort or support
+                    // Last resort: any fort or support building
                     if (!built) {
                         for (const auto& def : allBuildings) {
                             if (def.faction != town.faction && def.faction != FactionId::None) continue;
@@ -854,7 +926,7 @@ void Game::doEndTurn()
                             Resources tmp = richRes;
                             if (town.build(def.id, allBuildings, tmp)) {
                                 gLog("AI %s built %s\n", town.name.c_str(), def.name.c_str());
-                                built = true; break;
+                                break;
                             }
                         }
                     }
