@@ -453,14 +453,88 @@ void Game::doEndTurn()
         h.mana = std::min(h.maxMana, h.mana + manaRegen);
     }
 
-        // Enemy hero AI — strength-aware, full move pool
+        // Enemy hero AI — omniscient (full map visibility, no fog), faction-optimal
         if (!m_heroes.empty()) {
             Hero& playerHero = m_heroes[m_activeHeroIdx];
             const auto& unitDefs = m_registry.units();
             bool combatTriggered = false;
 
-            for (auto& eHero : m_enemyHeroes) {
+            // ── Helper: apply a skill's world-map stat effects ────────────────
+            auto aiApplySkillBonus = [](Hero& hero, const SkillDef* def, int v) {
+                if (!def) return;
+                if (def->effectType == SkillEffectType::MovementBonus) {
+                    hero.maxMove += v;
+                    hero.movePool = std::max(hero.movePool, hero.maxMove);
+                } else if (def->effectType == SkillEffectType::VisionBonus) {
+                    hero.visionRange += v;
+                } else if (def->effectType == SkillEffectType::MagicSchoolBonus) {
+                    if      (def->statName == "lightPower")  hero.lightPower  += v;
+                    else if (def->statName == "bloodPower")  hero.bloodPower  += v;
+                    else if (def->statName == "deathPower")  hero.deathPower  += v;
+                    else if (def->statName == "naturePower") hero.naturePower += v;
+                    else if (def->statName == "forgePower")  hero.forgePower  += v;
+                    else if (def->statName == "fleshPower")  hero.fleshPower  += v;
+                }
+            };
+
+            // ── Helper: advance one skill for an AI hero on level-up ─────────
+            // Prioritises upgrading existing skills, then learns next pool skill.
+            auto aiLearnNextSkill = [this, &aiApplySkillBonus](Hero& hero) {
+                const HeroClassDef* cls = m_classRegistry.getClass(hero.classId);
+                if (!cls || cls->skillPool.empty()) return;
+                // First: upgrade any upgradeable skill already learned (most efficient)
+                for (int sid : cls->skillPool) {
+                    if (SkillInstance* s = hero.skills.getSkill(sid)) {
+                        if (s->canUpgrade()) {
+                            int prevTierIdx = static_cast<int>(s->tier);
+                            s->upgrade();
+                            if (const SkillDef* def = findSkillDef(sid)) {
+                                int delta = def->values[prevTierIdx + 1] - def->values[prevTierIdx];
+                                aiApplySkillBonus(hero, def, delta);
+                            }
+                            return;
+                        }
+                    }
+                }
+                // Then: learn next unlearned skill from pool
+                for (int sid : cls->skillPool) {
+                    if (!hero.skills.hasSkill(sid) && hero.skills.canLearn(sid)) {
+                        hero.skills.learn(sid);
+                        if (const SkillDef* def = findSkillDef(sid))
+                            aiApplySkillBonus(hero, def, def->values[0]);
+                        return;
+                    }
+                }
+            };
+
+            // ── Omniscient threat state ───────────────────────────────────────
+            int plStr = heroStrength(playerHero, unitDefs);
+            // Weak player = just fought a battle (army below expected for this week)
+            bool playerIsWeak = (plStr > 0 && plStr < m_turns.week() * 350);
+
+            // Player's key faction resource — AI denies these mines first
+            static const ResourceType kFactionResource[9] = {
+                ResourceType::FaithStones,   // HolyOrder
+                ResourceType::FaithStones,   // CrimsonWardens
+                ResourceType::VerdantSap,    // Thornkin
+                ResourceType::Mercury,       // EternalEmpire
+                ResourceType::BloodEssence,  // Bloodsworn
+                ResourceType::Mercury,       // Voidkin
+                ResourceType::Iron,          // IronAssembly
+                ResourceType::BloodEssence,  // Amalgamate
+                ResourceType::Gold,          // Convergence
+            };
+            int plFidx = static_cast<int>(playerHero.faction);
+            ResourceType denialRes = (plFidx >= 0 && plFidx < 9)
+                                   ? kFactionResource[plFidx] : ResourceType::Gold;
+
+            for (int ehi = 0; ehi < static_cast<int>(m_enemyHeroes.size()); ++ehi) {
                 if (combatTriggered) break;
+                auto& eHero = m_enemyHeroes[ehi];
+
+                // ── Hero roles: raider hunts player, economic grabs map, defender guards towns
+                bool isRaider   = (ehi == 0);
+                bool isDefender = (ehi >= 2);
 
                 // Recruit from any owned town within 1 tile (free for AI)
                 for (auto& t : m_towns) {
@@ -485,10 +559,11 @@ void Game::doEndTurn()
                 }
 
                 int eiStr = heroStrength(eHero, unitDefs);
-                int plStr = heroStrength(playerHero, unitDefs);
-                // Fight if we have ≥70% of player strength; otherwise focus economy
-                bool aggressive = (eiStr * 10 >= plStr * 7);
-                // Retreat to nearest owned town when at < 40% of player strength
+                // Raider: attack if ≥50% strength OR player is wounded; Economic: only if 1.5×; Defender: never
+                bool aggressive = isDefender ? false
+                                : isRaider   ? (playerIsWeak || eiStr * 10 >= plStr * 5)
+                                :              (eiStr * 10 >= plStr * 15);
+                // Retreat when very weak regardless of role
                 bool veryWeak   = (eiStr * 10 <  plStr * 4);
 
                 while (eHero.movePool > 0) {
@@ -506,11 +581,18 @@ void Game::doEndTurn()
                         // Retreat: head to nearest owned town to regroup / garrison
                         for (const auto& t : m_towns)
                             if (t.ownerId == eHero.id) tryGoal(t.pos, 5);
+                    } else if (isDefender) {
+                        // Defender: patrol within reach of nearest owned town
+                        for (const auto& r : m_resources)
+                            if (r.ownedBy != eHero.id) tryGoal(r.pos, 3);
+                        for (const auto& t : m_towns)
+                            if (t.ownerId == eHero.id) tryGoal(t.pos, 0);
                     } else {
-                        // Unowned mines (always valuable)
+                        // Deny player's faction-key resource mines first (bias 8 = very high priority)
                         for (const auto& r : m_resources) {
                             if (r.ownedBy == eHero.id) continue;
-                            tryGoal(r.pos, 3);
+                            int bias = (r.type == denialRes) ? 8 : 3;
+                            tryGoal(r.pos, bias);
                         }
                         // Valuable world objects (XP, spells, stat boosts, artifacts)
                         for (const auto& obj : m_worldObjects) {
@@ -532,7 +614,7 @@ void Game::doEndTurn()
                         }
                         // GhostWalk: enemy AI cannot target the player hero directly
                         bool playerGhostWalk = playerHero.ghostWalkSpecialty;
-                        // Player towns / hero (only if aggressive or nothing else to do)
+                        // Player towns / hero (raider always pursues; economic only if aggressive)
                         if (aggressive || !goalSet) {
                             if (!playerGhostWalk) tryGoal(playerHero.pos);
                             if (aggressive) {
@@ -588,10 +670,10 @@ void Game::doEndTurn()
                         if (obj.type == WorldObjectType::XPShrine) {
                             int prevLevel = eHero.level;
                             if (eHero.addXp(obj.value) && eHero.level > prevLevel) {
-                                // Grant stat bonus on level up (alternating ATK/DEF)
                                 int gained = eHero.level - prevLevel;
                                 eHero.attack  += (gained + 1) / 2;
                                 eHero.defense += gained / 2;
+                                for (int g = 0; g < gained; ++g) aiLearnNextSkill(eHero);
                             }
                             gLog("Enemy %s gained %d XP from shrine\n",
                                    eHero.name.c_str(), obj.value);
@@ -612,6 +694,7 @@ void Game::doEndTurn()
                                 int gained = eHero.level - prevLevel;
                                 eHero.attack  += (gained + 1) / 2;
                                 eHero.defense += gained / 2;
+                                for (int g = 0; g < gained; ++g) aiLearnNextSkill(eHero);
                             }
                             gLog("Enemy %s gained %d XP from forest shrine\n",
                                    eHero.name.c_str(), obj.value);

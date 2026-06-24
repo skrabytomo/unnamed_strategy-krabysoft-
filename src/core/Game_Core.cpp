@@ -699,6 +699,27 @@ void Game::startNewGame()
                 eHero.ghostWalkSpecialty  = (ecls->specialty == SpecialtyType::GhostWalk);
                 eHero.blightAuraSpecialty = (ecls->specialty == SpecialtyType::BlightAura);
                 eHero.infestationSpecialty = (ecls->specialty == SpecialtyType::Infestation);
+                // Grant first two skills from class pool at Basic tier (mirrors player hero creation)
+                auto applyStartSkill = [&eHero](int sid) {
+                    eHero.skills.learn(sid);
+                    if (const SkillDef* def = findSkillDef(sid)) {
+                        int v = def->values[0];
+                        if (def->effectType == SkillEffectType::MovementBonus) {
+                            eHero.maxMove += v; eHero.movePool = eHero.maxMove;
+                        } else if (def->effectType == SkillEffectType::VisionBonus) {
+                            eHero.visionRange += v;
+                        } else if (def->effectType == SkillEffectType::MagicSchoolBonus) {
+                            if      (def->statName == "lightPower")  eHero.lightPower  += v;
+                            else if (def->statName == "bloodPower")  eHero.bloodPower  += v;
+                            else if (def->statName == "deathPower")  eHero.deathPower  += v;
+                            else if (def->statName == "naturePower") eHero.naturePower += v;
+                            else if (def->statName == "forgePower")  eHero.forgePower  += v;
+                            else if (def->statName == "fleshPower")  eHero.fleshPower  += v;
+                        }
+                    }
+                };
+                if (ecls->skillPool.size() >= 1) applyStartSkill(ecls->skillPool[0]);
+                if (ecls->skillPool.size() >= 2) applyStartSkill(ecls->skillPool[1]);
             }
         }
         // School power scales enemy hero spells (roughly half player's starting tier)
