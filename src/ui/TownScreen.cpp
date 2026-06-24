@@ -374,7 +374,21 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
         col = 1 - col;
 
         if (clicked) {
-            m_town->build(def.id, m_registry->buildings(), *m_playerRes);
+            // PathA upgrade: find sibling PathB from the parent building, show choice popup
+            bool handledByCallback = false;
+            if (def.path == UpgradePath::PathA && onUpgradePathChoice) {
+                for (const auto& d : m_registry->buildings()) {
+                    if (d.upgradeA == def.id && d.upgradeB != 0 &&
+                        !m_town->hasBuilding(d.upgradeB)) {
+                        onUpgradePathChoice(def.id, d.upgradeB);
+                        handledByCallback = true;
+                        break;
+                    }
+                }
+            }
+            if (!handledByCallback) {
+                m_town->build(def.id, m_registry->buildings(), *m_playerRes);
+            }
             needRebuild = true;
         }
     }

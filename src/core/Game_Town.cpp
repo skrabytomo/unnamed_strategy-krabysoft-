@@ -94,24 +94,59 @@ void Game::renderTown()
         Town* mutableTown = nullptr;
         if (town) { for (auto& t : m_towns) if (t.id == town->id) { mutableTown = &t; break; } }
         if (mutableTown && mutableTown->underSiege && !mutableTown->siegeFortified) {
+            // Cost: 500 Gold + 5 of faction primary resource
+            auto factionPrimary = [](FactionId f) -> ResourceType {
+                switch (f) {
+                    case FactionId::HolyOrder:     return ResourceType::FaithStones;
+                    case FactionId::CrimsonWardens:return ResourceType::FaithStones;
+                    case FactionId::Thornkin:      return ResourceType::VerdantSap;
+                    case FactionId::EternalEmpire: return ResourceType::Mercury;
+                    case FactionId::Bloodsworn:    return ResourceType::BloodEssence;
+                    case FactionId::Voidkin:       return ResourceType::VerdantSap;
+                    case FactionId::IronAssembly:  return ResourceType::Iron;
+                    case FactionId::Amalgamate:    return ResourceType::BloodEssence;
+                    case FactionId::Convergence:   return ResourceType::Mercury;
+                    default:                       return ResourceType::Gold;
+                }
+            };
+            ResourceType primRes = factionPrimary(mutableTown->faction);
+            Resources& res = (m_hotSeatMode && m_hotSeatP2Turn) ? m_player2Resources : m_playerResources;
+            bool canAfford = res.get(ResourceType::Gold) >= 500 &&
+                             res.get(primRes) >= 5;
+
             ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.7f, 0.4f, 0.0f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.6f, 0.0f, 1.0f));
+            if (!canAfford) ImGui::BeginDisabled();
             if (ImGui::Button("Fortify!")) {
+                res.add(ResourceType::Gold, -500);
+                res.add(primRes, -5);
                 mutableTown->siegeFortified    = true;
                 mutableTown->fortifyDefBonus   = 4;
                 mutableTown->fortifyWallBonus  = 2;
                 mutableTown->fortifyTowerBonus = 3;
             }
+            if (!canAfford) ImGui::EndDisabled();
             ImGui::PopStyleColor(2);
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "Fortify\n\n"
-                    "Rally defenders before the siege assault.\n"
-                    "+4 DEF to all garrison units\n"
-                    "+2 wall HP rounds\n"
-                    "+3 tower damage per shot\n\n"
-                    "One use per siege turn."
-                );
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                if (canAfford) {
+                    ImGui::SetTooltip(
+                        "Fortify\n\n"
+                        "Rally defenders before the siege assault.\n"
+                        "+4 DEF to all garrison units\n"
+                        "+2 wall HP rounds\n"
+                        "+3 tower damage per shot\n\n"
+                        "Cost: 500 Gold + 5 %s\n"
+                        "One use per siege turn.",
+                        resourceName(primRes)
+                    );
+                } else {
+                    ImGui::SetTooltip(
+                        "Fortify\n\n"
+                        "Insufficient resources.\n"
+                        "Requires 500 Gold + 5 %s.",
+                        resourceName(primRes)
+                    );
+                }
             }
             ImGui::SameLine();
         } else if (mutableTown && mutableTown->underSiege && mutableTown->siegeFortified) {
@@ -139,6 +174,7 @@ void Game::renderTown()
     if (m_showArtifactForgePanel) renderArtifactForge();
     if (m_showGarrisonPanel)     renderGarrisonPanel();
     if (m_showCapturePopup) renderCapturePopup();
+    if (m_showUpgradePathPopup) renderUpgradePathPopup();
     endImGuiFrame();
 }
 
@@ -739,6 +775,98 @@ void Game::renderTavern()
     ImGui::Separator();
     ImGui::TextDisabled("Roster: %d/%d heroes", (int)m_heroes.size(), MAX_HEROES);
     ImGui::End();
+}
+
+// ── Upgrade Path A/B choice popup ─────────────────────────────────────────────
+void Game::renderUpgradePathPopup()
+{
+    const Town* ct = m_townScreen.currentTown();
+    if (!ct) { m_showUpgradePathPopup = false; return; }
+    Town* town = nullptr;
+    for (auto& t : m_towns) if (t.id == ct->id) { town = &t; break; }
+    if (!town) { m_showUpgradePathPopup = false; return; }
+
+    const BuildingDef* defA = m_registry.getBuildingDef(m_upgradePathA);
+    const BuildingDef* defB = m_registry.getBuildingDef(m_upgradePathB);
+    if (!defA || !defB) { m_showUpgradePathPopup = false; return; }
+
+    // Find unit defs for each path
+    const UnitDef* unitA = nullptr;
+    const UnitDef* unitB = nullptr;
+    for (const auto& ud : m_registry.units()) {
+        if (ud.faction == town->faction && ud.tier == defA->tier && ud.path == UpgradePath::PathA)
+            unitA = &ud;
+        if (ud.faction == town->faction && ud.tier == defB->tier && ud.path == UpgradePath::PathB)
+            unitB = &ud;
+    }
+
+    ImGui::OpenPopup("Choose Upgrade Path");
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(560, 0));
+
+    if (ImGui::BeginPopupModal("Choose Upgrade Path", nullptr,
+            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.4f, 1.0f),
+                           "Choose an upgrade path for Tier %d:", defA->tier);
+        ImGui::TextDisabled("This choice is permanent — the other path will be locked out.");
+        ImGui::Spacing();
+
+        auto drawPathCol = [&](const BuildingDef* def, const UnitDef* ud, const char* label) {
+            ImGui::BeginGroup();
+            ImGui::TextColored(ImVec4(0.6f, 0.9f, 1.0f, 1.0f), "%s", label);
+            ImGui::Separator();
+            ImGui::Text("%s", def->name.c_str());
+            if (!def->description.empty())
+                ImGui::TextDisabled("%s", def->description.c_str());
+            ImGui::Spacing();
+            if (ud) {
+                ImGui::Text("Unit: %s", ud->name.c_str());
+                ImGui::Text("HP %d  ATK %d  DEF %d", ud->hp, ud->attack, ud->defense);
+                ImGui::Text("Dmg %d-%d  Spd %d", ud->damage_min, ud->damage_max, ud->speed);
+                if (ud->range > 0) ImGui::Text("Range %d (%d shots)", ud->range, ud->shots);
+                if (ud->flying)    ImGui::TextColored(ImVec4(0.7f,0.8f,1.0f,1.0f), "[Flying]");
+                if (ud->vampiric)  ImGui::TextColored(ImVec4(0.9f,0.3f,0.3f,1.0f), "[Vampiric]");
+            } else {
+                ImGui::TextDisabled("(no unit data)");
+            }
+            ImGui::Spacing();
+            ImGui::Text("Cost: %s", def->cost.get(ResourceType::Gold) > 0 ?
+                        (std::to_string(def->cost.get(ResourceType::Gold)) + " Gold").c_str() : "?");
+            ImGui::EndGroup();
+        };
+
+        ImGui::Columns(2, "##pathcols", true);
+        drawPathCol(defA, unitA, "  PATH A  ");
+        ImGui::NextColumn();
+        drawPathCol(defB, unitB, "  PATH B  ");
+        ImGui::Columns(1);
+        ImGui::Spacing();
+        ImGui::Separator();
+
+        auto tryBuild = [&](int buildingId) {
+            m_townScreen.currentTown();  // ensure valid
+            town->build(buildingId, m_registry.buildings(), m_playerResources);
+            m_showUpgradePathPopup = false;
+            ImGui::CloseCurrentPopup();
+        };
+
+        ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.1f, 0.4f, 0.7f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.6f, 1.0f, 1.0f));
+        if (ImGui::Button("Choose Path A", ImVec2(200, 0))) tryBuild(m_upgradePathA);
+        ImGui::PopStyleColor(2);
+        ImGui::SameLine(0, 20);
+        ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.5f, 0.2f, 0.6f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 0.3f, 0.9f, 1.0f));
+        if (ImGui::Button("Choose Path B", ImVec2(200, 0))) tryBuild(m_upgradePathB);
+        ImGui::PopStyleColor(2);
+        ImGui::SameLine(0, 20);
+        if (ImGui::Button("Cancel")) {
+            m_showUpgradePathPopup = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
 }
 
 // ── Capture notification popup ────────────────────────────────────────────────

@@ -236,6 +236,11 @@ bool Game::init(const std::string& title, int width, int height)
     // Wire TownScreen callbacks
     m_townScreen.init(width, height);
     m_townScreen.onClose = [this]() { exitTown(); };
+    m_townScreen.onUpgradePathChoice = [this](int pathA, int pathB) {
+        m_upgradePathA = pathA;
+        m_upgradePathB = pathB;
+        m_showUpgradePathPopup = true;
+    };
 
     // Wire CombatHUD callbacks
     m_combatHUD.init(width, height);

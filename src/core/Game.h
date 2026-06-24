@@ -440,6 +440,12 @@ private:
     void triggerSiegeCombat(uint32_t townId);   // resolve all camped heroes vs a town
     void renderMarchButton();      // March ability button for selected hero
 
+    // ── Upgrade Path A/B choice popup ────────────────────────────────────────
+    bool m_showUpgradePathPopup = false;
+    int  m_upgradePathA         = 0;
+    int  m_upgradePathB         = 0;
+    void renderUpgradePathPopup();
+
     // ── Right-click combat unit stat popup ────────────────────────────────────
     uint32_t m_combatRightClickUnitId = 0;
 

@@ -100,4 +100,8 @@ public:
     }
     void setRecruitTarget(bool toGarrison) { m_recruitToGarrison = toGarrison; }
     bool recruitToGarrison() const { return m_recruitToGarrison; }
+
+    // Called instead of building directly when a PathA upgrade is clicked.
+    // Args: pathA building id, pathB building id.
+    std::function<void(int, int)> onUpgradePathChoice;
 };
