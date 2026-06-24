@@ -508,6 +508,14 @@ private:
     int   m_simFaction1       = 0;
     int   m_simFaction2       = 1;
 
+    // ── Watch AI vs AI mode ────────────────────────────────────────────────────
+    bool  m_watchingAI      = false;   // both sides controlled by AI
+    float m_watchAITimer    = 0.f;     // countdown to next auto end-turn
+    float m_watchAISpeed    = 1.0f;    // delay multiplier (slider: 0.25 – 4.0)
+    int   m_watchAIFaction1 = 0;
+    int   m_watchAIFaction2 = 1;
+    void  watchAiMovePlayerHero();     // runs player hero through same AI logic as enemies
+
     // ── Persisted display / audio settings ───────────────────────────────────
     float m_settingsSfxVol       = 0.7f;
     float m_settingsMasVol       = 0.35f;

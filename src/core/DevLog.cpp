@@ -5,6 +5,7 @@
 
 static std::vector<std::string> s_lines;
 static bool s_hasNew = false;
+static bool s_silent = false;
 static std::mutex s_mtx;
 
 void gLog(const char* fmt, ...) noexcept
@@ -15,8 +16,8 @@ void gLog(const char* fmt, ...) noexcept
     vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
 
-    // Still emit to stdout so terminal/CI can capture it
-    fputs(buf, stdout);
+    if (!s_silent)
+        fputs(buf, stdout);
 
     // Strip trailing newline for clean ImGui display
     int len = static_cast<int>(strlen(buf));
@@ -54,4 +55,9 @@ void DevLog::markSeen()
 {
     std::lock_guard<std::mutex> lk(s_mtx);
     s_hasNew = false;
+}
+
+void DevLog::setSilent(bool silent)
+{
+    s_silent = silent;
 }

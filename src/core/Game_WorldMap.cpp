@@ -186,10 +186,91 @@ static int heroStrength(const Hero& hero, const std::vector<UnitDef>& defs)
 }
 
 // ── World map update ──────────────────────────────────────────────────────────
+void Game::watchAiMovePlayerHero()
+{
+    if (m_heroes.empty()) return;
+    Hero& hero = m_heroes[m_activeHeroIdx];
+    const auto& udefs = m_registry.units();
+
+    // Reuse same goal-selection logic as enemy AI
+    int myStr  = heroStrength(hero, udefs);
+    int oppStr = 0;
+    for (const auto& eh : m_enemyHeroes) oppStr += heroStrength(eh, udefs);
+    bool veryWeak  = (myStr * 10 < oppStr * 4);
+
+    hero.movePool = hero.maxMove;
+
+    while (hero.movePool > 0) {
+        HexCoord goal = {};
+        bool goalSet  = false;
+
+        auto tryGoal = [&](HexCoord pos, int bias = 0) {
+            int d = HexGrid::distance(hero.pos, pos) - bias;
+            if (!goalSet || d < HexGrid::distance(hero.pos, goal)) {
+                goal = pos; goalSet = true;
+            }
+        };
+
+        if (veryWeak) {
+            for (const auto& t : m_towns) if (t.ownerId == 1) tryGoal(t.pos, 5);
+        } else {
+            for (const auto& r : m_resources) {
+                if (r.ownedBy == 1) continue;
+                tryGoal(r.pos, 3);
+            }
+            for (const auto& t : m_towns) if (t.ownerId == 0) tryGoal(t.pos);
+            if (!m_enemyHeroes.empty()) tryGoal(m_enemyHeroes[0].pos);
+        }
+
+        if (!goalSet) break;
+
+        auto costFn = [this](HexCoord c) -> int {
+            const HexTile* t = m_map.getTile(c);
+            if (!t || t->blocked) return 999;
+            return m_heroes[m_activeHeroIdx].moveCost(t->terrain);
+        };
+        auto path = Pathfinder::find(m_map, hero.pos, goal, costFn);
+        if (path.empty()) break;
+
+        HexCoord next = path[0];
+        const HexTile* nt = m_map.getTile(next);
+        if (!nt) break;
+        int cost = hero.moveCost(nt->terrain);
+        if (hero.movePool < cost) break;
+
+        if (HexTile* old = m_map.getTile(hero.pos)) old->heroId = 0;
+        hero.pos = next;
+        hero.movePool -= cost;
+        if (HexTile* nT = m_map.getTile(hero.pos)) nT->heroId = hero.id;
+
+        // Claim resource
+        if (nt->resourceId != 0) {
+            for (auto& r : m_resources)
+                if (r.id == nt->resourceId) { r.ownedBy = 1; break; }
+        }
+        // Neutral town
+        if (nt->townId != 0) {
+            for (auto& t : m_towns)
+                if (t.id == nt->townId && t.ownerId == 0) { t.ownerId = 1; break; }
+        }
+    }
+}
+
 void Game::updateWorldMap(float dt)
 {
     m_mapTime += dt;
     m_hexRenderer.update(dt);
+
+    // Watch AI auto-advance end-turn
+    if (m_watchingAI) {
+        m_watchAITimer -= dt;
+        if (m_watchAITimer <= 0.f) {
+            m_watchAITimer = 1.0f / m_watchAISpeed;
+            watchAiMovePlayerHero();
+            doEndTurn();
+        }
+        return;
+    }
 
     const auto& mouse = m_input.mouse();
 
@@ -1465,6 +1546,37 @@ void Game::renderWorldMapImGui()
     else if (m_showVictory && !inCampaign)      renderVictoryModal();
     else if (m_showDefeat  && !inCampaign)      renderDefeatModal();
     else if (m_showLevelUpModal)                renderLevelUpModal();
+
+    // Watch AI overlay — minimal HUD showing current week + stop button
+    if (m_watchingAI) {
+        ImGuiIO& io = ImGui::GetIO();
+        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, 8), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+        ImGui::SetNextWindowBgAlpha(0.80f);
+        ImGuiWindowFlags wf = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                              ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
+        if (ImGui::Begin("##watchai_hud", nullptr, wf)) {
+            static const char* kFacNames[] = {
+                "Holy Order","Crimson Wardens","Thornkin","Eternal Empire",
+                "Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"
+            };
+            ImGui::TextColored({1.f,0.82f,0.2f,1.f}, "WATCH AI vs AI");
+            ImGui::SameLine(0, 16);
+            ImGui::Text("Week %d | %s vs %s",
+                m_turns.week(),
+                kFacNames[m_watchAIFaction1], kFacNames[m_watchAIFaction2]);
+            ImGui::SameLine(0, 16);
+            ImGui::SetNextItemWidth(120);
+            ImGui::SliderFloat("Speed##waispeed", &m_watchAISpeed, 0.25f, 8.0f, "%.1fx");
+            ImGui::SameLine(0, 8);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0.1f, 1.0f));
+            if (ImGui::Button("Stop##waistop")) {
+                m_watchingAI = false;
+                m_state = GameState::MainMenu;
+            }
+            ImGui::PopStyleColor();
+        }
+        ImGui::End();
+    }
 }
 
 void Game::renderWorldMap()

@@ -17,4 +17,5 @@ namespace DevLog {
     void clear();
     bool hasNewLines();   // true once new lines were added since last check
     void markSeen();
+    void setSilent(bool silent); // suppress stdout output (useful for headless sims)
 }

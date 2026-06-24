@@ -8,4 +8,5 @@ enum class GameState
     Campaign,
     Editor,
     MainMenu,
+    WatchAI,     // both sides AI-controlled; player observes
 };

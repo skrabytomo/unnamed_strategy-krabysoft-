@@ -67,8 +67,11 @@ file(GLOB_RECURSE SOURCES
     src/*.cpp
     src/*.h
 )
-# Exclude the simulator's own main — it has its own executable target below
+# Exclude per-binary mains — each has its own executable target
 list(FILTER SOURCES EXCLUDE REGEX ".*/sim/sim_main\\.cpp$")
+list(FILTER SOURCES EXCLUDE REGEX ".*/sim/fullgame_main\\.cpp$")
+list(FILTER SOURCES EXCLUDE REGEX ".*/sim/FullGameSim\\.cpp$")
+list(FILTER SOURCES EXCLUDE REGEX ".*/sim/SimDB\\.cpp$")
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
@@ -129,3 +132,30 @@ set(SIM_SOURCES
 add_executable(sim_test ${SIM_SOURCES})
 target_include_directories(sim_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_compile_features(sim_test PRIVATE cxx_std_20)
+
+# ── Full AI-vs-AI game simulator (no SDL / ImGui / OpenGL) ───────────────────
+set(FULLGAME_SOURCES
+    src/sim/fullgame_main.cpp
+    src/sim/FullGameSim.cpp
+    src/sim/SimDB.cpp
+    src/core/DevLog.cpp
+    src/combat/CombatEngine.cpp
+    src/combat/CombatGrid.cpp
+    src/combat/CombatUnit.cpp
+    src/combat/DamageCalc.cpp
+    src/world/HexGrid.cpp
+    src/world/HexMap.cpp
+    src/world/WorldGen.cpp
+    src/hero/Hero.cpp
+    src/hero/Artifacts.cpp
+    src/hero/HeroClass.cpp
+    src/town/Town.cpp
+    src/town/BuildingRegistry.cpp
+    src/ai/Pathfinder.cpp
+)
+
+
+add_executable(fullgame_sim ${FULLGAME_SOURCES})
+target_include_directories(fullgame_sim PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(fullgame_sim PRIVATE SQLite::SQLite3)
+target_compile_features(fullgame_sim PRIVATE cxx_std_20)

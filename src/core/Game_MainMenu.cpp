@@ -93,6 +93,8 @@ void Game::renderMainMenu()
         ImGui::Spacing();
         if (ImGui::Button("Battle Sim", ImVec2(bw, 40))) m_menuMode = 5;
         ImGui::Spacing();
+        if (ImGui::Button("Watch AI vs AI", ImVec2(bw, 40))) m_menuMode = 6;
+        ImGui::Spacing();
         if (ImGui::Button("Settings",   ImVec2(bw, 40))) m_menuMode = 3;
         ImGui::Spacing();
         if (ImGui::Button("Map Editor", ImVec2(bw, 40))) { enterEditor(); }
@@ -452,6 +454,66 @@ void Game::renderMainMenu()
 
         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
         if (ImGui::Button("Back##sim", ImVec2(bw, 30))) m_menuMode = 0;
+    }
+    // ── 6: Watch AI vs AI ─────────────────────────────────────────────────────
+    else if (m_menuMode == 6) {
+        header("WATCH AI vs AI");
+
+        static const char* kFacNames[] = {
+            "Holy Order","Crimson Wardens","Thornkin","Eternal Empire",
+            "Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"
+        };
+
+        ImGui::TextColored({0.4f, 0.8f, 1.0f, 1.0f}, "Faction 1 (Blue):");
+        for (int i = 0; i < 9; ++i) {
+            if (i % 3 != 0) ImGui::SameLine();
+            bool sel = (m_watchAIFaction1 == i);
+            if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.4f, 0.6f, 1.f));
+            char lbl[40]; std::snprintf(lbl, sizeof(lbl), "%s##w1f%d", kFacNames[i], i);
+            if (ImGui::Button(lbl, ImVec2((bw - 4) / 3.f, 26))) m_watchAIFaction1 = i;
+            if (sel) ImGui::PopStyleColor();
+        }
+        ImGui::Spacing();
+
+        ImGui::TextColored({1.0f, 0.5f, 0.3f, 1.0f}, "Faction 2 (Red):");
+        for (int i = 0; i < 9; ++i) {
+            if (i % 3 != 0) ImGui::SameLine();
+            bool sel = (m_watchAIFaction2 == i);
+            if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.2f, 0.1f, 1.f));
+            char lbl[40]; std::snprintf(lbl, sizeof(lbl), "%s##w2f%d", kFacNames[i], i);
+            if (ImGui::Button(lbl, ImVec2((bw - 4) / 3.f, 26))) m_watchAIFaction2 = i;
+            if (sel) ImGui::PopStyleColor();
+        }
+        ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+        ImGui::Text("Auto-advance speed:");
+        ImGui::SetNextItemWidth(bw);
+        ImGui::SliderFloat("##waisp", &m_watchAISpeed, 0.25f, 4.0f, "%.2fx");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("1.0 = 1 end-turn per second. Higher = faster.");
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.45f, 0.15f, 1.0f));
+        if (ImGui::Button("Start Watching", ImVec2(bw, 42))) {
+            m_newGameFaction = m_watchAIFaction1;
+            m_newGameMapSize = 1;  // Medium map
+            m_newGameDifficulty = 1;
+            m_newGameClassId = 0;
+            startNewGame();
+            // Override enemy faction to m_watchAIFaction2
+            if (!m_enemyHeroes.empty())
+                m_enemyHeroes[0].faction = static_cast<FactionId>(m_watchAIFaction2);
+            for (auto& t : m_towns)
+                if (t.ownerId > 1)
+                    t.faction = static_cast<FactionId>(m_watchAIFaction2);
+            m_watchingAI  = true;
+            m_watchAITimer= 1.0f / m_watchAISpeed;
+            m_state    = GameState::WorldMap;
+            m_menuMode = 0;
+        }
+        ImGui::PopStyleColor();
+        ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+        if (ImGui::Button("Back##wai", ImVec2(bw, 30))) m_menuMode = 0;
     }
 
     ImGui::End();
