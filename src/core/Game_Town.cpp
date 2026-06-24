@@ -89,6 +89,40 @@ void Game::renderTown()
                 m_showArtifactForgePanel = !m_showArtifactForgePanel;
             ImGui::SameLine();
         }
+        // Fortify — only when this town is under siege and not yet fortified this turn
+        // Resolve mutable pointer so we can set fortify flags
+        Town* mutableTown = nullptr;
+        if (town) { for (auto& t : m_towns) if (t.id == town->id) { mutableTown = &t; break; } }
+        if (mutableTown && mutableTown->underSiege && !mutableTown->siegeFortified) {
+            ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.7f, 0.4f, 0.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.6f, 0.0f, 1.0f));
+            if (ImGui::Button("Fortify!")) {
+                mutableTown->siegeFortified    = true;
+                mutableTown->fortifyDefBonus   = 4;
+                mutableTown->fortifyWallBonus  = 2;
+                mutableTown->fortifyTowerBonus = 3;
+            }
+            ImGui::PopStyleColor(2);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Fortify\n\n"
+                    "Rally defenders before the siege assault.\n"
+                    "+4 DEF to all garrison units\n"
+                    "+2 wall HP rounds\n"
+                    "+3 tower damage per shot\n\n"
+                    "One use per siege turn."
+                );
+            }
+            ImGui::SameLine();
+        } else if (mutableTown && mutableTown->underSiege && mutableTown->siegeFortified) {
+            ImGui::BeginDisabled();
+            ImGui::Button("Fortified");
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGui::SetTooltip("Already fortified this siege turn.");
+            ImGui::SameLine();
+        }
+
         // Spacer + exit button pushed to the right
         ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - 130.0f);
         ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.5f, 0.05f, 0.05f, 1.0f));

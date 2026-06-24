@@ -47,6 +47,13 @@ public:
     // Garrison — units defending the town (up to 7 slots)
     std::vector<UnitStack> garrison;
 
+    // ── Siege state ───────────────────────────────────────────────────────────
+    bool underSiege        = false;  // an enemy siege camp is adjacent
+    bool siegeFortified    = false;  // defender used Fortify this siege turn (one-shot)
+    int  fortifyDefBonus   = 0;      // +DEF to all garrison units this siege
+    int  fortifyWallBonus  = 0;      // extra wall HP rounds for siege combat
+    int  fortifyTowerBonus = 0;      // extra tower damage per shot in siege combat
+
     // ── Queries ────────────────────────────────────────────────────────────────
     bool hasBuilding(int buildingId) const;
     // currentWeek: pass 0 to skip week check. weekDiscount reduces minWeek requirement.

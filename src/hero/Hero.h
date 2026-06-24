@@ -142,6 +142,14 @@ struct Hero
     bool synthesisSpecialty           = false; // Ironweaver — hero regenerates +2 mana per round
     bool adaptationMirrorSpecialty    = false; // Fleshbinder — OrganicMech gain adaptation when any ally dies
 
+    // ── Siege camp ────────────────────────────────────────────────────────────
+    bool     isSiegeCamping    = false;  // hero is laying siege (parked outside enemy town)
+    uint32_t siegeTargetTownId = 0;      // which town they're besieging
+
+    // ── March ability ─────────────────────────────────────────────────────────
+    int  marchCooldownWeek = 0;   // week when cooldown expires (0 = ready)
+    bool marchBonusActive  = false; // hero has +10% move bonus this week
+
     static int xpRequired(int lvl) { return 100 * lvl * lvl; }
 
     // Returns true if the hero leveled up

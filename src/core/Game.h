@@ -432,6 +432,14 @@ private:
     std::function<void()>   m_encounterOnDecline;   // called when player clicks Retreat
     void renderEncounterPrompt();
 
+    // ── Siege camp ────────────────────────────────────────────────────────────
+    bool     m_showSiegeCampPrompt  = false;
+    uint32_t m_siegePromptTownId    = 0;
+    void renderSiegeCampPrompt();
+    void renderSiegeIndicator();   // world-map overlay showing camped heroes
+    void triggerSiegeCombat(uint32_t townId);   // resolve all camped heroes vs a town
+    void renderMarchButton();      // March ability button for selected hero
+
     // ── Right-click combat unit stat popup ────────────────────────────────────
     uint32_t m_combatRightClickUnitId = 0;
 

@@ -729,6 +729,14 @@ void Game::doEndTurn()
                 bool dominant    = strRatio >= 1.2f;
                 bool playerGhostWalk = playerHero.ghostWalkSpecialty;
 
+                // Pinned by siege camp: enemy hero can't leave their besieged town
+                bool pinnedBySiege = false;
+                for (const auto& t : m_towns) {
+                    if (t.ownerId != eHero.id || !t.underSiege) continue;
+                    if (HexGrid::distance(eHero.pos, t.pos) <= 1) { pinnedBySiege = true; break; }
+                }
+                if (pinnedBySiege) { eHero.movePool = 0; }
+
                 while (eHero.movePool > 0) {
                     // Score-based candidate selection: value / distance
                     struct Cand { HexCoord pos; float score; };
@@ -1018,6 +1026,25 @@ void Game::doEndTurn()
         applyBlightAura(m_heroes);
         applyBlightAura(m_enemyHeroes);
 
+        // ── Siege camp resolution ─────────────────────────────────────────────
+        // Update underSiege flag for every town
+        for (auto& t : m_towns) t.underSiege = false;
+        for (const auto& h : m_heroes) {
+            if (!h.isSiegeCamping || h.siegeTargetTownId == 0) continue;
+            for (auto& t : m_towns)
+                if (t.id == h.siegeTargetTownId) t.underSiege = true;
+        }
+        // Trigger siege combat for any town that has camped heroes this turn
+        for (auto& t : m_towns) {
+            if (!t.underSiege) continue;
+            // Reset fortify flag for next turn
+            bool fortified = t.siegeFortified;
+            t.siegeFortified = false;
+            triggerSiegeCombat(t.id);
+            // triggerSiegeCombat may change game state; stop processing if combat started
+            if (m_state == GameState::Combat) return;
+        }
+
         bool newWeek = m_turns.endTurn(m_towns, m_heroes,
                                        m_playerResources, m_registry);
         if (newWeek) {
@@ -1052,6 +1079,15 @@ void Game::doEndTurn()
                     m_playerResources.add(ResourceType::Gold, -upkeep);
                     gLog("Garrison upkeep: -%dg (%d hero%s dug in)\n",
                          upkeep, garrisonCount, garrisonCount == 1 ? "" : "es");
+                }
+            }
+
+            // Apply March bonus (10% move) for heroes who used March last week
+            for (auto& h : m_heroes) {
+                h.marchBonusActive = false;  // reset; will re-enable if cooldown was set last week
+                if (h.marchCooldownWeek == m_turns.week()) {
+                    // Cooldown expires this week — grant the bonus move pool
+                    h.movePool = std::min(h.maxMove + h.maxMove / 10, h.movePool + h.maxMove / 10);
                 }
             }
 
@@ -1651,6 +1687,9 @@ void Game::renderWorldMapImGui()
     if (m_showTownLostPopup)      renderTownLostPopup();
     if (m_showWeekSummary)        renderWeekSummary();
     if (m_hotSeatHandoff)         renderHotSeatHandoff();
+    if (m_showSiegeCampPrompt)    renderSiegeCampPrompt();
+    renderSiegeIndicator();
+    renderMarchButton();
     if (m_showPauseMenu)          renderPauseMenu();
     // Modal popups — only one at a time (ImGui popup stack conflict otherwise)
     // In campaign mode, victory/defeat are handled by the campaign HUD, not these modals.
@@ -2621,7 +2660,20 @@ void Game::checkTileEvents()
         for (auto& t : m_towns) {
             if (t.id != tile->townId) continue;
             if (t.ownerId != 1) {
-                // Fight the garrison if one exists
+                // If player is adjacent (not ON the town yet) and town has garrison → offer Siege or Attack
+                bool alreadyCamping = false;
+                for (const auto& h2 : m_heroes)
+                    if (h2.isSiegeCamping && h2.siegeTargetTownId == t.id) { alreadyCamping = true; break; }
+
+                if (!t.garrison.empty() && !alreadyCamping
+                    && HexGrid::distance(hero.pos, t.pos) == 1) {
+                    // Offer: attack now OR lay siege camp
+                    m_siegePromptTownId     = t.id;
+                    m_showSiegeCampPrompt   = true;
+                    return;
+                }
+
+                // Fight the garrison if one exists (direct attack or hero already on town tile)
                 if (!t.garrison.empty()) {
                     // Build garrison CombatUnits as the "enemy"
                     Hero garrisonHero; // dummy hero for the garrison
@@ -5470,5 +5522,259 @@ void Game::renderShipyardPopup()
         ImGui::TextWrapped("Disembark onto land first before building another.");
     }
 
+    ImGui::End();
+}
+
+// ── Siege camp prompt ─────────────────────────────────────────────────────────
+void Game::renderSiegeCampPrompt()
+{
+    if (!m_showSiegeCampPrompt) return;
+
+    Town* town = nullptr;
+    for (auto& t : m_towns) if (t.id == m_siegePromptTownId) { town = &t; break; }
+    if (!town) { m_showSiegeCampPrompt = false; return; }
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
+                            ImGuiCond_Always, {0.5f, 0.5f});
+    ImGui::SetNextWindowSize({440, 0}, ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.96f);
+    ImGuiWindowFlags wf = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
+                        | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar;
+    if (!ImGui::Begin("##siegeprompt", nullptr, wf)) { ImGui::End(); return; }
+
+    ImGui::TextColored({1.0f, 0.7f, 0.2f, 1.0f}, "Besiege %s?", town->name.c_str());
+    ImGui::Separator(); ImGui::Spacing();
+
+    // Garrison summary
+    ImGui::TextColored({0.9f, 0.4f, 0.4f, 1.0f}, "Garrison:");
+    for (const auto& s : town->garrison) {
+        const UnitDef* ud = m_registry.getUnitDef(s.defId);
+        if (ud) ImGui::Text("  %-22s x%d", ud->name.c_str(), s.count);
+    }
+
+    ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+    ImGui::TextWrapped("Attack now or lay siege and wait for allies. "
+                       "While sieged, defenders cannot leave the town, "
+                       "but they may Fortify (+4 DEF, stronger walls, +3 tower dmg).");
+    ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+    Hero& hero = m_heroes[m_activeHeroIdx];
+    float bw = (ImGui::GetWindowWidth() - 40.0f) / 3.0f;
+
+    // Attack now
+    ImGui::PushStyleColor(ImGuiCol_Button,        {0.55f, 0.15f, 0.15f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.70f, 0.20f, 0.20f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  {0.40f, 0.10f, 0.10f, 1.0f});
+    if (ImGui::Button("Attack Now!", {bw, 34})) {
+        m_showSiegeCampPrompt = false;
+        Hero garrisonHero;
+        garrisonHero.id      = 0;
+        garrisonHero.name    = town->name + " Garrison";
+        garrisonHero.faction = town->faction;
+        garrisonHero.army    = town->garrison;
+        m_lastCombatEnemyId  = 0;
+        m_pendingTownCaptureId = town->id;
+        auto pUnits = makeHeroUnits(hero, m_registry.units(), true);
+        auto gUnits = makeHeroUnits(garrisonHero, m_registry.units(), false);
+        enterCombat(hero, pUnits, garrisonHero, gUnits);
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Storm the town immediately. No waiting for allies.\nYou face the full garrison alone.");
+    ImGui::PopStyleColor(3);
+    ImGui::SameLine(0, 6);
+
+    // Lay siege
+    ImGui::PushStyleColor(ImGuiCol_Button,        {0.15f, 0.35f, 0.60f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.20f, 0.45f, 0.75f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  {0.10f, 0.25f, 0.45f, 1.0f});
+    if (ImGui::Button("Lay Siege", {bw, 34})) {
+        m_showSiegeCampPrompt = false;
+        hero.isSiegeCamping    = true;
+        hero.siegeTargetTownId = town->id;
+        town->underSiege       = true;
+        // Spend 25% of remaining movement
+        int cost = std::max(1, hero.movePool / 4);
+        hero.movePool = std::max(0, hero.movePool - cost);
+        pushPickupEffect(hero.pos, "Siege Camp!", IM_COL32(100, 160, 255, 255));
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Park your army outside the town.\n"
+                          "Defenders can't leave. Allied heroes can join before\n"
+                          "the siege assault fires automatically at end of turn.\n"
+                          "Costs 25%% of remaining movement.");
+    ImGui::PopStyleColor(3);
+    ImGui::SameLine(0, 6);
+
+    // Cancel
+    if (ImGui::Button("Retreat", {bw, 34}))
+        m_showSiegeCampPrompt = false;
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Back away. Do nothing this action.");
+
+    ImGui::End();
+}
+
+// ── Siege indicator overlay ───────────────────────────────────────────────────
+void Game::renderSiegeIndicator()
+{
+    // Draw a pulsing ring around any besieged town visible on screen
+    auto* dl = ImGui::GetBackgroundDrawList();
+    for (const auto& t : m_towns) {
+        if (!t.underSiege) continue;
+        float wx, wy;
+        m_hexRenderer.grid().hexToWorld(t.pos, wx, wy);
+        float sx, sy;
+        m_camera.worldToScreen(wx, wy, sx, sy);
+        // Pulsing alpha
+        float pulse = 0.55f + 0.35f * sinf(m_mapTime * 3.0f);
+        ImU32 col = IM_COL32(255, 200, 60, static_cast<int>(pulse * 255));
+        dl->AddCircle({sx, sy}, 28.0f, col, 24, 3.0f);
+        dl->AddText({sx - 20.0f, sy - 32.0f}, IM_COL32(255,200,60,230), "SIEGE");
+    }
+    // Highlight camped heroes with a blue tent icon
+    for (const auto& h : m_heroes) {
+        if (!h.isSiegeCamping) continue;
+        float wx, wy;
+        m_hexRenderer.grid().hexToWorld(h.pos, wx, wy);
+        float sx, sy;
+        m_camera.worldToScreen(wx, wy, sx, sy);
+        dl->AddCircleFilled({sx, sy - 24.0f}, 6.0f, IM_COL32(100, 180, 255, 200));
+        dl->AddText({sx - 12.0f, sy - 38.0f}, IM_COL32(100,180,255,230), "Camp");
+    }
+}
+
+// ── Siege combat trigger ──────────────────────────────────────────────────────
+void Game::triggerSiegeCombat(uint32_t townId)
+{
+    Town* town = nullptr;
+    for (auto& t : m_towns) if (t.id == townId) { town = &t; break; }
+    if (!town || town->garrison.empty()) return;
+
+    // Collect all camping heroes for this town (combine their armies)
+    std::vector<Hero*> campers;
+    for (auto& h : m_heroes)
+        if (h.isSiegeCamping && h.siegeTargetTownId == townId) campers.push_back(&h);
+    if (campers.empty()) return;
+
+    // Lift siege camp flags
+    for (auto* h : campers) {
+        h->isSiegeCamping    = false;
+        h->siegeTargetTownId = 0;
+    }
+
+    // Lead attacker = first camper; merge other campers' armies into them
+    Hero& lead = *campers[0];
+    for (size_t i = 1; i < campers.size(); ++i) {
+        for (auto& s : campers[i]->army) {
+            bool merged = false;
+            for (auto& ls : lead.army)
+                if (ls.defId == s.defId) { ls.count += s.count; merged = true; break; }
+            if (!merged && lead.army.size() < 7) lead.army.push_back(s);
+        }
+        campers[i]->army.clear();
+    }
+
+    // Build garrison defender hero
+    Hero garrisonHero;
+    garrisonHero.id      = 0;
+    garrisonHero.name    = town->name + " Garrison";
+    garrisonHero.faction = town->faction;
+    garrisonHero.army    = town->garrison;
+
+    // Apply fortify bonuses to garrison hero stats
+    if (town->siegeFortified || town->fortifyDefBonus > 0) {
+        garrisonHero.defense += town->fortifyDefBonus;
+    }
+
+    m_lastCombatEnemyId    = 0;
+    m_pendingTownCaptureId = town->id;
+
+    auto pUnits = makeHeroUnits(lead, m_registry.units(), true);
+    auto gUnits = makeHeroUnits(garrisonHero, m_registry.units(), false);
+
+    // Boost garrison units' defense from fortify
+    if (town->fortifyDefBonus > 0) {
+        for (auto& u : gUnits) u.defense += town->fortifyDefBonus;
+    }
+
+    // Reset fortify state after combat is entered
+    town->underSiege       = false;
+    town->siegeFortified   = false;
+    town->fortifyDefBonus  = 0;
+    town->fortifyWallBonus = 0;
+    town->fortifyTowerBonus= 0;
+
+    enterCombat(lead, pUnits, garrisonHero, gUnits);
+}
+
+// ── March button — visible when hero is selected and no siege target nearby ──
+void Game::renderMarchButton()
+{
+    // Only show when player controls active hero and game is in world map
+    if (m_hotSeatP2Turn) return;
+    if (m_heroes.empty() || m_activeHeroIdx < 0 ||
+        m_activeHeroIdx >= static_cast<int>(m_heroes.size())) return;
+
+    Hero& hero = m_heroes[m_activeHeroIdx];
+    if (hero.isSiegeCamping) return;  // already camped
+
+    // Check if adjacent to any enemy town (siege option is already shown instead)
+    bool nearEnemyTown = false;
+    for (const auto& t : m_towns) {
+        if (t.ownerId != 0 && t.ownerId != 1 &&
+            HexGrid::distance(hero.pos, t.pos) <= 1) {
+            nearEnemyTown = true;
+            break;
+        }
+    }
+    if (nearEnemyTown) return;
+
+    int curWeek = m_turns.week();
+    bool onCooldown = (hero.marchCooldownWeek > curWeek);
+
+    ImGuiIO& io = ImGui::GetIO();
+    float panelW = 200.0f;
+    float panelH = 90.0f;
+    float px = io.DisplaySize.x - panelW - 8.0f;
+    float py = io.DisplaySize.y - panelH - 60.0f;  // above End Turn button area
+
+    ImGui::SetNextWindowPos(ImVec2(px, py), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(panelW, panelH));
+    ImGui::SetNextWindowBgAlpha(0.85f);
+    ImGuiWindowFlags wf = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                          ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar;
+
+    if (ImGui::Begin("##march_btn", nullptr, wf)) {
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.4f, 1.0f), "MARCH");
+        ImGui::Separator();
+
+        if (onCooldown) {
+            ImGui::TextDisabled("Cooldown: Week %d", hero.marchCooldownWeek);
+            ImGui::BeginDisabled();
+            ImGui::Button("March!", ImVec2(-1, 0));
+            ImGui::EndDisabled();
+        } else {
+            int cost = std::max(1, hero.movePool / 4);  // 25% of current movePool
+            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f),
+                               "Cost: %d MP  Bonus: +%d MP", cost, hero.maxMove / 10);
+            if (ImGui::Button("March!", ImVec2(-1, 0))) {
+                hero.movePool -= cost;
+                if (hero.movePool < 0) hero.movePool = 0;
+                // +10% maxMove added at start of next week
+                hero.marchCooldownWeek = curWeek + 1;
+                hero.marchBonusActive  = true;
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "March Order\n\n"
+                    "Push your troops to move faster.\n"
+                    "Costs 25%% of current movement.\n"
+                    "Grants +10%% movement next week.\n"
+                    "Cooldown: 1 week."
+                );
+            }
+        }
+    }
     ImGui::End();
 }
