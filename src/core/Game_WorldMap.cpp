@@ -338,28 +338,66 @@ void Game::updateWorldMap(float dt)
         // First click → center camera + select hero; second click on same hero → inspect
         if (!uiHandled) {
             bool heroClickHandled = false;
-            for (int hi = 0; hi < static_cast<int>(m_heroes.size()); ++hi) {
-                const Hero& h = m_heroes[hi];
-                float wx, wy;
-                m_hexRenderer.grid().hexToWorld(h.pos, wx, wy);
-                float sx, sy;
-                m_camera.worldToScreen(wx, wy, sx, sy);
-                float dx = static_cast<float>(mouse.x) - sx;
-                float dy = static_cast<float>(mouse.y) - sy;
-                if (dx * dx + dy * dy < 20.0f * 20.0f) {
-                    if (m_heroClickTarget == hi) {
-                        m_showHeroInspect = true;
-                        m_heroClickTarget = -1;
-                    } else {
-                        m_heroClickTarget = hi;
-                        m_activeHeroIdx   = hi;
+
+            // Hot-seat P2 turn: clicks select/move enemy heroes instead of player heroes
+            if (m_hotSeatMode && m_hotSeatP2Turn) {
+                // Click on an enemy hero sprite → select it
+                for (int ehi = 0; ehi < (int)m_enemyHeroes.size(); ++ehi) {
+                    const Hero& eh = m_enemyHeroes[ehi];
+                    float wx, wy; m_hexRenderer.grid().hexToWorld(eh.pos, wx, wy);
+                    float sx, sy; m_camera.worldToScreen(wx, wy, sx, sy);
+                    float dx = static_cast<float>(mouse.x) - sx;
+                    float dy = static_cast<float>(mouse.y) - sy;
+                    if (dx * dx + dy * dy < 20.0f * 20.0f) {
+                        m_selectedEnemyHero = ehi;
+                        heroClickHandled = true;
+                        uiHandled = true;
+                        break;
+                    }
+                }
+                // No hero clicked → move selected enemy hero to hovered tile
+                if (!heroClickHandled && m_selectedEnemyHero >= 0
+                    && m_selectedEnemyHero < (int)m_enemyHeroes.size()
+                    && m_map.inBounds(m_hovered)) {
+                    Hero& eh = m_enemyHeroes[m_selectedEnemyHero];
+                    auto moveCost = [&](HexCoord to) -> int {
+                        const HexTile* t = m_map.getTile(to);
+                        if (!t || t->terrain == Terrain::Water) return 9999;
+                        return BASE_MOVE_COST[static_cast<int>(t->terrain)];
+                    };
+                    auto p2path = Pathfinder::find(m_map, eh.pos, m_hovered, moveCost);
+                    if (!p2path.empty()) {
+                        eh.path     = p2path;
+                        eh.pathStep = 0;
                     }
                     heroClickHandled = true;
                     uiHandled = true;
-                    break;
                 }
+            } else {
+                // Normal P1 turn hero selection
+                for (int hi = 0; hi < static_cast<int>(m_heroes.size()); ++hi) {
+                    const Hero& h = m_heroes[hi];
+                    float wx, wy;
+                    m_hexRenderer.grid().hexToWorld(h.pos, wx, wy);
+                    float sx, sy;
+                    m_camera.worldToScreen(wx, wy, sx, sy);
+                    float dx = static_cast<float>(mouse.x) - sx;
+                    float dy = static_cast<float>(mouse.y) - sy;
+                    if (dx * dx + dy * dy < 20.0f * 20.0f) {
+                        if (m_heroClickTarget == hi) {
+                            m_showHeroInspect = true;
+                            m_heroClickTarget = -1;
+                        } else {
+                            m_heroClickTarget = hi;
+                            m_activeHeroIdx   = hi;
+                        }
+                        heroClickHandled = true;
+                        uiHandled = true;
+                        break;
+                    }
+                }
+                if (!heroClickHandled) m_heroClickTarget = -1;
             }
-            if (!heroClickHandled) m_heroClickTarget = -1;
         }
 
         // Minimap click: pan camera to clicked map position
@@ -518,6 +556,41 @@ void Game::doEndTurn()
     // Reset per-day build limit for all towns
     for (auto& t : m_towns) t.builtToday = 0;
 
+    // ── Hot-seat: alternate between Player 1 and Player 2 ────────────────────
+    if (m_hotSeatMode) {
+        // Restore movement for whichever side is about to play
+        for (auto& h : m_heroes)      h.movePool = h.maxMove;
+        for (auto& h : m_enemyHeroes) {
+            h.movePool = h.maxMove;
+            int mr = std::max(2, 2 + h.maxMana / 10);
+            h.mana = std::min(h.maxMana, h.mana + mr);
+        }
+
+        if (!m_hotSeatP2Turn) {
+            // P1 ended their day → hand off to P2
+            m_hotSeatP2Turn     = true;
+            m_hotSeatHandoff    = true;
+            m_selectedEnemyHero = m_enemyHeroes.empty() ? -1 : 0;
+            // Rebuild fog from P2 hero positions
+            if (!m_fogDisabled) {
+                FogOfWar::hideAll(m_map);
+                for (auto& h : m_enemyHeroes) FogOfWar::updateVision(m_map, h);
+            }
+            return;   // don't run AI or week processing until P2 also ends
+        } else {
+            // P2 ended their day → hand off back to P1
+            m_hotSeatP2Turn     = false;
+            m_hotSeatHandoff    = true;
+            m_selectedEnemyHero = -1;
+            // Rebuild fog from P1 hero positions
+            if (!m_fogDisabled) {
+                FogOfWar::hideAll(m_map);
+                for (auto& h : m_heroes) FogOfWar::updateVision(m_map, h);
+            }
+            // FALL THROUGH — process week/income as normal
+        }
+    }
+
     // FishingHouse daily income (+150 gold per player-owned house)
     for (const auto& wo : m_worldObjects) {
         if (wo.type != WorldObjectType::FishingHouse) continue;
@@ -527,15 +600,18 @@ void Game::doEndTurn()
     }
 
     // Restore hero movement pools and daily mana regen for enemy heroes
-    for (auto& h : m_heroes)      h.movePool = h.maxMove;
-    for (auto& h : m_enemyHeroes) {
-        h.movePool = h.maxMove;
-        int manaRegen = std::max(2, 2 + h.maxMana / 10);
-        h.mana = std::min(h.maxMana, h.mana + manaRegen);
+    if (!m_hotSeatMode) {
+        for (auto& h : m_heroes)      h.movePool = h.maxMove;
+        for (auto& h : m_enemyHeroes) {
+            h.movePool = h.maxMove;
+            int manaRegen = std::max(2, 2 + h.maxMana / 10);
+            h.mana = std::min(h.maxMana, h.mana + manaRegen);
+        }
     }
 
         // Enemy hero AI — omniscient (full map visibility, no fog), faction-optimal
-        if (!m_heroes.empty()) {
+        // Skipped in hot-seat mode: P2 controls their own heroes manually.
+        if (!m_hotSeatMode && !m_heroes.empty()) {
             Hero& playerHero = m_heroes[m_activeHeroIdx];
             const auto& unitDefs = m_registry.units();
             bool combatTriggered = false;
@@ -956,6 +1032,15 @@ void Game::doEndTurn()
             // Mine income for player-controlled resource nodes
             for (const auto& r : m_resources)
                 if (r.ownedBy == 1) m_playerResources.add(r.type, r.amount);
+
+            // Hot-seat: apply income for P2 towns and mines
+            if (m_hotSeatMode) {
+                Resources p2income = m_turns.calculateWeeklyIncome(m_towns, 2);
+                m_player2Resources.addAll(p2income);
+                for (const auto& r : m_resources)
+                    if (!m_enemyHeroes.empty() && r.ownedBy == m_enemyHeroes[0].id)
+                        m_player2Resources.add(r.type, r.amount);
+            }
 
             // Garrison upkeep — 350 gold/week per garrisoned player hero
             {
@@ -1536,7 +1621,9 @@ void Game::doEndTurn()
 void Game::renderWorldMapImGui()
 {
     m_ui.beginFrame();
-    m_worldHUD.draw(m_ui, m_playerResources, m_cachedWeeklyIncome,
+    m_worldHUD.draw(m_ui,
+                    (m_hotSeatMode && m_hotSeatP2Turn) ? m_player2Resources : m_playerResources,
+                    m_cachedWeeklyIncome,
                     m_turns, m_heroes, m_activeHeroIdx, m_towns);
     m_ui.endFrame();
     m_ui.flushText(ImGui::GetBackgroundDrawList());
@@ -1563,6 +1650,7 @@ void Game::renderWorldMapImGui()
     if (m_showEncounterPrompt)    renderEncounterPrompt();
     if (m_showTownLostPopup)      renderTownLostPopup();
     if (m_showWeekSummary)        renderWeekSummary();
+    if (m_hotSeatHandoff)         renderHotSeatHandoff();
     if (m_showPauseMenu)          renderPauseMenu();
     // Modal popups — only one at a time (ImGui popup stack conflict otherwise)
     // In campaign mode, victory/defeat are handled by the campaign HUD, not these modals.
@@ -1727,6 +1815,40 @@ void Game::updateHeroMovement(float dt)
             hero.path.clear();
             hero.pathStep = 0;
             m_selected = {-999,-999};
+        }
+    }
+
+    // ── Hot-seat P2: animate selected enemy hero movement ─────────────────────
+    if (m_hotSeatMode && m_hotSeatP2Turn
+        && m_selectedEnemyHero >= 0
+        && m_selectedEnemyHero < (int)m_enemyHeroes.size()) {
+        Hero& eh = m_enemyHeroes[m_selectedEnemyHero];
+        if (!eh.path.empty() && eh.pathStep < (int)eh.path.size()) {
+            HexCoord next = eh.path[eh.pathStep];
+            const HexTile* tile = m_map.getTile(next);
+            int cost = tile ? eh.moveCost(tile->terrain) : 999;
+            if (eh.movePool < cost) {
+                eh.path.clear(); eh.pathStep = 0;
+            } else {
+                if (HexTile* oldT = m_map.getTile(eh.pos)) oldT->heroId = 0;
+                eh.pos = next;
+                eh.movePool -= cost;
+                eh.pathStep++;
+                if (HexTile* newT = m_map.getTile(eh.pos)) newT->heroId = eh.id;
+                if (!m_fogDisabled) FogOfWar::updateVision(m_map, eh);
+                // Collect nearby resources/objects (simplified)
+                for (auto& r : m_resources) {
+                    if (r.pos == eh.pos && r.ownedBy == 0) {
+                        r.ownedBy = eh.id;
+                        m_player2Resources.add(r.type, r.amount);
+                        char buf[32]; std::snprintf(buf, sizeof(buf), "+%d", r.amount);
+                        pushPickupEffect(eh.pos, buf, IM_COL32(100, 200, 255, 255));
+                    }
+                }
+                if (eh.pathStep >= (int)eh.path.size()) {
+                    eh.path.clear(); eh.pathStep = 0;
+                }
+            }
         }
     }
 }

@@ -187,6 +187,63 @@ void Game::renderMainMenu()
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", kDiffTooltips[i]);
             if (sel) ImGui::PopStyleColor();
         }
+        ImGui::Spacing();
+
+        // Hot-Seat toggle
+        ImGui::Text("Mode:");
+        {
+            bool sel1 = !m_newGameHotSeat;
+            bool sel2 =  m_newGameHotSeat;
+            if (sel1) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.2f, 1.f));
+            if (ImGui::Button("vs AI##hs0", ImVec2((bw - 4) / 2.f, 26))) m_newGameHotSeat = false;
+            if (sel1) ImGui::PopStyleColor();
+            ImGui::SameLine(0, 4);
+            if (sel2) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.3f, 0.6f, 1.f));
+            if (ImGui::Button("2-Player Hot-Seat##hs1", ImVec2((bw - 4) / 2.f, 26))) m_newGameHotSeat = true;
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Two human players take turns on the same screen.");
+            if (sel2) ImGui::PopStyleColor();
+        }
+
+        if (m_newGameHotSeat) {
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.f, 1.f), "Player 2 Faction:");
+            static const char* kFacNames2[] = {
+                "Holy Order","Crimson Wardens","Thornkin","Eternal Empire",
+                "Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"
+            };
+            for (int i = 0; i < 9; ++i) {
+                if (i % 3 != 0) ImGui::SameLine();
+                bool sel = (m_p2Faction == i);
+                if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.3f, 0.6f, 1.f));
+                char f2Lbl[40]; std::snprintf(f2Lbl, sizeof(f2Lbl), "%s##p2f%d", kFacNames2[i], i);
+                if (ImGui::Button(f2Lbl, ImVec2((bw - 4) / 3.f, 26))) {
+                    m_p2Faction  = i;
+                    m_p2ClassId  = 0;
+                }
+                if (sel) ImGui::PopStyleColor();
+            }
+            ImGui::Spacing();
+            FactionId p2f = static_cast<FactionId>(m_p2Faction);
+            auto p2classes = m_classRegistry.getClassesForFaction(p2f);
+            if (!p2classes.empty()) {
+                ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.f, 1.f), "Player 2 Class:");
+                bool p2Valid = false;
+                for (auto* c : p2classes) if (c->id == m_p2ClassId) { p2Valid = true; break; }
+                if (!p2Valid) m_p2ClassId = p2classes[0]->id;
+                for (int ci = 0; ci < (int)p2classes.size(); ++ci) {
+                    const HeroClassDef* cls = p2classes[ci];
+                    if (ci % 2 != 0) ImGui::SameLine();
+                    bool sel = (m_p2ClassId == cls->id);
+                    if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.3f, 0.6f, 1.f));
+                    char clbl[48]; std::snprintf(clbl, sizeof(clbl), "%s##p2cl%d", cls->name.c_str(), cls->id);
+                    if (ImGui::Button(clbl, ImVec2((bw - 4) / 2.f, 26))) m_p2ClassId = cls->id;
+                    if (ImGui::IsItemHovered() && !cls->specialtyDesc.empty())
+                        ImGui::SetTooltip("Specialty: %s", cls->specialtyDesc.c_str());
+                    if (sel) ImGui::PopStyleColor();
+                }
+            }
+        }
+
         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
 
         ImGui::TextDisabled("Choose a slot. Existing save will be overwritten.");

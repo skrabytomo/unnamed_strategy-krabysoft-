@@ -516,6 +516,17 @@ private:
     int   m_watchAIFaction2 = 1;
     void  watchAiMovePlayerHero();     // runs player hero through same AI logic as enemies
 
+    // ── Hot-seat 2-player mode ─────────────────────────────────────────────────
+    bool      m_hotSeatMode      = false;  // two humans share one screen
+    bool      m_hotSeatP2Turn    = false;  // true = it is player 2's turn
+    bool      m_hotSeatHandoff   = false;  // show handoff screen
+    Resources m_player2Resources;          // P2's resource pool
+    int       m_selectedEnemyHero= -1;     // index into m_enemyHeroes (P2 active hero)
+    bool      m_newGameHotSeat   = false;  // set in new game menu
+    void      renderHotSeatHandoff();
+    int       m_p2Faction        = 1;      // enemy faction index chosen by P2 in menu
+    int       m_p2ClassId        = 0;
+
     // ── Persisted display / audio settings ───────────────────────────────────
     float m_settingsSfxVol       = 0.7f;
     float m_settingsMasVol       = 0.35f;

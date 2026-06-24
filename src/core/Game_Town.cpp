@@ -897,6 +897,51 @@ void Game::renderWeekSummary()
     }
 }
 
+// ── Hot-seat handoff screen ───────────────────────────────────────────────────
+void Game::renderHotSeatHandoff()
+{
+    ImGui::OpenPopup("##hotseat_handoff");
+    ImVec2 centre = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(centre, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(340, 0), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.97f);
+
+    if (ImGui::BeginPopupModal("##hotseat_handoff", nullptr,
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize)) {
+        // Dim the title bar text via centering
+        const char* title = m_hotSeatP2Turn ? "PLAYER 2's TURN" : "PLAYER 1's TURN";
+        ImVec4 col = m_hotSeatP2Turn ? ImVec4(0.4f, 0.7f, 1.0f, 1.0f)
+                                      : ImVec4(1.0f, 0.85f, 0.2f, 1.0f);
+        float tw = ImGui::CalcTextSize(title).x;
+        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - tw) * 0.5f);
+        ImGui::TextColored(col, "%s", title);
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Show whose resources
+        const Resources& res = m_hotSeatP2Turn ? m_player2Resources : m_playerResources;
+        ImGui::TextColored(ImVec4(0.7f,0.7f,0.7f,1.f), "Resources:");
+        ImGui::Text("  Gold: %d   Iron: %d",
+            res.get(ResourceType::Gold), res.get(ResourceType::Iron));
+        ImGui::Spacing();
+
+        const char* hint = m_hotSeatP2Turn
+            ? "Pass the device to Player 2, then click Continue."
+            : "Pass the device to Player 1, then click Continue.";
+        ImGui::TextWrapped("%s", hint);
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        float bw = ImGui::GetWindowWidth() - 32.0f;
+        if (ImGui::Button("Continue", ImVec2(bw, 36))) {
+            m_hotSeatHandoff = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
 // ── State transitions ─────────────────────────────────────────────────────────
 void Game::enterTown(Town* town)
 {

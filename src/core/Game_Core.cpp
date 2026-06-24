@@ -1033,6 +1033,50 @@ void Game::startNewGame()
     FogOfWar::hideAll(m_map);
     FogOfWar::updateVision(m_map, m_heroes[0]);
 
+    // ── Hot-seat: configure P2 hero from menu choices ─────────────────────────
+    m_hotSeatMode   = m_newGameHotSeat;
+    m_hotSeatP2Turn = false;
+    m_hotSeatHandoff = false;
+    m_selectedEnemyHero = -1;
+    m_player2Resources = Resources{};
+    m_player2Resources.set(ResourceType::Gold, 5000);
+    m_player2Resources.set(ResourceType::Iron, 20);
+
+    if (m_hotSeatMode && !m_enemyHeroes.empty()) {
+        // Override first enemy hero to use P2's chosen faction/class
+        static constexpr FactionId kFacs[] = {
+            FactionId::HolyOrder, FactionId::CrimsonWardens, FactionId::Thornkin,
+            FactionId::EternalEmpire, FactionId::Bloodsworn, FactionId::Voidkin,
+            FactionId::IronAssembly, FactionId::Amalgamate, FactionId::Convergence
+        };
+        Hero& p2Hero = m_enemyHeroes[0];
+        FactionId p2f = kFacs[std::clamp(m_p2Faction, 0, 8)];
+        p2Hero.faction = p2f;
+        p2Hero.name    = "Player 2";
+        p2Hero.army.clear();
+        giveStartingArmy(p2Hero, kT1Count[diff], kT2Count[diff]);
+        // Apply P2's chosen class
+        const HeroClassDef* p2cls = nullptr;
+        if (m_p2ClassId != 0) p2cls = m_classRegistry.getClass(m_p2ClassId);
+        if (!p2cls) {
+            auto cp = m_classRegistry.getClassesForFaction(p2f);
+            if (!cp.empty()) p2cls = cp[0];
+        }
+        if (p2cls) {
+            p2Hero.classId = p2cls->id;
+            p2Hero.ghostWalkSpecialty   = (p2cls->specialty == SpecialtyType::GhostWalk);
+            p2Hero.blightAuraSpecialty  = (p2cls->specialty == SpecialtyType::BlightAura);
+            p2Hero.infestationSpecialty = (p2cls->specialty == SpecialtyType::Infestation);
+        }
+        // Fix P2's starting town faction to match
+        for (auto& t : m_towns) {
+            if (t.ownerId == p2Hero.id) {
+                t.faction = p2f;
+                break;
+            }
+        }
+    }
+
     float hx, hy;
     m_hexRenderer.grid().hexToWorld(m_heroes[0].pos, hx, hy);
     m_camera.setPosition(hx, hy);
