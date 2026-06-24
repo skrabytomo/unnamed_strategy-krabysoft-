@@ -1172,6 +1172,23 @@ void Game::enterTown(Town* town)
         for (int t = 0; t < NUM_UNIT_TIERS; ++t)
             m_townScreen.setUnitTex(t, m_unitTex[fid][t].ok()
                 ? (ImTextureID)(uintptr_t)m_unitTex[fid][t].id() : nullptr);
+
+        // HolyOrder dwelling art (base + A/B variants per tier)
+        if (town->faction == FactionId::HolyOrder) {
+            static const int kHOBIDs[HO_DWELLING_TIERS][HO_DWELLING_VARIANTS] = {
+                { BID::HO_T1_BASE, BID::HO_T1_A, BID::HO_T1_B },
+                { BID::HO_T2_BASE, BID::HO_T2_A, BID::HO_T2_B },
+                { BID::HO_T3_BASE, BID::HO_T3_A, BID::HO_T3_B },
+                { BID::HO_T4_BASE, BID::HO_T4_A, BID::HO_T4_B },
+                { BID::HO_T5_BASE, BID::HO_T5_A, BID::HO_T5_B },
+                { BID::HO_T6_BASE, BID::HO_T6_A, BID::HO_T6_B },
+            };
+            for (int t = 0; t < HO_DWELLING_TIERS; ++t)
+                for (int v = 0; v < HO_DWELLING_VARIANTS; ++v)
+                    m_townScreen.setBuildingArt(kHOBIDs[t][v],
+                        m_hoDwellingTex[t][v].ok()
+                            ? (ImTextureID)(uintptr_t)m_hoDwellingTex[t][v].id() : nullptr);
+        }
     }
     // Play faction-specific theme; fall back to generic town_music
     int fid = static_cast<int>(town->faction);

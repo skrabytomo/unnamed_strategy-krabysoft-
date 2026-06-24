@@ -172,6 +172,27 @@ bool Game::init(const std::string& title, int width, int height)
             m_warehouseTex[f][t].load(m_basePath + buf, false, false);
         }
 
+    // Load HolyOrder dwelling art (base + A/B upgrade per tier)
+    // Files: assets/units/holy_order/<DwellingName>[— Variant].png
+    // nullptr entries = no art uploaded yet for that variant (falls back to icon)
+    static const struct { const char* base; const char* varA; const char* varB; } kHODwellings[6] = {
+        { "Prison Yard",     "Prison Yard \xe2\x80\x94 Fast Death",     "Prison Yard \xe2\x80\x94 Hardened"        },
+        { "Militia Barracks","Militia Barracks \xe2\x80\x94 Arsonist",  "Militia Barracks \xe2\x80\x94 Devoted"    },
+        { "Apothecary",      "Plague Doctor \xe2\x80\x94 Sacrifice",    "Plague Doctor \xe2\x80\x94 Toxic Cloud"   },
+        { nullptr,           nullptr,                                     nullptr                                    }, // T4 no art yet
+        { "Seraph",          "Seraph \xe2\x80\x94 Wide Aura",           "Seraph \xe2\x80\x94 Unchained"            },
+        { "Winged Hussar",   "Winged Hussar \xe2\x80\x94 Desperation",  "Winged Hussar \xe2\x80\x94 Both Meters"  },
+    };
+    for (int t = 0; t < HO_DWELLING_TIERS; ++t) {
+        const char* names[3] = { kHODwellings[t].base, kHODwellings[t].varA, kHODwellings[t].varB };
+        for (int v = 0; v < HO_DWELLING_VARIANTS; ++v) {
+            if (!names[v]) continue;
+            char buf[256];
+            std::snprintf(buf, sizeof(buf), "assets/units/holy_order/%s.png", names[v]);
+            m_hoDwellingTex[t][v].load(m_basePath + buf, false, false);
+        }
+    }
+
     // Load combat board terrain backgrounds (assets/terrain/combat/NAME.png)
     static const char* kTerrainBgName[NUM_TERRAIN_TYPES] = {
         "plains", "forest", "highland", "corrupted", "toxic",

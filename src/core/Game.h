@@ -274,6 +274,13 @@ private:
     static constexpr int WAREHOUSE_TIERS   = 3;
     Texture m_warehouseTex[NUM_FACTIONS][WAREHOUSE_TIERS];
 
+    // ── HolyOrder dwelling art (base + A + B per tier) ───────────────────────
+    // Files: assets/units/holy_order/<DwellingName>.png
+    // Indexed [tier-1][variant]: 0=base, 1=PathA, 2=PathB
+    static constexpr int HO_DWELLING_TIERS    = 6;
+    static constexpr int HO_DWELLING_VARIANTS = 3;
+    Texture m_hoDwellingTex[HO_DWELLING_TIERS][HO_DWELLING_VARIANTS];
+
     // ── Per-unit combat animators (keyed by CombatUnit id) ───────────────────
     std::unordered_map<uint32_t, SpriteAnimator> m_combatAnimators;
 
