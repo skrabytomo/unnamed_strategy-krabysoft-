@@ -1760,7 +1760,11 @@ void Game::exitCombat(bool playerWon)
         }
     }
     m_audio.playMusic("worldmap_music");
-    if (m_fromBattleSim) {
+    if (m_fromBattleSim && m_watchingAI) {
+        m_fromBattleSim = false;
+        m_simAutoPlay   = false;
+        enterWorldMap();
+    } else if (m_fromBattleSim) {
         m_fromBattleSim = false;
         m_state         = GameState::MainMenu;
         m_menuMode      = 5;
