@@ -1186,15 +1186,16 @@ void BuildingRegistry::init()
       b.cost=goldAndRes(2500,ResourceType::VerdantSap,4);
       b.prerequisites={BID::VK_RIFT_GATE}; m_buildings.push_back(b); }
 
-    addUnit(6001,"Void Wisp",      F::Voidkin,1,P::None, 18,3,3,1, 3,6, gold(70),        T::Void|T::Flying, true);
+    addUnit(6001,"Void Wisp",      F::Voidkin,1,P::None, 20,4,3,1, 3,6, gold(70),        T::Void|T::Flying, true);
     m_units.back().range = 3; m_units.back().shots = 2;
-    addUnit(6002,"Phase Walker",   F::Voidkin,2,P::None, 24,5,6,2, 6,6, goldAndRes(130,ResourceType::VerdantSap,1), T::Void|T::Flying, true);
-    m_units.back().range = 4; m_units.back().shots = 1;
+    addUnit(6002,"Phase Walker",   F::Voidkin,2,P::None, 27,5,6,2, 6,6, goldAndRes(130,ResourceType::VerdantSap,1), T::Void|T::Flying, true);
+    m_units.back().range = 4; m_units.back().shots = 2;
     addUnit(6003,"Rift Archer",    F::Voidkin,3,P::None, 28,6,5,4, 9,7, goldAndRes(205,ResourceType::VerdantSap,1), T::Void|T::Flying, true);
     m_units.back().range = 5; m_units.back().shots = 5;
     addUnit(6004,"Void Stalker",   F::Voidkin,4,P::None, 44,9,9,9,15,10,goldAndRes(360,ResourceType::VerdantSap,2), T::Void|T::Flying, true);
-    addUnit(6005,"Entropy Wraith", F::Voidkin,5,P::None, 72,12,11,13,22,12,goldAndRes(640,ResourceType::VerdantSap,3), T::Void|T::Flying, true);
-    addUnit(6006,"Void Colossus",  F::Voidkin,6,P::None,135,16,14,22,34,13,goldAndRes(1220,ResourceType::VerdantSap,5), T::Void|T::Flying, true);
+    m_units.back().range = 4; m_units.back().shots = 1;
+    addUnit(6005,"Entropy Wraith", F::Voidkin,5,P::None, 82,12,11,15,24,12,goldAndRes(640,ResourceType::VerdantSap,3), T::Void|T::Flying, true);
+    addUnit(6006,"Void Colossus",  F::Voidkin,6,P::None,135,16,14,22,34,13,goldAndRes(1180,ResourceType::VerdantSap,5), T::Void|T::Flying, true);
     // Voidkin PathA — Phase line (speed+1, all flying)
     addUnit(6011,"Phase Wisp",     F::Voidkin,1,P::PathA, 18,3,3,1, 3,7, goldAndRes(75,ResourceType::VerdantSap,1),  T::Void|T::Flying, true);
     addUnit(6012,"Flicker",        F::Voidkin,2,P::PathA, 24,5,6,2, 6,7, goldAndRes(140,ResourceType::VerdantSap,1), T::Void|T::Flying, true);
@@ -1331,7 +1332,7 @@ void BuildingRegistry::init()
       b.cost=goldAndRes(2500,ResourceType::Iron,6);
       b.minWeek=3; b.prerequisites={BID::IA_BLUEPRINT_VAULT}; m_buildings.push_back(b); }
 
-    addUnit(7001,"Automaton",       F::IronAssembly,1,P::None, 12,3,4,2, 4,5, goldAndRes(75,ResourceType::Iron,1),  T::Mechanical);
+    addUnit(7001,"Automaton",       F::IronAssembly,1,P::None, 12,3,3,2, 4,5, goldAndRes(75,ResourceType::Iron,1),  T::Mechanical);
     m_units.back().range = 3; m_units.back().shots = 1;
     addUnit(7002,"Gun Construct",   F::IronAssembly,2,P::None, 20,4,5,3, 6,5, goldAndRes(140,ResourceType::Iron,2), T::Mechanical);
     m_units.back().range = 5; m_units.back().shots = 1;
