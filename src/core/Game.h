@@ -281,6 +281,10 @@ private:
     static constexpr int HO_DWELLING_VARIANTS = 3;
     Texture m_hoDwellingTex[HO_DWELLING_TIERS][HO_DWELLING_VARIANTS];
 
+    static constexpr int CW_DWELLING_TIERS    = 6;
+    static constexpr int CW_DWELLING_VARIANTS = 3;
+    Texture m_cwDwellingTex[CW_DWELLING_TIERS][CW_DWELLING_VARIANTS];
+
     // ── Per-unit combat animators (keyed by CombatUnit id) ───────────────────
     std::unordered_map<uint32_t, SpriteAnimator> m_combatAnimators;
 

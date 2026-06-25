@@ -193,6 +193,25 @@ bool Game::init(const std::string& title, int width, int height)
         }
     }
 
+    // CrimsonWardens dwelling art
+    static const struct { const char* base; const char* varA; const char* varB; } kCWDwellings[6] = {
+        { "Ossuary",       "Hollow Knight",      "Marked Guard"      },
+        { "Archer Crypt",  "Bone Sniper",        "Marrow Archer"     },
+        { "Shade Hollow",  "Wight Paladin",      "Greater Wight"     },
+        { "Blood Roost",   "Crusader Vampire",   "Blood Vampire"     },
+        { "Lich Spire",    "High Lich",          "Undying Lich"      },
+        { "Dragon Crypts", "Holy Bone Dragon",   "Abyssal Dragon"    },
+    };
+    for (int t = 0; t < CW_DWELLING_TIERS; ++t) {
+        const char* names[3] = { kCWDwellings[t].base, kCWDwellings[t].varA, kCWDwellings[t].varB };
+        for (int v = 0; v < CW_DWELLING_VARIANTS; ++v) {
+            if (!names[v]) continue;
+            char buf[256];
+            std::snprintf(buf, sizeof(buf), "assets/units/crimson_wardens/%s.png", names[v]);
+            m_cwDwellingTex[t][v].load(m_basePath + buf, false, false);
+        }
+    }
+
     // Load combat board terrain backgrounds (assets/terrain/combat/NAME.png)
     static const char* kTerrainBgName[NUM_TERRAIN_TYPES] = {
         "plains", "forest", "highland", "corrupted", "toxic",

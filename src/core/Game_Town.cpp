@@ -1189,6 +1189,23 @@ void Game::enterTown(Town* town)
                         m_hoDwellingTex[t][v].ok()
                             ? (ImTextureID)(uintptr_t)m_hoDwellingTex[t][v].id() : nullptr);
         }
+
+        // CrimsonWardens dwelling art (base + A/B variants per tier)
+        if (town->faction == FactionId::CrimsonWardens) {
+            static const int kCWBIDs[CW_DWELLING_TIERS][CW_DWELLING_VARIANTS] = {
+                { BID::CW_T1, BID::CW_T1_A, BID::CW_T1_B },
+                { BID::CW_T2, BID::CW_T2_A, BID::CW_T2_B },
+                { BID::CW_T3, BID::CW_T3_A, BID::CW_T3_B },
+                { BID::CW_T4, BID::CW_T4_A, BID::CW_T4_B },
+                { BID::CW_T5, BID::CW_T5_A, BID::CW_T5_B },
+                { BID::CW_T6, BID::CW_T6_A, BID::CW_T6_B },
+            };
+            for (int t = 0; t < CW_DWELLING_TIERS; ++t)
+                for (int v = 0; v < CW_DWELLING_VARIANTS; ++v)
+                    m_townScreen.setBuildingArt(kCWBIDs[t][v],
+                        m_cwDwellingTex[t][v].ok()
+                            ? (ImTextureID)(uintptr_t)m_cwDwellingTex[t][v].id() : nullptr);
+        }
     }
     // Play faction-specific theme; fall back to generic town_music
     int fid = static_cast<int>(town->faction);
