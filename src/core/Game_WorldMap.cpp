@@ -192,55 +192,84 @@ void Game::watchAiMovePlayerHero()
     Hero& hero = m_heroes[m_activeHeroIdx];
     const auto& udefs = m_registry.units();
 
-    int myStr  = heroStrength(hero, udefs);
-    // Compare vs nearest enemy only (not sum — would always be "weak" vs 3 enemies)
-    int nearestOppStr = 0;
-    for (const auto& eh : m_enemyHeroes) {
-        int s = heroStrength(eh, udefs);
-        if (s > nearestOppStr) nearestOppStr = s;
-    }
-    bool veryWeak = nearestOppStr > 0 && (myStr * 10 < nearestOppStr * 4);
-
     hero.movePool = hero.maxMove;
 
-    while (hero.movePool > 0) {
-        HexCoord goal = {};
-        bool goalSet  = false;
+    int myStr = heroStrength(hero, udefs);
+    int bestOppStr = 0;
+    for (const auto& eh : m_enemyHeroes) {
+        int s = heroStrength(eh, udefs);
+        if (s > bestOppStr) bestOppStr = s;
+    }
+    float strRatio   = bestOppStr > 0 ? (float)myStr / bestOppStr : 99.f;
+    bool veryWeak    = strRatio < 0.4f;
+    bool softRetreat = strRatio < 0.6f;
+    bool dominant    = strRatio >= 1.2f;
 
-        auto tryGoal = [&](HexCoord pos, int bias = 0) {
-            if (pos == hero.pos) return; // never target own position
-            int d = HexGrid::distance(hero.pos, pos) - bias;
-            if (!goalSet || d < HexGrid::distance(hero.pos, goal)) {
-                goal = pos; goalSet = true;
-            }
+    while (hero.movePool > 0) {
+        struct Cand { HexCoord pos; float score; };
+        std::vector<Cand> cands;
+        auto add = [&](HexCoord pos, float val) {
+            if (pos == hero.pos) return;
+            int d = std::max(1, HexGrid::distance(hero.pos, pos));
+            cands.push_back({pos, val / d});
         };
 
-        // Always grab nearby resources/towns; only avoid enemy hero when very weak
-        for (const auto& r : m_resources) {
-            if (r.ownedBy == 1) continue;
-            tryGoal(r.pos, 3);
-        }
-        for (const auto& t : m_towns) {
-            if (t.ownerId == 0) tryGoal(t.pos);
-            else if (t.ownerId == 1) tryGoal(t.pos, 5); // own town low-priority
-        }
-        if (!veryWeak && !m_enemyHeroes.empty()) {
-            // Chase nearest enemy hero
-            HexCoord nearest = m_enemyHeroes[0].pos;
-            int nd = HexGrid::distance(hero.pos, nearest);
-            for (const auto& eh : m_enemyHeroes) {
-                int d = HexGrid::distance(hero.pos, eh.pos);
-                if (d < nd) { nearest = eh.pos; nd = d; }
+        if (veryWeak) {
+            // Retreat to own town
+            for (const auto& t : m_towns)
+                if (t.ownerId == 1) add(t.pos, 500.f);
+        } else {
+            // Own town to recruit
+            for (const auto& t : m_towns) {
+                if (t.ownerId != 1) continue;
+                bool hasU = false;
+                for (const auto& dw : t.dwellings) if (dw.available > 0) { hasU = true; break; }
+                if (hasU && (int)hero.army.size() < 7) add(t.pos, 250.f);
             }
-            tryGoal(nearest);
+            // Towns
+            for (const auto& t : m_towns) {
+                if (t.ownerId == 0)  add(t.pos, 150.f);
+                else if (t.ownerId != 1) add(t.pos, 200.f); // enemy town
+            }
+            // Resources
+            for (const auto& r : m_resources) {
+                if (r.ownedBy == 1) continue;
+                add(r.pos, 60.f);
+            }
+            // World objects
+            for (const auto& obj : m_worldObjects) {
+                if (obj.collected) continue;
+                float val = 0.f;
+                if (obj.type == WorldObjectType::ArtifactChest)   val = 80.f;
+                else if (obj.type == WorldObjectType::TreasureChest) val = 70.f;
+                else if (obj.type == WorldObjectType::XPShrine    ||
+                         obj.type == WorldObjectType::ForestShrine ||
+                         obj.type == WorldObjectType::StatShrine   ||
+                         obj.type == WorldObjectType::SpellScroll  ||
+                         obj.type == WorldObjectType::SwampAltar)   val = 50.f;
+                if (val > 0.f) add(obj.pos, val);
+            }
+            // Enemy heroes
+            if (!softRetreat && !m_enemyHeroes.empty()) {
+                for (const auto& eh : m_enemyHeroes) {
+                    int dist = HexGrid::distance(hero.pos, eh.pos);
+                    if (dominant || dist <= 8)
+                        add(eh.pos, 300.f);
+                }
+            }
         }
 
-        if (!goalSet) break;
+        if (cands.empty()) break;
+        std::sort(cands.begin(), cands.end(),
+                  [](const Cand& a, const Cand& b){ return a.score > b.score; });
+        HexCoord goal = cands[0].pos;
 
         auto costFn = [&](HexCoord c) -> int {
             const HexTile* t = m_map.getTile(c);
-            if (!t || t->blocked || !hero.canEnter(t->terrain)) return 9999;
-            return hero.moveCost(t->terrain);
+            if (!t || !hero.canEnter(t->terrain) || t->blocked) return 999;
+            int base = hero.moveCost(t->terrain);
+            if (m_roadHexes.count(c)) base = std::max(1, base / 2);
+            return base;
         };
         auto path = Pathfinder::find(m_map, hero.pos, goal, costFn);
         if (path.empty()) break;
@@ -261,21 +290,25 @@ void Game::watchAiMovePlayerHero()
             for (auto& r : m_resources)
                 if (r.id == nt->resourceId) { r.ownedBy = 1; break; }
         }
-        // Neutral town
+        // Claim town
         if (nt->townId != 0) {
             for (auto& t : m_towns)
                 if (t.id == nt->townId && t.ownerId == 0) { t.ownerId = 1; break; }
         }
+        // Collect world objects
+        for (auto& obj : m_worldObjects) {
+            if (obj.collected || obj.pos != hero.pos) continue;
+            obj.collected = true;
+        }
 
-        // Combat: player hero stepped onto an enemy hero
+        // Combat: stepped onto enemy hero
         for (auto& eHero : m_enemyHeroes) {
             if (eHero.pos != hero.pos) continue;
             m_lastCombatEnemyId = eHero.id;
-            const auto& unitDefs = m_registry.units();
-            auto pUnits = makeHeroUnits(hero,  unitDefs, true);
-            auto eUnits = makeHeroUnits(eHero, unitDefs, false);
+            auto pUnits = makeHeroUnits(hero,  udefs, true);
+            auto eUnits = makeHeroUnits(eHero, udefs, false);
             enterCombat(hero, pUnits, eHero, eUnits);
-            return; // combat takes over, stop moving
+            return;
         }
     }
 }
