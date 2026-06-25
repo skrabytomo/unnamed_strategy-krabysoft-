@@ -110,13 +110,24 @@ void Game::updateCombat(float dt)
     }
 
     if (m_fromBattleSim && m_simAutoPlay) {
-        // Watch mode: fire one unit action per tick at a human-visible pace
-        m_simAutoPlayTimer -= dt;
-        if (m_simAutoPlayTimer <= 0.f) {
-            m_simAutoPlayTimer = 0.4f;
-            auto ph = m_combat.phase();
-            if (ph == CombatPhase::PlayerTurn || ph == CombatPhase::EnemyTurn)
-                m_combat.processOneAIAction();
+        if (m_watchingAI) {
+            // Watch AI: resolve entire combat instantly (no per-action delay)
+            for (int guard = 0; guard < 2000; ++guard) {
+                auto ph = m_combat.phase();
+                if (ph == CombatPhase::Victory || ph == CombatPhase::Defeat) break;
+                if (ph == CombatPhase::PlayerTurn || ph == CombatPhase::EnemyTurn)
+                    m_combat.processOneAIAction();
+                else break;
+            }
+        } else {
+            // Battle-sim watch mode: fire one unit action per tick at a human-visible pace
+            m_simAutoPlayTimer -= dt;
+            if (m_simAutoPlayTimer <= 0.f) {
+                m_simAutoPlayTimer = 0.4f;
+                auto ph = m_combat.phase();
+                if (ph == CombatPhase::PlayerTurn || ph == CombatPhase::EnemyTurn)
+                    m_combat.processOneAIAction();
+            }
         }
     } else {
         if (m_combat.phase() == CombatPhase::EnemyTurn)
