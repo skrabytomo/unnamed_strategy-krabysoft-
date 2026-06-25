@@ -192,11 +192,14 @@ void Game::watchAiMovePlayerHero()
     Hero& hero = m_heroes[m_activeHeroIdx];
     const auto& udefs = m_registry.units();
 
-    // Reuse same goal-selection logic as enemy AI
     int myStr  = heroStrength(hero, udefs);
-    int oppStr = 0;
-    for (const auto& eh : m_enemyHeroes) oppStr += heroStrength(eh, udefs);
-    bool veryWeak  = (myStr * 10 < oppStr * 4);
+    // Compare vs nearest enemy only (not sum — would always be "weak" vs 3 enemies)
+    int nearestOppStr = 0;
+    for (const auto& eh : m_enemyHeroes) {
+        int s = heroStrength(eh, udefs);
+        if (s > nearestOppStr) nearestOppStr = s;
+    }
+    bool veryWeak = nearestOppStr > 0 && (myStr * 10 < nearestOppStr * 4);
 
     hero.movePool = hero.maxMove;
 
@@ -205,21 +208,31 @@ void Game::watchAiMovePlayerHero()
         bool goalSet  = false;
 
         auto tryGoal = [&](HexCoord pos, int bias = 0) {
+            if (pos == hero.pos) return; // never target own position
             int d = HexGrid::distance(hero.pos, pos) - bias;
             if (!goalSet || d < HexGrid::distance(hero.pos, goal)) {
                 goal = pos; goalSet = true;
             }
         };
 
-        if (veryWeak) {
-            for (const auto& t : m_towns) if (t.ownerId == 1) tryGoal(t.pos, 5);
-        } else {
-            for (const auto& r : m_resources) {
-                if (r.ownedBy == 1) continue;
-                tryGoal(r.pos, 3);
+        // Always grab nearby resources/towns; only avoid enemy hero when very weak
+        for (const auto& r : m_resources) {
+            if (r.ownedBy == 1) continue;
+            tryGoal(r.pos, 3);
+        }
+        for (const auto& t : m_towns) {
+            if (t.ownerId == 0) tryGoal(t.pos);
+            else if (t.ownerId == 1) tryGoal(t.pos, 5); // own town low-priority
+        }
+        if (!veryWeak && !m_enemyHeroes.empty()) {
+            // Chase nearest enemy hero
+            HexCoord nearest = m_enemyHeroes[0].pos;
+            int nd = HexGrid::distance(hero.pos, nearest);
+            for (const auto& eh : m_enemyHeroes) {
+                int d = HexGrid::distance(hero.pos, eh.pos);
+                if (d < nd) { nearest = eh.pos; nd = d; }
             }
-            for (const auto& t : m_towns) if (t.ownerId == 0) tryGoal(t.pos);
-            if (!m_enemyHeroes.empty()) tryGoal(m_enemyHeroes[0].pos);
+            tryGoal(nearest);
         }
 
         if (!goalSet) break;
@@ -252,6 +265,17 @@ void Game::watchAiMovePlayerHero()
         if (nt->townId != 0) {
             for (auto& t : m_towns)
                 if (t.id == nt->townId && t.ownerId == 0) { t.ownerId = 1; break; }
+        }
+
+        // Combat: player hero stepped onto an enemy hero
+        for (auto& eHero : m_enemyHeroes) {
+            if (eHero.pos != hero.pos) continue;
+            m_lastCombatEnemyId = eHero.id;
+            const auto& unitDefs = m_registry.units();
+            auto pUnits = makeHeroUnits(hero,  unitDefs, true);
+            auto eUnits = makeHeroUnits(eHero, unitDefs, false);
+            enterCombat(hero, pUnits, eHero, eUnits);
+            return; // combat takes over, stop moving
         }
     }
 }
