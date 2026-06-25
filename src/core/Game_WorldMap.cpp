@@ -290,10 +290,32 @@ void Game::watchAiMovePlayerHero()
             for (auto& r : m_resources)
                 if (r.id == nt->resourceId) { r.ownedBy = 1; break; }
         }
-        // Claim town
+        // Claim or visit town
         if (nt->townId != 0) {
-            for (auto& t : m_towns)
-                if (t.id == nt->townId && t.ownerId == 0) { t.ownerId = 1; break; }
+            for (auto& t : m_towns) {
+                if (t.id != nt->townId) continue;
+                if (t.ownerId == 0) t.ownerId = 1; // capture neutral
+                if (t.ownerId == 1) {
+                    // Recruit all available units from player-owned town
+                    for (auto& dw : t.dwellings) {
+                        if (dw.available <= 0) continue;
+                        for (const auto& ud : udefs) {
+                            if (ud.faction == t.faction && ud.tier == dw.tier
+                                && ud.path == dw.path) {
+                                int recruited = dw.available;
+                                dw.available = 0;
+                                bool merged = false;
+                                for (auto& s : hero.army)
+                                    if (s.defId == ud.id) { s.count += recruited; merged = true; break; }
+                                if (!merged && hero.army.size() < 7)
+                                    hero.army.push_back({ud.id, recruited});
+                                break;
+                            }
+                        }
+                    }
+                }
+                break;
+            }
         }
         // Collect world objects
         for (auto& obj : m_worldObjects) {
@@ -307,6 +329,10 @@ void Game::watchAiMovePlayerHero()
             m_lastCombatEnemyId = eHero.id;
             auto pUnits = makeHeroUnits(hero,  udefs, true);
             auto eUnits = makeHeroUnits(eHero, udefs, false);
+            // Auto-resolve combat in watch AI mode
+            m_fromBattleSim = true;
+            m_simAutoPlay   = true;
+            m_simAutoPlayTimer = 0.f;
             enterCombat(hero, pUnits, eHero, eUnits);
             return;
         }
@@ -320,11 +346,55 @@ void Game::updateWorldMap(float dt)
 
     // Watch AI auto-advance end-turn
     if (m_watchingAI) {
+        // Auto-dismiss any blocking modals so the sim can continue
+        if (m_showVictory || m_showDefeat) {
+            m_watchingAI = false; // game over — stop the sim
+            return;
+        }
+        if (m_showCombatResult) {
+            m_showCombatResult = false;
+        }
+        if (m_showLevelUpModal && !m_levelUpOffers.empty() && !m_heroes.empty()) {
+            // Auto-pick first skill offer
+            Hero& lvlHero = m_heroes[m_activeHeroIdx];
+            const auto& offer = m_levelUpOffers[0];
+            int prevTier = 0;
+            if (const SkillInstance* existing = lvlHero.skills.getSkill(offer.skillId))
+                prevTier = static_cast<int>(existing->tier);
+            LevelUpSystem::applyOffer(offer, lvlHero.skills);
+            // Apply passive skill bonuses
+            if (const SkillDef* sd = findSkillDef(offer.skillId)) {
+                int v = offer.isUpgrade ? (sd->values[prevTier+1] - sd->values[prevTier]) : sd->values[0];
+                if (sd->effectType == SkillEffectType::MovementBonus) {
+                    lvlHero.maxMove += v; lvlHero.movePool = std::max(lvlHero.movePool, lvlHero.maxMove);
+                } else if (sd->effectType == SkillEffectType::VisionBonus) {
+                    lvlHero.visionRange += v;
+                }
+            }
+            m_levelUpOffers.clear();
+            if (m_pendingLevelUps > 1) {
+                m_pendingLevelUps--;
+                const HeroClassDef* ncls = m_classRegistry.getClass(lvlHero.classId);
+                if (ncls) {
+                    std::vector<SkillDef> allSkills(SKILL_DEFS, SKILL_DEFS + SKILL_DEF_COUNT);
+                    m_levelUpOffers = LevelUpSystem::generateOffers(
+                        *ncls, lvlHero.skills, lvlHero.level, allSkills, lvlHero.faction);
+                }
+                if (m_levelUpOffers.empty())
+                    m_levelUpOffers.push_back({SkillID::OFFENSE, false, false, "Learn Offense"});
+            } else {
+                m_pendingLevelUps = 0;
+                m_showLevelUpModal = false;
+            }
+        }
+
         m_watchAITimer -= dt;
         if (m_watchAITimer <= 0.f) {
             m_watchAITimer = 1.0f / m_watchAISpeed;
-            watchAiMovePlayerHero();
-            doEndTurn();
+            if (!m_showCombatResult && !m_showLevelUpModal) {
+                watchAiMovePlayerHero();
+                doEndTurn();
+            }
         }
         return;
     }
@@ -887,6 +957,11 @@ void Game::doEndTurn()
                         m_lastCombatEnemyId = eHero.id;
                         auto pUnits = makeHeroUnits(playerHero, unitDefs, true);
                         auto eUnits = makeHeroUnits(eHero, unitDefs, false);
+                        if (m_watchingAI) {
+                            m_fromBattleSim = true;
+                            m_simAutoPlay   = true;
+                            m_simAutoPlayTimer = 0.f;
+                        }
                         enterCombat(playerHero, pUnits, eHero, eUnits);
                         combatTriggered = true;
                         break;
@@ -1111,7 +1186,7 @@ void Game::doEndTurn()
                 if (r.ownedBy == 1) m_weekSummaryIncome.add(r.type, r.amount);
             m_cachedWeeklyIncome = m_weekSummaryIncome;
             m_weekSummaryWeek = m_turns.week();
-            m_showWeekSummary = true;
+            if (!m_watchingAI) m_showWeekSummary = true;
 
             // Mine income for player-controlled resource nodes
             for (const auto& r : m_resources)
@@ -1253,17 +1328,20 @@ void Game::doEndTurn()
                 };
 
                 for (auto& town : m_towns) {
-                    if (town.ownerId <= 1) continue;
+                    if (town.ownerId == 0) continue;
+                    // In Watch AI mode also build for player towns using actual resources
+                    if (town.ownerId == 1 && !m_watchingAI) continue;
                     town.builtToday = 0;
 
                     bool built = false;
                     int fIdx = static_cast<int>(town.faction);
+                    // Player towns spend real resources; enemy towns have infinite
+                    Resources& buildRes = (town.ownerId == 1) ? m_playerResources : richRes;
 
                     // Try faction priority list first
                     if (fIdx >= 0 && fIdx < 9) {
                         for (int bid : kBuildOrder[fIdx]) {
-                            Resources tmp = richRes;
-                            if (town.build(bid, allBuildings, tmp)) {
+                            if (town.build(bid, allBuildings, buildRes)) {
                                 gLog("AI %s built BID=%d (priority)\n", town.name.c_str(), bid);
                                 built = true; break;
                             }
@@ -1277,8 +1355,7 @@ void Game::doEndTurn()
                             if (def.faction != town.faction) continue;
                             if (def.tier != tier) continue;
                             if (def.path != UpgradePath::None) continue;
-                            Resources tmp = richRes;
-                            if (town.build(def.id, allBuildings, tmp)) {
+                            if (town.build(def.id, allBuildings, buildRes)) {
                                 gLog("AI %s built %s\n", town.name.c_str(), def.name.c_str());
                                 built = true; break;
                             }
@@ -1290,8 +1367,7 @@ void Game::doEndTurn()
                             if (def.faction != town.faction && def.faction != FactionId::None) continue;
                             if (def.category != BuildingCategory::Fort &&
                                 def.category != BuildingCategory::Support) continue;
-                            Resources tmp = richRes;
-                            if (town.build(def.id, allBuildings, tmp)) {
+                            if (town.build(def.id, allBuildings, buildRes)) {
                                 gLog("AI %s built %s\n", town.name.c_str(), def.name.c_str());
                                 break;
                             }
@@ -1708,6 +1784,23 @@ void Game::doEndTurn()
                     saveGame("saves/save" + std::to_string(m_activeSlot) + ".json");
             }
         }
+    // Watch AI: passive victory/defeat check (needed when last enemy town captured without combat)
+    if (m_watchingAI && !m_showVictory && !m_showDefeat) {
+        bool noEnemyHeroes = m_enemyHeroes.empty();
+        bool noEnemyTowns  = true;
+        for (const auto& t : m_towns)
+            if (t.ownerId > 1) { noEnemyTowns = false; break; }
+        if (noEnemyHeroes && noEnemyTowns && !m_heroes.empty()) {
+            m_showVictory = true;
+            m_audio.playSound("victory");
+        }
+        if (!m_showVictory) {
+            bool anyTown = false;
+            for (const auto& t : m_towns) if (t.ownerId == 1) { anyTown = true; break; }
+            bool anyArmy = !m_heroes.empty() && !m_heroes[m_activeHeroIdx].army.empty();
+            if (!anyTown && !anyArmy) { m_showDefeat = true; m_finalDefeat = true; }
+        }
+    }
     }
 
 // ── World map render ──────────────────────────────────────────────────────────
