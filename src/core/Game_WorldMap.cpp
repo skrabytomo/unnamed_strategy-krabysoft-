@@ -394,7 +394,9 @@ void Game::updateWorldMap(float dt)
             m_watchAITimer = 1.0f / m_watchAISpeed;
             if (!m_showCombatResult && !m_showLevelUpModal) {
                 watchAiMovePlayerHero();
-                doEndTurn();
+                // If watchAiMovePlayerHero triggered combat, skip doEndTurn this tick
+                if (m_state == GameState::WorldMap)
+                    doEndTurn();
             }
         }
         return;
