@@ -3,4 +3,4 @@ Games per matchup: 200 | Base seed: 42 | Max weeks: 30
 
 Storing results in 'fullgame_results_local.db'
 
-  [1/36] HolyOrder vs CrimsonWardens: 0%     [1/36] HolyOrder vs CrimsonWardens: 1%     [1/36] HolyOrder vs CrimsonWardens: 2%     [1/36] HolyOrder vs CrimsonWardens: 3%     [1/36] HolyOrder vs CrimsonWardens: 4%     [1/36] HolyOrder vs CrimsonWardens: 5%     [1/36] HolyOrder vs CrimsonWardens: 6%     [1/36] HolyOrder vs CrimsonWardens: 7%     [1/36] HolyOrder vs CrimsonWardens: 8%     [1/36] HolyOrder vs CrimsonWardens: 9%   
+  [1/36] HolyOrder vs CrimsonWardens: 0%     [1/36] HolyOrder vs CrimsonWardens: 1%     [1/36] HolyOrder vs CrimsonWardens: 2%     [1/36] HolyOrder vs CrimsonWardens: 3%     [1/36] HolyOrder vs CrimsonWardens: 4%     [1/36] HolyOrder vs CrimsonWardens: 5%     [1/36] HolyOrder vs CrimsonWardens: 6%     [1/36] HolyOrder vs CrimsonWardens: 7%     [1/36] HolyOrder vs CrimsonWardens: 8%     [1/36] HolyOrder vs CrimsonWardens: 9%     [1/36] HolyOrder vs CrimsonWardens: 10%     [1/36] HolyOrder vs CrimsonWardens: 11%     [1/36] HolyOrder vs CrimsonWardens: 12%   
