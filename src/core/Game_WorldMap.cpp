@@ -224,10 +224,10 @@ void Game::watchAiMovePlayerHero()
 
         if (!goalSet) break;
 
-        auto costFn = [this](HexCoord c) -> int {
+        auto costFn = [&](HexCoord c) -> int {
             const HexTile* t = m_map.getTile(c);
-            if (!t || t->blocked) return 999;
-            return m_heroes[m_activeHeroIdx].moveCost(t->terrain);
+            if (!t || t->blocked || !hero.canEnter(t->terrain)) return 9999;
+            return hero.moveCost(t->terrain);
         };
         auto path = Pathfinder::find(m_map, hero.pos, goal, costFn);
         if (path.empty()) break;
