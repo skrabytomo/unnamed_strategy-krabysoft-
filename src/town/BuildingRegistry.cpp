@@ -1192,9 +1192,10 @@ void BuildingRegistry::init()
     m_units.back().range = 4; m_units.back().shots = 2;
     addUnit(6003,"Rift Archer",    F::Voidkin,3,P::None, 28,6,5,4, 9,7, goldAndRes(205,ResourceType::VerdantSap,1), T::Void|T::Flying, true);
     m_units.back().range = 5; m_units.back().shots = 5;
-    addUnit(6004,"Void Stalker",   F::Voidkin,4,P::None, 44,9,9,9,15,10,goldAndRes(360,ResourceType::VerdantSap,2), T::Void|T::Flying, true);
-    m_units.back().range = 4; m_units.back().shots = 1;
+    addUnit(6004,"Void Stalker",   F::Voidkin,4,P::None, 48,9,9,9,15,10,goldAndRes(360,ResourceType::VerdantSap,2), T::Void|T::Flying, true);
+    m_units.back().range = 5; m_units.back().shots = 3;
     addUnit(6005,"Entropy Wraith", F::Voidkin,5,P::None, 82,12,11,15,24,12,goldAndRes(640,ResourceType::VerdantSap,3), T::Void|T::Flying, true);
+    m_units.back().range = 4; m_units.back().shots = 2;
     addUnit(6006,"Void Colossus",  F::Voidkin,6,P::None,135,16,14,22,34,13,goldAndRes(1180,ResourceType::VerdantSap,5), T::Void|T::Flying, true);
     // Voidkin PathA — Phase line (speed+1, all flying)
     addUnit(6011,"Phase Wisp",     F::Voidkin,1,P::PathA, 18,3,3,1, 3,7, goldAndRes(75,ResourceType::VerdantSap,1),  T::Void|T::Flying, true);
@@ -1338,7 +1339,7 @@ void BuildingRegistry::init()
     m_units.back().range = 5; m_units.back().shots = 1;
     addUnit(7003,"Steam Walker",    F::IronAssembly,3,P::None, 30,6,6,5,10,5, goldAndRes(240,ResourceType::Iron,3), T::Mechanical);
     addUnit(7004,"Siege Bot",       F::IronAssembly,4,P::None, 58,8,9,7,13,4, goldAndRes(400,ResourceType::Iron,5), T::Mechanical);
-    m_units.back().range = 5; m_units.back().shots = 3;
+    m_units.back().range = 5; m_units.back().shots = 2;
     addUnit(7005,"Titan Construct", F::IronAssembly,5,P::None, 75,11,11,15,24,5,goldAndRes(660,ResourceType::Iron,7), T::Mechanical);
     addUnit(7006,"Colossus Prime",  F::IronAssembly,6,P::None,150,15,14,26,42,6,goldAndRes(1350,ResourceType::Iron,10), T::Mechanical);
     // Iron Assembly PathA — Runic line (more Iron cost, better stats)
