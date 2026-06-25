@@ -294,7 +294,8 @@ void Game::watchAiMovePlayerHero()
         if (nt->townId != 0) {
             for (auto& t : m_towns) {
                 if (t.id != nt->townId) continue;
-                if (t.ownerId == 0) t.ownerId = 1; // capture neutral
+                if (t.ownerId != 1) { t.ownerId = 1; } // capture neutral or enemy town
+                // Recruit from now-owned town
                 if (t.ownerId == 1) {
                     // Recruit all available units from player-owned town
                     for (auto& dw : t.dwellings) {
@@ -1861,13 +1862,12 @@ void Game::renderWorldMapImGui()
                 "Holy Order","Crimson Wardens","Thornkin","Eternal Empire",
                 "Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"
             };
+            const auto& udefs = m_registry.units();
             ImGui::TextColored({1.f,0.82f,0.2f,1.f}, "WATCH AI vs AI");
             ImGui::SameLine(0, 16);
-            ImGui::Text("Week %d | %s vs %s",
-                m_turns.week(),
-                kFacNames[m_watchAIFaction1], kFacNames[m_watchAIFaction2]);
+            ImGui::Text("Week %d", m_turns.week());
             ImGui::SameLine(0, 16);
-            ImGui::SetNextItemWidth(120);
+            ImGui::SetNextItemWidth(100);
             ImGui::SliderFloat("Speed##waispeed", &m_watchAISpeed, 0.25f, 8.0f, "%.1fx");
             ImGui::SameLine(0, 8);
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0.1f, 1.0f));
@@ -1876,6 +1876,22 @@ void Game::renderWorldMapImGui()
                 m_state = GameState::MainMenu;
             }
             ImGui::PopStyleColor();
+            // Show army strength comparison
+            if (!m_heroes.empty() && !m_enemyHeroes.empty()) {
+                const Hero& ph = m_heroes[m_activeHeroIdx];
+                const Hero& eh = m_enemyHeroes[0];
+                int pStr = heroStrength(ph, udefs);
+                int eStr = heroStrength(eh, udefs);
+                ImGui::Separator();
+                ImGui::TextColored({0.4f,0.7f,1.f,1.f}, "%s  (%s)  Str:%d  Army:%zu",
+                    ph.name.c_str(), kFacNames[static_cast<int>(ph.faction)],
+                    pStr, ph.army.size());
+                ImGui::TextColored({1.f,0.45f,0.4f,1.f}, "%s  (%s)  Str:%d  Army:%zu",
+                    eh.name.c_str(), kFacNames[static_cast<int>(eh.faction)],
+                    eStr, eh.army.size());
+                ImGui::TextDisabled("Player Gold: %d",
+                    m_playerResources.get(ResourceType::Gold));
+            }
         }
         ImGui::End();
     }
