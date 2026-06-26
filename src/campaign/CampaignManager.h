@@ -30,7 +30,7 @@ public:
     void onWeekStart(int week, LuaEngine& lua);
 
     // Called by game systems when world events happen
-    void onTownCaptured(uint32_t townId);
+    void onTownCaptured(uint32_t townId, uint32_t prevOwnerId = 0);
     void onHeroDefeated(uint32_t heroId);
     void onResourcesChecked(ResourceType type, int amount);
     void onTileReached(HexCoord pos);

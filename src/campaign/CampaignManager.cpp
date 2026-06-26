@@ -259,13 +259,17 @@ void CampaignManager::onWeekStart(int week, LuaEngine& lua)
     checkAllObjectives();
 }
 
-void CampaignManager::onTownCaptured(uint32_t townId)
+void CampaignManager::onTownCaptured(uint32_t townId, uint32_t prevOwnerId)
 {
     if (m_over) return;
     for (auto& obj : m_missions[m_currentIdx].objectives) {
         if (obj.type == ObjectiveType::CaptureTown && !obj.completed) {
-            // targetId==0 means "any enemy town"; non-zero requires exact match
-            if (obj.targetId == 0 || obj.targetId == townId)
+            // targetId==0 means "any enemy town" (prevOwnerId > 1 = was enemy-owned)
+            // non-zero requires exact town ID match
+            bool isEnemyTown = (prevOwnerId > 1);
+            if (obj.targetId == 0 && isEnemyTown)
+                tryCompleteObjective(obj, true);
+            else if (obj.targetId != 0 && obj.targetId == townId)
                 tryCompleteObjective(obj, true);
         }
     }

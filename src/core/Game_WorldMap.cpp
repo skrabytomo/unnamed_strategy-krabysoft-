@@ -2897,6 +2897,7 @@ void Game::checkTileEvents()
                     return;
                 }
                 // No garrison — capture immediately
+                uint32_t prevOwner = t.ownerId;
                 t.ownerId = 1;
                 t.garrison.clear();
                 gLog("Captured town: %s\n", t.name.c_str());
@@ -2908,7 +2909,7 @@ void Game::checkTileEvents()
                     tCtx.townId = t.id;
                     m_triggers.fire(TriggerType::TownCaptured, tCtx);
                 }
-                m_campaign.onTownCaptured(t.id);
+                m_campaign.onTownCaptured(t.id, prevOwner);
             }
             enterTown(&t);
             return;

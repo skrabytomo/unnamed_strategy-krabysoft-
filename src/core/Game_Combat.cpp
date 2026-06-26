@@ -1475,6 +1475,7 @@ void Game::exitCombat(bool playerWon)
             for (auto& t : m_towns)
                 if (t.id == m_pendingTownCaptureId) { captured = &t; break; }
             if (captured) {
+                uint32_t prevOwner = captured->ownerId;
                 captured->ownerId = 1;
                 captured->garrison.clear();
                 m_capturedTownName = captured->name;
@@ -1484,7 +1485,7 @@ void Game::exitCombat(bool playerWon)
                 ScriptContext townCtx;
                 townCtx.townId = captured->id;
                 m_triggers.fire(TriggerType::TownCaptured, townCtx);
-                m_campaign.onTownCaptured(captured->id);
+                m_campaign.onTownCaptured(captured->id, prevOwner);
             }
             m_pendingTownCaptureId = 0;
         }
