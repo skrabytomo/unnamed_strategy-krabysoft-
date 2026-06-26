@@ -120,6 +120,16 @@ private:
 
     bool loadGameApply(GameSaveData& data);
 
+    // Returns 1 normally, or 2 when hot-seat P2 is playing.
+    int currentPlayerId() const { return (m_hotSeatMode && m_hotSeatP2Turn) ? 2 : 1; }
+    // Returns the resource pool for the currently active player.
+    Resources& currentResources() {
+        return (m_hotSeatMode && m_hotSeatP2Turn) ? m_player2Resources : m_playerResources;
+    }
+    // Returns the active hero for the current player (P1 from m_heroes, P2 from m_enemyHeroes).
+    Hero* currentActiveHero();
+    const Hero* currentActiveHero() const;
+
     // ── Level-up modal ─────────────────────────────────────────────────────────
     void renderLevelUpModal();
 

@@ -475,6 +475,22 @@ void Game::saveGame(const std::string& customName)
         fprintf(stderr, "Save DB write failed\n");
 }
 
+Hero* Game::currentActiveHero()
+{
+    if (m_hotSeatMode && m_hotSeatP2Turn) {
+        if (m_enemyHeroes.empty()) return nullptr;
+        int sel = (m_selectedEnemyHero >= 0 && m_selectedEnemyHero < (int)m_enemyHeroes.size())
+                  ? m_selectedEnemyHero : 0;
+        return &m_enemyHeroes[sel];
+    }
+    if (m_heroes.empty()) return nullptr;
+    return &m_heroes[m_activeHeroIdx];
+}
+const Hero* Game::currentActiveHero() const
+{
+    return const_cast<Game*>(this)->currentActiveHero();
+}
+
 bool Game::loadGameApply(GameSaveData& data)
 {
     m_mapSize = static_cast<MapSize>(data.mapSizeEnum);

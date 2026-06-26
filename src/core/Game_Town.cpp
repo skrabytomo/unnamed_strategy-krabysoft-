@@ -55,7 +55,7 @@ void Game::renderTown()
                 m_showMageGuildPanel = !m_showMageGuildPanel;
             ImGui::SameLine();
         }
-        if (town && town->ownerId == 1) {
+        if (town && town->ownerId == currentPlayerId()) {
             if (ImGui::Button(m_showTavernPanel ? "[Tavern X]" : "Tavern"))
                 m_showTavernPanel = !m_showTavernPanel;
             ImGui::SameLine();
@@ -72,7 +72,7 @@ void Game::renderTown()
         {
             bool anyMarket = false;
             for (const auto& t : m_towns)
-                if (t.ownerId == 1 && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
+                if (t.ownerId == currentPlayerId() && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
             if (!anyMarket) ImGui::BeginDisabled();
             if (ImGui::Button(m_showMarketPanel ? "[Market X]" : "Market"))
                 m_showMarketPanel = !m_showMarketPanel;
@@ -410,7 +410,7 @@ void Game::renderMageGuild()
         ImGui::End(); return;
     }
 
-    ImGui::Text("Gold: %d", m_playerResources.get(ResourceType::Gold));
+    ImGui::Text("Gold: %d", currentResources().get(ResourceType::Gold));
     if (costMult < 1.0f)
         ImGui::TextColored(ImVec4(0.4f,1.f,0.6f,1.f), "Tier %d discount: %.0f%% off",
                            tierLevel, (1.0f - costMult) * 100.0f);
@@ -428,7 +428,7 @@ void Game::renderMageGuild()
             ImGui::TextColored(ImVec4(0.4f,1.f,0.4f,1.f), "[known] %s", sp->name);
         } else {
             int cost = static_cast<int>(entries_ref[i].goldCost * costMult);
-            bool canAfford = m_playerResources.get(ResourceType::Gold) >= cost;
+            bool canAfford = currentResources().get(ResourceType::Gold) >= cost;
             if (!canAfford) ImGui::BeginDisabled();
             char btn[80];
             if (costMult < 1.0f)
@@ -438,7 +438,7 @@ void Game::renderMageGuild()
                 std::snprintf(btn, sizeof(btn), "Learn %s  (%dg)", sp->name, cost);
             if (ImGui::Button(btn, ImVec2(-1,0))) {
                 hero.knownSpells.push_back(sp->id);
-                m_playerResources.add(ResourceType::Gold, -cost);
+                currentResources().add(ResourceType::Gold, -cost);
             }
             if (!canAfford) ImGui::EndDisabled();
         }
@@ -467,13 +467,13 @@ void Game::renderMageGuild()
             ImGui::TextColored(ImVec4(0.4f,1.f,0.4f,1.f), "[known] %s", sp->name);
         } else {
             int cost = static_cast<int>(ne.goldCost * costMult);
-            bool canAfford = m_playerResources.get(ResourceType::Gold) >= cost;
+            bool canAfford = currentResources().get(ResourceType::Gold) >= cost;
             if (!canAfford) ImGui::BeginDisabled();
             char btn[80];
             std::snprintf(btn, sizeof(btn), "Learn %s  (%dg)", sp->name, cost);
             if (ImGui::Button(btn, ImVec2(-1, 0))) {
                 hero.knownSpells.push_back(sp->id);
-                m_playerResources.add(ResourceType::Gold, -cost);
+                currentResources().add(ResourceType::Gold, -cost);
             }
             if (!canAfford) ImGui::EndDisabled();
         }
@@ -505,9 +505,9 @@ void Game::renderArtifactForge()
     ImGui::Separator();
 
     // Show current resources
-    ImGui::Text("Gold: %d", m_playerResources.get(ResourceType::Gold));
+    ImGui::Text("Gold: %d", currentResources().get(ResourceType::Gold));
     ImGui::SameLine(160.0f);
-    ImGui::Text("Iron: %d", m_playerResources.get(ResourceType::Iron));
+    ImGui::Text("Iron: %d", currentResources().get(ResourceType::Iron));
     ImGui::Separator();
 
     auto craftables = m_artifactRegistry.getCraftable();
@@ -533,7 +533,7 @@ void Game::renderArtifactForge()
         bool canAfford = true;
         for (int rt = 0; rt < RESOURCE_COUNT && canAfford; ++rt) {
             int needed = art->craftCost.get(static_cast<ResourceType>(rt));
-            if (needed > 0 && m_playerResources.get(static_cast<ResourceType>(rt)) < needed)
+            if (needed > 0 && currentResources().get(static_cast<ResourceType>(rt)) < needed)
                 canAfford = false;
         }
 
@@ -569,7 +569,7 @@ void Game::renderArtifactForge()
                 // Deduct cost
                 for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
                     int needed = art->craftCost.get(static_cast<ResourceType>(rt));
-                    if (needed > 0) m_playerResources.add(static_cast<ResourceType>(rt), -needed);
+                    if (needed > 0) currentResources().add(static_cast<ResourceType>(rt), -needed);
                 }
                 // Auto-equip if slot is free, else add to inventory
                 if (hero.artifacts.getEquipped(art->slot) == 0) {
@@ -592,7 +592,7 @@ void Game::renderArtifactForge()
 void Game::renderTavern()
 {
     const Town* town = m_townScreen.currentTown();
-    if (!town || town->ownerId != 1) return;  // only in owned towns
+    if (!town || town->ownerId != currentPlayerId()) return;  // only in owned towns
 
     static constexpr int HIRE_COST  = 2500;
     static constexpr int MAX_HEROES = 3;
@@ -605,7 +605,7 @@ void Game::renderTavern()
         ImGui::End(); return;
     }
 
-    ImGui::Text("Gold: %d", m_playerResources.get(ResourceType::Gold));
+    ImGui::Text("Gold: %d", currentResources().get(ResourceType::Gold));
     ImGui::Separator();
 
     if (static_cast<int>(m_heroes.size()) >= MAX_HEROES) {
@@ -697,7 +697,7 @@ void Game::renderTavern()
     if (!m_defeatedHeroPool.empty()) {
         ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f),
                            "Defeated Heroes  (%dg to rehire):", REHIRE_COST);
-        bool canRehire = m_playerResources.get(ResourceType::Gold) >= REHIRE_COST;
+        bool canRehire = currentResources().get(ResourceType::Gold) >= REHIRE_COST;
         for (int i = 0; i < (int)m_defeatedHeroPool.size(); ++i) {
             Hero& dh = m_defeatedHeroPool[i];
             ImGui::PushID(1000 + i);
@@ -713,7 +713,7 @@ void Game::renderTavern()
             char btn[48];
             std::snprintf(btn, sizeof(btn), "Rehire %s", dh.name.c_str());
             if (ImGui::Button(btn, ImVec2(-1, 0))) {
-                m_playerResources.add(ResourceType::Gold, -REHIRE_COST);
+                currentResources().add(ResourceType::Gold, -REHIRE_COST);
                 spawnHero(dh);
                 gLog("Rehired defeated hero: %s\n", dh.name.c_str());
                 m_defeatedHeroPool.erase(m_defeatedHeroPool.begin() + i);
@@ -726,7 +726,7 @@ void Game::renderTavern()
 
     // ── Fresh candidates ──────────────────────────────────────────────────────
     ImGui::TextDisabled("Choose a hero to hire  (%dg each):", HIRE_COST);
-    bool canAfford = m_playerResources.get(ResourceType::Gold) >= HIRE_COST;
+    bool canAfford = currentResources().get(ResourceType::Gold) >= HIRE_COST;
 
     for (int c = 0; c < NUM_CANDIDATES; ++c) {
         Hero cand = buildHero(c);
@@ -763,7 +763,7 @@ void Game::renderTavern()
         char btnLabel[48];
         std::snprintf(btnLabel, sizeof(btnLabel), "Hire %s", cand.name.c_str());
         if (ImGui::Button(btnLabel, ImVec2(-1, 0))) {
-            m_playerResources.add(ResourceType::Gold, -HIRE_COST);
+            currentResources().add(ResourceType::Gold, -HIRE_COST);
             cand.id  = 200u + static_cast<uint32_t>(m_heroes.size());
             spawnHero(cand);
             gLog("Hired hero: %s (%s)\n", cand.name.c_str(), cls ? cls->name : "?");
@@ -1096,6 +1096,14 @@ void Game::renderHotSeatHandoff()
         if (ImGui::Button("Continue", ImVec2(bw, 36))) {
             m_hotSeatHandoff = false;
             ImGui::CloseCurrentPopup();
+            // Snap camera to the active player's hero
+            const std::vector<Hero>* activeHeroes = m_hotSeatP2Turn
+                ? &m_enemyHeroes : &(const std::vector<Hero>&)m_heroes;
+            if (!activeHeroes->empty()) {
+                float cx, cy;
+                m_hexRenderer.grid().hexToWorld((*activeHeroes)[0].pos, cx, cy);
+                m_camera.setPosition(cx, cy);
+            }
         }
         ImGui::EndPopup();
     }
@@ -1110,13 +1118,21 @@ void Game::enterTown(Town* town)
     // Only treat the hero as "in town" if they are physically on or adjacent to the town tile.
     // Remote access (via HUD panel) still opens the screen but routes recruits to the garrison.
     Hero* hero = nullptr;
-    if (!m_heroes.empty()) {
+    if (m_hotSeatMode && m_hotSeatP2Turn && !m_enemyHeroes.empty()) {
+        // P2's turn: look in enemyHeroes
+        int sel = (m_selectedEnemyHero >= 0 && m_selectedEnemyHero < (int)m_enemyHeroes.size())
+                  ? m_selectedEnemyHero : 0;
+        Hero& h = m_enemyHeroes[sel];
+        if (h.pos == town->pos || HexGrid::distance(h.pos, town->pos) <= 1)
+            hero = &h;
+    } else if (!m_heroes.empty()) {
         Hero& h = m_heroes[m_activeHeroIdx];
         if (h.pos == town->pos || HexGrid::distance(h.pos, town->pos) <= 1)
             hero = &h;
     }
-    // Entering a player-owned town restores hero HP fully
-    if (hero && town->ownerId == 1 && hero->heroHp < hero->heroMaxHp) {
+    // Entering an owned town restores hero HP fully
+    int currentPlayerId = (m_hotSeatMode && m_hotSeatP2Turn) ? 2 : 1;
+    if (hero && town->ownerId == currentPlayerId && hero->heroHp < hero->heroMaxHp) {
         hero->heroHp = hero->heroMaxHp;
         pushPickupEffect(town->pos, "Hero healed!", IM_COL32(180, 255, 180, 255));
     }
@@ -1239,7 +1255,7 @@ void Game::renderMarketplace()
     // Gate: need at least one player town with MARKET
     bool anyMarket = false;
     for (const auto& t : m_towns)
-        if (t.ownerId == 1 && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
+        if (t.ownerId == currentPlayerId() && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
     if (!anyMarket) { m_showMarketPanel = false; return; }
 
     static const int SELL_RATE = 4;  // HoMM3-style 4:1 exchange
@@ -1279,7 +1295,7 @@ void Game::renderMarketplace()
 
     for (int i = 0; i < RESOURCE_COUNT; ++i) {
         ImVec2 cp = { rowX + i * (CARD_W + CARD_GAP), rowY };
-        int val   = m_playerResources.get(static_cast<ResourceType>(i));
+        int val   = currentResources().get(static_cast<ResourceType>(i));
         bool isSell = (m_marketSellType == i);
         bool isBuy  = (m_marketBuyType  == i);
 
@@ -1387,7 +1403,7 @@ void Game::renderMarketplace()
     ImGui::Spacing();
 
     // ── Trade buttons ─────────────────────────────────────────────────────────
-    int have      = m_playerResources.get(static_cast<ResourceType>(m_marketSellType));
+    int have      = currentResources().get(static_cast<ResourceType>(m_marketSellType));
     int maxTrades = have / SELL_RATE;
 
     ImGui::TextColored(ImVec4(0.9f, 0.75f, 0.3f, 1.0f),
@@ -1404,8 +1420,8 @@ void Game::renderMarketplace()
 
     auto doTrade = [&](int count) {
         if (count <= 0 || count > maxTrades) return;
-        m_playerResources.add(static_cast<ResourceType>(m_marketSellType), -(count * SELL_RATE));
-        m_playerResources.add(static_cast<ResourceType>(m_marketBuyType),   count * BUY_RATE);
+        currentResources().add(static_cast<ResourceType>(m_marketSellType), -(count * SELL_RATE));
+        currentResources().add(static_cast<ResourceType>(m_marketBuyType),   count * BUY_RATE);
     };
 
     ImGui::Spacing();

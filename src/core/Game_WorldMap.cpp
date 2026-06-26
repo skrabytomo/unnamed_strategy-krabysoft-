@@ -924,6 +924,7 @@ void Game::doEndTurn()
                     struct Cand { HexCoord pos; float score; };
                     std::vector<Cand> cands;
                     auto add = [&](HexCoord pos, float val) {
+                        if (pos == eHero.pos) return; // don't target current position
                         int d = std::max(1, HexGrid::distance(eHero.pos, pos));
                         cands.push_back({pos, val / d});
                     };
@@ -1986,6 +1987,24 @@ void Game::onTileClicked(HexCoord h)
 {
     const HexTile* tile = m_map.getTile(h);
     if (!tile) return;
+
+    // Hot-seat P2 turn: delegate clicks to enemy hero control
+    if (m_hotSeatMode && m_hotSeatP2Turn) {
+        if (tile->townId != 0 && m_selectedEnemyHero >= 0
+            && m_selectedEnemyHero < (int)m_enemyHeroes.size()) {
+            Hero& p2Hero = m_enemyHeroes[m_selectedEnemyHero];
+            for (auto& t : m_towns) {
+                if (t.id != tile->townId || t.ownerId != 2) continue;
+                if (p2Hero.pos == h || HexGrid::distance(p2Hero.pos, h) <= 1) {
+                    enterTown(&t);
+                    return;
+                }
+                break;
+            }
+        }
+        // P2 movement is handled in the hot-seat click block above (lines ~518+)
+        return;
+    }
 
     if (m_heroes.empty()) return;
 
