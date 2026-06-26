@@ -294,7 +294,11 @@ void Game::watchAiMovePlayerHero()
         if (nt->townId != 0) {
             for (auto& t : m_towns) {
                 if (t.id != nt->townId) continue;
-                if (t.ownerId != 1) { t.ownerId = 1; } // capture neutral or enemy town
+                if (t.ownerId != 1) {
+                    uint32_t prevOwner = t.ownerId;
+                    t.ownerId = 1;
+                    m_campaign.onTownCaptured(t.id, prevOwner);
+                }
                 // Recruit from now-owned town
                 if (t.ownerId == 1) {
                     // Recruit all available units from player-owned town
@@ -907,6 +911,13 @@ void Game::doEndTurn()
                 }
                 if (pinnedBySiege) { eHero.movePool = 0; }
 
+                // Snap camera to this enemy hero so Watch AI is visible
+                if (m_watchingAI) {
+                    float ewx, ewy;
+                    m_hexRenderer.grid().hexToWorld(eHero.pos, ewx, ewy);
+                    m_camera.setPosition(ewx, ewy);
+                }
+
                 while (eHero.movePool > 0) {
                     // Score-based candidate selection: value / distance
                     struct Cand { HexCoord pos; float score; };
@@ -1135,6 +1146,13 @@ void Game::doEndTurn()
                 }
                 if (combatTriggered) return;
             }
+        }
+
+        // Snap camera back to player hero after enemy turns (Watch AI)
+        if (m_watchingAI && !m_heroes.empty()) {
+            float pwx, pwy;
+            m_hexRenderer.grid().hexToWorld(m_heroes[m_activeHeroIdx].pos, pwx, pwy);
+            m_camera.setPosition(pwx, pwy);
         }
 
         // Infestation specialty (Flesh Architect/Amalgamate): FleshZone spreads each turn
