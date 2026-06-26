@@ -230,9 +230,10 @@ void CampaignManager::onWeekStart(int week, LuaEngine& lua)
     if (m_pendingDecIdx >= 0) return;  // unresolved decision — wait for player
     auto& mission = m_missions[m_currentIdx];
 
-    // Check if a decision should trigger this week
+    // Check if a decision should trigger this week (relative to mission start week)
+    int relWeek = week - m_missionStartWeek + 1;
     for (auto& [trigWeek, decId] : mission.decisionWeekTriggers) {
-        if (trigWeek == week) {
+        if (trigWeek == relWeek) {
             for (int i = 0; i < static_cast<int>(mission.decisions.size()); ++i) {
                 if (mission.decisions[i].id == static_cast<uint32_t>(decId) &&
                     !mission.decisions[i].resolved)

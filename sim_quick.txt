@@ -1,0 +1,4 @@
+=== Full AI vs AI Game Simulator ===
+Games per matchup: 20 | Base seed: 42 | Max weeks: 30
+
+  [1/36] HolyOrder vs CrimsonWardens: 0%     [1/36] HolyOrder vs CrimsonWardens: 5%     [1/36] HolyOrder vs CrimsonWardens: 10%     [1/36] HolyOrder vs CrimsonWardens: 15%     [1/36] HolyOrder vs CrimsonWardens: 20%     [1/36] HolyOrder vs CrimsonWardens: 25%     [1/36] HolyOrder vs CrimsonWardens: 30%     [1/36] HolyOrder vs CrimsonWardens: 35%     [1/36] HolyOrder vs CrimsonWardens: 40%     [1/36] HolyOrder vs CrimsonWardens: 45%     [1/36] HolyOrder vs CrimsonWardens: 50%     [1/36] HolyOrder vs CrimsonWardens: 55%     [1/36] HolyOrder vs CrimsonWardens: 60%     [1/36] HolyOrder vs CrimsonWardens: 65%     [1/36] HolyOrder vs CrimsonWardens: 70%     [1/36] HolyOrder vs CrimsonWardens: 75%   
