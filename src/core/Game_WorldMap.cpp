@@ -367,8 +367,10 @@ void Game::updateWorldMap(float dt)
                 for (auto& obj : m_worldObjects) {
                     if (obj.id != m_pendingObjId) continue;
                     const auto& udefs2 = m_registry.units();
+                    FactionId dwFaction = static_cast<FactionId>(obj.faction);
                     for (const auto& ud : udefs2) {
                         if (ud.tier != obj.value) continue;
+                        if (ud.faction != dwFaction) continue;
                         int can = obj.available;
                         if (can <= 0) break;
                         obj.available = 0;
