@@ -20,12 +20,12 @@ std::vector<CampaignMission> CampaignManager::buildCampaign()
         m.startWeeks    = 3;
 
         // Objectives
-        // targetId=0 means "any enemy town" — works with procedural maps
-        m.objectives.push_back({1, ObjectiveType::CaptureTown,
-            "Capture the enemy stronghold", true, false, 0});
-        // targetValue=6 = 6 weeks from mission start (relative)
+        // Survive 6 weeks is the main required objective (works on any map)
         m.objectives.push_back({2, ObjectiveType::SurviveWeeks,
             "Survive 6 weeks", true, false, 0, 6});
+        // Bonus: capture an enemy-held stronghold (if enemy captures a town first)
+        m.objectives.push_back({1, ObjectiveType::CaptureTown,
+            "Capture an enemy stronghold (bonus)", false, false, 0});
         m.objectives.push_back({3, ObjectiveType::CollectResources,
             "Gather 500 Gold for relief supplies (bonus)", false, false, 0, 500,
             ResourceType::Gold});
@@ -164,12 +164,15 @@ std::vector<CampaignMission> CampaignManager::buildCampaign()
         m.playerFaction = FactionId::HolyOrder;
         m.startWeeks    = 8;
 
-        // Survive 4 weeks from mission 3 start (relative)
+        // Survive 4 weeks from mission 3 start (relative) — main required objective
         m.objectives.push_back({7, ObjectiveType::SurviveWeeks,
             "Hold the Rift for 4 weeks while factions arrive", true, false, 0, 4});
-        // Capture any remaining enemy town (targetId=0)
+        // Defeat the Void Champion (enemy hero spawned at M3 start)
+        m.objectives.push_back({9, ObjectiveType::DefeatHero,
+            "Defeat the Void Champion", true, false, 0});
+        // Bonus: capture any enemy town
         m.objectives.push_back({8, ObjectiveType::CaptureTown,
-            "Control the Convergence Citadel", true, false, 0});
+            "Control the Convergence Citadel (bonus)", false, false, 0});
 
         // Decision 5 — week 2: The Rift choice (the alignment-defining moment)
         {
