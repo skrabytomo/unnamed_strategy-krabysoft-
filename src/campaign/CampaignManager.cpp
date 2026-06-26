@@ -20,8 +20,10 @@ std::vector<CampaignMission> CampaignManager::buildCampaign()
         m.startWeeks    = 3;
 
         // Objectives
+        // targetId=0 means "any enemy town" — works with procedural maps
         m.objectives.push_back({1, ObjectiveType::CaptureTown,
-            "Capture Ashgate Fort", true, false, 1});
+            "Capture the enemy stronghold", true, false, 0});
+        // targetValue=6 = 6 weeks from mission start (relative)
         m.objectives.push_back({2, ObjectiveType::SurviveWeeks,
             "Survive 6 weeks", true, false, 0, 6});
         m.objectives.push_back({3, ObjectiveType::CollectResources,
@@ -88,10 +90,12 @@ std::vector<CampaignMission> CampaignManager::buildCampaign()
         m.playerFaction = FactionId::HolyOrder;
         m.startWeeks    = 6;
 
-        m.objectives.push_back({4, ObjectiveType::ReachTile,
-            "Reach the Void Rift", true, false, 0, 0, ResourceType::Gold, {12, -8}});
+        // Defeat any enemy hero (id=0 = any) — the new enemy spawned at mission start
         m.objectives.push_back({5, ObjectiveType::DefeatHero,
-            "Drive back the Empire vanguard", true, false, 0}); // 0 = any enemy hero
+            "Drive back the Empire vanguard", true, false, 0});
+        // Survive 4 weeks from mission 2 start
+        m.objectives.push_back({4, ObjectiveType::SurviveWeeks,
+            "Hold the Thornwood passage for 4 weeks", true, false, 0, 4});
         m.objectives.push_back({6, ObjectiveType::CollectResources,
             "Carry 10 VerdantSap for Thornkin passage (bonus)", false, false,
             0, 10, ResourceType::VerdantSap});
@@ -160,10 +164,12 @@ std::vector<CampaignMission> CampaignManager::buildCampaign()
         m.playerFaction = FactionId::HolyOrder;
         m.startWeeks    = 8;
 
+        // Survive 4 weeks from mission 3 start (relative)
         m.objectives.push_back({7, ObjectiveType::SurviveWeeks,
             "Hold the Rift for 4 weeks while factions arrive", true, false, 0, 4});
+        // Capture any remaining enemy town (targetId=0)
         m.objectives.push_back({8, ObjectiveType::CaptureTown,
-            "Control the Convergence Citadel", true, false, 3});
+            "Control the Convergence Citadel", true, false, 0});
 
         // Decision 5 — week 2: The Rift choice (the alignment-defining moment)
         {
@@ -210,8 +216,9 @@ void CampaignManager::init()
 
 void CampaignManager::startMission(int id)
 {
-    m_currentIdx    = id;
-    m_pendingDecIdx = -1;
+    m_currentIdx        = id;
+    m_pendingDecIdx     = -1;
+    m_missionStartWeek  = 1;  // Game will call setMissionStartWeek() to correct this
     gLog("[Campaign] Mission %d: %s\n",
            m_missions[id].id, m_missions[id].name.c_str());
     fireEvent(CampaignEvent::MissionStarted);
@@ -238,10 +245,11 @@ void CampaignManager::onWeekStart(int week, LuaEngine& lua)
         }
     }
 
-    // Check SurviveWeeks objectives (runs even if a decision was just triggered)
+    // Check SurviveWeeks objectives (relative to mission start week)
     for (auto& obj : mission.objectives) {
         if (obj.type == ObjectiveType::SurviveWeeks && !obj.completed) {
-            if (week >= obj.targetValue) {
+            int weeksElapsed = week - m_missionStartWeek;
+            if (weeksElapsed >= obj.targetValue) {
                 tryCompleteObjective(obj, true);
             }
         }
@@ -254,10 +262,10 @@ void CampaignManager::onTownCaptured(uint32_t townId)
 {
     if (m_over) return;
     for (auto& obj : m_missions[m_currentIdx].objectives) {
-        if (obj.type == ObjectiveType::CaptureTown &&
-            obj.targetId == townId && !obj.completed)
-        {
-            tryCompleteObjective(obj, true);
+        if (obj.type == ObjectiveType::CaptureTown && !obj.completed) {
+            // targetId==0 means "any enemy town"; non-zero requires exact match
+            if (obj.targetId == 0 || obj.targetId == townId)
+                tryCompleteObjective(obj, true);
         }
     }
     checkAllObjectives();

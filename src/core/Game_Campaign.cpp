@@ -199,23 +199,70 @@ void Game::enterCampaign()
         }
     }
     m_campaign.init();
+    m_campaign.setMissionStartWeek(1);  // mission 0 always starts at week 1
 
     // Lock in convergence eligibility at campaign start (HideoutDB state won't change mid-run)
     m_campaign.setConvergenceEligible(m_hideout.isConvergenceUnlocked());
 
     m_campaign.setEventCallback([this](CampaignEvent e) {
-        if (e == CampaignEvent::MissionCompleted)
+        if (e == CampaignEvent::MissionStarted) {
+            // Record what global week this mission began (for relative SurviveWeeks)
+            m_campaign.setMissionStartWeek(m_turns.week());
+            // For missions 2+ spawn a fresh enemy hero so DefeatHero objectives work
+            const CampaignMission* cm = m_campaign.currentMission();
+            if (cm && cm->id > 0 && !m_heroes.empty()) {
+                // Find a distant valid tile for new enemy hero
+                const Hero& ph = m_heroes[m_activeHeroIdx];
+                HexCoord ePos = ph.pos;
+                // Search outward for a clear tile far from player
+                for (int dist = 10; dist >= 4; --dist) {
+                    bool found = false;
+                    for (auto& coord : m_map.coords()) {
+                        if (HexGrid::distance(ph.pos, coord) < dist) continue;
+                        const HexTile* ht = m_map.getTile(coord);
+                        if (!ht || ht->terrain == Terrain::Water ||
+                            ht->blocked || ht->heroId != 0) continue;
+                        ePos = coord;
+                        found = true;
+                        break;
+                    }
+                    if (found) break;
+                }
+                Hero newEnemy;
+                newEnemy.id      = 99u + static_cast<uint32_t>(m_enemyHeroes.size());
+                newEnemy.name    = (cm->id == 1) ? "Empire Vanguard" : "Void Champion";
+                newEnemy.faction = (cm->id == 1) ? FactionId::EternalEmpire
+                                                  : FactionId::Voidkin;
+                newEnemy.pos     = ePos;
+                newEnemy.maxMove = 16;
+                newEnemy.movePool= 16;
+                newEnemy.attack  = 3 + cm->id * 2;
+                newEnemy.defense = 2 + cm->id * 2;
+                // Build an army scaled to mission difficulty
+                const auto& udefs = m_registry.units();
+                for (const auto& ud : udefs) {
+                    if (ud.faction != newEnemy.faction) continue;
+                    if (ud.tier > cm->id + 1) continue;
+                    newEnemy.army.push_back({ud.id, 4 + cm->id * 3});
+                    if ((int)newEnemy.army.size() >= 3) break;
+                }
+                if (HexTile* ht = m_map.getTile(ePos)) ht->heroId = newEnemy.id;
+                m_enemyHeroes.push_back(newEnemy);
+                gLog("[Campaign] Spawned new enemy hero '%s' for mission %d at (%d,%d)\n",
+                     newEnemy.name.c_str(), cm->id, ePos.q, ePos.r);
+            }
+        } else if (e == CampaignEvent::MissionCompleted) {
             gLog("[Campaign] Mission complete!\n");
-        else if (e == CampaignEvent::MissionFailed)
+        } else if (e == CampaignEvent::MissionFailed) {
             gLog("[Campaign] Mission failed.\n");
-        else if (e == CampaignEvent::CampaignEnded) {
+        } else if (e == CampaignEvent::CampaignEnded) {
             bool convergenceOk = m_campaign.convergenceEligible();
             FactionId unlocked = m_campaign.unlockedFaction(convergenceOk);
             gLog("[Campaign] Ended — faction unlocked: %d\n",
                    static_cast<int>(unlocked));
             if (m_campaign.playerWon()) {
                 m_hideout.completeMilestone(Milestone::CAMPAIGN_WON);
-                m_hideout.addXP(200);   // bonus XP for completing the campaign
+                m_hideout.addXP(200);
                 if (convergenceOk)
                     m_hideout.completeMilestone(Milestone::CONVERGENCE_UNLOCK);
             }

@@ -61,6 +61,10 @@ public:
 
     void setEventCallback(EventCallback cb) { m_onEvent = cb; }
 
+    // Called by Game when new week fires (needed for relative SurviveWeeks)
+    void setMissionStartWeek(int w) { m_missionStartWeek = w; }
+    int  missionStartWeek() const   { return m_missionStartWeek; }
+
     // Persistence
     CampaignSaveState toSaveState() const;
     void fromSaveState(const CampaignSaveState& s);
@@ -79,7 +83,8 @@ private:
     bool             m_over              = false;
     bool             m_won               = false;
     bool             m_convergenceEligible = false;
-    int              m_pendingDecIdx = -1;  // index into current mission decisions
+    int              m_pendingDecIdx     = -1;
+    int              m_missionStartWeek  = 1;  // global week when current mission began
     AlignmentSystem  m_alignment;
     EventCallback    m_onEvent;
 };
