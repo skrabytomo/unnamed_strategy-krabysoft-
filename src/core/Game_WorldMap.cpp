@@ -352,9 +352,47 @@ void Game::updateWorldMap(float dt)
             m_watchingAI = false; // game over — stop the sim
             return;
         }
-        if (m_showCombatResult)   m_showCombatResult   = false;
-        if (m_showTownLostPopup)  m_showTownLostPopup  = false;
-        if (m_showWeekSummary)    m_showWeekSummary    = false;
+        if (m_showCombatResult)        m_showCombatResult        = false;
+        if (m_showTownLostPopup)       m_showTownLostPopup       = false;
+        if (m_showWeekSummary)         m_showWeekSummary         = false;
+        if (m_showEncounterPrompt) {
+            // Auto-accept encounters (fight neutral stacks)
+            if (m_encounterOnAccept) { m_encounterOnAccept(); m_encounterOnAccept = nullptr; }
+            m_showEncounterPrompt = false;
+        }
+        if (m_showDwellingPopup) {
+            // Auto-recruit all available units from standalone dwelling
+            if (!m_heroes.empty() && m_pendingObjId != 0) {
+                Hero& dh = m_heroes[m_activeHeroIdx];
+                for (auto& obj : m_worldObjects) {
+                    if (obj.id != m_pendingObjId) continue;
+                    const auto& udefs2 = m_registry.units();
+                    for (const auto& ud : udefs2) {
+                        if (ud.tier != obj.value) continue;
+                        int can = obj.available;
+                        if (can <= 0) break;
+                        obj.available = 0;
+                        bool merged = false;
+                        for (auto& s : dh.army)
+                            if (s.defId == ud.id) { s.count += can; merged = true; break; }
+                        if (!merged && dh.army.size() < 7)
+                            dh.army.push_back({ud.id, can});
+                        break;
+                    }
+                    break;
+                }
+            }
+            m_showDwellingPopup = false;
+        }
+        if (m_showQuestPopup)          m_showQuestPopup          = false;
+        if (m_showTreasureChestPopup)  m_showTreasureChestPopup  = false;
+        if (m_showCryptPopup)          m_showCryptPopup          = false;
+        if (m_showUtopiaPopup)         m_showUtopiaPopup         = false;
+        if (m_showStatShrinePopup)     m_showStatShrinePopup     = false;
+        if (m_showTreeKnowledgePopup)  m_showTreeKnowledgePopup  = false;
+        if (m_showShipyardPopup)       m_showShipyardPopup       = false;
+        if (m_showSiegeCampPrompt)     m_showSiegeCampPrompt     = false;
+        if (m_showMineInfoPopup)       m_showMineInfoPopup       = false;
         if (m_showLevelUpModal && !m_levelUpOffers.empty() && !m_heroes.empty()) {
             // Auto-pick first skill offer
             Hero& lvlHero = m_heroes[m_activeHeroIdx];
