@@ -246,33 +246,21 @@ void Game::renderMainMenu()
 
         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
 
-        ImGui::TextDisabled("Choose a slot. Existing save will be overwritten.");
-        ImGui::Spacing();
-
-        for (int s = 0; s < 5; ++s) {
-            std::string path = "saves/save" + std::to_string(s) + ".json";
-            SlotMeta meta = readSlotMeta(path);
-            char lbl[200];
-            if (meta.exists)
-                std::snprintf(lbl, sizeof(lbl),
-                    "Slot %d  |  %s  (%s)  Day %d  Week %d  [overwrite]##ng%d",
-                    s + 1, meta.heroName.c_str(), meta.factionName.c_str(),
-                    meta.day, meta.week, s);
-            else
-                std::snprintf(lbl, sizeof(lbl), "Slot %d  |  Empty##ng%d", s + 1, s);
-
-            ImVec4 tc = meta.exists ? ImVec4(1.0f, 0.65f, 0.15f, 1.0f)
-                                    : ImVec4(0.5f, 0.9f,  0.5f,  1.0f);
-            ImGui::PushStyleColor(ImGuiCol_Text, tc);
-            if (ImGui::Button(lbl, ImVec2(bw, 36))) {
-                m_activeSlot = s;
-                startNewGame();
-                m_state    = GameState::WorldMap;
-                m_menuMode = 0;
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.45f, 0.15f, 1.0f));
+        if (ImGui::Button("Start New Game", ImVec2(bw, 42))) {
+            // Auto-pick first empty slot; fall back to slot 0 if all full
+            int slot = 0;
+            for (int s = 0; s < 5; ++s) {
+                std::string path = "saves/save" + std::to_string(s) + ".json";
+                if (!readSlotMeta(path).exists) { slot = s; break; }
             }
-            ImGui::PopStyleColor();
-            ImGui::Spacing();
+            m_activeSlot = slot;
+            startNewGame();
+            m_state    = GameState::WorldMap;
+            m_menuMode = 0;
         }
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
         ImGui::Separator(); ImGui::Spacing();
         if (ImGui::Button("Back##ng", ImVec2(bw, 30))) m_menuMode = 0;
     }
@@ -378,6 +366,24 @@ void Game::renderMainMenu()
         if (ImGui::Checkbox("Fullscreen", &m_settingsFullscreen))
             SDL_SetWindowFullscreen(m_window,
                 m_settingsFullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+
+        // Resolution picker (windowed mode only)
+        if (!m_settingsFullscreen) {
+            static const char* kResLabels[] = { "1280 x 720", "1600 x 900", "1920 x 1080", "2560 x 1440" };
+            static const int   kResW[]      = { 1280, 1600, 1920, 2560 };
+            static const int   kResH[]      = { 720,  900,  1080, 1440 };
+            // Determine current index
+            int curW, curH;
+            SDL_GetWindowSize(m_window, &curW, &curH);
+            int resIdx = 0;
+            for (int i = 0; i < 4; ++i)
+                if (kResW[i] == curW && kResH[i] == curH) { resIdx = i; break; }
+            if (ImGui::Combo("Resolution", &resIdx, kResLabels, 4)) {
+                SDL_SetWindowSize(m_window, kResW[resIdx], kResH[resIdx]);
+                SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+            }
+        }
+
         ImGui::Checkbox("Floating Combat Numbers", &m_settingsShowDmgNums);
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("Show damage numbers floating above units during combat.");
