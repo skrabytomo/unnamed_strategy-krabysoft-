@@ -352,9 +352,9 @@ void Game::updateWorldMap(float dt)
             m_watchingAI = false; // game over — stop the sim
             return;
         }
-        if (m_showCombatResult) {
-            m_showCombatResult = false;
-        }
+        if (m_showCombatResult)   m_showCombatResult   = false;
+        if (m_showTownLostPopup)  m_showTownLostPopup  = false;
+        if (m_showWeekSummary)    m_showWeekSummary    = false;
         if (m_showLevelUpModal && !m_levelUpOffers.empty() && !m_heroes.empty()) {
             // Auto-pick first skill offer
             Hero& lvlHero = m_heroes[m_activeHeroIdx];
