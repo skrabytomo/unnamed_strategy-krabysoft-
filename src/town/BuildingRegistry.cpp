@@ -458,7 +458,7 @@ void BuildingRegistry::init()
     using T = UnitTag;
 
     // T1 Penitent
-    addUnit(1001,"Penitent",       F::HolyOrder,1,P::None, 14,3,3,1,3,5, gold(65),  T::Humanoid|T::Holy);
+    addUnit(1001,"Penitent",       F::HolyOrder,1,P::None, 16,3,3,1,3,5, gold(65),  T::Humanoid|T::Holy);
     addUnit(1002,"Penitent(A)",    F::HolyOrder,1,P::PathA,13,3,3,1,4,7, gold(65),  T::Humanoid|T::Holy);
     addUnit(1003,"Penitent(B)",    F::HolyOrder,1,P::PathB,18,3,4,1,2,4, gold(70),  T::Humanoid|T::Holy);
     // T2 Torch Bearer
