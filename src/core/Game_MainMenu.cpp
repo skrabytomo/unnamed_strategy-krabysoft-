@@ -537,6 +537,7 @@ void Game::renderMainMenu()
                 if (t.ownerId > 1)
                     t.faction = static_cast<FactionId>(m_watchAIFaction2);
             m_watchingAI  = true;
+            m_fogDisabled = true;
             m_watchAITimer= 1.0f / m_watchAISpeed;
             m_state    = GameState::WorldMap;
             m_menuMode = 0;

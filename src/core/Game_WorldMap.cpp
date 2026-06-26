@@ -353,7 +353,8 @@ void Game::updateWorldMap(float dt)
     if (m_watchingAI) {
         // Auto-dismiss any blocking modals so the sim can continue
         if (m_showVictory || m_showDefeat) {
-            m_watchingAI = false; // game over — stop the sim
+            m_watchingAI  = false;
+            m_fogDisabled = false;
             return;
         }
         if (m_showCombatResult)        m_showCombatResult        = false;
@@ -1924,7 +1925,8 @@ void Game::renderWorldMapImGui()
             ImGui::SameLine(0, 8);
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0.1f, 1.0f));
             if (ImGui::Button("Stop##waistop")) {
-                m_watchingAI = false;
+                m_watchingAI  = false;
+                m_fogDisabled = false;
                 m_state = GameState::MainMenu;
             }
             ImGui::PopStyleColor();
