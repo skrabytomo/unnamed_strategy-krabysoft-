@@ -257,11 +257,10 @@ static TownSave townFromJson(const json& j)
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
-bool SaveLoad::saveGame(const std::string& path, const GameSaveData& data)
+static json buildSaveJson(const GameSaveData& data)
 {
-    try {
-        json j;
-        j["version"]      = data.version;
+    json j;
+    j["version"]      = data.version;
         j["day"]          = data.day;
         j["week"]         = data.week;
         j["difficulty"]   = data.difficulty;
@@ -318,9 +317,21 @@ bool SaveLoad::saveGame(const std::string& path, const GameSaveData& data)
             j["campaign"] = camp;
         }
 
+    return j;
+}
+
+std::string SaveLoad::saveGameToString(const GameSaveData& data)
+{
+    try   { return buildSaveJson(data).dump(2); }
+    catch (...) { return {}; }
+}
+
+bool SaveLoad::saveGame(const std::string& path, const GameSaveData& data)
+{
+    try {
         std::ofstream f(path);
         if (!f.is_open()) return false;
-        f << j.dump(2);
+        f << buildSaveJson(data).dump(2);
         return true;
     }
     catch (...) {
@@ -328,14 +339,8 @@ bool SaveLoad::saveGame(const std::string& path, const GameSaveData& data)
     }
 }
 
-bool SaveLoad::loadGame(const std::string& path, GameSaveData& out)
+static bool parseJsonIntoSave(const json& j, GameSaveData& out)
 {
-    try {
-        std::ifstream f(path);
-        if (!f.is_open()) return false;
-        json j;
-        f >> j;
-
         out.version       = j.value("version", 1);
         out.day           = j.value("day", 1);
         out.week          = j.value("week", 1);
@@ -393,10 +398,26 @@ bool SaveLoad::loadGame(const std::string& path, GameSaveData& out)
         }
 
         return true;
+}
+
+bool SaveLoad::loadGameFromString(const std::string& jsonStr, GameSaveData& out)
+{
+    try {
+        json j = json::parse(jsonStr);
+        return parseJsonIntoSave(j, out);
     }
-    catch (...) {
-        return false;
+    catch (...) { return false; }
+}
+
+bool SaveLoad::loadGame(const std::string& path, GameSaveData& out)
+{
+    try {
+        std::ifstream f(path);
+        if (!f.is_open()) return false;
+        json j; f >> j;
+        return parseJsonIntoSave(j, out);
     }
+    catch (...) { return false; }
 }
 
 // ── Helper: pack one Hero into HeroSave ───────────────────────────────────────

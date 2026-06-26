@@ -1310,10 +1310,7 @@ void Game::doEndTurn()
             }
 
             // Auto-save at start of each new week
-            if (m_state == GameState::Campaign)
-                saveGame("saves/campaign" + std::to_string(m_campaignActiveSlot) + ".json");
-            else
-                saveGame("saves/save" + std::to_string(m_activeSlot) + ".json");
+            if (m_settingsAutoSave) saveGame();
 
             // ── AI town building: faction-specific priority order ─────────────────
             {
@@ -1838,12 +1835,7 @@ void Game::doEndTurn()
             }
 
             // Auto-save at week start if enabled
-            if (m_settingsAutoSave) {
-                if (m_state == GameState::Campaign)
-                    saveGame("saves/campaign" + std::to_string(m_campaignActiveSlot) + ".json");
-                else if (m_activeSlot >= 0)
-                    saveGame("saves/save" + std::to_string(m_activeSlot) + ".json");
-            }
+            if (m_settingsAutoSave) saveGame();
         }
     // Watch AI: passive victory/defeat check (needed when last enemy town captured without combat)
     if (m_watchingAI && !m_showVictory && !m_showDefeat) {
@@ -4383,13 +4375,10 @@ void Game::renderDefeatModal()
             }
             ImGui::SameLine();
         }
-        if (ImGui::Button(m_finalDefeat ? "Load Last Save" : "Load Last Save", ImVec2(m_finalDefeat ? bw * 0.6f : -1, 36))) {
+        if (ImGui::Button("Load Last Save", ImVec2(m_finalDefeat ? bw * 0.6f : -1, 36))) {
             m_showDefeat  = false;
             m_finalDefeat = false;
-            if (m_state == GameState::Campaign)
-                loadGame("saves/campaign" + std::to_string(m_campaignActiveSlot) + ".json");
-            else
-                loadGame("saves/save" + std::to_string(m_activeSlot) + ".json");
+            if (m_activeSaveId) loadGame(m_activeSaveId);
             m_audio.playMusic("worldmap_music");
             ImGui::CloseCurrentPopup();
         }

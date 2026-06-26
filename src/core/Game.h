@@ -25,6 +25,7 @@
 #include "../data/Resources.h"
 #include "../data/ResourceNode.h"
 #include "../data/SaveLoad.h"
+#include "../data/SaveDB.h"
 #include "../data/MapFormat.h"
 #include "../ui/UIRenderer.h"
 #include "../ui/WorldMapHUD.h"
@@ -109,9 +110,15 @@ private:
     void beginImGuiFrame();
     void endImGuiFrame();
 
-    // ── Save / Load ────────────────────────────────────────────────────────────
-    void saveGame(const std::string& path);
-    bool loadGame(const std::string& path);
+    // ── Save / Load (DB-backed) ────────────────────────────────────────────────
+    // Save to DB. If m_activeSaveId==0 creates a new row; otherwise overwrites.
+    void saveGame(const std::string& customName = "");
+    // Load from DB row id. Returns false on failure.
+    bool loadGame(int64_t saveId);
+    // Legacy file-path load (for campaign autosave compatibility)
+    bool loadGameFile(const std::string& path);
+
+    bool loadGameApply(GameSaveData& data);
 
     // ── Level-up modal ─────────────────────────────────────────────────────────
     void renderLevelUpModal();
@@ -516,10 +523,12 @@ private:
     int  m_tutorialStep         = 0;
     void renderCampaignTutorial();
 
-    // ── Main menu sub-state & save slots ─────────────────────────────────────
+    // ── Save DB ───────────────────────────────────────────────────────────────
+    SaveDB  m_saveDB;
+    int64_t m_activeSaveId = 0;  // 0 = no current save row (new game, not yet saved)
+
+    // ── Main menu sub-state ───────────────────────────────────────────────────
     int  m_menuMode            = 0;   // 0=main, 1=newgame, 2=loadgame, 3=settings, 4=campaign, 5=battlesim
-    int  m_activeSlot          = 0;   // which general save slot (0-4) is in use
-    int  m_campaignActiveSlot  = 0;   // which campaign save slot (0-2) is in use
     int  m_newGameMapSize    = 0;   // 0=Small, 1=Medium, 2=Large, 3=XLarge
     int  m_newGameFaction    = 0;   // 0=HolyOrder ... 8=Convergence
     int  m_newGameDifficulty = 1;   // 0=Easy, 1=Normal, 2=Hard

@@ -24,16 +24,6 @@ extern "C" {
 
 static constexpr const char* HIDEOUT_PATH = "saves/hideout.db";
 
-static std::string slotPath(int slot)
-{
-    return "saves/save" + std::to_string(slot) + ".json";
-}
-
-static std::string campaignSlotPath(int slot)
-{
-    return "saves/campaign" + std::to_string(slot) + ".json";
-}
-
 // ── Init ──────────────────────────────────────────────────────────────────────
 bool Game::init(const std::string& title, int width, int height)
 {
@@ -292,6 +282,9 @@ bool Game::init(const std::string& title, int width, int height)
     // Open hideout DB (non-fatal if it fails)
     m_hideout.open(HIDEOUT_PATH);
 
+    // Open save DB
+    m_saveDB.open("saves/saves.db");
+
     // Scripting
     if (m_lua.init()) {
         m_triggers.setEngine(&m_lua);
@@ -387,18 +380,8 @@ void Game::processEvents()
 void Game::update(float dt)
 {
     m_audio.update();
-    if (m_input.keyDown(SDLK_F5)) {
-        if (m_state == GameState::Campaign)
-            saveGame(campaignSlotPath(m_campaignActiveSlot));
-        else
-            saveGame(slotPath(m_activeSlot));
-    }
-    if (m_input.keyDown(SDLK_F9)) {
-        if (m_state == GameState::Campaign)
-            loadGame(campaignSlotPath(m_campaignActiveSlot));
-        else
-            loadGame(slotPath(m_activeSlot));
-    }
+    if (m_input.keyDown(SDLK_F5)) saveGame();
+    if (m_input.keyDown(SDLK_F9)) { if (m_activeSaveId) loadGame(m_activeSaveId); }
     if (m_input.keyDown(SDLK_F2)) {
         if (m_state == GameState::Editor) exitEditor();
         else enterEditor();
@@ -436,11 +419,21 @@ void Game::render()
     SDL_GL_SwapWindow(m_window);
 }
 
+// ── Faction name helper (mirrors factionShortName in Game_MainMenu.cpp) ──────
+static const char* factionNameStr(int f) {
+    switch (f) {
+    case 0: return "Holy Order";     case 1: return "Crimson Wardens";
+    case 2: return "Thornkin";       case 3: return "Eternal Empire";
+    case 4: return "Bloodsworn";     case 5: return "Voidkin";
+    case 6: return "Iron Assembly";  case 7: return "Amalgamate";
+    case 8: return "Convergence";    default: return "Unknown";
+    }
+}
+
 // ── Save / Load ───────────────────────────────────────────────────────────────
-void Game::saveGame(const std::string& path)
+void Game::saveGame(const std::string& customName)
 {
-    SDL_RWops* f = SDL_RWFromFile("saves/.keep", "w");
-    if (f) SDL_RWclose(f);
+    if (!m_saveDB.isOpen()) return;
 
     GameSaveData data = SaveLoad::packState(
         m_map, m_heroes, m_enemyHeroes,
@@ -449,23 +442,41 @@ void Game::saveGame(const std::string& path)
         m_turns.day(), m_turns.week(),
         m_mapSize,
         m_newGameDifficulty, m_activeHeroIdx);
-
     data.campaign = m_campaign.toSaveState();
 
-    if (SaveLoad::saveGame(path, data))
-        gLog("Game saved to %s\n", path.c_str());
-    else
-        fprintf(stderr, "Save failed: %s\n", path.c_str());
-}
+    std::string jsonStr = SaveLoad::saveGameToString(data);
+    if (jsonStr.empty()) { fprintf(stderr, "Save serialization failed\n"); return; }
 
-bool Game::loadGame(const std::string& path)
-{
-    GameSaveData data;
-    if (!SaveLoad::loadGame(path, data)) {
-        fprintf(stderr, "Load failed: %s\n", path.c_str());
-        return false;
+    bool isCampaign = data.campaign.active;
+    std::string heroName   = m_heroes.empty() ? "" : m_heroes[0].name;
+    std::string factionStr = m_heroes.empty() ? "" : factionNameStr(static_cast<int>(m_heroes[0].faction));
+
+    // Auto-generate name if not provided
+    std::string name = customName;
+    if (name.empty()) {
+        if (isCampaign) {
+            char buf[64];
+            std::snprintf(buf, sizeof(buf), "Campaign – Week %d", m_turns.week());
+            name = buf;
+        } else {
+            char buf[64];
+            std::snprintf(buf, sizeof(buf), "%s – Week %d", heroName.c_str(), m_turns.week());
+            name = buf;
+        }
     }
 
+    m_activeSaveId = m_saveDB.upsert(m_activeSaveId, name, jsonStr, isCampaign,
+                                     data.campaign.missionIdx,
+                                     heroName, factionStr,
+                                     data.day, data.week);
+    if (m_activeSaveId)
+        gLog("Game saved (id %lld, \"%s\")\n", (long long)m_activeSaveId, name.c_str());
+    else
+        fprintf(stderr, "Save DB write failed\n");
+}
+
+bool Game::loadGameApply(GameSaveData& data)
+{
     m_mapSize = static_cast<MapSize>(data.mapSizeEnum);
     m_map.create(m_mapSize);
 
@@ -501,8 +512,36 @@ bool Game::loadGame(const std::string& path)
         m_state = GameState::Campaign;
     }
 
-    gLog("Game loaded from %s (day %d week %d)\n", path.c_str(), day, week);
+    gLog("Game loaded (day %d week %d)\n", day, week);
     return true;
+}
+
+bool Game::loadGame(int64_t saveId)
+{
+    if (!m_saveDB.isOpen()) return false;
+    std::string jsonStr;
+    if (!m_saveDB.load(saveId, jsonStr)) {
+        fprintf(stderr, "LoadGame: row %lld not found\n", (long long)saveId);
+        return false;
+    }
+    GameSaveData data;
+    if (!SaveLoad::loadGameFromString(jsonStr, data)) {
+        fprintf(stderr, "LoadGame: JSON parse failed for id %lld\n", (long long)saveId);
+        return false;
+    }
+    m_activeSaveId = saveId;
+    return loadGameApply(data);
+}
+
+bool Game::loadGameFile(const std::string& path)
+{
+    GameSaveData data;
+    if (!SaveLoad::loadGame(path, data)) {
+        fprintf(stderr, "Load failed: %s\n", path.c_str());
+        return false;
+    }
+    m_activeSaveId = 0; // file load doesn't have a DB id
+    return loadGameApply(data);
 }
 
 // ── New game (reset + world gen) ──────────────────────────────────────────────

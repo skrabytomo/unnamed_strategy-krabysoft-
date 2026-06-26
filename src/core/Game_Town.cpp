@@ -934,10 +934,7 @@ void Game::renderPauseMenu()
         ImGui::Spacing();
 
         if (ImGui::Button("Save Game  [F5]", ImVec2(-1, 32))) {
-            if (m_state == GameState::Campaign)
-                saveGame("saves/campaign" + std::to_string(m_campaignActiveSlot) + ".json");
-            else
-                saveGame("saves/save" + std::to_string(m_activeSlot) + ".json");
+            saveGame();
             m_showPauseMenu = false;
             ImGui::CloseCurrentPopup();
         }
