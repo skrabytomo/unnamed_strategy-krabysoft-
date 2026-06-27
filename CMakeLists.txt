@@ -7,30 +7,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-# ── FetchContent dependencies ─────────────────────────────────────────────────
-include(FetchContent)
-
-# nlohmann/json (header-only)
-FetchContent_Declare(
-    nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG        v3.11.3
-    GIT_SHALLOW    TRUE
-)
-FetchContent_MakeAvailable(nlohmann_json)
-
-# Dear ImGui
-FetchContent_Declare(
-    imgui
-    GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG        v1.90.8
-    GIT_SHALLOW    TRUE
-)
-FetchContent_GetProperties(imgui)
-if(NOT imgui_POPULATED)
-    FetchContent_Populate(imgui)
-endif()
-
 # ── Find system packages ───────────────────────────────────────────────────────
 find_package(SDL2   REQUIRED)
 find_package(OpenGL REQUIRED)
@@ -39,28 +15,21 @@ if(WIN32)
 endif()
 find_package(SQLite3 REQUIRED)
 find_package(Lua 5.4 REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
-# ── ImGui static library ──────────────────────────────────────────────────────
-add_library(imgui_lib STATIC
-    ${imgui_SOURCE_DIR}/imgui.cpp
-    ${imgui_SOURCE_DIR}/imgui_draw.cpp
-    ${imgui_SOURCE_DIR}/imgui_tables.cpp
-    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+# ── ImGui (system package) ────────────────────────────────────────────────────
+add_library(imgui_lib INTERFACE)
+target_include_directories(imgui_lib INTERFACE
+    /usr/include/imgui
+    /usr/include/imgui/backends
 )
-target_include_directories(imgui_lib PUBLIC
-    ${imgui_SOURCE_DIR}
-    ${imgui_SOURCE_DIR}/backends
-    ${SDL2_INCLUDE_DIRS}
-    ${OPENGL_INCLUDE_DIR}
+target_link_libraries(imgui_lib INTERFACE
+    /usr/lib/x86_64-linux-gnu/libimgui.a
+    /usr/lib/x86_64-linux-gnu/libstb.a
+    ${SDL2_LIBRARIES}
+    ${OPENGL_LIBRARIES}
+    GL
 )
-target_link_libraries(imgui_lib PUBLIC ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES})
-if(UNIX AND NOT APPLE)
-    target_link_libraries(imgui_lib PUBLIC GL)
-elseif(APPLE)
-    target_link_libraries(imgui_lib PUBLIC "-framework OpenGL")
-endif()
 
 # ── Game sources ──────────────────────────────────────────────────────────────
 file(GLOB_RECURSE SOURCES
