@@ -62,18 +62,20 @@ static DwellingSave dwellingFromJson(const json& j)
 static json resNodeToJson(const ResourceNodeSave& n)
 {
     return {{"id",n.id},{"q",n.posQ},{"r",n.posR},
-            {"type",n.type},{"amt",n.amount},{"dep",n.depleted},{"own",n.ownedBy}};
+            {"type",n.type},{"amt",n.amount},{"dep",n.depleted},{"own",n.ownedBy},
+            {"gb",n.guardBeaten}};
 }
 static ResourceNodeSave resNodeFromJson(const json& j)
 {
     ResourceNodeSave n;
-    n.id       = j.at("id").get<uint32_t>();
-    n.posQ     = j.at("q").get<int>();
-    n.posR     = j.at("r").get<int>();
-    n.type     = j.at("type").get<int>();
-    n.amount   = j.at("amt").get<int>();
-    n.depleted = j.value("dep", false);
-    n.ownedBy  = j.value("own", 0u);
+    n.id          = j.at("id").get<uint32_t>();
+    n.posQ        = j.at("q").get<int>();
+    n.posR        = j.at("r").get<int>();
+    n.type        = j.at("type").get<int>();
+    n.amount      = j.at("amt").get<int>();
+    n.depleted    = j.value("dep", false);
+    n.ownedBy     = j.value("own", 0u);
+    n.guardBeaten = j.value("gb", false);
     return n;
 }
 
@@ -591,13 +593,14 @@ GameSaveData SaveLoad::packState(const HexMap& map,
     // Resource nodes
     for (const auto& rn : resourceNodes) {
         ResourceNodeSave ns;
-        ns.id       = rn.id;
-        ns.posQ     = rn.pos.q;
-        ns.posR     = rn.pos.r;
-        ns.type     = static_cast<int>(rn.type);
-        ns.amount   = rn.amount;
-        ns.depleted = rn.depleted;
-        ns.ownedBy  = rn.ownedBy;
+        ns.id          = rn.id;
+        ns.posQ        = rn.pos.q;
+        ns.posR        = rn.pos.r;
+        ns.type        = static_cast<int>(rn.type);
+        ns.amount      = rn.amount;
+        ns.depleted    = rn.depleted;
+        ns.ownedBy     = rn.ownedBy;
+        ns.guardBeaten = rn.guardBeaten;
         save.resourceNodes.push_back(ns);
     }
 
@@ -681,12 +684,13 @@ void SaveLoad::unpackState(const GameSaveData& save,
     resourceNodes.clear();
     for (const auto& ns : save.resourceNodes) {
         ResourceNode rn;
-        rn.id       = ns.id;
-        rn.pos      = {ns.posQ, ns.posR};
-        rn.type     = static_cast<ResourceType>(ns.type);
-        rn.amount   = ns.amount;
-        rn.depleted = ns.depleted;
-        rn.ownedBy  = ns.ownedBy;
+        rn.id          = ns.id;
+        rn.pos         = {ns.posQ, ns.posR};
+        rn.type        = static_cast<ResourceType>(ns.type);
+        rn.amount      = ns.amount;
+        rn.depleted    = ns.depleted;
+        rn.ownedBy     = ns.ownedBy;
+        rn.guardBeaten = ns.guardBeaten;
         resourceNodes.push_back(rn);
     }
 

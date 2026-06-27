@@ -28,13 +28,14 @@ struct SkillInstSave { int defId = 0; int tier = 0; };
 // ── Resource node save ────────────────────────────────────────────────────────
 struct ResourceNodeSave
 {
-    uint32_t id       = 0;
-    int      posQ     = 0;
-    int      posR     = 0;
-    int      type     = 0;   // ResourceType as int
-    int      amount   = 0;
-    bool     depleted = false;
-    uint32_t ownedBy  = 0;
+    uint32_t id           = 0;
+    int      posQ         = 0;
+    int      posR         = 0;
+    int      type         = 0;   // ResourceType as int
+    int      amount       = 0;
+    bool     depleted     = false;
+    uint32_t ownedBy      = 0;
+    bool     guardBeaten  = false;
 };
 
 // ── World object save ──────────────────────────────────────────────────────────

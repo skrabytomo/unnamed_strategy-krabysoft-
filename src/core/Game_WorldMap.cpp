@@ -630,11 +630,12 @@ void Game::doEndTurn()
                         }
                     }
 
-                    // Claim resource node (mine control)
+                    // Claim resource node (mine control) — guard must be beaten first
                     if (nextTile->resourceId != 0) {
                         for (auto& r : m_resources) {
                             if (r.id == nextTile->resourceId) {
-                                r.ownedBy = eHero.id;
+                                if (r.guardBeaten)
+                                    r.ownedBy = eHero.id;
                                 break;
                             }
                         }
