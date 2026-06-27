@@ -382,8 +382,10 @@ private:
     void renderTreasureChestPopup();
     bool     m_showCryptPopup   = false;
     bool     m_showUtopiaPopup  = false;
-    uint32_t m_pendingCryptId   = 0;
-    uint32_t m_pendingUtopiaId  = 0;
+    uint32_t m_pendingCryptId            = 0;
+    uint32_t m_pendingUtopiaId           = 0;
+    uint32_t m_pendingMineId             = 0;  // resource node whose guard was accepted (set on win)
+    uint32_t m_pendingNeutralOutpostId   = 0;  // outpost whose fight was accepted (set collected on win)
     void renderCryptPopup();
     void renderUtopiaPopup();
 

@@ -429,6 +429,21 @@ bool Game::loadGame(const std::string& path)
     m_selected = {-999,-999};
     m_reachable.clear();
 
+    // Clear any transient UI / encounter state that must not survive a load
+    m_showEncounterPrompt    = false;
+    m_showVictory            = false;
+    m_showDefeat             = false;
+    m_finalDefeat            = false;
+    m_showCombatResult       = false;
+    m_showWeekSummary        = false;
+    m_pendingMineId          = 0;
+    m_pendingNeutralOutpostId= 0;
+    m_pendingTownCaptureId   = 0;
+    m_lastBanditCampId       = 0;
+    m_pendingCryptId         = 0;
+    m_pendingUtopiaId        = 0;
+    m_lastCombatEnemyId      = 0;
+
     if (data.campaign.active) {
         m_campaign.init();
         m_campaign.fromSaveState(data.campaign);

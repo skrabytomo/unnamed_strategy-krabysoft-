@@ -1485,6 +1485,20 @@ void Game::exitCombat(bool playerWon)
             m_pendingUtopiaId = 0;
         }
 
+        // Mine guard beaten — only mark on player win, not on fight acceptance
+        if (m_pendingMineId != 0) {
+            for (auto& r : m_resources)
+                if (r.id == m_pendingMineId) { r.guardBeaten = true; break; }
+            m_pendingMineId = 0;
+        }
+
+        // Neutral Outpost captured — only mark collected on player win
+        if (m_pendingNeutralOutpostId != 0) {
+            for (auto& o : m_worldObjects)
+                if (o.id == m_pendingNeutralOutpostId) { o.collected = true; break; }
+            m_pendingNeutralOutpostId = 0;
+        }
+
         // Remove defeated enemy hero from the world
         if (m_lastCombatEnemyId != 0) {
             // Loot the defeated hero — gold scales with enemy army strength
@@ -1657,10 +1671,12 @@ void Game::exitCombat(bool playerWon)
             }
             break;
         }
-        m_pendingTownCaptureId = 0;
-        m_lastBanditCampId = 0;
-        m_pendingCryptId   = 0;
-        m_pendingUtopiaId  = 0;
+        m_pendingTownCaptureId      = 0;
+        m_lastBanditCampId          = 0;
+        m_pendingCryptId            = 0;
+        m_pendingUtopiaId           = 0;
+        m_pendingMineId             = 0;
+        m_pendingNeutralOutpostId   = 0;
         m_triggers.fire(TriggerType::BattleLost, ctx);
 
         // Phylactery (Lich): escape one defeat — hero returns at half stats

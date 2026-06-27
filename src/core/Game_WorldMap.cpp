@@ -2024,19 +2024,14 @@ void Game::checkTileEvents()
                 m_pendingEncounterHero  = outpostHero;
                 m_pendingEncounterUnits = outUnits;
                 m_encounterOnAccept = [this, objId]() {
-                    for (auto& o : m_worldObjects) {
-                        if (o.id != objId) continue;
-                        o.collected            = true;
-                        m_pendingObjId         = objId;
-                        m_lastCombatEnemyId    = 0;
-                        m_pendingTownCaptureId = 0;
-                        m_lastBanditCampId     = 0;
-                        if (!m_heroes.empty()) {
-                            Hero& h = m_heroes[m_activeHeroIdx];
-                            auto pUnits = makeHeroUnits(h, m_registry.units(), true);
-                            enterCombat(h, pUnits, m_pendingEncounterHero, m_pendingEncounterUnits);
-                        }
-                        break;
+                    m_pendingNeutralOutpostId = objId;
+                    m_lastCombatEnemyId       = 0;
+                    m_pendingTownCaptureId    = 0;
+                    m_lastBanditCampId        = 0;
+                    if (!m_heroes.empty()) {
+                        Hero& h = m_heroes[m_activeHeroIdx];
+                        auto pUnits = makeHeroUnits(h, m_registry.units(), true);
+                        enterCombat(h, pUnits, m_pendingEncounterHero, m_pendingEncounterUnits);
                     }
                 };
                 m_encounterOnDecline = [this]() {
@@ -2138,6 +2133,9 @@ void Game::checkTileEvents()
                         break;
                     }
                 };
+                m_encounterOnDecline = [this]() {
+                    if (!m_heroes.empty()) { auto& h = m_heroes[m_activeHeroIdx]; h.path.clear(); h.pathStep = 0; }
+                };
                 m_showEncounterPrompt = true;
                 return;
             }
@@ -2176,18 +2174,14 @@ void Game::checkTileEvents()
                 m_pendingEncounterUnits = guardUnits;
                 uint32_t resId = r.id;
                 m_encounterOnAccept = [this, resId]() {
-                    for (auto& res : m_resources) {
-                        if (res.id != resId) continue;
-                        res.guardBeaten        = true;
-                        m_lastCombatEnemyId    = 0;
-                        m_pendingTownCaptureId = 0;
-                        m_lastBanditCampId     = 0;
-                        if (!m_heroes.empty()) {
-                            Hero& h = m_heroes[m_activeHeroIdx];
-                            auto pUnits = makeHeroUnits(h, m_registry.units(), true);
-                            enterCombat(h, pUnits, m_pendingEncounterHero, m_pendingEncounterUnits);
-                        }
-                        break;
+                    m_pendingMineId        = resId;
+                    m_lastCombatEnemyId    = 0;
+                    m_pendingTownCaptureId = 0;
+                    m_lastBanditCampId     = 0;
+                    if (!m_heroes.empty()) {
+                        Hero& h = m_heroes[m_activeHeroIdx];
+                        auto pUnits = makeHeroUnits(h, m_registry.units(), true);
+                        enterCombat(h, pUnits, m_pendingEncounterHero, m_pendingEncounterUnits);
                     }
                 };
                 m_encounterOnDecline = [this]() {
