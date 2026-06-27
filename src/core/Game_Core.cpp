@@ -358,7 +358,7 @@ void Game::saveGame(const std::string& path)
     if (f) SDL_RWclose(f);
 
     GameSaveData data = SaveLoad::packState(
-        m_map, m_heroes, m_enemyHeroes,
+        m_map, m_heroes, m_enemyHeroes, m_defeatedHeroPool,
         m_towns, m_worldObjects, m_resources, m_nextObjId,
         m_playerResources,
         m_turns.day(), m_turns.week(),
@@ -385,7 +385,7 @@ bool Game::loadGame(const std::string& path)
     m_map.create(m_mapSize);
 
     int day = 1, week = 1;
-    SaveLoad::unpackState(data, m_map, m_heroes, m_enemyHeroes,
+    SaveLoad::unpackState(data, m_map, m_heroes, m_enemyHeroes, m_defeatedHeroPool,
                           m_towns, m_worldObjects, m_resources, m_nextObjId,
                           m_playerResources, day, week);
     for (const auto& wo : m_worldObjects)
@@ -404,6 +404,25 @@ bool Game::loadGame(const std::string& path)
 
     for (auto& t : m_towns)
         if (HexTile* tile = m_map.getTile(t.pos)) tile->townId = t.id;
+
+    // Restore turn counter
+    m_turns.setDayWeek(day, week);
+
+    // Rebuild road network (was lost when map was recreated)
+    m_roadHexes.clear();
+    if (m_towns.size() >= 2) {
+        auto roadCost = [this](HexCoord c) -> int {
+            const HexTile* t = m_map.getTile(c);
+            return (t && t->terrain != Terrain::Water) ? 1 : 999;
+        };
+        for (size_t ti = 0; ti < m_towns.size(); ++ti)
+            for (size_t tj = ti + 1; tj < m_towns.size(); ++tj) {
+                auto path = Pathfinder::find(m_map, m_towns[ti].pos, m_towns[tj].pos, roadCost);
+                for (auto& h : path) m_roadHexes.insert(h);
+                m_roadHexes.insert(m_towns[ti].pos);
+                m_roadHexes.insert(m_towns[tj].pos);
+            }
+    }
 
     m_moveT    = 1.0f;
     m_state    = GameState::WorldMap;
@@ -426,6 +445,7 @@ void Game::startNewGame()
     // Clear all runtime state
     m_heroes.clear();
     m_enemyHeroes.clear();
+    m_defeatedHeroPool.clear();
     m_towns.clear();
     m_resources.clear();
     m_worldObjects.clear();

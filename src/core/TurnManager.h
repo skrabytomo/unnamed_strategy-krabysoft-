@@ -10,6 +10,7 @@ class TurnManager
 public:
     int  day()  const { return m_day; }
     int  week() const { return m_week; }
+    void setDayWeek(int day, int week) { m_day = day; m_week = week; }
 
     // Call when player clicks End Turn
     // Returns true if a new week started

@@ -95,6 +95,8 @@ struct HeroSave
     int livingRuneBonus = 0;
     // World-map hero state
     bool isGarrisoned        = false;
+    bool onBoat              = false;
+    int  boatCount           = 0;
     // Persistent world-map specialty flags
     bool phylacteryUsed      = false;
     bool ghostWalkSpecialty  = false;
@@ -164,6 +166,7 @@ struct GameSaveData
     // Entities
     std::vector<HeroSave>        heroes;
     std::vector<HeroSave>        enemyHeroes;
+    std::vector<HeroSave>        defeatedHeroes;
     std::vector<TownSave>        towns;
     std::vector<WorldObjectSave> worldObjects;
     std::vector<ResourceNodeSave> resourceNodes;
@@ -186,6 +189,7 @@ namespace SaveLoad
     GameSaveData packState(const HexMap& map,
                            const std::vector<Hero>& heroes,
                            const std::vector<Hero>& enemyHeroes,
+                           const std::vector<Hero>& defeatedHeroes,
                            const std::vector<Town>& towns,
                            const std::vector<WorldObject>& worldObjects,
                            const std::vector<ResourceNode>& resourceNodes,
@@ -200,6 +204,7 @@ namespace SaveLoad
                      HexMap& map,
                      std::vector<Hero>& heroes,
                      std::vector<Hero>& enemyHeroes,
+                     std::vector<Hero>& defeatedHeroes,
                      std::vector<Town>& towns,
                      std::vector<WorldObject>& worldObjects,
                      std::vector<ResourceNode>& resourceNodes,

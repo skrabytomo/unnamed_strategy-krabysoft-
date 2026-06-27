@@ -143,6 +143,7 @@ static json heroToJson(const HeroSave& h)
         {"infestation", h.infestationSpecialty}, {"efficient", h.efficientSpecialty},
         {"bloodScent", h.bloodScentSpecialty},
         {"garrisoned", h.isGarrisoned},
+        {"onBoat", h.onBoat}, {"boatCount", h.boatCount},
     };
 }
 static HeroSave heroFromJson(const json& j)
@@ -199,6 +200,8 @@ static HeroSave heroFromJson(const json& j)
     h.efficientSpecialty   = j.value("efficient",      false);
     h.bloodScentSpecialty  = j.value("bloodScent",     false);
     h.isGarrisoned         = j.value("garrisoned",     false);
+    h.onBoat               = j.value("onBoat",         false);
+    h.boatCount            = j.value("boatCount",      0);
     return h;
 }
 
@@ -283,6 +286,10 @@ bool SaveLoad::saveGame(const std::string& path, const GameSaveData& data)
         for (auto& h : data.enemyHeroes) eHeroArr.push_back(heroToJson(h));
         j["enemyHeroes"] = eHeroArr;
 
+        json dHeroArr = json::array();
+        for (auto& h : data.defeatedHeroes) dHeroArr.push_back(heroToJson(h));
+        j["defeatedHeroes"] = dHeroArr;
+
         // Towns
         json townArr = json::array();
         for (auto& t : data.towns) townArr.push_back(townToJson(t));
@@ -359,6 +366,10 @@ bool SaveLoad::loadGame(const std::string& path, GameSaveData& out)
         out.enemyHeroes.clear();
         if (j.contains("enemyHeroes"))
             for (auto& jh : j.at("enemyHeroes")) out.enemyHeroes.push_back(heroFromJson(jh));
+
+        out.defeatedHeroes.clear();
+        if (j.contains("defeatedHeroes"))
+            for (auto& jh : j.at("defeatedHeroes")) out.defeatedHeroes.push_back(heroFromJson(jh));
 
         out.towns.clear();
         if (j.contains("towns"))
@@ -445,6 +456,8 @@ static HeroSave packHero(const Hero& h)
     hs.efficientSpecialty   = h.efficientSpecialty;
     hs.bloodScentSpecialty  = h.bloodScentSpecialty;
     hs.isGarrisoned         = h.isGarrisoned;
+    hs.onBoat               = h.onBoat;
+    hs.boatCount            = h.boatCount;
     return hs;
 }
 
@@ -497,6 +510,8 @@ static Hero unpackHero(const HeroSave& hs)
     h.efficientSpecialty   = hs.efficientSpecialty;
     h.bloodScentSpecialty  = hs.bloodScentSpecialty;
     h.isGarrisoned         = hs.isGarrisoned;
+    h.onBoat               = hs.onBoat;
+    h.boatCount            = hs.boatCount;
     return h;
 }
 
@@ -504,6 +519,7 @@ static Hero unpackHero(const HeroSave& hs)
 GameSaveData SaveLoad::packState(const HexMap& map,
                                  const std::vector<Hero>& heroes,
                                  const std::vector<Hero>& enemyHeroes,
+                                 const std::vector<Hero>& defeatedHeroes,
                                  const std::vector<Town>& towns,
                                  const std::vector<WorldObject>& worldObjects,
                                  const std::vector<ResourceNode>& resourceNodes,
@@ -525,8 +541,9 @@ GameSaveData SaveLoad::packState(const HexMap& map,
     save.nextObjId     = nextObjId;
 
     // Heroes
-    for (auto& h : heroes)      save.heroes.push_back(packHero(h));
-    for (auto& h : enemyHeroes) save.enemyHeroes.push_back(packHero(h));
+    for (auto& h : heroes)         save.heroes.push_back(packHero(h));
+    for (auto& h : enemyHeroes)    save.enemyHeroes.push_back(packHero(h));
+    for (auto& h : defeatedHeroes) save.defeatedHeroes.push_back(packHero(h));
 
     // Towns
     for (auto& t : towns) {
@@ -608,6 +625,7 @@ void SaveLoad::unpackState(const GameSaveData& save,
                            HexMap& map,
                            std::vector<Hero>& heroes,
                            std::vector<Hero>& enemyHeroes,
+                           std::vector<Hero>& defeatedHeroes,
                            std::vector<Town>& towns,
                            std::vector<WorldObject>& worldObjects,
                            std::vector<ResourceNode>& resourceNodes,
@@ -638,6 +656,9 @@ void SaveLoad::unpackState(const GameSaveData& save,
 
     enemyHeroes.clear();
     for (auto& hs : save.enemyHeroes) enemyHeroes.push_back(unpackHero(hs));
+
+    defeatedHeroes.clear();
+    for (auto& hs : save.defeatedHeroes) defeatedHeroes.push_back(unpackHero(hs));
 
     // Restore world objects
     worldObjects.clear();
