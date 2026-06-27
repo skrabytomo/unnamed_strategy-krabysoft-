@@ -229,6 +229,7 @@ void Game::renderGarrisonPanel()
                         auto& fromArmy = (m_garrisonSelSide == 0 && hero) ? hero->army : town->garrison;
                         auto& toArmy   = (side == 0 && hero)              ? hero->army : town->garrison;
                         if (m_garrisonSelSlot < (int)fromArmy.size()) {
+                            if (i >= 7) { m_garrisonSelSide = -1; m_garrisonSelSlot = -1; return; }
                             while ((int)toArmy.size() <= i) toArmy.push_back({0, 0});
                             UnitStack& from = fromArmy[m_garrisonSelSlot];
                             UnitStack& to   = toArmy[i];
@@ -322,11 +323,10 @@ void Game::renderMageGuild()
 
     // T4 bonus: grant hero +5 max mana on visit (one-time per visit)
     if (tierLevel == 4) {
-        static std::unordered_set<int> s_t4BonusGiven;
-        if (s_t4BonusGiven.find(hero.id) == s_t4BonusGiven.end()) {
+        if (m_mageGuildT4BonusGiven.find(hero.id) == m_mageGuildT4BonusGiven.end()) {
             hero.maxMana += 5;
             hero.mana     = std::min(hero.mana + 5, hero.maxMana);
-            s_t4BonusGiven.insert(hero.id);
+            m_mageGuildT4BonusGiven.insert(hero.id);
         }
     }
 

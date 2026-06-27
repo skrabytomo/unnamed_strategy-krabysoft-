@@ -333,6 +333,8 @@ private:
     int         m_garrisonSelSide     = -1;   // 0=hero army, 1=town garrison
     void renderGarrisonPanel();
 
+    std::unordered_set<int> m_mageGuildT4BonusGiven;  // hero IDs that already got the T4 mana bonus this game
+
     // ── Town service overlay flags (opened via "Town Services" bar) ───────────
     bool        m_showMageGuildPanel    = false;
     bool        m_showTavernPanel       = false;

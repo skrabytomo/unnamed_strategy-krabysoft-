@@ -460,7 +460,7 @@ void Game::doEndTurn()
             bool combatTriggered = false;
 
             for (auto& eHero : m_enemyHeroes) {
-                if (combatTriggered) break;
+                if (combatTriggered) continue; // let remaining heroes move; combat only fires once
 
                 // Recruit from any owned town within 1 tile (free for AI)
                 for (auto& t : m_towns) {
@@ -573,11 +573,13 @@ void Game::doEndTurn()
 
                     // Combat with player?
                     if (eHero.pos == playerHero.pos) {
-                        m_lastCombatEnemyId = eHero.id;
-                        auto pUnits = makeHeroUnits(playerHero, unitDefs, true);
-                        auto eUnits = makeHeroUnits(eHero, unitDefs, false);
-                        enterCombat(playerHero, pUnits, eHero, eUnits);
-                        combatTriggered = true;
+                        if (!combatTriggered) {
+                            m_lastCombatEnemyId = eHero.id;
+                            auto pUnits = makeHeroUnits(playerHero, unitDefs, true);
+                            auto eUnits = makeHeroUnits(eHero, unitDefs, false);
+                            enterCombat(playerHero, pUnits, eHero, eUnits);
+                            combatTriggered = true;
+                        }
                         break;
                     }
 
@@ -667,6 +669,11 @@ void Game::doEndTurn()
                                 Hero garHero;
                                 garHero.faction = t.faction;
                                 garHero.army    = t.garrison;
+                                // Include any player hero garrisoned in the town
+                                for (const auto& ph : m_heroes)
+                                    if (ph.pos == t.pos)
+                                        for (const auto& s : ph.army)
+                                            if (s.count > 0) garHero.army.push_back(s);
                                 int atkStr = heroStrength(eHero, unitDefs);
                                 int defStr = heroStrength(garHero, unitDefs);
                                 if (t.hasBuilding(BID::FORT)) defStr = defStr * 3 / 2;
@@ -802,7 +809,7 @@ void Game::doEndTurn()
                     for (int i = 1; i < (int)eHero.army.size(); ++i)
                         if (eHero.army[i].count < eHero.army[smallestIdx].count)
                             smallestIdx = i;
-                    eHero.army[smallestIdx].count = std::min(50, eHero.army[smallestIdx].count + total);
+                    eHero.army[smallestIdx].count += total;
                     gLog("Enemy %s reinforced +%d units (week %d, %d towns)\n",
                            eHero.name.c_str(), total, week, ownedTowns);
                 }

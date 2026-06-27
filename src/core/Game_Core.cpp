@@ -442,6 +442,7 @@ void Game::startNewGame()
     m_showVictory     = false;
     m_showDefeat      = false;
     m_finalDefeat     = false;
+    m_mageGuildT4BonusGiven.clear();
     m_showCapturePopup = false;
     m_showTownLostPopup = false;
     m_showCombatResult = false;
