@@ -1118,6 +1118,15 @@ void Game::startNewGame()
     float hx, hy;
     m_hexRenderer.grid().hexToWorld(m_heroes[0].pos, hx, hy);
     m_camera.setPosition(hx, hy);
+
+    // Sync HUD with final player count (may differ from what was set at init time)
+    m_worldHUD.setNumHumanPlayers(m_numHumanPlayers);
+    m_worldHUD.setCurrentPlayerId(1);
+
+    // Initial income cache
+    m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, 1);
+    for (const auto& r : m_resources)
+        if (r.ownedBy == 1u) m_cachedWeeklyIncome.add(r.type, r.amount);
 }
 
 // ── Settings persistence ──────────────────────────────────────────────────────

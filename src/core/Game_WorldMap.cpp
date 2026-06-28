@@ -398,8 +398,8 @@ void Game::updateWorldMap(float dt)
                     fh.id          = m_nextObjId++;
                     fh.type        = WorldObjectType::FishingHouse;
                     fh.pos         = h.pos;
-                    fh.faction     = 1;     // owned by player
-                    fh.value       = 150;   // daily gold
+                    fh.faction     = currentPlayerId();   // owned by current player
+                    fh.value       = 150;                 // daily gold
                     m_worldObjects.push_back(fh);
                     pushPickupEffect(h.pos, "Fishing House built! (+150g/day)", IM_COL32(80, 220, 120, 255));
                     m_audio.playSound("pickup");
