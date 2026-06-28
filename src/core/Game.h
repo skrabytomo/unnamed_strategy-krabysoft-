@@ -201,6 +201,7 @@ private:
     std::vector<Hero> m_defeatedHeroPool;   // P1 (or 1P) defeated heroes — hireable in tavern
     std::vector<Hero> m_p2DefeatedHeroPool; // P2 defeated heroes — only shown in P2's tavern
     int               m_activeHeroIdx = 0;
+    uint32_t          m_nextHeroId    = 300; // global counter for tavern-hired hero IDs
 
     HexCoord       m_hovered  {-999, -999};
     HexCoord       m_selected {-999, -999};

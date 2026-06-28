@@ -439,6 +439,26 @@ void Game::doEndTurn()
         m_showEncounterPrompt = false;
         m_encounterOnAccept   = nullptr;
         m_encounterOnDecline  = nullptr;
+        // Dismiss P1's week summary so P2 doesn't see it
+        m_showWeekSummary   = false;
+        m_weekChoiceOptions.clear();
+        // Discard pending interactive popups so P2 doesn't get P1's rewards
+        m_showLevelUpModal       = false;
+        m_pendingLevelUps        = 0;
+        m_levelUpOffers.clear();
+        m_showCryptPopup         = false;
+        m_pendingCryptId         = 0;
+        m_showUtopiaPopup        = false;
+        m_pendingUtopiaId        = 0;
+        m_showDwellingPopup      = false;
+        m_showStatShrinePopup    = false;
+        m_showTreasureChestPopup = false;
+        m_showTreeKnowledgePopup = false;
+        m_showQuestPopup         = false;
+        m_showUnitExchange       = false;
+        m_showCapturePopup       = false;
+        m_showTownLostPopup      = false;
+        m_pendingObjId           = 0;
 
         m_player1Heroes        = m_heroes;
         m_player1Resources     = m_playerResources;
@@ -533,6 +553,26 @@ void Game::doEndTurn()
         m_showEncounterPrompt = false;
         m_encounterOnAccept   = nullptr;
         m_encounterOnDecline  = nullptr;
+        // Dismiss P2's week summary so P1 doesn't see it (P2's deferred summary stored separately)
+        m_showWeekSummary   = false;
+        m_weekChoiceOptions.clear();
+        // Discard pending interactive popups so P1 doesn't get P2's rewards
+        m_showLevelUpModal       = false;
+        m_pendingLevelUps        = 0;
+        m_levelUpOffers.clear();
+        m_showCryptPopup         = false;
+        m_pendingCryptId         = 0;
+        m_showUtopiaPopup        = false;
+        m_pendingUtopiaId        = 0;
+        m_showDwellingPopup      = false;
+        m_showStatShrinePopup    = false;
+        m_showTreasureChestPopup = false;
+        m_showTreeKnowledgePopup = false;
+        m_showQuestPopup         = false;
+        m_showUnitExchange       = false;
+        m_showCapturePopup       = false;
+        m_showTownLostPopup      = false;
+        m_pendingObjId           = 0;
 
         m_player2Heroes         = m_heroes;
         m_player2Resources      = m_playerResources;

@@ -697,7 +697,7 @@ void Game::renderTavern()
         std::snprintf(btnLabel, sizeof(btnLabel), "Hire %s", cand.name.c_str());
         if (ImGui::Button(btnLabel, ImVec2(-1, 0))) {
             m_playerResources.add(ResourceType::Gold, -HIRE_COST);
-            cand.id  = 200u + static_cast<uint32_t>(m_heroes.size());
+            cand.id  = m_nextHeroId++;
             spawnHero(cand);
             gLog("Hired hero: %s (%s)\n", cand.name.c_str(), cls ? cls->name : "?");
         }

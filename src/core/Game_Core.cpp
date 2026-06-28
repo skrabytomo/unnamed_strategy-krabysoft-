@@ -498,6 +498,17 @@ bool Game::loadGame(const std::string& path)
         m_worldHUD.setNumHumanPlayers(m_numHumanPlayers);
     }
 
+    // Ensure tavern hires after load don't reuse IDs already held by loaded heroes
+    {
+        uint32_t maxId = 299;
+        auto scanHero = [&](const Hero& h){ if (h.id > maxId) maxId = h.id; };
+        for (const auto& h : m_heroes)        scanHero(h);
+        for (const auto& h : m_enemyHeroes)   scanHero(h);
+        for (const auto& h : m_player1Heroes)  scanHero(h);
+        for (const auto& h : m_player2Heroes)  scanHero(h);
+        m_nextHeroId = maxId + 1;
+    }
+
     // Recalculate weekly income display for current player
     {
         uint32_t cid = static_cast<uint32_t>(currentPlayerId());
@@ -529,6 +540,7 @@ void Game::startNewGame()
     m_selected        = {-999, -999};
     m_hovered         = {-999, -999};
     m_nextObjId       = 1;
+    m_nextHeroId      = 300;
     m_turns           = TurnManager{};
     m_playerResources = Resources{};
     m_showVictory     = false;
