@@ -1253,10 +1253,11 @@ void Game::doEndTurn()
                     m_weeklyEventBody = "Subject villages send tribute: +300 Gold, +2 Faith Stones, +2 Verdant Sap.";
                     break;
                 }
-                case 11: { // Plague — garrison defenders weakened
+                case 11: { // Plague — garrison defenders weakened in all human-owned towns
                     int lostTotal = 0;
                     for (auto& t : m_towns) {
-                        if (t.ownerId != static_cast<uint32_t>(currentPlayerId()) || t.garrison.empty()) continue;
+                        if (t.ownerId == 0 || t.ownerId > static_cast<uint32_t>(m_numHumanPlayers)
+                            || t.garrison.empty()) continue;
                         for (auto& s : t.garrison) {
                             int lost = std::max(0, s.count / 5);
                             s.count -= lost;
@@ -1555,6 +1556,43 @@ void Game::doEndTurn()
                 if (h.isGarrisoned) ++p2GarrisonCount;
             if (p2GarrisonCount > 0)
                 m_player2Resources.add(ResourceType::Gold, -(p2GarrisonCount * 350));
+            // Mirror resource-only weekly events to P2 (same roll as P1 for fairness)
+            // Hero-specific events (XP, stats, spells) and choice events remain P1-only.
+            {
+                int evtRoll = ((m_turns.week() * 2654435761u) >> 8) % 24;
+                switch (evtRoll) {
+                    case 1:  // Merchant's Gift
+                        m_player2Resources.add(ResourceType::Gold, 500);
+                        break;
+                    case 3: { // Bandit Raid
+                        int lost = std::min(200, m_player2Resources.get(ResourceType::Gold));
+                        m_player2Resources.add(ResourceType::Gold, -lost);
+                        break;
+                    }
+                    case 4:  // Rich Harvest
+                        m_player2Resources.add(ResourceType::Gold, 200);
+                        m_player2Resources.add(ResourceType::Iron, 3);
+                        break;
+                    case 10: // Tribute from Vassals
+                        m_player2Resources.add(ResourceType::Gold,        300);
+                        m_player2Resources.add(ResourceType::FaithStones,   2);
+                        m_player2Resources.add(ResourceType::VerdantSap,    2);
+                        break;
+                    case 14: // Spy Network (gold portion only — enemy mana already applied)
+                        m_player2Resources.add(ResourceType::Gold, 150);
+                        break;
+                    case 15: // Alchemist's Discovery
+                        m_player2Resources.add(ResourceType::Mercury,     2);
+                        m_player2Resources.add(ResourceType::BloodEssence, 1);
+                        break;
+                    case 18: { // Tax Revolt
+                        int lost = m_player2Resources.get(ResourceType::Gold) / 2;
+                        m_player2Resources.add(ResourceType::Gold, -lost);
+                        break;
+                    }
+                    default: break;
+                }
+            }
             // Store P2's week summary so it can be shown at the start of P2's next turn
             m_p2WeekSummaryIncome = p2income;
             for (const auto& r : m_resources)
