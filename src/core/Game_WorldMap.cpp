@@ -2319,8 +2319,48 @@ void Game::checkTileEvents()
                 m_showEncounterPrompt = true;
                 return;
             } else {
-                // Already captured — produce T1 units weekly (handled via obj.available)
-                if (obj.available > 0) {
+                // Already captured — check ownership
+                bool ownsOutpost = (obj.linkedId == 0 ||
+                                    obj.linkedId == static_cast<uint32_t>(currentPlayerId()));
+                if (!ownsOutpost && m_numHumanPlayers >= 2) {
+                    // Enemy player's outpost — offer recapture fight
+                    Hero outpostHero;
+                    outpostHero.id      = 0;
+                    outpostHero.name    = "Outpost Guard";
+                    outpostHero.faction = static_cast<FactionId>(obj.faction % 9);
+                    float wm = std::min(2.5f, 1.0f + (m_turns.week() - 1) * 0.12f);
+                    std::vector<CombatUnit> outUnits;
+                    {
+                        CombatUnit ou;
+                        ou.name    = "Outpost Sentry";
+                        ou.count   = static_cast<int>(std::round((4 + obj.value * 2) * wm));
+                        ou.maxHp   = ou.hp = 5 + obj.value * 2;
+                        ou.attack  = 2 + obj.value; ou.defense = 1 + obj.value;
+                        ou.speed   = 4; ou.isPlayer = false; ou.factionHint = obj.faction;
+                        outUnits.push_back(ou);
+                    }
+                    uint32_t objId = obj.id;
+                    m_encounterTitle        = "Enemy Outpost";
+                    m_pendingEncounterHero  = outpostHero;
+                    m_pendingEncounterUnits = outUnits;
+                    m_encounterOnAccept = [this, objId]() {
+                        m_pendingNeutralOutpostId = objId;
+                        m_lastCombatEnemyId       = 0;
+                        m_pendingTownCaptureId    = 0;
+                        m_lastBanditCampId        = 0;
+                        if (!m_heroes.empty()) {
+                            Hero& h = m_heroes[m_activeHeroIdx];
+                            auto pUnits = makeHeroUnits(h, m_registry.units(), true);
+                            enterCombat(h, pUnits, m_pendingEncounterHero, m_pendingEncounterUnits);
+                        }
+                    };
+                    m_encounterOnDecline = [this]() {
+                        if (!m_heroes.empty()) { auto& h = m_heroes[m_activeHeroIdx]; h.path.clear(); h.pathStep = 0; }
+                    };
+                    m_showEncounterPrompt = true;
+                    return;
+                } else if (obj.available > 0 && ownsOutpost) {
+                    // Produce T1 units weekly (handled via obj.available)
                     pushPickupEffect(obj.pos, "Outpost: recruit available!", IM_COL32(180, 255, 140, 255));
                     m_pendingObjId = obj.id;
                     m_showDwellingPopup = true;
@@ -2752,7 +2792,8 @@ void Game::renderWorldOverlay()
         if (obj.collected && obj.type != WorldObjectType::NeutralOutpost
             && obj.type != WorldObjectType::WitchHut
             && !isFishHouse && !isShipyard) continue;
-        if (obj.type == WorldObjectType::NeutralOutpost && obj.collected && obj.available <= 0) continue;
+        if (obj.type == WorldObjectType::NeutralOutpost && obj.collected && obj.available <= 0
+            && (obj.linkedId == 0 || obj.linkedId == static_cast<uint32_t>(currentPlayerId()))) continue;
         const HexTile* otile = m_map.getTile(obj.pos);
         if (!m_fogDisabled && (!otile || !otile->explored)) continue;
         float sx, sy;
@@ -4664,15 +4705,21 @@ void Game::renderMineInfoPopup()
                         | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar;
     if (!ImGui::Begin("##mine_info", nullptr, wf)) { ImGui::End(); return; }
 
+    bool ownedByOtherHuman = (m_numHumanPlayers >= 2 &&
+                               r->ownedBy != 0 &&
+                               r->ownedBy != static_cast<uint32_t>(currentPlayerId()) &&
+                               r->ownedBy <= static_cast<uint32_t>(m_numHumanPlayers));
     const char* status = r->ownedBy == static_cast<uint32_t>(currentPlayerId()) ? " [Owned]"
-                       : r->guardBeaten  ? " [Captured]"
+                       : ownedByOtherHuman                                       ? " [Enemy]"
+                       : r->guardBeaten  ? " [Captured by AI]"
                        : " [Guarded]";
     ImGui::TextColored({0.9f, 0.75f, 0.2f, 1.0f}, "%s Mine%s  +%d/wk",
                        resourceName(r->type), status, r->amount);
     ImGui::Separator();
 
-    if (r->guardBeaten || r->ownedBy == static_cast<uint32_t>(currentPlayerId())) {
-        ImGui::TextDisabled("No defenders — mine is unguarded.");
+    if (r->guardBeaten || r->ownedBy == static_cast<uint32_t>(currentPlayerId()) || ownedByOtherHuman) {
+        ImGui::TextDisabled(ownedByOtherHuman ? "Held by opposing player — capture to claim income."
+                                              : "No defenders — mine is unguarded.");
     } else {
         ImGui::TextColored({0.95f, 0.45f, 0.45f, 1.0f}, "Defenders:");
         auto guards = makeMineGuardUnits(*r);

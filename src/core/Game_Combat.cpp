@@ -1528,7 +1528,11 @@ void Game::exitCombat(bool playerWon)
         // Neutral Outpost captured — only mark collected on player win
         if (m_pendingNeutralOutpostId != 0) {
             for (auto& o : m_worldObjects)
-                if (o.id == m_pendingNeutralOutpostId) { o.collected = true; break; }
+                if (o.id == m_pendingNeutralOutpostId) {
+                    o.collected = true;
+                    o.linkedId  = static_cast<uint32_t>(currentPlayerId());
+                    break;
+                }
             m_pendingNeutralOutpostId = 0;
         }
 
