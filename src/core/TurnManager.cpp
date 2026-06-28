@@ -5,7 +5,8 @@
 bool TurnManager::endTurn(std::vector<Town>& towns,
                            std::vector<Hero>& heroes,
                            Resources& playerResources,
-                           const BuildingRegistry& registry)
+                           const BuildingRegistry& registry,
+                           uint32_t ownerId)
 {
     // Restore hero movement and regenerate a small amount of mana each day
     for (auto& hero : heroes) {
@@ -24,7 +25,7 @@ bool TurnManager::endTurn(std::vector<Town>& towns,
         m_day = 1;
         m_week++;
         newWeek = true;
-        onNewWeek(towns, playerResources, registry);
+        onNewWeek(towns, playerResources, registry, ownerId);
     }
 
     gLog("Day %d Week %d | Gold: %d\n",
@@ -36,13 +37,14 @@ bool TurnManager::endTurn(std::vector<Town>& towns,
 
 void TurnManager::onNewWeek(std::vector<Town>& towns,
                              Resources& playerResources,
-                             const BuildingRegistry& registry)
+                             const BuildingRegistry& registry,
+                             uint32_t ownerId)
 {
     gLog("=== WEEK %d BEGINS ===\n", m_week);
 
     for (auto& town : towns) {
-        // Add weekly resource income — only player-owned towns
-        if (town.ownerId == 1)
+        // Add weekly resource income for the current player's towns
+        if (town.ownerId == ownerId)
             playerResources.addAll(town.weeklyIncome);
 
         // Add unit growth to dwellings

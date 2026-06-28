@@ -443,9 +443,17 @@ void Game::doEndTurn()
         m_player1Resources     = m_playerResources;
         m_player1ActiveHeroIdx = m_activeHeroIdx;
 
+        // Clear P1 hero tile markers so P2 can walk through their positions
+        for (const auto& h : m_player1Heroes)
+            if (HexTile* ht = m_map.getTile(h.pos)) ht->heroId = 0;
+
         m_heroes          = m_player2Heroes;
         m_playerResources = m_player2Resources;
         m_activeHeroIdx   = m_player2ActiveHeroIdx;
+
+        // Re-stamp P2 hero tile markers
+        for (const auto& h : m_heroes)
+            if (HexTile* ht = m_map.getTile(h.pos)) ht->heroId = h.id;
         if (m_activeHeroIdx >= static_cast<int>(m_heroes.size())) m_activeHeroIdx = 0;
 
         // Check if P2 was already eliminated before giving them their turn
@@ -497,9 +505,17 @@ void Game::doEndTurn()
         m_player2Resources      = m_playerResources;
         m_player2ActiveHeroIdx  = m_activeHeroIdx;
 
+        // Clear P2 hero tile markers so P1 can walk through their positions
+        for (const auto& h : m_player2Heroes)
+            if (HexTile* ht = m_map.getTile(h.pos)) ht->heroId = 0;
+
         m_heroes          = m_player1Heroes;
         m_playerResources = m_player1Resources;
         m_activeHeroIdx   = m_player1ActiveHeroIdx;
+
+        // Re-stamp P1 hero tile markers
+        for (const auto& h : m_heroes)
+            if (HexTile* ht = m_map.getTile(h.pos)) ht->heroId = h.id;
         if (m_activeHeroIdx >= static_cast<int>(m_heroes.size())) m_activeHeroIdx = 0;
         m_currentPlayerIdx = 0;
         m_reachable.clear();
@@ -899,7 +915,8 @@ void Game::doEndTurn()
         applyBlightAura(m_enemyHeroes);
 
         bool newWeek = m_turns.endTurn(m_towns, m_heroes,
-                                       m_playerResources, m_registry);
+                                       m_playerResources, m_registry,
+                                       static_cast<uint32_t>(currentPlayerId()));
         if (newWeek) {
             // Capture income totals for week summary popup before adding them
             m_weekSummaryIncome = m_turns.calculateWeeklyIncome(m_towns, currentPlayerId());
@@ -938,9 +955,16 @@ void Game::doEndTurn()
                     int ownedTowns = 0;
                     for (const auto& t : m_towns)
                         if (t.ownerId == eHero.id) ownedTowns++;
-                    if (ownedTowns == 0) continue;  // no base → no reinforcements
-                    // Add reinforceCount units to the smallest stack (per owned town)
-                    int total = reinforceCount * ownedTowns;
+                    int total = 0;
+                    if (ownedTowns > 0) {
+                        // Town-owning heroes: reinforce per owned town
+                        total = reinforceCount * ownedTowns;
+                    } else if (eHero.id >= 500u) {
+                        // Recruited heroes (no towns): get a smaller but steady reinforcement
+                        total = reinforceCount / 2 + 1;
+                    }
+                    if (total <= 0) continue;
+                    // Add units to the smallest stack
                     int smallestIdx = 0;
                     for (int i = 1; i < (int)eHero.army.size(); ++i)
                         if (eHero.army[i].count < eHero.army[smallestIdx].count)
@@ -2964,6 +2988,38 @@ void Game::renderWorldOverlay()
         }
         if (hero.isGarrisoned && labelOK(sx - 10.0f, sy - 30.0f))
             dl->AddText({sx - 10.0f, sy - 30.0f}, IM_COL32(255, 80, 80, 255), "[G]");
+    }
+
+    // ── Opposing human player heroes (hotseat 2P) ─────────────────────────────
+    // Show the other human player's heroes so each player has situational awareness.
+    if (m_numHumanPlayers == 2) {
+        const auto& otherHeroes = (m_currentPlayerIdx == 0) ? m_player2Heroes : m_player1Heroes;
+        for (const auto& hero : otherHeroes) {
+            float sx, sy;
+            project(hero.pos, sx, sy);
+            if (sy < HUD_TOP || sy > HUD_BOTTOM) continue;
+            int fac = std::min(static_cast<int>(hero.faction), NUM_FACTIONS - 1);
+            auto ait = m_heroMapAnimators.find(hero.id);
+            if (ait != m_heroMapAnimators.end() && m_unitTex[fac][0].ok()) {
+                float u0, v0, u1, v1;
+                ait->second.getUV(u0, v0, u1, v1);
+                ImTextureID tex = (ImTextureID)(uintptr_t)m_unitTex[fac][0].id();
+                dl->AddImage(tex, {sx - 16, sy - 20}, {sx + 16, sy + 12}, {u0,v0}, {u1,v1});
+            } else {
+                addIcon(ICO_HERO_ENEMY, sx, sy, 13.0f);
+            }
+            // Blue-purple ring to distinguish from AI enemies (red) and current player (yellow)
+            dl->AddCircle({sx, sy}, 14.0f, IM_COL32(120, 160, 255, 200), 0, 2.0f);
+            {
+                float lx = sx - (float)hero.name.size() * 3.0f;
+                if (labelOK(lx, sy + 15, hero.name.size() * 6.0f)) {
+                    dl->AddText({lx, sy + 15}, IM_COL32(140, 180, 255, 220), hero.name.c_str());
+                    // Show which player owns this hero
+                    const char* pLabel = (m_currentPlayerIdx == 0) ? "P2" : "P1";
+                    dl->AddText({sx - 8.0f, sy - 28.0f}, IM_COL32(140, 180, 255, 200), pLabel);
+                }
+            }
+        }
     }
 
     // ── Player heroes ─────────────────────────────────────────────────────────

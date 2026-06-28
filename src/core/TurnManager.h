@@ -17,7 +17,8 @@ public:
     bool endTurn(std::vector<Town>& towns,
                  std::vector<Hero>& heroes,
                  Resources&         playerResources,
-                 const BuildingRegistry& registry);
+                 const BuildingRegistry& registry,
+                 uint32_t           ownerId = 1);
 
     // Resource income from all owned towns this week
     Resources calculateWeeklyIncome(const std::vector<Town>& towns,
@@ -29,5 +30,6 @@ private:
 
     void onNewWeek(std::vector<Town>& towns,
                    Resources& playerResources,
-                   const BuildingRegistry& registry);
+                   const BuildingRegistry& registry,
+                   uint32_t   ownerId);
 };
