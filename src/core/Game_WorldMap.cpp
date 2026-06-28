@@ -961,6 +961,59 @@ void Game::doEndTurn()
                 }
             }
 
+            // ── AI hero recruitment — one per week from owned tavern town ─────
+            {
+                constexpr int AI_HERO_CAP = 6;
+                if (static_cast<int>(m_enemyHeroes.size()) < AI_HERO_CAP) {
+                    static const char* kAINames[] = {
+                        "Drafted Sword","Hired Blade","Road Warden",
+                        "Freelance Arm","Wandering Axe","Sellsword",
+                        "Hired Shield","Iron Hand","Dusty Boot","Grim Pike"
+                    };
+                    for (auto& recruitTown : m_towns) {
+                        if (recruitTown.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) continue;
+                        bool occupied = false;
+                        for (const auto& e : m_enemyHeroes)
+                            if (e.pos == recruitTown.pos) { occupied = true; break; }
+                        if (occupied) continue;
+
+                        uint32_t newId = 500u;
+                        for (const auto& h : m_heroes)      newId = std::max(newId, h.id + 1u);
+                        for (const auto& h : m_enemyHeroes) newId = std::max(newId, h.id + 1u);
+
+                        uint32_t nameSeed = (m_turns.week() * 7919u) ^ static_cast<uint32_t>(recruitTown.pos.q * 317u + recruitTown.pos.r);
+                        Hero newHero;
+                        newHero.id      = newId;
+                        newHero.faction = recruitTown.faction;
+                        newHero.name    = kAINames[nameSeed % 10];
+                        newHero.pos     = recruitTown.pos;
+                        newHero.movePool = newHero.maxMove;
+
+                        int t1count = 6 + m_turns.week() * 2;
+                        for (const auto& ud : m_registry.units()) {
+                            if (ud.faction == newHero.faction && ud.tier == 1
+                                && ud.path == UpgradePath::None) {
+                                newHero.army.push_back({ud.id, t1count});
+                                break;
+                            }
+                        }
+                        HexCoord spawnPos = recruitTown.pos;
+                        for (auto& nb : HexGrid::neighbors(recruitTown.pos)) {
+                            const HexTile* nt = m_map.getTile(nb);
+                            if (nt && nt->terrain != Terrain::Water && nt->heroId == 0) {
+                                spawnPos = nb; break;
+                            }
+                        }
+                        newHero.pos = spawnPos;
+                        if (HexTile* ht = m_map.getTile(spawnPos)) ht->heroId = newHero.id;
+                        m_enemyHeroes.push_back(std::move(newHero));
+                        gLog("AI recruited hero at %s (week %d)\n",
+                             recruitTown.name.c_str(), m_turns.week());
+                        break;
+                    }
+                }
+            }
+
             // ── Weekly random event ────────────────────────────────────────────
             m_weeklyEventHeadline.clear();
             m_weeklyEventBody.clear();
@@ -3476,9 +3529,10 @@ void Game::renderHeroInspect()
         for (auto& s : hero.skills.slots) {
             if (s.defId == 0) continue;
             const SkillDef* sd = findSkillDef(s.defId);
+            if (!sd) continue;
             const char* tierStr[] = {"Basic","Advanced","Master"};
             int t = static_cast<int>(s.tier);
-            ImGui::Text("  %s (%s)", sd ? sd->name.c_str() : "?", (t >= 0 && t <= 2) ? tierStr[t] : "?");
+            ImGui::Text("  %s (%s)", sd->name.c_str(), (t >= 0 && t <= 2) ? tierStr[t] : "Basic");
         }
     }
 
