@@ -321,7 +321,7 @@ bool WorldMapHUD::onMouseDown(float x, float y) {
         float px = m_heroPanel.bounds.x + 4.0f;
         float py = m_heroPanel.bounds.y + 28.0f;
         float pw = m_heroPanel.bounds.w - 8.0f;
-        float ph = 56.0f;
+        float ph = 60.0f;  // matches portSz(52) + 8 card height in drawHeroPanel
         float gap = 64.0f;
         if (x >= px && x <= px + pw) {
             for (int i = 0; i < m_heroCount; ++i) {
