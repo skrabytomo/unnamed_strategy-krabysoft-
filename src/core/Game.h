@@ -447,6 +447,11 @@ private:
     std::string m_weeklyEventHeadline;   // empty = no event this week
     std::string m_weeklyEventBody;
 
+    // 2P: P2's week summary shown at start of P2's turn after a week transition
+    bool        m_showP2WeekSummary  = false;
+    int         m_p2WeekSummaryWeek  = 0;
+    Resources   m_p2WeekSummaryIncome;
+
     // Choice events -- when non-empty the week summary shows option buttons
     struct WeekChoiceOption {
         std::string label;

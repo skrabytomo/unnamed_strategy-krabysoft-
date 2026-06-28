@@ -495,6 +495,16 @@ void Game::doEndTurn()
         m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, 2);
         for (const auto& r : m_resources)
             if (r.ownedBy == 2u) m_cachedWeeklyIncome.add(r.type, r.amount);
+        // If a new week started while P2 was waiting, show their week summary now
+        if (m_showP2WeekSummary) {
+            m_weekSummaryIncome  = m_p2WeekSummaryIncome;
+            m_weekSummaryWeek    = m_p2WeekSummaryWeek;
+            m_weeklyEventHeadline.clear();
+            m_weeklyEventBody.clear();
+            m_weekChoiceOptions.clear();
+            m_showWeekSummary    = true;
+            m_showP2WeekSummary  = false;
+        }
         return;
     }
 
@@ -1516,6 +1526,12 @@ void Game::doEndTurn()
                 if (h.isGarrisoned) ++p2GarrisonCount;
             if (p2GarrisonCount > 0)
                 m_player2Resources.add(ResourceType::Gold, -(p2GarrisonCount * 350));
+            // Store P2's week summary so it can be shown at the start of P2's next turn
+            m_p2WeekSummaryIncome = p2income;
+            for (const auto& r : m_resources)
+                if (r.ownedBy == 2u) m_p2WeekSummaryIncome.add(r.type, r.amount);
+            m_p2WeekSummaryWeek  = m_turns.week();
+            m_showP2WeekSummary  = true;
         }
         m_showPlayerTurnBanner = true;
         m_playerTurnBannerT    = 2.5f;
