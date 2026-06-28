@@ -764,6 +764,19 @@ void Game::doEndTurn()
                                     m_showTownLostPopup  = true;
                                     gLog("Enemy %s sieged and captured your town %s!\n",
                                            eHero.name.c_str(), t.name.c_str());
+                                    // Check for total defeat: no heroes with armies, no player towns
+                                    {
+                                        bool anyUnit = false;
+                                        for (const auto& h : m_heroes)
+                                            if (!h.army.empty()) { anyUnit = true; break; }
+                                        bool anyTown2 = false;
+                                        for (const auto& tt2 : m_towns)
+                                            if (tt2.ownerId == static_cast<uint32_t>(currentPlayerId())) { anyTown2 = true; break; }
+                                        if (!anyUnit && !anyTown2) {
+                                            m_finalDefeat = true;
+                                            m_showDefeat  = true;
+                                        }
+                                    }
                                 } else {
                                     gLog("Enemy %s failed to siege %s\n",
                                            eHero.name.c_str(), t.name.c_str());

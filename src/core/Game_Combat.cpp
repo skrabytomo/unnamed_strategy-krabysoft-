@@ -1739,7 +1739,6 @@ void Game::exitCombat(bool playerWon)
                 }();
             m_combatResultGold  = 0;
             m_showCombatResult  = true;
-            m_showDefeat = true;
             if (m_state == GameState::Campaign)
                 m_campaign.onHeroDefeated(0); // 0 = player hero (triggers DefeatHero check)
             // Check for unrecoverable defeat: no heroes with armies, no player towns
@@ -1752,6 +1751,8 @@ void Game::exitCombat(bool playerWon)
                     if (t.ownerId == static_cast<uint32_t>(currentPlayerId())) { anyTown = true; break; }
                 m_finalDefeat = !anyUnit && !anyTown;
             }
+            // Only show the defeat screen when it's truly unrecoverable
+            m_showDefeat = m_finalDefeat;
             if (m_state == GameState::Campaign && m_finalDefeat)
                 m_campaign.triggerMissionLoss();
             m_audio.playSound("hit");
