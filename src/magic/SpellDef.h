@@ -17,7 +17,7 @@ enum class SpellTarget : uint8_t
 // What the spell does
 enum class SpellEffect : uint8_t
 {
-    Damage,        // deal power * school_power / 10 damage
+    Damage,        // deal (power + school_power) damage; school_power = hero's matching stat
     Heal,          // restore HP proportional to power
     AttackBuff,    // +power roundAttackBonus for 1 round
     DefenseBuff,   // +power roundDefenseBonus for 1 round

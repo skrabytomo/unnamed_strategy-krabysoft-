@@ -3093,7 +3093,10 @@ void Game::renderLevelUpModal()
                 if (cls) {
                     if (cls->scalesAttack) hero.attack  += 1;
                     else                   hero.defense += 1;
-                    if (hero.level % 2 == 0) {
+                    // Use the level actually being gained (not the final level) so
+                    // even-level bonuses are applied correctly when skipping levels.
+                    int gainedLevel = hero.level - m_pendingLevelUps + 1;
+                    if (gainedLevel % 2 == 0) {
                         if (cls->scalesLightPower)  hero.lightPower  += 1;
                         if (cls->scalesBloodPower)  hero.bloodPower  += 1;
                         if (cls->scalesDeathPower)  hero.deathPower  += 1;

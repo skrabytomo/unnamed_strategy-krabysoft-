@@ -908,14 +908,29 @@ void Game::renderSpellPanel()
         if (!canCast) ImGui::EndDisabled();
 
         // Hover glow
+        // Buffs/debuffs use spell->power only; damage/heal/DoT/morale scale with school power.
+        bool scalesWithSchool = (spell->effect == SpellEffect::Damage    ||
+                                 spell->effect == SpellEffect::Heal      ||
+                                 spell->effect == SpellEffect::Poison    ||
+                                 spell->effect == SpellEffect::Burn      ||
+                                 spell->effect == SpellEffect::MoraleBoost ||
+                                 spell->effect == SpellEffect::MoraleDrain);
+        int displayPow = scalesWithSchool
+            ? spell->power + schoolPow(spell->school)
+            : spell->power;
+
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             dl2->AddRect({cardPos.x, cardPos.y},
                          {cardPos.x + CARD_W, cardPos.y + CARD_H},
                          IM_COL32(255, 220, 80, 120), 6.0f, 0, 3.0f);
             char tipBuf[256];
-            std::snprintf(tipBuf, sizeof(tipBuf), "%s\nPower: %d + %s %d = %d",
-                spell->desc, spell->power, kSchoolName[si], schoolPow(spell->school),
-                spell->power + schoolPow(spell->school));
+            if (scalesWithSchool)
+                std::snprintf(tipBuf, sizeof(tipBuf), "%s\nPower: %d + %s %d = %d",
+                    spell->desc, spell->power, kSchoolName[si], schoolPow(spell->school),
+                    displayPow);
+            else
+                std::snprintf(tipBuf, sizeof(tipBuf), "%s\nPower: %d (buffs don't scale with school)",
+                    spell->desc, displayPow);
             ImGui::SetTooltip("%s", tipBuf);
         }
 
@@ -940,9 +955,9 @@ void Game::renderSpellPanel()
                      spell->name);
         char costLine[80];
         if (isFree)
-            std::snprintf(costLine, sizeof(costLine), "FREE  [pow %d]", spell->power + schoolPow(spell->school));
+            std::snprintf(costLine, sizeof(costLine), "FREE  [pow %d]", displayPow);
         else
-            std::snprintf(costLine, sizeof(costLine), "%d mana  [pow %d]", spell->manaCost, spell->power + schoolPow(spell->school));
+            std::snprintf(costLine, sizeof(costLine), "%d mana  [pow %d]", spell->manaCost, displayPow);
         dl2->AddText(ImGui::GetFont(), 12.0f, {tx, ty + 19.0f},
                      canCast ? IM_COL32(180,220,180,255) : IM_COL32(90,110,90,200),
                      costLine);
