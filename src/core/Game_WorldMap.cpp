@@ -344,25 +344,21 @@ void Game::updateWorldMap(float dt)
         m_pickupEffects.end());
 
     // Update world-map hero animators (lazy-init on first seen)
-    for (const auto& h : m_heroes) {
+    auto initAnim = [&](const Hero& h, bool mirror) {
         if (m_heroMapAnimators.find(h.id) == m_heroMapAnimators.end()) {
             SpriteAnimator a;
             a.faction = std::min(static_cast<int>(h.faction), NUM_FACTIONS - 1);
-            a.tier = 1;
+            a.tier = 1; a.mirror = mirror;
             a.setState(AnimState::Idle);
             m_heroMapAnimators[h.id] = a;
         }
         m_heroMapAnimators[h.id].update(dt);
-    }
-    for (const auto& h : m_enemyHeroes) {
-        if (m_heroMapAnimators.find(h.id) == m_heroMapAnimators.end()) {
-            SpriteAnimator a;
-            a.faction = std::min(static_cast<int>(h.faction), NUM_FACTIONS - 1);
-            a.tier = 1; a.mirror = true;
-            a.setState(AnimState::Idle);
-            m_heroMapAnimators[h.id] = a;
-        }
-        m_heroMapAnimators[h.id].update(dt);
+    };
+    for (const auto& h : m_heroes)      initAnim(h, false);
+    for (const auto& h : m_enemyHeroes) initAnim(h, true);
+    if (m_numHumanPlayers == 2) {
+        const auto& otherHeroes = (m_currentPlayerIdx == 0) ? m_player2Heroes : m_player1Heroes;
+        for (const auto& h : otherHeroes) initAnim(h, true);
     }
 
     if (m_input.keyDown(SDLK_F6)) m_showHideoutScreen   = !m_showHideoutScreen;
@@ -3036,7 +3032,7 @@ void Game::renderWorldOverlay()
                 ImTextureID tex = (ImTextureID)(uintptr_t)m_unitTex[fac][0].id();
                 dl->AddImage(tex, {sx - 16, sy - 20}, {sx + 16, sy + 12}, {u0,v0}, {u1,v1});
             } else {
-                addIcon(ICO_HERO_ENEMY, sx, sy, 13.0f);
+                addIcon(ICO_HERO_PLAYER, sx, sy, 13.0f);
             }
             // Blue-purple ring to distinguish from AI enemies (red) and current player (yellow)
             dl->AddCircle({sx, sy}, 14.0f, IM_COL32(120, 160, 255, 200), 0, 2.0f);
