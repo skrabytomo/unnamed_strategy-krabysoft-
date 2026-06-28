@@ -327,6 +327,19 @@ bool SaveLoad::saveGame(const std::string& path, const GameSaveData& data)
             j["campaign"] = camp;
         }
 
+        // 2P hotseat state
+        if (data.numHumanPlayers >= 2) {
+            j["numPlayers"]      = data.numHumanPlayers;
+            j["currentPlayer"]   = data.currentPlayerIdx;
+            j["p2ActiveHero"]    = data.p2ActiveHeroIdx;
+            json p2resArr = json::array();
+            for (int v : data.p2ResourceAmounts) p2resArr.push_back(v);
+            j["p2Resources"] = p2resArr;
+            json p2hArr = json::array();
+            for (auto& h : data.p2Heroes) p2hArr.push_back(heroToJson(h));
+            j["p2Heroes"] = p2hArr;
+        }
+
         std::ofstream f(path);
         if (!f.is_open()) return false;
         f << j.dump(2);
@@ -404,6 +417,20 @@ bool SaveLoad::loadGame(const std::string& path, GameSaveData& out)
                 }
             }
         }
+
+        // 2P hotseat state
+        out.numHumanPlayers  = j.value("numPlayers",    1);
+        out.currentPlayerIdx = j.value("currentPlayer", 0);
+        out.p2ActiveHeroIdx  = j.value("p2ActiveHero",  0);
+        out.p2ResourceAmounts.fill(0);
+        if (j.contains("p2Resources")) {
+            int i = 0;
+            for (auto& v : j.at("p2Resources"))
+                if (i < RESOURCE_COUNT) out.p2ResourceAmounts[i++] = v.get<int>();
+        }
+        out.p2Heroes.clear();
+        if (j.contains("p2Heroes"))
+            for (auto& jh : j.at("p2Heroes")) out.p2Heroes.push_back(heroFromJson(jh));
 
         return true;
     }
@@ -696,6 +723,7 @@ void SaveLoad::unpackState(const GameSaveData& save,
 
     // Restore towns
     towns.clear();
+
     for (auto& ts : save.towns) {
         Town t;
         t.id         = ts.id;
@@ -719,4 +747,21 @@ void SaveLoad::unpackState(const GameSaveData& save,
         }
         towns.push_back(t);
     }
+}
+
+// ── Hero list helpers (for 2P backup state) ───────────────────────────────────
+std::vector<HeroSave> SaveLoad::packHeroes(const std::vector<Hero>& heroes)
+{
+    std::vector<HeroSave> out;
+    out.reserve(heroes.size());
+    for (auto& h : heroes) out.push_back(packHero(h));
+    return out;
+}
+
+std::vector<Hero> SaveLoad::unpackHeroes(const std::vector<HeroSave>& saves)
+{
+    std::vector<Hero> out;
+    out.reserve(saves.size());
+    for (auto& hs : saves) out.push_back(unpackHero(hs));
+    return out;
 }

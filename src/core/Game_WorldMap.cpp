@@ -495,6 +495,10 @@ void Game::doEndTurn()
         m_reachable.clear();
         m_selected = {-999, -999};
         m_worldHUD.setCurrentPlayerId(2);
+        // Recalculate weekly income display for P2
+        m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, 2);
+        for (const auto& r : m_resources)
+            if (r.ownedBy == 2u) m_cachedWeeklyIncome.add(r.type, r.amount);
         return;
     }
 
@@ -544,6 +548,11 @@ void Game::doEndTurn()
         }
 
         p2justEndedTurn = true;
+
+        // Recalculate weekly income display for P1
+        m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, 1);
+        for (const auto& r : m_resources)
+            if (r.ownedBy == 1u) m_cachedWeeklyIncome.add(r.type, r.amount);
 
         // Restore P1 fog immediately (correct even if AI combat triggers below)
         FogOfWar::hideAll(m_map);
@@ -2459,7 +2468,7 @@ void Game::checkTileEvents()
                 return;
             }
             // Guards beaten (or already ours) — capture
-            r.ownedBy = 1;
+            r.ownedBy = static_cast<uint32_t>(currentPlayerId());
             m_playerResources.add(r.type, r.amount);
             m_cachedWeeklyIncome.add(r.type, r.amount);
             char mineBuf[48];
@@ -3277,6 +3286,17 @@ void Game::renderWorldOverlay()
             float mx = mm_cx + static_cast<float>(hero.pos.q) * scaleX;
             float my = mm_cy + (static_cast<float>(hero.pos.r) + static_cast<float>(hero.pos.q) * 0.5f) * scaleY;
             dl->AddCircleFilled({mx, my}, 2.5f, IM_COL32(255, 60, 60, 255));
+        }
+
+        // Opposing human player heroes (2P): blue circle
+        if (m_numHumanPlayers == 2) {
+            const auto& otherHeroes = (m_currentPlayerIdx == 0) ? m_player2Heroes : m_player1Heroes;
+            for (const auto& oh : otherHeroes) {
+                float mx = mm_cx + static_cast<float>(oh.pos.q) * scaleX;
+                float my = mm_cy + (static_cast<float>(oh.pos.r) + static_cast<float>(oh.pos.q) * 0.5f) * scaleY;
+                dl->AddCircleFilled({mx, my}, 2.5f, IM_COL32(100, 140, 255, 240));
+                dl->AddCircle({mx, my}, 3.0f, IM_COL32(160, 200, 255, 220));
+            }
         }
 
         // Player heroes: bright cyan circle

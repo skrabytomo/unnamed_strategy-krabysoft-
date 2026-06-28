@@ -146,6 +146,7 @@ bool Game::init(const std::string& title, int width, int height)
 
     // Wire WorldMapHUD callbacks
     m_worldHUD.init(width, height);
+    m_worldHUD.setNumHumanPlayers(m_numHumanPlayers);
     if (m_iconTex.ok())
         m_worldHUD.setIconTex((ImTextureID)(uintptr_t)m_iconTex.id());
     for (int i = 0; i < NUM_FACTIONS; ++i)
@@ -367,6 +368,18 @@ void Game::saveGame(const std::string& path)
 
     data.campaign = m_campaign.toSaveState();
 
+    // 2P hotseat — save backup player's state
+    data.numHumanPlayers  = m_numHumanPlayers;
+    data.currentPlayerIdx = m_currentPlayerIdx;
+    if (m_numHumanPlayers >= 2) {
+        const auto& backupHeroes = (m_currentPlayerIdx == 0) ? m_player2Heroes : m_player1Heroes;
+        const Resources& backupRes = (m_currentPlayerIdx == 0) ? m_player2Resources : m_player1Resources;
+        int backupActive = (m_currentPlayerIdx == 0) ? m_player2ActiveHeroIdx : m_player1ActiveHeroIdx;
+        data.p2Heroes          = SaveLoad::packHeroes(backupHeroes);
+        data.p2ResourceAmounts = backupRes.amounts;
+        data.p2ActiveHeroIdx   = backupActive;
+    }
+
     if (SaveLoad::saveGame(path, data))
         gLog("Game saved to %s\n", path.c_str());
     else
@@ -448,6 +461,37 @@ bool Game::loadGame(const std::string& path)
         m_campaign.init();
         m_campaign.fromSaveState(data.campaign);
         m_state = GameState::Campaign;
+    }
+
+    // 2P hotseat — restore backup player's state
+    m_numHumanPlayers  = data.numHumanPlayers;
+    m_currentPlayerIdx = data.currentPlayerIdx;
+    m_player1Heroes.clear();
+    m_player2Heroes.clear();
+    if (m_numHumanPlayers >= 2) {
+        auto backupHeroes = SaveLoad::unpackHeroes(data.p2Heroes);
+        Resources backupRes;
+        backupRes.amounts = data.p2ResourceAmounts;
+
+        if (m_currentPlayerIdx == 0) {
+            // m_heroes / m_playerResources = P1 (current)
+            m_player1Heroes        = m_heroes;
+            m_player1Resources     = m_playerResources;
+            m_player1ActiveHeroIdx = m_activeHeroIdx;
+            m_player2Heroes        = std::move(backupHeroes);
+            m_player2Resources     = std::move(backupRes);
+            m_player2ActiveHeroIdx = data.p2ActiveHeroIdx;
+        } else {
+            // m_heroes / m_playerResources = P2 (current)
+            m_player2Heroes        = m_heroes;
+            m_player2Resources     = m_playerResources;
+            m_player2ActiveHeroIdx = m_activeHeroIdx;
+            m_player1Heroes        = std::move(backupHeroes);
+            m_player1Resources     = std::move(backupRes);
+            m_player1ActiveHeroIdx = data.p2ActiveHeroIdx;
+        }
+        m_worldHUD.setCurrentPlayerId(currentPlayerId());
+        m_worldHUD.setNumHumanPlayers(m_numHumanPlayers);
     }
 
     gLog("Game loaded from %s (day %d week %d)\n", path.c_str(), day, week);

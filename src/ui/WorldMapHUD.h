@@ -38,6 +38,7 @@ public:
         if (factionIdx >= 0 && factionIdx < 9) m_portraitTex[factionIdx] = tex;
     }
     void setCurrentPlayerId(int id) { m_currentPlayerId = id; }
+    void setNumHumanPlayers(int n) { m_numHumanPlayers = n; }
 
 private:
     void buildLayout(int sw, int sh);
@@ -71,4 +72,5 @@ private:
     ImTextureID m_iconTex = nullptr;
     ImTextureID m_portraitTex[9] = {};
     int m_currentPlayerId = 1;
+    int m_numHumanPlayers = 1;
 };

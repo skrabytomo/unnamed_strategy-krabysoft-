@@ -164,21 +164,41 @@ void WorldMapHUD::drawResourceBar(UIRenderer& rdr, const Resources& res,
 
 void WorldMapHUD::drawDatePanel(UIRenderer& rdr, const TurnManager& turns)
 {
-    // Left side of bottom bar — week/day info + "Next Hero" hint
     float barTop = static_cast<float>(m_screenH) - BOT_H;
-    std::string date = "Week " + std::to_string(turns.week()) +
-                       "  Day "  + std::to_string(turns.day());
-    rdr.drawText(date, 14.0f, barTop + 14.0f,
-                 UIColor::hex(UITheme::GOLD), 18.0f);
-    rdr.drawText("SPACE = End Turn   TAB = Next Hero   F2 = Editor",
-                 14.0f, barTop + 38.0f,
-                 UIColor::hex(UITheme::TEXT_SECONDARY), 11.0f);
-    rdr.drawText("F7 = Artifacts   F8 = Hero Details   M = Mini-Map",
-                 14.0f, barTop + 54.0f,
-                 UIColor::hex(UITheme::TEXT_SECONDARY), 11.0f);
-    rdr.drawText("ESC = Options",
-                 14.0f, barTop + 70.0f,
-                 UIColor::hex(UITheme::TEXT_SECONDARY), 11.0f);
+
+    if (m_numHumanPlayers >= 2) {
+        // Player indicator — large, color-coded
+        const char* pLabel = (m_currentPlayerId == 1) ? "PLAYER 1" : "PLAYER 2";
+        UIColor     pColor = (m_currentPlayerId == 1)
+                             ? UIColor::hex(0xFFDD44)   // gold for P1
+                             : UIColor::hex(0x66AAFF);  // blue for P2
+        rdr.drawText(pLabel, 14.0f, barTop + 6.0f, pColor, 20.0f);
+
+        std::string date = "Week " + std::to_string(turns.week()) +
+                           "  Day "  + std::to_string(turns.day());
+        rdr.drawText(date, 14.0f, barTop + 32.0f,
+                     UIColor::hex(UITheme::GOLD), 14.0f);
+        rdr.drawText("SPACE = End Turn   TAB = Next Hero",
+                     14.0f, barTop + 52.0f,
+                     UIColor::hex(UITheme::TEXT_SECONDARY), 11.0f);
+        rdr.drawText("F7 = Artifacts   F8 = Details   ESC = Options",
+                     14.0f, barTop + 66.0f,
+                     UIColor::hex(UITheme::TEXT_SECONDARY), 11.0f);
+    } else {
+        std::string date = "Week " + std::to_string(turns.week()) +
+                           "  Day "  + std::to_string(turns.day());
+        rdr.drawText(date, 14.0f, barTop + 14.0f,
+                     UIColor::hex(UITheme::GOLD), 18.0f);
+        rdr.drawText("SPACE = End Turn   TAB = Next Hero   F2 = Editor",
+                     14.0f, barTop + 38.0f,
+                     UIColor::hex(UITheme::TEXT_SECONDARY), 11.0f);
+        rdr.drawText("F7 = Artifacts   F8 = Hero Details   M = Mini-Map",
+                     14.0f, barTop + 54.0f,
+                     UIColor::hex(UITheme::TEXT_SECONDARY), 11.0f);
+        rdr.drawText("ESC = Options",
+                     14.0f, barTop + 70.0f,
+                     UIColor::hex(UITheme::TEXT_SECONDARY), 11.0f);
+    }
 }
 
 void WorldMapHUD::drawHeroPanel(UIRenderer& rdr,

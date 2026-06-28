@@ -1441,7 +1441,7 @@ void Game::exitCombat(bool playerWon)
             for (auto& t : m_towns)
                 if (t.id == m_pendingTownCaptureId) { captured = &t; break; }
             if (captured) {
-                captured->ownerId = 1;
+                captured->ownerId = static_cast<uint32_t>(currentPlayerId());
                 captured->garrison.clear();
                 m_capturedTownName = captured->name;
                 m_showCapturePopup = true;
@@ -1505,10 +1505,23 @@ void Game::exitCombat(bool playerWon)
             m_showUtopiaPopup = true;
         }
 
-        // Mine guard beaten — only mark on player win, not on fight acceptance
+        // Mine guard beaten — mark and immediately capture
         if (m_pendingMineId != 0) {
-            for (auto& r : m_resources)
-                if (r.id == m_pendingMineId) { r.guardBeaten = true; break; }
+            for (auto& r : m_resources) {
+                if (r.id == m_pendingMineId) {
+                    r.guardBeaten = true;
+                    r.ownedBy = static_cast<uint32_t>(currentPlayerId());
+                    m_playerResources.add(r.type, r.amount);
+                    m_cachedWeeklyIncome.add(r.type, r.amount);
+                    char mineBuf[48];
+                    std::snprintf(mineBuf, sizeof(mineBuf), "+%d %s/week", r.amount, resourceName(r.type));
+                    if (!m_heroes.empty())
+                        pushPickupEffect(m_heroes[m_activeHeroIdx].pos, mineBuf, IM_COL32(255, 220, 80, 255));
+                    m_audio.playSound("buy");
+                    gLog("Captured mine after combat: +%d %s/week\n", r.amount, resourceName(r.type));
+                    break;
+                }
+            }
             m_pendingMineId = 0;
         }
 

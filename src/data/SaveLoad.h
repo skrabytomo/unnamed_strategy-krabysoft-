@@ -178,6 +178,13 @@ struct GameSaveData
 
     // Campaign state (optional — only populated when a campaign is active)
     CampaignSaveState campaign;
+
+    // 2P hotseat state (only populated when numHumanPlayers >= 2)
+    int numHumanPlayers  = 1;
+    int currentPlayerIdx = 0;   // 0=P1's turn, 1=P2's turn at save time
+    std::array<int, RESOURCE_COUNT> p2ResourceAmounts = {};
+    std::vector<HeroSave> p2Heroes;
+    int p2ActiveHeroIdx = 0;
 };
 
 // ── Save / Load API ────────────────────────────────────────────────────────────
@@ -212,4 +219,8 @@ namespace SaveLoad
                      uint32_t& nextObjId,
                      Resources& playerRes,
                      int& day, int& week);
+
+    // Hero list pack/unpack helpers (for 2P backup state)
+    std::vector<HeroSave> packHeroes(const std::vector<Hero>& heroes);
+    std::vector<Hero>     unpackHeroes(const std::vector<HeroSave>& saves);
 }
