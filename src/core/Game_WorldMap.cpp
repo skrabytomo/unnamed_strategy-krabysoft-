@@ -435,6 +435,11 @@ void Game::doEndTurn()
 {
     // ── Hotseat: Player 1 ends turn → switch to Player 2 ────────────────────────
     if (m_numHumanPlayers == 2 && m_currentPlayerIdx == 0) {
+        // Discard any pending encounter so the stale lambda can't fire on P2's heroes
+        m_showEncounterPrompt = false;
+        m_encounterOnAccept   = nullptr;
+        m_encounterOnDecline  = nullptr;
+
         m_player1Heroes        = m_heroes;
         m_player1Resources     = m_playerResources;
         m_player1ActiveHeroIdx = m_activeHeroIdx;
@@ -524,6 +529,11 @@ void Game::doEndTurn()
     // ── Hotseat: Player 2 ends turn → restore Player 1 then run full turn ────────
     bool p2justEndedTurn = false;
     if (m_numHumanPlayers == 2 && m_currentPlayerIdx == 1) {
+        // Discard any pending encounter so the stale lambda can't fire on P1's heroes
+        m_showEncounterPrompt = false;
+        m_encounterOnAccept   = nullptr;
+        m_encounterOnDecline  = nullptr;
+
         m_player2Heroes         = m_heroes;
         m_player2Resources      = m_playerResources;
         m_player2ActiveHeroIdx  = m_activeHeroIdx;

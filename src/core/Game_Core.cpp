@@ -517,6 +517,7 @@ void Game::startNewGame()
     m_heroes.clear();
     m_enemyHeroes.clear();
     m_defeatedHeroPool.clear();
+    m_p2DefeatedHeroPool.clear();
     m_towns.clear();
     m_resources.clear();
     m_worldObjects.clear();
