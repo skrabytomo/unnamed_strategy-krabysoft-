@@ -309,9 +309,10 @@ private:
     GameState m_prevState = GameState::WorldMap;
 
     // ── Victory / defeat ──────────────────────────────────────────────────────
-    bool m_showVictory  = false;
-    bool m_showDefeat   = false;
-    bool m_finalDefeat  = false;  // no heroes with armies and no player towns
+    bool        m_showVictory    = false;
+    bool        m_showDefeat     = false;
+    bool        m_finalDefeat    = false;  // no heroes with armies and no player towns
+    std::string m_victoryMessage;          // set before raising m_showVictory
 
     // ── Combat result summary popup ───────────────────────────────────────────
     bool        m_showCombatResult  = false;

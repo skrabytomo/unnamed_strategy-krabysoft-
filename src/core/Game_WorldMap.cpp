@@ -448,6 +448,27 @@ void Game::doEndTurn()
         m_activeHeroIdx   = m_player2ActiveHeroIdx;
         if (m_activeHeroIdx >= static_cast<int>(m_heroes.size())) m_activeHeroIdx = 0;
 
+        // Check if P2 was already eliminated before giving them their turn
+        {
+            bool p2HasTowns = false;
+            for (const auto& t : m_towns)
+                if (t.ownerId == 2u) { p2HasTowns = true; break; }
+            if (m_heroes.empty() && !p2HasTowns) {
+                m_victoryMessage = "Player 1 wins! Player 2 has been eliminated.";
+                m_showVictory    = true;
+                m_audio.playSound("victory");
+                // Restore P1 as current so the victory screen shows their state
+                m_heroes          = m_player1Heroes;
+                m_playerResources = m_player1Resources;
+                m_activeHeroIdx   = m_player1ActiveHeroIdx;
+                m_currentPlayerIdx = 0;
+                m_worldHUD.setCurrentPlayerId(1);
+                FogOfWar::hideAll(m_map);
+                if (!m_heroes.empty()) FogOfWar::updateVision(m_map, m_heroes);
+                return;
+            }
+        }
+
         for (auto& h : m_heroes) { h.movePool = h.maxMove; h.path.clear(); h.pathStep = 0; }
 
         FogOfWar::hideAll(m_map);
@@ -484,6 +505,28 @@ void Game::doEndTurn()
         m_reachable.clear();
         m_selected = {-999, -999};
         m_worldHUD.setCurrentPlayerId(1);
+
+        // Check if P1 was eliminated while P2 was playing
+        {
+            bool p1HasTowns = false;
+            for (const auto& t : m_towns)
+                if (t.ownerId == 1u) { p1HasTowns = true; break; }
+            if (m_heroes.empty() && !p1HasTowns) {
+                m_victoryMessage = "Player 2 wins! Player 1 has been eliminated.";
+                m_showVictory    = true;
+                m_audio.playSound("victory");
+                // Keep P2's state as current for the victory display
+                m_heroes          = m_player2Heroes;
+                m_playerResources = m_player2Resources;
+                m_activeHeroIdx   = m_player2ActiveHeroIdx;
+                m_currentPlayerIdx = 1;
+                m_worldHUD.setCurrentPlayerId(2);
+                FogOfWar::hideAll(m_map);
+                if (!m_heroes.empty()) FogOfWar::updateVision(m_map, m_heroes);
+                return;
+            }
+        }
+
         p2justEndedTurn = true;
 
         // Restore P1 fog immediately (correct even if AI combat triggers below)
@@ -3802,8 +3845,10 @@ void Game::renderVictoryModal()
     ImGui::SetNextWindowSize(ImVec2(360, 0), ImGuiCond_Always);
 
     if (ImGui::BeginPopupModal("Victory!", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.1f, 1.0f),
-                           "All enemy heroes have been defeated!");
+        const char* msg = m_victoryMessage.empty()
+                        ? "All enemies have been defeated!"
+                        : m_victoryMessage.c_str();
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.1f, 1.0f), "%s", msg);
         ImGui::Spacing();
         ImGui::TextDisabled("Day %d  Week %d  |  Gold: %d",
                             m_turns.day(), m_turns.week(),

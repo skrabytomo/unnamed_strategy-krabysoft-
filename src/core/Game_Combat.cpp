@@ -1560,6 +1560,27 @@ void Game::exitCombat(bool playerWon)
             for (const auto& t : m_towns)
                 if (t.ownerId > static_cast<uint32_t>(m_numHumanPlayers)) { noEnemyTowns = false; break; }
             if (noEnemyHeroes && noEnemyTowns) {
+                if (m_numHumanPlayers == 2)
+                    m_victoryMessage = "Player " + std::to_string(currentPlayerId())
+                                     + " wins! All AI enemies defeated.";
+                else
+                    m_victoryMessage = "Victory! All enemies have been defeated.";
+                m_showVictory = true;
+                m_audio.playSound("victory");
+            }
+        }
+        // 2P: check if the other human player was just eliminated
+        if (!m_showVictory && m_numHumanPlayers == 2) {
+            int other = 3 - currentPlayerId();
+            const auto& otherHeroes = (other == 2) ? m_player2Heroes : m_player1Heroes;
+            bool otherHasHeroes = !otherHeroes.empty();
+            bool otherHasTowns  = false;
+            for (const auto& t : m_towns)
+                if (t.ownerId == static_cast<uint32_t>(other)) { otherHasTowns = true; break; }
+            if (!otherHasHeroes && !otherHasTowns) {
+                m_victoryMessage = "Player " + std::to_string(currentPlayerId())
+                                 + " wins! Player " + std::to_string(other)
+                                 + " has been eliminated.";
                 m_showVictory = true;
                 m_audio.playSound("victory");
             }
