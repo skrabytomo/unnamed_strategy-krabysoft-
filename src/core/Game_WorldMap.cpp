@@ -1610,14 +1610,32 @@ void Game::doEndTurn()
                 if (h.isGarrisoned) ++p2GarrisonCount;
             if (p2GarrisonCount > 0)
                 m_player2Resources.add(ResourceType::Gold, -(p2GarrisonCount * 350));
-            // Mirror resource-only weekly events to P2 (same roll as P1 for fairness)
-            // Hero-specific events (XP, stats, spells) and choice events remain P1-only.
+            // Mirror weekly events to P2 — resource events applied directly,
+            // silent hero-stat events applied to P2's active hero backup,
+            // XP/level-up and choice events remain P1-only (require UI).
             {
                 int evtRoll = ((m_turns.week() * 2654435761u) >> 8) % 24;
+                auto p2Hero = [&]() -> Hero* {
+                    if (m_player2Heroes.empty()) return nullptr;
+                    int idx = std::min(m_player2ActiveHeroIdx, (int)m_player2Heroes.size() - 1);
+                    return &m_player2Heroes[idx];
+                };
                 switch (evtRoll) {
                     case 1:  // Merchant's Gift
                         m_player2Resources.add(ResourceType::Gold, 500);
                         break;
+                    case 2: { // Wandering Wizard — teach P2's hero a spell they don't know
+                        Hero* h = p2Hero();
+                        if (h) {
+                            for (int i = 0; i < SPELL_COUNT; ++i) {
+                                int sid = ALL_SPELLS[i].id;
+                                bool known = false;
+                                for (int s : h->knownSpells) if (s == sid) { known = true; break; }
+                                if (!known) { h->knownSpells.push_back(sid); break; }
+                            }
+                        }
+                        break;
+                    }
                     case 3: { // Bandit Raid
                         int lost = std::min(200, m_player2Resources.get(ResourceType::Gold));
                         m_player2Resources.add(ResourceType::Gold, -lost);
@@ -1627,11 +1645,46 @@ void Game::doEndTurn()
                         m_player2Resources.add(ResourceType::Gold, 200);
                         m_player2Resources.add(ResourceType::Iron, 3);
                         break;
+                    case 6: { // Arcane Font — permanent mana pool increase
+                        Hero* h = p2Hero();
+                        if (h) { h->maxMana = std::min(h->maxMana + 5, 99); h->mana = h->maxMana; }
+                        break;
+                    }
+                    case 7: { // Ancient Armory — +1 Attack
+                        Hero* h = p2Hero();
+                        if (h) h->attack++;
+                        break;
+                    }
+                    case 8: { // Rally — +5 to largest stack
+                        Hero* h = p2Hero();
+                        if (h) {
+                            int best = 0, bestIdx = -1;
+                            for (int i = 0; i < (int)h->army.size(); ++i)
+                                if (h->army[i].count > best) { best = h->army[i].count; bestIdx = i; }
+                            if (bestIdx >= 0) h->army[bestIdx].count += 5;
+                        }
+                        break;
+                    }
                     case 10: // Tribute from Vassals
                         m_player2Resources.add(ResourceType::Gold,        300);
                         m_player2Resources.add(ResourceType::FaithStones,   2);
                         m_player2Resources.add(ResourceType::VerdantSap,    2);
                         break;
+                    case 12: { // Fallen Knight — +1 Defense
+                        Hero* h = p2Hero();
+                        if (h) h->defense++;
+                        break;
+                    }
+                    case 13: { // Mercenary Camp — +8 to largest stack
+                        Hero* h = p2Hero();
+                        if (h) {
+                            int best = 0, bestIdx = -1;
+                            for (int i = 0; i < (int)h->army.size(); ++i)
+                                if (h->army[i].count > best) { best = h->army[i].count; bestIdx = i; }
+                            if (bestIdx >= 0) h->army[bestIdx].count += 8;
+                        }
+                        break;
+                    }
                     case 14: // Spy Network (gold portion only — enemy mana already applied)
                         m_player2Resources.add(ResourceType::Gold, 150);
                         break;
@@ -1639,9 +1692,19 @@ void Game::doEndTurn()
                         m_player2Resources.add(ResourceType::Mercury,     2);
                         m_player2Resources.add(ResourceType::BloodEssence, 1);
                         break;
+                    case 16: { // Divine Favour — full mana restore
+                        Hero* h = p2Hero();
+                        if (h) h->mana = h->maxMana;
+                        break;
+                    }
                     case 18: { // Tax Revolt
                         int lost = m_player2Resources.get(ResourceType::Gold) / 2;
                         m_player2Resources.add(ResourceType::Gold, -lost);
+                        break;
+                    }
+                    case 19: { // Titan's Favour — +15 max HP
+                        Hero* h = p2Hero();
+                        if (h) { h->heroMaxHp += 15; h->heroHp = std::min(h->heroHp + 15, h->heroMaxHp); }
                         break;
                     }
                     default: break;
