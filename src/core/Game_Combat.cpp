@@ -1435,6 +1435,9 @@ void Game::exitCombat(bool playerWon)
     }
 
     if (playerWon) {
+        // Record before any clearing — used by Predator specialty below
+        const bool killedEnemyHero = (m_lastCombatEnemyId != 0);
+
         // Capture town if this was a garrison fight
         Town* captured = nullptr;
         if (m_pendingTownCaptureId != 0) {
@@ -1662,7 +1665,7 @@ void Game::exitCombat(bool playerWon)
                     }
                 }
                 // Predator (Assassin Lord): permanent +1 attack for each enemy hero killed
-                if (cls->specialty == SpecialtyType::Predator && m_lastCombatEnemyId != 0) {
+                if (cls->specialty == SpecialtyType::Predator && killedEnemyHero) {
                     if (hero.specialtyAtk < 10) {
                         hero.specialtyAtk++;
                         hero.attack++;

@@ -458,6 +458,8 @@ void Game::doEndTurn()
         m_showUnitExchange       = false;
         m_showCapturePopup       = false;
         m_showTownLostPopup      = false;
+        m_showFoundCityPopup     = false;
+        m_showTownPortalPopup    = false;
         m_pendingObjId           = 0;
 
         m_player1Heroes        = m_heroes;
@@ -572,6 +574,8 @@ void Game::doEndTurn()
         m_showUnitExchange       = false;
         m_showCapturePopup       = false;
         m_showTownLostPopup      = false;
+        m_showFoundCityPopup     = false;
+        m_showTownPortalPopup    = false;
         m_pendingObjId           = 0;
 
         m_player2Heroes         = m_heroes;
