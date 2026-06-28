@@ -184,6 +184,7 @@ struct GameSaveData
     int currentPlayerIdx = 0;   // 0=P1's turn, 1=P2's turn at save time
     std::array<int, RESOURCE_COUNT> p2ResourceAmounts = {};
     std::vector<HeroSave> p2Heroes;
+    std::vector<HeroSave> p2DefeatedHeroes;
     int p2ActiveHeroIdx = 0;
 };
 

@@ -1709,7 +1709,7 @@ void Game::exitCombat(bool playerWon)
             m_combatResultXp    = m_combat.xpEarned();
             m_combatResultKills = m_combat.enemyStartCount();
             m_combatResultLost  = std::max(0, startCount - survivingCount);
-            m_combatResultGold  = (m_lastCombatEnemyId != 0) ? 100 + m_combat.xpEarned() * 3 : 0;
+            m_combatResultGold  = killedEnemyHero ? 100 + m_combat.xpEarned() * 3 : 0;
             m_showCombatResult  = true;
         }
 

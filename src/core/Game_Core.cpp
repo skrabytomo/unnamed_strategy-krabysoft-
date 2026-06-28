@@ -378,6 +378,7 @@ void Game::saveGame(const std::string& path)
         data.p2Heroes          = SaveLoad::packHeroes(backupHeroes);
         data.p2ResourceAmounts = backupRes.amounts;
         data.p2ActiveHeroIdx   = backupActive;
+        data.p2DefeatedHeroes  = SaveLoad::packHeroes(m_p2DefeatedHeroPool);
     }
 
     if (SaveLoad::saveGame(path, data))
@@ -450,7 +451,6 @@ bool Game::loadGame(const std::string& path)
     m_showP2TownLostPopup    = false;
     m_p2LostTownName.clear();
     m_p2Defeated             = false;
-    m_p2DefeatedHeroPool.clear();
     m_showCombatResult       = false;
     m_showWeekSummary        = false;
     m_pendingMineId          = 0;
@@ -496,16 +496,21 @@ bool Game::loadGame(const std::string& path)
         }
         m_worldHUD.setCurrentPlayerId(currentPlayerId());
         m_worldHUD.setNumHumanPlayers(m_numHumanPlayers);
+        m_p2DefeatedHeroPool = SaveLoad::unpackHeroes(data.p2DefeatedHeroes);
+    } else {
+        m_p2DefeatedHeroPool.clear();
     }
 
     // Ensure tavern hires after load don't reuse IDs already held by loaded heroes
     {
         uint32_t maxId = 299;
         auto scanHero = [&](const Hero& h){ if (h.id > maxId) maxId = h.id; };
-        for (const auto& h : m_heroes)        scanHero(h);
-        for (const auto& h : m_enemyHeroes)   scanHero(h);
-        for (const auto& h : m_player1Heroes)  scanHero(h);
-        for (const auto& h : m_player2Heroes)  scanHero(h);
+        for (const auto& h : m_heroes)             scanHero(h);
+        for (const auto& h : m_enemyHeroes)        scanHero(h);
+        for (const auto& h : m_player1Heroes)       scanHero(h);
+        for (const auto& h : m_player2Heroes)       scanHero(h);
+        for (const auto& h : m_defeatedHeroPool)    scanHero(h);
+        for (const auto& h : m_p2DefeatedHeroPool)  scanHero(h);
         m_nextHeroId = maxId + 1;
     }
 

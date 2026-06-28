@@ -338,6 +338,9 @@ bool SaveLoad::saveGame(const std::string& path, const GameSaveData& data)
             json p2hArr = json::array();
             for (auto& h : data.p2Heroes) p2hArr.push_back(heroToJson(h));
             j["p2Heroes"] = p2hArr;
+            json p2dArr = json::array();
+            for (auto& h : data.p2DefeatedHeroes) p2dArr.push_back(heroToJson(h));
+            j["p2DefeatedHeroes"] = p2dArr;
         }
 
         std::ofstream f(path);
@@ -431,6 +434,9 @@ bool SaveLoad::loadGame(const std::string& path, GameSaveData& out)
         out.p2Heroes.clear();
         if (j.contains("p2Heroes"))
             for (auto& jh : j.at("p2Heroes")) out.p2Heroes.push_back(heroFromJson(jh));
+        out.p2DefeatedHeroes.clear();
+        if (j.contains("p2DefeatedHeroes"))
+            for (auto& jh : j.at("p2DefeatedHeroes")) out.p2DefeatedHeroes.push_back(heroFromJson(jh));
 
         return true;
     }
