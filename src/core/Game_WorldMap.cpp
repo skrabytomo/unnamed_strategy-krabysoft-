@@ -356,9 +356,9 @@ void Game::updateWorldMap(float dt)
     };
     for (const auto& h : m_heroes)      initAnim(h, false);
     for (const auto& h : m_enemyHeroes) initAnim(h, true);
-    if (m_numHumanPlayers == 2) {
-        const auto& otherHeroes = (m_currentPlayerIdx == 0) ? m_player2Heroes : m_player1Heroes;
-        for (const auto& h : otherHeroes) initAnim(h, true);
+    for (int pi = 0; pi < m_numHumanPlayers; ++pi) {
+        if (pi == m_currentPlayerIdx) continue;
+        for (const auto& h : m_players[pi].heroes) initAnim(h, true);
     }
 
     if (m_input.keyDown(SDLK_F6)) m_showHideoutScreen   = !m_showHideoutScreen;
@@ -433,16 +433,15 @@ void Game::updateWorldMap(float dt)
 // ── End Turn — full turn logic (SPACE key + HUD button) ───────────────────────
 void Game::doEndTurn()
 {
-    // ── Hotseat: Player 1 ends turn → switch to Player 2 ────────────────────────
-    if (m_numHumanPlayers == 2 && m_currentPlayerIdx == 0) {
-        // Discard any pending encounter so the stale lambda can't fire on P2's heroes
-        m_showEncounterPrompt = false;
-        m_encounterOnAccept   = nullptr;
-        m_encounterOnDecline  = nullptr;
-        // Dismiss P1's week summary so P2 doesn't see it
-        m_showWeekSummary   = false;
+    // ── Hotseat: non-last player ends turn → switch to next player ───────────────
+    if (m_numHumanPlayers >= 2 && m_currentPlayerIdx < m_numHumanPlayers - 1) {
+        int nextIdx = m_currentPlayerIdx + 1;
+        // Discard stale encounter/popup state
+        m_showEncounterPrompt    = false;
+        m_encounterOnAccept      = nullptr;
+        m_encounterOnDecline     = nullptr;
+        m_showWeekSummary        = false;
         m_weekChoiceOptions.clear();
-        // Discard pending interactive popups so P2 doesn't get P1's rewards
         m_showLevelUpModal       = false;
         m_pendingLevelUps        = 0;
         m_levelUpOffers.clear();
@@ -462,38 +461,38 @@ void Game::doEndTurn()
         m_showTownPortalPopup    = false;
         m_pendingObjId           = 0;
 
-        m_player1Heroes        = m_heroes;
-        m_player1Resources     = m_playerResources;
-        m_player1ActiveHeroIdx = m_activeHeroIdx;
-
-        // Clear P1 hero tile markers so P2 can walk through their positions
-        for (const auto& h : m_player1Heroes)
+        // Store current player's live state
+        m_players[m_currentPlayerIdx].heroes        = m_heroes;
+        m_players[m_currentPlayerIdx].resources     = m_playerResources;
+        m_players[m_currentPlayerIdx].activeHeroIdx = m_activeHeroIdx;
+        for (const auto& h : m_players[m_currentPlayerIdx].heroes)
             if (HexTile* ht = m_map.getTile(h.pos)) ht->heroId = 0;
 
-        m_heroes          = m_player2Heroes;
-        m_playerResources = m_player2Resources;
-        m_activeHeroIdx   = m_player2ActiveHeroIdx;
-
-        // Re-stamp P2 hero tile markers
+        // Load next player's state
+        m_heroes          = m_players[nextIdx].heroes;
+        m_playerResources = m_players[nextIdx].resources;
+        m_activeHeroIdx   = m_players[nextIdx].activeHeroIdx;
         for (const auto& h : m_heroes)
             if (HexTile* ht = m_map.getTile(h.pos)) ht->heroId = h.id;
         if (m_activeHeroIdx >= static_cast<int>(m_heroes.size())) m_activeHeroIdx = 0;
 
-        // Check if P2 was already eliminated before giving them their turn
+        // Check if next player was already eliminated
         {
-            bool p2HasTowns = false;
+            uint32_t nextId = static_cast<uint32_t>(nextIdx + 1);
+            bool hasTowns = false;
             for (const auto& t : m_towns)
-                if (t.ownerId == 2u) { p2HasTowns = true; break; }
-            if (m_heroes.empty() && !p2HasTowns) {
-                m_victoryMessage = "Player 1 wins! Player 2 has been eliminated.";
-                m_showVictory    = true;
+                if (t.ownerId == nextId) { hasTowns = true; break; }
+            if (m_heroes.empty() && !hasTowns) {
+                m_victoryMessage = "Player " + std::to_string(m_currentPlayerIdx + 1)
+                                 + " wins! Player " + std::to_string(nextIdx + 1)
+                                 + " has been eliminated.";
+                m_showVictory = true;
                 m_audio.playSound("victory");
-                // Restore P1 as current so the victory screen shows their state
-                m_heroes          = m_player1Heroes;
-                m_playerResources = m_player1Resources;
-                m_activeHeroIdx   = m_player1ActiveHeroIdx;
-                m_currentPlayerIdx = 0;
-                m_worldHUD.setCurrentPlayerId(1);
+                // Restore current player for the victory screen
+                m_heroes          = m_players[m_currentPlayerIdx].heroes;
+                m_playerResources = m_players[m_currentPlayerIdx].resources;
+                m_activeHeroIdx   = m_players[m_currentPlayerIdx].activeHeroIdx;
+                m_worldHUD.setCurrentPlayerId(m_currentPlayerIdx + 1);
                 FogOfWar::hideAll(m_map);
                 if (!m_heroes.empty()) FogOfWar::updateVision(m_map, m_heroes);
                 return;
@@ -501,64 +500,55 @@ void Game::doEndTurn()
         }
 
         for (auto& h : m_heroes) { h.movePool = h.maxMove; h.path.clear(); h.pathStep = 0; }
-
         FogOfWar::hideAll(m_map);
-        if (!m_heroes.empty())
-            FogOfWar::updateVision(m_map, m_heroes);
-
+        if (!m_heroes.empty()) FogOfWar::updateVision(m_map, m_heroes);
         if (!m_heroes.empty() && m_activeHeroIdx < static_cast<int>(m_heroes.size())) {
             float hx2, hy2;
             m_hexRenderer.grid().hexToWorld(m_heroes[m_activeHeroIdx].pos, hx2, hy2);
             m_camera.setPosition(hx2, hy2);
         }
 
-        m_currentPlayerIdx     = 1;
+        m_currentPlayerIdx     = nextIdx;
         m_showPlayerTurnBanner = true;
         m_playerTurnBannerT    = 2.5f;
         m_reachable.clear();
         m_selected = {-999, -999};
-        m_worldHUD.setCurrentPlayerId(2);
-        // Recalculate weekly income display for P2
-        m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, 2);
+        m_worldHUD.setCurrentPlayerId(currentPlayerId());
+        uint32_t nextCid = static_cast<uint32_t>(nextIdx + 1);
+        m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, nextCid);
         for (const auto& r : m_resources)
-            if (r.ownedBy == 2u) m_cachedWeeklyIncome.add(r.type, r.amount);
-        // If AI captured P2's town during P1's turn, notify P2 now
-        if (m_showP2TownLostPopup) {
-            m_lostTownName        = m_p2LostTownName;
-            m_showTownLostPopup   = true;
-            m_showP2TownLostPopup = false;
-            m_p2LostTownName.clear();
+            if (r.ownedBy == nextCid) m_cachedWeeklyIncome.add(r.type, r.amount);
+
+        // Deliver deferred notifications for this player
+        auto& notifs = m_playerNotifs[nextIdx];
+        if (notifs.townLost) {
+            m_lostTownName      = notifs.townName;
+            m_showTownLostPopup = true;
+            notifs.townLost = false; notifs.townName.clear();
         }
-        // If P2 was fully eliminated during P1's AI turn, show defeat now
-        if (m_p2Defeated) {
-            m_finalDefeat = true;
-            m_showDefeat  = true;
-            m_p2Defeated  = false;
+        if (notifs.defeated) {
+            m_finalDefeat = true; m_showDefeat = true;
+            notifs.defeated = false;
         }
-        // If a new week started while P2 was waiting, show their week summary now
-        if (m_showP2WeekSummary) {
-            m_weekSummaryIncome  = m_p2WeekSummaryIncome;
-            m_weekSummaryWeek    = m_p2WeekSummaryWeek;
-            m_weeklyEventHeadline.clear();
-            m_weeklyEventBody.clear();
-            m_weekChoiceOptions.clear();
-            m_showWeekSummary    = true;
-            m_showP2WeekSummary  = false;
+        if (notifs.weekSummary) {
+            m_weekSummaryIncome = notifs.weekIncome;
+            m_weekSummaryWeek   = notifs.weekNum;
+            m_weeklyEventHeadline.clear(); m_weeklyEventBody.clear(); m_weekChoiceOptions.clear();
+            m_showWeekSummary   = true;
+            notifs.weekSummary  = false;
         }
         return;
     }
 
-    // ── Hotseat: Player 2 ends turn → restore Player 1 then run full turn ────────
-    bool p2justEndedTurn = false;
-    if (m_numHumanPlayers == 2 && m_currentPlayerIdx == 1) {
-        // Discard any pending encounter so the stale lambda can't fire on P1's heroes
-        m_showEncounterPrompt = false;
-        m_encounterOnAccept   = nullptr;
-        m_encounterOnDecline  = nullptr;
-        // Dismiss P2's week summary so P1 doesn't see it (P2's deferred summary stored separately)
-        m_showWeekSummary   = false;
+    // ── Hotseat: last player ends turn → restore P1 then run full turn ───────────
+    bool lastPlayerEndedTurn = false;
+    if (m_numHumanPlayers >= 2 && m_currentPlayerIdx == m_numHumanPlayers - 1) {
+        int lastIdx = m_currentPlayerIdx;
+        m_showEncounterPrompt    = false;
+        m_encounterOnAccept      = nullptr;
+        m_encounterOnDecline     = nullptr;
+        m_showWeekSummary        = false;
         m_weekChoiceOptions.clear();
-        // Discard pending interactive popups so P1 doesn't get P2's rewards
         m_showLevelUpModal       = false;
         m_pendingLevelUps        = 0;
         m_levelUpOffers.clear();
@@ -578,19 +568,17 @@ void Game::doEndTurn()
         m_showTownPortalPopup    = false;
         m_pendingObjId           = 0;
 
-        m_player2Heroes         = m_heroes;
-        m_player2Resources      = m_playerResources;
-        m_player2ActiveHeroIdx  = m_activeHeroIdx;
-
-        // Clear P2 hero tile markers so P1 can walk through their positions
-        for (const auto& h : m_player2Heroes)
+        // Store last player's state
+        m_players[lastIdx].heroes        = m_heroes;
+        m_players[lastIdx].resources     = m_playerResources;
+        m_players[lastIdx].activeHeroIdx = m_activeHeroIdx;
+        for (const auto& h : m_players[lastIdx].heroes)
             if (HexTile* ht = m_map.getTile(h.pos)) ht->heroId = 0;
 
-        m_heroes          = m_player1Heroes;
-        m_playerResources = m_player1Resources;
-        m_activeHeroIdx   = m_player1ActiveHeroIdx;
-
-        // Re-stamp P1 hero tile markers
+        // Restore P1 (idx 0)
+        m_heroes          = m_players[0].heroes;
+        m_playerResources = m_players[0].resources;
+        m_activeHeroIdx   = m_players[0].activeHeroIdx;
         for (const auto& h : m_heroes)
             if (HexTile* ht = m_map.getTile(h.pos)) ht->heroId = h.id;
         if (m_activeHeroIdx >= static_cast<int>(m_heroes.size())) m_activeHeroIdx = 0;
@@ -599,38 +587,35 @@ void Game::doEndTurn()
         m_selected = {-999, -999};
         m_worldHUD.setCurrentPlayerId(1);
 
-        // Check if P1 was eliminated while P2 was playing
+        // Check if P1 was eliminated while last player was playing
         {
             bool p1HasTowns = false;
             for (const auto& t : m_towns)
                 if (t.ownerId == 1u) { p1HasTowns = true; break; }
             if (m_heroes.empty() && !p1HasTowns) {
-                m_victoryMessage = "Player 2 wins! Player 1 has been eliminated.";
-                m_showVictory    = true;
+                m_victoryMessage = "Player " + std::to_string(lastIdx + 1)
+                                 + " wins! Player 1 has been eliminated.";
+                m_showVictory = true;
                 m_audio.playSound("victory");
-                // Keep P2's state as current for the victory display
-                m_heroes          = m_player2Heroes;
-                m_playerResources = m_player2Resources;
-                m_activeHeroIdx   = m_player2ActiveHeroIdx;
-                m_currentPlayerIdx = 1;
-                m_worldHUD.setCurrentPlayerId(2);
+                m_heroes          = m_players[lastIdx].heroes;
+                m_playerResources = m_players[lastIdx].resources;
+                m_activeHeroIdx   = m_players[lastIdx].activeHeroIdx;
+                m_currentPlayerIdx = lastIdx;
+                m_worldHUD.setCurrentPlayerId(lastIdx + 1);
                 FogOfWar::hideAll(m_map);
                 if (!m_heroes.empty()) FogOfWar::updateVision(m_map, m_heroes);
                 return;
             }
         }
 
-        p2justEndedTurn = true;
+        lastPlayerEndedTurn = true;
 
-        // Recalculate weekly income display for P1
         m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, 1);
         for (const auto& r : m_resources)
             if (r.ownedBy == 1u) m_cachedWeeklyIncome.add(r.type, r.amount);
 
-        // Restore P1 fog immediately (correct even if AI combat triggers below)
         FogOfWar::hideAll(m_map);
-        if (!m_heroes.empty())
-            FogOfWar::updateVision(m_map, m_heroes);
+        if (!m_heroes.empty()) FogOfWar::updateVision(m_map, m_heroes);
         if (!m_heroes.empty() && m_activeHeroIdx < static_cast<int>(m_heroes.size())) {
             float hx2, hy2;
             m_hexRenderer.grid().hexToWorld(m_heroes[m_activeHeroIdx].pos, hx2, hy2);
@@ -644,10 +629,12 @@ void Game::doEndTurn()
     // FishingHouse daily income (+150 gold per player-owned house)
     for (const auto& wo : m_worldObjects) {
         if (wo.type != WorldObjectType::FishingHouse || wo.collected) continue;
-        if (wo.faction == 1)
+        int ownerIdx = wo.faction - 1;  // faction stores 1-based playerId
+        if (ownerIdx == m_currentPlayerIdx) {
             m_playerResources.add(ResourceType::Gold, 150);
-        else if (wo.faction == 2 && m_numHumanPlayers == 2)
-            m_player2Resources.add(ResourceType::Gold, 150);
+        } else if (ownerIdx >= 0 && ownerIdx < (int)m_players.size()) {
+            m_players[ownerIdx].resources.add(ResourceType::Gold, 150);
+        }
     }
 
     // Restore hero movement pools and daily mana regen for enemy heroes
@@ -885,16 +872,18 @@ void Game::doEndTurn()
                                 Hero garHero;
                                 garHero.faction = t.faction;
                                 garHero.army    = t.garrison;
-                                // Include any hero garrisoned in the town
+                                // Include any hero garrisoned in the town (current + other players)
                                 for (const auto& ph : m_heroes)
                                     if (ph.pos == t.pos)
                                         for (const auto& s : ph.army)
                                             if (s.count > 0) garHero.army.push_back(s);
-                                if (m_numHumanPlayers == 2 && t.ownerId == 2)
-                                    for (const auto& ph : m_player2Heroes)
+                                for (int pi = 0; pi < m_numHumanPlayers; ++pi) {
+                                    if (pi == m_currentPlayerIdx) continue;
+                                    for (const auto& ph : m_players[pi].heroes)
                                         if (ph.pos == t.pos)
                                             for (const auto& s : ph.army)
                                                 if (s.count > 0) garHero.army.push_back(s);
+                                }
                                 int atkStr = heroStrength(eHero, unitDefs);
                                 int defStr = heroStrength(garHero, unitDefs);
                                 if (t.hasBuilding(BID::FORT)) defStr = defStr * 3 / 2;
@@ -902,37 +891,34 @@ void Game::doEndTurn()
                                     uint32_t capturedFromPlayer = t.ownerId;
                                     t.ownerId = eHero.id;
                                     t.garrison.clear();
-                                    if (m_numHumanPlayers >= 2 && capturedFromPlayer == 2u) {
-                                        // AI took P2's town during P1's turn — defer notification
-                                        m_p2LostTownName      = t.name;
-                                        m_showP2TownLostPopup = true;
-                                        gLog("Enemy %s sieged and captured P2 town %s!\n",
-                                               eHero.name.c_str(), t.name.c_str());
-                                        // Check P2 defeat (must use P2's stored heroes)
-                                        bool anyUnit = false;
-                                        for (const auto& h : m_player2Heroes)
-                                            if (!h.army.empty()) { anyUnit = true; break; }
-                                        bool anyTown2 = false;
-                                        for (const auto& tt2 : m_towns)
-                                            if (tt2.ownerId == 2u) { anyTown2 = true; break; }
-                                        if (!anyUnit && !anyTown2)
-                                            m_p2Defeated = true;
-                                    } else {
+                                    int capturedIdx = static_cast<int>(capturedFromPlayer) - 1;
+                                    if (capturedIdx == m_currentPlayerIdx) {
+                                        // Current player's town captured — show immediately
                                         m_lostTownName      = t.name;
                                         m_showTownLostPopup = true;
                                         gLog("Enemy %s sieged and captured your town %s!\n",
                                                eHero.name.c_str(), t.name.c_str());
-                                        // Check P1 defeat
                                         bool anyUnit = false;
                                         for (const auto& h : m_heroes)
                                             if (!h.army.empty()) { anyUnit = true; break; }
-                                        bool anyTown2 = false;
-                                        for (const auto& tt2 : m_towns)
-                                            if (tt2.ownerId == static_cast<uint32_t>(currentPlayerId())) { anyTown2 = true; break; }
-                                        if (!anyUnit && !anyTown2) {
-                                            m_finalDefeat = true;
-                                            m_showDefeat  = true;
-                                        }
+                                        bool anyTown = false;
+                                        for (const auto& tt : m_towns)
+                                            if (tt.ownerId == capturedFromPlayer) { anyTown = true; break; }
+                                        if (!anyUnit && !anyTown) { m_finalDefeat = true; m_showDefeat = true; }
+                                    } else if (capturedIdx >= 0 && capturedIdx < (int)m_playerNotifs.size()) {
+                                        // Another player's town — defer notification
+                                        m_playerNotifs[capturedIdx].townLost = true;
+                                        m_playerNotifs[capturedIdx].townName = t.name;
+                                        gLog("Enemy %s sieged P%d town %s (deferred notify)\n",
+                                               eHero.name.c_str(), capturedIdx + 1, t.name.c_str());
+                                        bool anyUnit = false;
+                                        for (const auto& h : m_players[capturedIdx].heroes)
+                                            if (!h.army.empty()) { anyUnit = true; break; }
+                                        bool anyTown = false;
+                                        for (const auto& tt : m_towns)
+                                            if (tt.ownerId == capturedFromPlayer) { anyTown = true; break; }
+                                        if (!anyUnit && !anyTown)
+                                            m_playerNotifs[capturedIdx].defeated = true;
                                     }
                                 } else {
                                     gLog("Enemy %s failed to siege %s\n",
@@ -1590,132 +1576,84 @@ void Game::doEndTurn()
         }
     }
 
-    // ── Hotseat: after full turn, regen P2 heroes and show "Player 1's Turn" ──
-    if (p2justEndedTurn) {
-        for (auto& h : m_player2Heroes) {
-            h.movePool = h.maxMove;
-            h.path.clear();
-            h.pathStep = 0;
-            int manaRegen = std::max(2, 2 + h.maxMana / 10);
-            h.mana = std::min(h.maxMana, h.mana + manaRegen);
-        }
-        if (m_turns.day() == 1) {  // new week just started
-            auto p2income = m_turns.calculateWeeklyIncome(m_towns, 2);
-            m_player2Resources.addAll(p2income);
-            for (const auto& r : m_resources)
-                if (r.ownedBy == 2u) m_player2Resources.add(r.type, r.amount);
-            // P2 garrison upkeep (mirrors P1 logic in the newWeek block above)
-            int p2GarrisonCount = 0;
-            for (const auto& h : m_player2Heroes)
-                if (h.isGarrisoned) ++p2GarrisonCount;
-            if (p2GarrisonCount > 0)
-                m_player2Resources.add(ResourceType::Gold, -(p2GarrisonCount * 350));
-            // Mirror weekly events to P2 — resource events applied directly,
-            // silent hero-stat events applied to P2's active hero backup,
-            // XP/level-up and choice events remain P1-only (require UI).
-            {
-                int evtRoll = ((m_turns.week() * 2654435761u) >> 8) % 24;
-                auto p2Hero = [&]() -> Hero* {
-                    if (m_player2Heroes.empty()) return nullptr;
-                    int idx = std::min(m_player2ActiveHeroIdx, (int)m_player2Heroes.size() - 1);
-                    return &m_player2Heroes[idx];
-                };
-                switch (evtRoll) {
-                    case 1:  // Merchant's Gift
-                        m_player2Resources.add(ResourceType::Gold, 500);
-                        break;
-                    case 2: { // Wandering Wizard — teach P2's hero a spell they don't know
-                        Hero* h = p2Hero();
-                        if (h) {
-                            for (int i = 0; i < SPELL_COUNT; ++i) {
-                                int sid = ALL_SPELLS[i].id;
-                                bool known = false;
+    // ── Hotseat: after full turn, regen non-P1 heroes and show "Player 1's Turn" ─
+    if (lastPlayerEndedTurn) {
+        for (int pi = 1; pi < m_numHumanPlayers; ++pi) {
+            auto& ps = m_players[pi];
+            for (auto& h : ps.heroes) {
+                h.movePool = h.maxMove;
+                h.path.clear();
+                h.pathStep = 0;
+                int manaRegen = std::max(2, 2 + h.maxMana / 10);
+                h.mana = std::min(h.maxMana, h.mana + manaRegen);
+            }
+            if (m_turns.day() == 1) {  // new week just started
+                uint32_t pid = static_cast<uint32_t>(pi + 1);
+                auto piIncome = m_turns.calculateWeeklyIncome(m_towns, pid);
+                ps.resources.addAll(piIncome);
+                for (const auto& r : m_resources)
+                    if (r.ownedBy == pid) ps.resources.add(r.type, r.amount);
+                // Garrison upkeep
+                int garrisonCount = 0;
+                for (const auto& h : ps.heroes) if (h.isGarrisoned) ++garrisonCount;
+                if (garrisonCount > 0)
+                    ps.resources.add(ResourceType::Gold, -(garrisonCount * 350));
+                // Mirror weekly events (resource + silent hero-stat events only)
+                {
+                    int evtRoll = ((m_turns.week() * 2654435761u) >> 8) % 24;
+                    auto piHero = [&]() -> Hero* {
+                        if (ps.heroes.empty()) return nullptr;
+                        int idx = std::min(ps.activeHeroIdx, (int)ps.heroes.size() - 1);
+                        return &ps.heroes[idx];
+                    };
+                    switch (evtRoll) {
+                        case 1:  ps.resources.add(ResourceType::Gold, 500); break;
+                        case 2: { Hero* h = piHero();
+                            if (h) for (int i = 0; i < SPELL_COUNT; ++i) {
+                                int sid = ALL_SPELLS[i].id; bool known = false;
                                 for (int s : h->knownSpells) if (s == sid) { known = true; break; }
                                 if (!known) { h->knownSpells.push_back(sid); break; }
-                            }
-                        }
-                        break;
+                            } break; }
+                        case 3: { int lost = std::min(200, ps.resources.get(ResourceType::Gold));
+                            ps.resources.add(ResourceType::Gold, -lost); break; }
+                        case 4:  ps.resources.add(ResourceType::Gold, 200);
+                                 ps.resources.add(ResourceType::Iron, 3); break;
+                        case 6: { Hero* h = piHero();
+                            if (h) { h->maxMana = std::min(h->maxMana + 5, 99); h->mana = h->maxMana; } break; }
+                        case 7: { Hero* h = piHero(); if (h) h->attack++; break; }
+                        case 8: { Hero* h = piHero();
+                            if (h) { int best = 0, bestIdx = -1;
+                                for (int i = 0; i < (int)h->army.size(); ++i)
+                                    if (h->army[i].count > best) { best = h->army[i].count; bestIdx = i; }
+                                if (bestIdx >= 0) h->army[bestIdx].count += 5; } break; }
+                        case 10: ps.resources.add(ResourceType::Gold, 300);
+                                 ps.resources.add(ResourceType::FaithStones, 2);
+                                 ps.resources.add(ResourceType::VerdantSap, 2); break;
+                        case 12: { Hero* h = piHero(); if (h) h->defense++; break; }
+                        case 13: { Hero* h = piHero();
+                            if (h) { int best = 0, bestIdx = -1;
+                                for (int i = 0; i < (int)h->army.size(); ++i)
+                                    if (h->army[i].count > best) { best = h->army[i].count; bestIdx = i; }
+                                if (bestIdx >= 0) h->army[bestIdx].count += 8; } break; }
+                        case 14: ps.resources.add(ResourceType::Gold, 150); break;
+                        case 15: ps.resources.add(ResourceType::Mercury, 2);
+                                 ps.resources.add(ResourceType::BloodEssence, 1); break;
+                        case 16: { Hero* h = piHero(); if (h) h->mana = h->maxMana; break; }
+                        case 18: { int lost = ps.resources.get(ResourceType::Gold) / 2;
+                            ps.resources.add(ResourceType::Gold, -lost); break; }
+                        case 19: { Hero* h = piHero();
+                            if (h) { h->heroMaxHp += 15; h->heroHp = std::min(h->heroHp + 15, h->heroMaxHp); } break; }
+                        default: break;
                     }
-                    case 3: { // Bandit Raid
-                        int lost = std::min(200, m_player2Resources.get(ResourceType::Gold));
-                        m_player2Resources.add(ResourceType::Gold, -lost);
-                        break;
-                    }
-                    case 4:  // Rich Harvest
-                        m_player2Resources.add(ResourceType::Gold, 200);
-                        m_player2Resources.add(ResourceType::Iron, 3);
-                        break;
-                    case 6: { // Arcane Font — permanent mana pool increase
-                        Hero* h = p2Hero();
-                        if (h) { h->maxMana = std::min(h->maxMana + 5, 99); h->mana = h->maxMana; }
-                        break;
-                    }
-                    case 7: { // Ancient Armory — +1 Attack
-                        Hero* h = p2Hero();
-                        if (h) h->attack++;
-                        break;
-                    }
-                    case 8: { // Rally — +5 to largest stack
-                        Hero* h = p2Hero();
-                        if (h) {
-                            int best = 0, bestIdx = -1;
-                            for (int i = 0; i < (int)h->army.size(); ++i)
-                                if (h->army[i].count > best) { best = h->army[i].count; bestIdx = i; }
-                            if (bestIdx >= 0) h->army[bestIdx].count += 5;
-                        }
-                        break;
-                    }
-                    case 10: // Tribute from Vassals
-                        m_player2Resources.add(ResourceType::Gold,        300);
-                        m_player2Resources.add(ResourceType::FaithStones,   2);
-                        m_player2Resources.add(ResourceType::VerdantSap,    2);
-                        break;
-                    case 12: { // Fallen Knight — +1 Defense
-                        Hero* h = p2Hero();
-                        if (h) h->defense++;
-                        break;
-                    }
-                    case 13: { // Mercenary Camp — +8 to largest stack
-                        Hero* h = p2Hero();
-                        if (h) {
-                            int best = 0, bestIdx = -1;
-                            for (int i = 0; i < (int)h->army.size(); ++i)
-                                if (h->army[i].count > best) { best = h->army[i].count; bestIdx = i; }
-                            if (bestIdx >= 0) h->army[bestIdx].count += 8;
-                        }
-                        break;
-                    }
-                    case 14: // Spy Network (gold portion only — enemy mana already applied)
-                        m_player2Resources.add(ResourceType::Gold, 150);
-                        break;
-                    case 15: // Alchemist's Discovery
-                        m_player2Resources.add(ResourceType::Mercury,     2);
-                        m_player2Resources.add(ResourceType::BloodEssence, 1);
-                        break;
-                    case 16: { // Divine Favour — full mana restore
-                        Hero* h = p2Hero();
-                        if (h) h->mana = h->maxMana;
-                        break;
-                    }
-                    case 18: { // Tax Revolt
-                        int lost = m_player2Resources.get(ResourceType::Gold) / 2;
-                        m_player2Resources.add(ResourceType::Gold, -lost);
-                        break;
-                    }
-                    case 19: { // Titan's Favour — +15 max HP
-                        Hero* h = p2Hero();
-                        if (h) { h->heroMaxHp += 15; h->heroHp = std::min(h->heroHp + 15, h->heroMaxHp); }
-                        break;
-                    }
-                    default: break;
                 }
+                // Store week summary to show at start of this player's next turn
+                auto& notifs = m_playerNotifs[pi];
+                notifs.weekIncome  = piIncome;
+                for (const auto& r : m_resources)
+                    if (r.ownedBy == pid) notifs.weekIncome.add(r.type, r.amount);
+                notifs.weekNum     = m_turns.week();
+                notifs.weekSummary = true;
             }
-            // Store P2's week summary so it can be shown at the start of P2's next turn
-            m_p2WeekSummaryIncome = p2income;
-            for (const auto& r : m_resources)
-                if (r.ownedBy == 2u) m_p2WeekSummaryIncome.add(r.type, r.amount);
-            m_p2WeekSummaryWeek  = m_turns.week();
-            m_showP2WeekSummary  = true;
         }
         m_showPlayerTurnBanner = true;
         m_playerTurnBannerT    = 2.5f;
@@ -3257,11 +3195,11 @@ void Game::renderWorldOverlay()
             dl->AddText({sx - 10.0f, sy - 30.0f}, IM_COL32(255, 80, 80, 255), "[G]");
     }
 
-    // ── Opposing human player heroes (hotseat 2P) ─────────────────────────────
-    // Show the other human player's heroes so each player has situational awareness.
-    if (m_numHumanPlayers == 2) {
-        const auto& otherHeroes = (m_currentPlayerIdx == 0) ? m_player2Heroes : m_player1Heroes;
-        for (const auto& hero : otherHeroes) {
+    // ── Other human player heroes (hotseat N-player) ──────────────────────────
+    for (int pi = 0; pi < m_numHumanPlayers; ++pi) {
+        if (pi == m_currentPlayerIdx) continue;
+        char pLabel[16]; std::snprintf(pLabel, sizeof(pLabel), "P%d", pi + 1);
+        for (const auto& hero : m_players[pi].heroes) {
             float sx, sy;
             project(hero.pos, sx, sy);
             if (sy < HUD_TOP || sy > HUD_BOTTOM) continue;
@@ -3275,14 +3213,11 @@ void Game::renderWorldOverlay()
             } else {
                 addIcon(ICO_HERO_PLAYER, sx, sy, 13.0f);
             }
-            // Blue-purple ring to distinguish from AI enemies (red) and current player (yellow)
             dl->AddCircle({sx, sy}, 14.0f, IM_COL32(120, 160, 255, 200), 0, 2.0f);
             {
                 float lx = sx - (float)hero.name.size() * 3.0f;
                 if (labelOK(lx, sy + 15, hero.name.size() * 6.0f)) {
                     dl->AddText({lx, sy + 15}, IM_COL32(140, 180, 255, 220), hero.name.c_str());
-                    // Show which player owns this hero
-                    const char* pLabel = (m_currentPlayerIdx == 0) ? "P2" : "P1";
                     dl->AddText({sx - 8.0f, sy - 28.0f}, IM_COL32(140, 180, 255, 200), pLabel);
                 }
             }
@@ -3561,10 +3496,10 @@ void Game::renderWorldOverlay()
             dl->AddCircleFilled({mx, my}, 2.5f, IM_COL32(255, 60, 60, 255));
         }
 
-        // Opposing human player heroes (2P): blue circle
-        if (m_numHumanPlayers == 2) {
-            const auto& otherHeroes = (m_currentPlayerIdx == 0) ? m_player2Heroes : m_player1Heroes;
-            for (const auto& oh : otherHeroes) {
+        // Other human player heroes: blue circle
+        for (int pi = 0; pi < m_numHumanPlayers; ++pi) {
+            if (pi == m_currentPlayerIdx) continue;
+            for (const auto& oh : m_players[pi].heroes) {
                 float mx = mm_cx + static_cast<float>(oh.pos.q) * scaleX;
                 float my = mm_cy + (static_cast<float>(oh.pos.r) + static_cast<float>(oh.pos.q) * 0.5f) * scaleY;
                 dl->AddCircleFilled({mx, my}, 2.5f, IM_COL32(100, 140, 255, 240));

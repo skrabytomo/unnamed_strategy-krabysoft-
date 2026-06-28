@@ -359,7 +359,8 @@ void Game::saveGame(const std::string& path)
     if (f) SDL_RWclose(f);
 
     GameSaveData data = SaveLoad::packState(
-        m_map, m_heroes, m_enemyHeroes, m_defeatedHeroPool,
+        m_map, m_heroes, m_enemyHeroes,
+        m_players.empty() ? std::vector<Hero>{} : m_players[0].defeatedPool,
         m_towns, m_worldObjects, m_resources, m_nextObjId,
         m_playerResources,
         m_turns.day(), m_turns.week(),
@@ -368,17 +369,25 @@ void Game::saveGame(const std::string& path)
 
     data.campaign = m_campaign.toSaveState();
 
-    // 2P hotseat — save backup player's state
+    // N-player hotseat — pack all player states
     data.numHumanPlayers  = m_numHumanPlayers;
     data.currentPlayerIdx = m_currentPlayerIdx;
     if (m_numHumanPlayers >= 2) {
-        const auto& backupHeroes = (m_currentPlayerIdx == 0) ? m_player2Heroes : m_player1Heroes;
-        const Resources& backupRes = (m_currentPlayerIdx == 0) ? m_player2Resources : m_player1Resources;
-        int backupActive = (m_currentPlayerIdx == 0) ? m_player2ActiveHeroIdx : m_player1ActiveHeroIdx;
-        data.p2Heroes          = SaveLoad::packHeroes(backupHeroes);
-        data.p2ResourceAmounts = backupRes.amounts;
-        data.p2ActiveHeroIdx   = backupActive;
-        data.p2DefeatedHeroes  = SaveLoad::packHeroes(m_p2DefeatedHeroPool);
+        data.playerStates.resize(m_numHumanPlayers);
+        for (int pi = 0; pi < m_numHumanPlayers; ++pi) {
+            auto& ps = data.playerStates[pi];
+            if (pi == m_currentPlayerIdx) {
+                ps.heroes          = SaveLoad::packHeroes(m_heroes);
+                ps.resourceAmounts = m_playerResources.amounts;
+                ps.activeHeroIdx   = m_activeHeroIdx;
+            } else {
+                ps.heroes          = SaveLoad::packHeroes(m_players[pi].heroes);
+                ps.resourceAmounts = m_players[pi].resources.amounts;
+                ps.activeHeroIdx   = m_players[pi].activeHeroIdx;
+            }
+            if (pi < (int)m_players.size())
+                ps.defeatedHeroes = SaveLoad::packHeroes(m_players[pi].defeatedPool);
+        }
     }
 
     if (SaveLoad::saveGame(path, data))
@@ -399,7 +408,8 @@ bool Game::loadGame(const std::string& path)
     m_map.create(m_mapSize);
 
     int day = 1, week = 1;
-    SaveLoad::unpackState(data, m_map, m_heroes, m_enemyHeroes, m_defeatedHeroPool,
+    std::vector<Hero> tempP1Defeated;
+    SaveLoad::unpackState(data, m_map, m_heroes, m_enemyHeroes, tempP1Defeated,
                           m_towns, m_worldObjects, m_resources, m_nextObjId,
                           m_playerResources, day, week);
     for (const auto& wo : m_worldObjects)
@@ -448,9 +458,6 @@ bool Game::loadGame(const std::string& path)
     m_showVictory            = false;
     m_showDefeat             = false;
     m_finalDefeat            = false;
-    m_showP2TownLostPopup    = false;
-    m_p2LostTownName.clear();
-    m_p2Defeated             = false;
     m_showCombatResult       = false;
     m_showWeekSummary        = false;
     m_pendingMineId          = 0;
@@ -467,50 +474,56 @@ bool Game::loadGame(const std::string& path)
         m_state = GameState::Campaign;
     }
 
-    // 2P hotseat — restore backup player's state
+    // N-player hotseat — restore all player states
     m_numHumanPlayers  = data.numHumanPlayers;
     m_currentPlayerIdx = data.currentPlayerIdx;
-    m_player1Heroes.clear();
-    m_player2Heroes.clear();
-    if (m_numHumanPlayers >= 2) {
-        auto backupHeroes = SaveLoad::unpackHeroes(data.p2Heroes);
-        Resources backupRes;
-        backupRes.amounts = data.p2ResourceAmounts;
+    m_players.assign(m_numHumanPlayers, PlayerState{});
+    m_playerNotifs.assign(m_numHumanPlayers, PlayerNotifs{});
 
-        if (m_currentPlayerIdx == 0) {
-            // m_heroes / m_playerResources = P1 (current)
-            m_player1Heroes        = m_heroes;
-            m_player1Resources     = m_playerResources;
-            m_player1ActiveHeroIdx = m_activeHeroIdx;
-            m_player2Heroes        = std::move(backupHeroes);
-            m_player2Resources     = std::move(backupRes);
-            m_player2ActiveHeroIdx = data.p2ActiveHeroIdx;
-        } else {
-            // m_heroes / m_playerResources = P2 (current)
-            m_player2Heroes        = m_heroes;
-            m_player2Resources     = m_playerResources;
-            m_player2ActiveHeroIdx = m_activeHeroIdx;
-            m_player1Heroes        = std::move(backupHeroes);
-            m_player1Resources     = std::move(backupRes);
-            m_player1ActiveHeroIdx = data.p2ActiveHeroIdx;
+    if (!data.playerStates.empty()) {
+        int numPs = std::min((int)data.playerStates.size(), m_numHumanPlayers);
+        for (int pi = 0; pi < numPs; ++pi) {
+            auto& ps = data.playerStates[pi];
+            m_players[pi].heroes            = SaveLoad::unpackHeroes(ps.heroes);
+            m_players[pi].resources.amounts = ps.resourceAmounts;
+            m_players[pi].activeHeroIdx     = ps.activeHeroIdx;
+            m_players[pi].defeatedPool      = SaveLoad::unpackHeroes(ps.defeatedHeroes);
         }
-        m_worldHUD.setCurrentPlayerId(currentPlayerId());
-        m_worldHUD.setNumHumanPlayers(m_numHumanPlayers);
-        m_p2DefeatedHeroPool = SaveLoad::unpackHeroes(data.p2DefeatedHeroes);
+    } else if (m_numHumanPlayers >= 2) {
+        // Legacy v3 fallback
+        auto backupHeroes = SaveLoad::unpackHeroes(data.p2Heroes);
+        Resources backupRes; backupRes.amounts = data.p2ResourceAmounts;
+        if (m_currentPlayerIdx == 0) {
+            m_players[0].heroes = m_heroes; m_players[0].resources = m_playerResources;
+            m_players[0].activeHeroIdx = m_activeHeroIdx;
+            m_players[1].heroes = std::move(backupHeroes); m_players[1].resources = std::move(backupRes);
+            m_players[1].activeHeroIdx = data.p2ActiveHeroIdx;
+        } else {
+            m_players[1].heroes = m_heroes; m_players[1].resources = m_playerResources;
+            m_players[1].activeHeroIdx = m_activeHeroIdx;
+            m_players[0].heroes = std::move(backupHeroes); m_players[0].resources = std::move(backupRes);
+            m_players[0].activeHeroIdx = data.p2ActiveHeroIdx;
+        }
+        m_players[0].defeatedPool = std::move(tempP1Defeated);
+        m_players[1].defeatedPool = SaveLoad::unpackHeroes(data.p2DefeatedHeroes);
     } else {
-        m_p2DefeatedHeroPool.clear();
+        // 1P or no playerStates — P1's defeated pool came from unpackState
+        m_players[0].defeatedPool = std::move(tempP1Defeated);
     }
+
+    m_worldHUD.setCurrentPlayerId(currentPlayerId());
+    m_worldHUD.setNumHumanPlayers(m_numHumanPlayers);
 
     // Ensure tavern hires after load don't reuse IDs already held by loaded heroes
     {
         uint32_t maxId = 299;
         auto scanHero = [&](const Hero& h){ if (h.id > maxId) maxId = h.id; };
-        for (const auto& h : m_heroes)             scanHero(h);
-        for (const auto& h : m_enemyHeroes)        scanHero(h);
-        for (const auto& h : m_player1Heroes)       scanHero(h);
-        for (const auto& h : m_player2Heroes)       scanHero(h);
-        for (const auto& h : m_defeatedHeroPool)    scanHero(h);
-        for (const auto& h : m_p2DefeatedHeroPool)  scanHero(h);
+        for (const auto& h : m_heroes)      scanHero(h);
+        for (const auto& h : m_enemyHeroes) scanHero(h);
+        for (int pi = 0; pi < m_numHumanPlayers; ++pi) {
+            for (const auto& h : m_players[pi].heroes)      scanHero(h);
+            for (const auto& h : m_players[pi].defeatedPool) scanHero(h);
+        }
         m_nextHeroId = maxId + 1;
     }
 
@@ -532,8 +545,6 @@ void Game::startNewGame()
     // Clear all runtime state
     m_heroes.clear();
     m_enemyHeroes.clear();
-    m_defeatedHeroPool.clear();
-    m_p2DefeatedHeroPool.clear();
     m_towns.clear();
     m_resources.clear();
     m_worldObjects.clear();
@@ -559,12 +570,8 @@ void Game::startNewGame()
     // Multiplayer reset
     m_numHumanPlayers      = m_newGameNumPlayers;
     m_currentPlayerIdx     = 0;
-    m_player1Heroes.clear();
-    m_player1Resources     = Resources{};
-    m_player1ActiveHeroIdx = 0;
-    m_player2Heroes.clear();
-    m_player2Resources     = Resources{};
-    m_player2ActiveHeroIdx = 0;
+    m_players.assign(m_numHumanPlayers, PlayerState{});
+    m_playerNotifs.assign(m_numHumanPlayers, PlayerNotifs{});
     m_showPlayerTurnBanner = false;
     m_playerTurnBannerT    = 0.0f;
 
@@ -737,31 +744,27 @@ void Game::startNewGame()
         {"Flesh-Weave", "Graft Sovereign", "Marrow Sculptor"},     // Amalgamate
         {"Synth-One", "Accord Delegate", "Unity Seeker"},          // Convergence
     };
-    // Player 2 setup (hotseat): use startPositions[1] and a different faction
-    if (m_numHumanPlayers == 2 && wgResult.startPositions.size() >= 2) {
-        int p2fi = (fi + 1) % 9;
-        m_player2Resources.set(ResourceType::Gold, 5000);
-        m_player2Resources.set(ResourceType::Iron, 20);
-        m_player2ActiveHeroIdx = 0;
+    // Player 2+ setup (hotseat): use startPositions[pi] and a different faction each
+    for (int pi = 1; pi < m_numHumanPlayers && pi < (int)wgResult.startPositions.size(); ++pi) {
+        int pfi = (fi + pi) % 9;
+        m_players[pi].resources.set(ResourceType::Gold, 5000);
+        m_players[pi].resources.set(ResourceType::Iron, 20);
+        m_players[pi].activeHeroIdx = 0;
 
-        Hero p2hero;
-        p2hero.id      = 2;
-        p2hero.name    = "Player 2";
-        p2hero.faction = kFactions[p2fi];
-        p2hero.pos     = wgResult.startPositions[1];
-        p2hero.movePool = p2hero.maxMove;
-        p2hero.knownSpells = { kFactionStartSpell[p2fi] };
-        // Assign a class for P2
+        Hero phero;
+        phero.id      = static_cast<uint32_t>(pi + 1);
+        phero.name    = "Player " + std::to_string(pi + 1);
+        phero.faction = kFactions[pfi];
+        phero.pos     = wgResult.startPositions[pi];
+        phero.movePool = phero.maxMove;
+        phero.knownSpells = { kFactionStartSpell[pfi] };
         {
-            auto cls4fac = m_classRegistry.getClassesForFaction(p2hero.faction);
-            if (!cls4fac.empty()) {
-                const HeroClassDef* cls = cls4fac[0];
-                p2hero.classId = cls->id;
-            }
+            auto cls4fac = m_classRegistry.getClassesForFaction(phero.faction);
+            if (!cls4fac.empty()) phero.classId = cls4fac[0]->id;
         }
-        giveStartingArmy(p2hero, kT1Count[diff], kT2Count[diff]);
-        if (HexTile* ht = m_map.getTile(p2hero.pos)) ht->heroId = p2hero.id;
-        m_player2Heroes.push_back(p2hero);
+        giveStartingArmy(phero, kT1Count[diff], kT2Count[diff]);
+        if (HexTile* ht = m_map.getTile(phero.pos)) ht->heroId = phero.id;
+        m_players[pi].heroes.push_back(phero);
     }
 
     uint32_t nameRng = wgp.seed ^ 0xABCD1234u;
@@ -847,11 +850,11 @@ void Game::startNewGame()
                 const BuildingDef* def = m_registry.getBuildingDef(bid);
                 if (def) wt.weeklyIncome.addAll(def->weeklyIncome);
             }
-        } else if (m_numHumanPlayers == 2 && i == 1) {
-            // Player 2's starting town
-            int p2fi = (fi + 1) % 9;
-            wt.ownerId = 2;
-            wt.faction = kFactions[p2fi];
+        } else if (i >= 1 && i < m_numHumanPlayers) {
+            // Human player i's starting town
+            int pfi = (fi + i) % 9;
+            wt.ownerId = static_cast<uint32_t>(i + 1);
+            wt.faction = kFactions[pfi];
             int hallId = (static_cast<int>(wt.faction) + 1) * 100;
             wt.builtBuildings.push_back(BID::MAGE_GUILD);
             wt.builtBuildings.push_back(hallId);

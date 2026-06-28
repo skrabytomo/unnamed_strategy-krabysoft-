@@ -1589,20 +1589,22 @@ void Game::exitCombat(bool playerWon)
                 m_audio.playSound("victory");
             }
         }
-        // 2P: check if the other human player was just eliminated
-        if (!m_showVictory && m_numHumanPlayers == 2) {
-            int other = 3 - currentPlayerId();
-            const auto& otherHeroes = (other == 2) ? m_player2Heroes : m_player1Heroes;
-            bool otherHasHeroes = !otherHeroes.empty();
-            bool otherHasTowns  = false;
-            for (const auto& t : m_towns)
-                if (t.ownerId == static_cast<uint32_t>(other)) { otherHasTowns = true; break; }
-            if (!otherHasHeroes && !otherHasTowns) {
-                m_victoryMessage = "Player " + std::to_string(currentPlayerId())
-                                 + " wins! Player " + std::to_string(other)
-                                 + " has been eliminated.";
-                m_showVictory = true;
-                m_audio.playSound("victory");
+        // Check if any other human player was just eliminated
+        if (!m_showVictory && m_numHumanPlayers >= 2) {
+            for (int pi = 0; pi < m_numHumanPlayers && !m_showVictory; ++pi) {
+                if (pi == m_currentPlayerIdx) continue;
+                uint32_t otherId = static_cast<uint32_t>(pi + 1);
+                bool otherHasHeroes = !m_players[pi].heroes.empty();
+                bool otherHasTowns  = false;
+                for (const auto& t : m_towns)
+                    if (t.ownerId == otherId) { otherHasTowns = true; break; }
+                if (!otherHasHeroes && !otherHasTowns) {
+                    m_victoryMessage = "Player " + std::to_string(currentPlayerId())
+                                     + " wins! Player " + std::to_string(pi + 1)
+                                     + " has been eliminated.";
+                    m_showVictory = true;
+                    m_audio.playSound("victory");
+                }
             }
         }
 
@@ -1764,10 +1766,7 @@ void Game::exitCombat(bool playerWon)
                 m_map.forEach([&](HexTile& t){
                     if (t.heroId == defeated.id) t.heroId = 0;
                 });
-                if (m_numHumanPlayers >= 2 && currentPlayerId() == 2)
-                    m_p2DefeatedHeroPool.push_back(defeated);
-                else
-                    m_defeatedHeroPool.push_back(defeated);
+                m_players[m_currentPlayerIdx].defeatedPool.push_back(defeated);
                 m_heroes.erase(m_heroes.begin() + m_activeHeroIdx);
                 m_activeHeroIdx = m_heroes.empty() ? 0 : std::min(m_activeHeroIdx, (int)m_heroes.size() - 1);
             }

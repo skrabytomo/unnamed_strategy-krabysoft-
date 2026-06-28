@@ -327,20 +327,26 @@ bool SaveLoad::saveGame(const std::string& path, const GameSaveData& data)
             j["campaign"] = camp;
         }
 
-        // 2P hotseat state
+        // N-player hotseat state (version 4+)
         if (data.numHumanPlayers >= 2) {
-            j["numPlayers"]      = data.numHumanPlayers;
-            j["currentPlayer"]   = data.currentPlayerIdx;
-            j["p2ActiveHero"]    = data.p2ActiveHeroIdx;
-            json p2resArr = json::array();
-            for (int v : data.p2ResourceAmounts) p2resArr.push_back(v);
-            j["p2Resources"] = p2resArr;
-            json p2hArr = json::array();
-            for (auto& h : data.p2Heroes) p2hArr.push_back(heroToJson(h));
-            j["p2Heroes"] = p2hArr;
-            json p2dArr = json::array();
-            for (auto& h : data.p2DefeatedHeroes) p2dArr.push_back(heroToJson(h));
-            j["p2DefeatedHeroes"] = p2dArr;
+            j["numPlayers"]    = data.numHumanPlayers;
+            j["currentPlayer"] = data.currentPlayerIdx;
+            json psArr = json::array();
+            for (auto& ps : data.playerStates) {
+                json psj;
+                json resArr2 = json::array();
+                for (int v : ps.resourceAmounts) resArr2.push_back(v);
+                psj["resources"]  = resArr2;
+                psj["activeHero"] = ps.activeHeroIdx;
+                json heroArr2 = json::array();
+                for (auto& h : ps.heroes) heroArr2.push_back(heroToJson(h));
+                psj["heroes"] = heroArr2;
+                json defArr2 = json::array();
+                for (auto& h : ps.defeatedHeroes) defArr2.push_back(heroToJson(h));
+                psj["defeatedHeroes"] = defArr2;
+                psArr.push_back(psj);
+            }
+            j["playerStates"] = psArr;
         }
 
         std::ofstream f(path);
@@ -421,9 +427,10 @@ bool SaveLoad::loadGame(const std::string& path, GameSaveData& out)
             }
         }
 
-        // 2P hotseat state
+        // N-player hotseat state
         out.numHumanPlayers  = j.value("numPlayers",    1);
         out.currentPlayerIdx = j.value("currentPlayer", 0);
+        // Legacy v3 p2* fields — kept for fallback in loadGame()
         out.p2ActiveHeroIdx  = j.value("p2ActiveHero",  0);
         out.p2ResourceAmounts.fill(0);
         if (j.contains("p2Resources")) {
@@ -437,6 +444,26 @@ bool SaveLoad::loadGame(const std::string& path, GameSaveData& out)
         out.p2DefeatedHeroes.clear();
         if (j.contains("p2DefeatedHeroes"))
             for (auto& jh : j.at("p2DefeatedHeroes")) out.p2DefeatedHeroes.push_back(heroFromJson(jh));
+
+        // v4+ playerStates[]
+        out.playerStates.clear();
+        if (j.contains("playerStates")) {
+            for (auto& psj : j.at("playerStates")) {
+                PlayerStateSave ps;
+                ps.activeHeroIdx = psj.value("activeHero", 0);
+                ps.resourceAmounts.fill(0);
+                if (psj.contains("resources")) {
+                    int i = 0;
+                    for (auto& v : psj.at("resources"))
+                        if (i < RESOURCE_COUNT) ps.resourceAmounts[i++] = v.get<int>();
+                }
+                if (psj.contains("heroes"))
+                    for (auto& jh : psj.at("heroes")) ps.heroes.push_back(heroFromJson(jh));
+                if (psj.contains("defeatedHeroes"))
+                    for (auto& jh : psj.at("defeatedHeroes")) ps.defeatedHeroes.push_back(heroFromJson(jh));
+                out.playerStates.push_back(ps);
+            }
+        }
 
         return true;
     }

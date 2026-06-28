@@ -198,8 +198,6 @@ private:
     // ── Heroes ────────────────────────────────────────────────────────────────
     std::vector<Hero> m_heroes;
     std::vector<Hero> m_enemyHeroes;
-    std::vector<Hero> m_defeatedHeroPool;   // P1 (or 1P) defeated heroes — hireable in tavern
-    std::vector<Hero> m_p2DefeatedHeroPool; // P2 defeated heroes — only shown in P2's tavern
     int               m_activeHeroIdx = 0;
     uint32_t          m_nextHeroId    = 300; // global counter for tavern-hired hero IDs
 
@@ -371,10 +369,6 @@ private:
     // ── Town-lost notification (enemy captured player town) ───────────────────
     bool        m_showTownLostPopup   = false;
     std::string m_lostTownName;
-    // 2P: P2's town lost during AI turn — deferred until P2's turn starts
-    bool        m_showP2TownLostPopup = false;
-    std::string m_p2LostTownName;
-    bool        m_p2Defeated          = false;
 
     // ── Unit exchange between player heroes ────────────────────────────────────
     bool        m_showUnitExchange  = false;
@@ -453,10 +447,6 @@ private:
     std::string m_weeklyEventHeadline;   // empty = no event this week
     std::string m_weeklyEventBody;
 
-    // 2P: P2's week summary shown at start of P2's turn after a week transition
-    bool        m_showP2WeekSummary  = false;
-    int         m_p2WeekSummaryWeek  = 0;
-    Resources   m_p2WeekSummaryIncome;
 
     // Choice events -- when non-empty the week summary shows option buttons
     struct WeekChoiceOption {
@@ -500,17 +490,26 @@ private:
     int  m_newGameClassId    = 0;   // classId of chosen hero class (0=auto)
 
     // ── Hotseat multiplayer state ─────────────────────────────────────────────
-    int  m_numHumanPlayers      = 1;   // 1=singleplayer, 2=hotseat
-    int  m_currentPlayerIdx     = 0;   // 0-based (0=P1, 1=P2)
+    int  m_numHumanPlayers      = 1;   // 1=singleplayer, N=N-player hotseat
+    int  m_currentPlayerIdx     = 0;   // 0-based
     int  m_newGameNumPlayers    = 1;   // new-game menu selection
 
-    // Stored state swapped in/out of m_heroes/m_playerResources on turn change
-    std::vector<Hero> m_player1Heroes;
-    int               m_player1ActiveHeroIdx = 0;
-    Resources         m_player1Resources;
-    std::vector<Hero> m_player2Heroes;
-    int               m_player2ActiveHeroIdx = 0;
-    Resources         m_player2Resources;
+    struct PlayerState {
+        std::vector<Hero>  heroes;
+        Resources          resources;
+        int                activeHeroIdx = 0;
+        std::vector<Hero>  defeatedPool;
+    };
+    struct PlayerNotifs {
+        bool        townLost    = false;
+        std::string townName;
+        bool        defeated    = false;
+        bool        weekSummary = false;
+        int         weekNum     = 0;
+        Resources   weekIncome;
+    };
+    std::vector<PlayerState>  m_players;     // one entry per human player
+    std::vector<PlayerNotifs> m_playerNotifs;
 
     bool  m_showPlayerTurnBanner = false;
     float m_playerTurnBannerT    = 0.0f;

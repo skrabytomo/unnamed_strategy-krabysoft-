@@ -144,10 +144,19 @@ struct CampaignSaveState
     std::vector<std::pair<uint32_t, int>> decisions; // {decisionId, choiceIdx}
 };
 
+// ── Per-player state save (version 4+) ────────────────────────────────────────
+struct PlayerStateSave
+{
+    std::array<int, RESOURCE_COUNT> resourceAmounts = {};
+    std::vector<HeroSave>           heroes;
+    std::vector<HeroSave>           defeatedHeroes;
+    int                             activeHeroIdx   = 0;
+};
+
 // ── Full game save ─────────────────────────────────────────────────────────────
 struct GameSaveData
 {
-    int version = 3;
+    int version = 4;
 
     // Turn state
     int day  = 1;
@@ -186,6 +195,9 @@ struct GameSaveData
     std::vector<HeroSave> p2Heroes;
     std::vector<HeroSave> p2DefeatedHeroes;
     int p2ActiveHeroIdx = 0;
+
+    // N-player state (version 4+) — one entry per human player
+    std::vector<PlayerStateSave> playerStates;
 };
 
 // ── Save / Load API ────────────────────────────────────────────────────────────
