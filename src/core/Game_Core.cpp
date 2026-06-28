@@ -494,6 +494,14 @@ bool Game::loadGame(const std::string& path)
         m_worldHUD.setNumHumanPlayers(m_numHumanPlayers);
     }
 
+    // Recalculate weekly income display for current player
+    {
+        uint32_t cid = static_cast<uint32_t>(currentPlayerId());
+        m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, cid);
+        for (const auto& r : m_resources)
+            if (r.ownedBy == cid) m_cachedWeeklyIncome.add(r.type, r.amount);
+    }
+
     gLog("Game loaded from %s (day %d week %d)\n", path.c_str(), day, week);
     return true;
 }

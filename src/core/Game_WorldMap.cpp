@@ -2669,15 +2669,20 @@ void Game::renderWorldOverlay()
         project(town.pos, sx, sy);
 
         bool isPlayer = (town.ownerId == static_cast<uint32_t>(currentPlayerId()));
-        bool isEnemy  = (town.ownerId != 0 && !isPlayer);
+        uint32_t otherHuman2 = (m_numHumanPlayers >= 2)
+            ? static_cast<uint32_t>((m_currentPlayerIdx == 0) ? 2 : 1) : 0u;
+        bool isOtherHuman = (!isPlayer && m_numHumanPlayers >= 2 && town.ownerId == otherHuman2);
+        bool isEnemy      = (town.ownerId != 0 && !isPlayer && !isOtherHuman);
         int  fid      = std::clamp(static_cast<int>(town.faction), 0, NUM_FACTIONS - 1);
 
-        ImU32 ringCol = isPlayer ? IM_COL32(120, 180, 255, 255)
-                      : isEnemy  ? IM_COL32(255,  90,  90, 255)
-                                 : IM_COL32(210, 165,  50, 255);
-        ImU32 flagCol = isPlayer ? IM_COL32( 80, 140, 255, 230)
-                      : isEnemy  ? IM_COL32(220,  60,  60, 230)
-                                 : IM_COL32(190, 145,  30, 230);
+        ImU32 ringCol = isPlayer     ? IM_COL32(120, 180, 255, 255)
+                      : isOtherHuman ? IM_COL32( 80, 200, 120, 255)
+                      : isEnemy      ? IM_COL32(255,  90,  90, 255)
+                                     : IM_COL32(210, 165,  50, 255);
+        ImU32 flagCol = isPlayer     ? IM_COL32( 80, 140, 255, 230)
+                      : isOtherHuman ? IM_COL32( 50, 160,  90, 230)
+                      : isEnemy      ? IM_COL32(220,  60,  60, 230)
+                                     : IM_COL32(190, 145,  30, 230);
 
         ImTextureID townArt = m_townTex[fid].ok()
             ? (ImTextureID)(uintptr_t)m_townTex[fid].id() : nullptr;
@@ -2698,12 +2703,14 @@ void Game::renderWorldOverlay()
                                 {0,0}, {1,1}, IM_COL32(255,255,255,230), 6.0f);
         } else {
             // ── Procedural silhouette fallback ─────────────────────────────
-            ImU32 bgCol   = isPlayer ? IM_COL32(12, 22, 55, 240)
-                          : isEnemy  ? IM_COL32(55, 12, 12, 240)
-                                     : IM_COL32(45, 35, 10, 240);
-            ImU32 wallCol = isPlayer ? IM_COL32(70,110,210,255)
-                          : isEnemy  ? IM_COL32(210,65, 65, 255)
-                                     : IM_COL32(185,150, 45, 255);
+            ImU32 bgCol   = isPlayer     ? IM_COL32(12, 22, 55, 240)
+                          : isOtherHuman ? IM_COL32(10, 45, 20, 240)
+                          : isEnemy      ? IM_COL32(55, 12, 12, 240)
+                                        : IM_COL32(45, 35, 10, 240);
+            ImU32 wallCol = isPlayer     ? IM_COL32(70, 110, 210, 255)
+                          : isOtherHuman ? IM_COL32(60, 180,  90, 255)
+                          : isEnemy      ? IM_COL32(210,  65,  65, 255)
+                                        : IM_COL32(185, 150,  45, 255);
             dl->AddRectFilled({sx-CS, sy-CS}, {sx+CS, sy+CS}, bgCol, 5.0f);
             const float TW=13.f, TH=CS*0.85f, KW=CS*0.38f, KH=CS;
             dl->AddRectFilled({sx-CS+5,     sy-TH*.55f},{sx-CS+5+TW, sy+TH*.45f}, wallCol,2.f);
@@ -2943,9 +2950,17 @@ void Game::renderWorldOverlay()
         dl->AddCircleFilled({sx, sy}, mineGlow, bgGlow);
         addIcon(ico, sx, sy, mineR);
         // Ownership ring
-        ImU32 ring = r.ownedBy == static_cast<uint32_t>(currentPlayerId()) ? IM_COL32(120, 200, 255, 255)
-                   : r.ownedBy != 0 ? IM_COL32(255, 100, 100, 255)
-                                    : IM_COL32(255, 210,  60, 200);
+        uint32_t cid2p = (m_numHumanPlayers >= 2)
+            ? static_cast<uint32_t>((m_currentPlayerIdx == 0) ? 2 : 1) : 0u;
+        ImU32 ring;
+        if (r.ownedBy == static_cast<uint32_t>(currentPlayerId()))
+            ring = IM_COL32(120, 200, 255, 255);     // owned — blue
+        else if (m_numHumanPlayers >= 2 && r.ownedBy == cid2p)
+            ring = IM_COL32(80, 200, 120, 255);      // opponent human — green
+        else if (r.ownedBy != 0)
+            ring = IM_COL32(255, 100, 100, 255);     // AI — red
+        else
+            ring = IM_COL32(255, 210, 60, 200);      // neutral — gold
         dl->AddCircle({sx, sy}, mineGlow, ring, 0, 2.0f);
         // Resource name + weekly amount shown below the icon (if not inside a HUD panel)
         const char* resName = resourceName(r.type);
@@ -3255,14 +3270,23 @@ void Game::renderWorldOverlay()
         }
 
         // Towns: 4×4 colored square with white outline
+        uint32_t otherHumanId = (m_numHumanPlayers >= 2)
+            ? static_cast<uint32_t>((m_currentPlayerIdx == 0) ? 2 : 1)
+            : 0u;
         for (const auto& town : m_towns) {
             const HexTile* tt = m_map.getTile(town.pos);
             if (!tt || !tt->explored) continue;
             float mx = mm_cx + static_cast<float>(town.pos.q) * scaleX;
             float my = mm_cy + (static_cast<float>(town.pos.r) + static_cast<float>(town.pos.q) * 0.5f) * scaleY;
-            ImU32 col = town.ownerId == static_cast<uint32_t>(currentPlayerId()) ? IM_COL32( 90, 150, 255, 255)
-                      : town.ownerId != 0 ? IM_COL32(255,  70,  70, 255)
-                                          : IM_COL32(210, 165,  45, 255);
+            ImU32 col;
+            if (town.ownerId == static_cast<uint32_t>(currentPlayerId()))
+                col = IM_COL32(90, 150, 255, 255);    // current player — blue
+            else if (m_numHumanPlayers >= 2 && town.ownerId == otherHumanId)
+                col = IM_COL32(80, 210, 120, 255);    // other human — green
+            else if (town.ownerId != 0)
+                col = IM_COL32(255, 70, 70, 255);     // AI — red
+            else
+                col = IM_COL32(210, 165, 45, 255);    // neutral — gold
             dl->AddRectFilled({mx-2.f, my-2.f}, {mx+2.f, my+2.f}, col);
             dl->AddRect({mx-2.f, my-2.f}, {mx+2.f, my+2.f}, IM_COL32(255, 255, 255, 220));
         }
@@ -3273,9 +3297,15 @@ void Game::renderWorldOverlay()
             if (!rt || !rt->explored) continue;
             float mx = mm_cx + static_cast<float>(r.pos.q) * scaleX;
             float my = mm_cy + (static_cast<float>(r.pos.r) + static_cast<float>(r.pos.q) * 0.5f) * scaleY;
-            ImU32 col = r.ownedBy == static_cast<uint32_t>(currentPlayerId()) ? IM_COL32(80, 220, 80, 200)
-                      : r.ownedBy  != 0 ? IM_COL32(220, 80, 80, 200)
-                                        : IM_COL32(200, 180, 80, 150);
+            ImU32 col;
+            if (r.ownedBy == static_cast<uint32_t>(currentPlayerId()))
+                col = IM_COL32(80, 220, 80, 200);
+            else if (m_numHumanPlayers >= 2 && r.ownedBy == otherHumanId)
+                col = IM_COL32(80, 160, 255, 200);   // other human's mine — blue
+            else if (r.ownedBy != 0)
+                col = IM_COL32(220, 80, 80, 200);    // AI mine — red
+            else
+                col = IM_COL32(200, 180, 80, 150);   // unclaimed — gold
             dl->AddCircleFilled({mx, my}, 1.5f, col);
         }
 
