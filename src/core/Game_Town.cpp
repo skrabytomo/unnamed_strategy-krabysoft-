@@ -54,7 +54,7 @@ void Game::renderTown()
                 m_showMageGuildPanel = !m_showMageGuildPanel;
             ImGui::SameLine();
         }
-        if (town && town->ownerId == 1) {
+        if (town && town->ownerId == static_cast<uint32_t>(currentPlayerId())) {
             if (ImGui::Button(m_showTavernPanel ? "[Tavern X]" : "Tavern"))
                 m_showTavernPanel = !m_showTavernPanel;
             ImGui::SameLine();
@@ -71,7 +71,7 @@ void Game::renderTown()
         {
             bool anyMarket = false;
             for (const auto& t : m_towns)
-                if (t.ownerId == 1 && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
+                if (t.ownerId == static_cast<uint32_t>(currentPlayerId()) && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
             if (!anyMarket) ImGui::BeginDisabled();
             if (ImGui::Button(m_showMarketPanel ? "[Market X]" : "Market"))
                 m_showMarketPanel = !m_showMarketPanel;
@@ -521,7 +521,7 @@ void Game::renderArtifactForge()
 void Game::renderTavern()
 {
     const Town* town = m_townScreen.currentTown();
-    if (!town || town->ownerId != 1) return;  // only in owned towns
+    if (!town || town->ownerId != static_cast<uint32_t>(currentPlayerId())) return;  // only in owned towns
 
     static constexpr int HIRE_COST  = 2500;
     static constexpr int MAX_HEROES = 3;
@@ -911,7 +911,7 @@ void Game::enterTown(Town* town)
             hero = &h;
     }
     // Entering a player-owned town restores hero HP fully
-    if (hero && town->ownerId == 1 && hero->heroHp < hero->heroMaxHp) {
+    if (hero && town->ownerId == static_cast<uint32_t>(currentPlayerId()) && hero->heroHp < hero->heroMaxHp) {
         hero->heroHp = hero->heroMaxHp;
         pushPickupEffect(town->pos, "Hero healed!", IM_COL32(180, 255, 180, 255));
     }
@@ -971,7 +971,7 @@ void Game::renderMarketplace()
     // Gate: need at least one player town with MARKET
     bool anyMarket = false;
     for (const auto& t : m_towns)
-        if (t.ownerId == 1 && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
+        if (t.ownerId == static_cast<uint32_t>(currentPlayerId()) && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
     if (!anyMarket) { m_showMarketPanel = false; return; }
 
     static const int SELL_RATE = 4;  // HoMM3-style 4:1 exchange

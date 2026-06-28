@@ -243,7 +243,7 @@ void Game::updateWorldMap(float dt)
                     if (e.id == ht->heroId) { fight = true; break; }
                 if (!fight && ht->townId != 0)
                     for (const auto& t : m_towns)
-                        if (t.id == ht->townId && t.ownerId > 1) { fight = true; break; }
+                        if (t.id == ht->townId && t.ownerId > static_cast<uint32_t>(m_numHumanPlayers)) { fight = true; break; }
             }
         }
         SDL_SetCursor(fight ? m_cursorFight : m_cursorArrow);
@@ -332,6 +332,9 @@ void Game::updateWorldMap(float dt)
 
     // Update particles
     m_particles.update(dt);
+
+    if (m_playerTurnBannerT > 0.0f)
+        m_playerTurnBannerT -= dt;
 
     // Advance pickup effects (float upward, fade out)
     for (auto& e : m_pickupEffects) e.t -= dt;
@@ -434,15 +437,76 @@ void Game::updateWorldMap(float dt)
 // ── End Turn — full turn logic (SPACE key + HUD button) ───────────────────────
 void Game::doEndTurn()
 {
+    // ── Hotseat: Player 1 ends turn → switch to Player 2 ────────────────────────
+    if (m_numHumanPlayers == 2 && m_currentPlayerIdx == 0) {
+        m_player1Heroes        = m_heroes;
+        m_player1Resources     = m_playerResources;
+        m_player1ActiveHeroIdx = m_activeHeroIdx;
+
+        m_heroes          = m_player2Heroes;
+        m_playerResources = m_player2Resources;
+        m_activeHeroIdx   = m_player2ActiveHeroIdx;
+        if (m_activeHeroIdx >= static_cast<int>(m_heroes.size())) m_activeHeroIdx = 0;
+
+        for (auto& h : m_heroes) { h.movePool = h.maxMove; h.path.clear(); h.pathStep = 0; }
+
+        FogOfWar::hideAll(m_map);
+        if (!m_heroes.empty())
+            FogOfWar::updateVision(m_map, m_heroes);
+
+        if (!m_heroes.empty() && m_activeHeroIdx < static_cast<int>(m_heroes.size())) {
+            float hx2, hy2;
+            m_hexRenderer.grid().hexToWorld(m_heroes[m_activeHeroIdx].pos, hx2, hy2);
+            m_camera.setPosition(hx2, hy2);
+        }
+
+        m_currentPlayerIdx     = 1;
+        m_showPlayerTurnBanner = true;
+        m_playerTurnBannerT    = 2.5f;
+        m_reachable.clear();
+        m_selected = {-999, -999};
+        m_worldHUD.setCurrentPlayerId(2);
+        return;
+    }
+
+    // ── Hotseat: Player 2 ends turn → restore Player 1 then run full turn ────────
+    bool p2justEndedTurn = false;
+    if (m_numHumanPlayers == 2 && m_currentPlayerIdx == 1) {
+        m_player2Heroes         = m_heroes;
+        m_player2Resources      = m_playerResources;
+        m_player2ActiveHeroIdx  = m_activeHeroIdx;
+
+        m_heroes          = m_player1Heroes;
+        m_playerResources = m_player1Resources;
+        m_activeHeroIdx   = m_player1ActiveHeroIdx;
+        if (m_activeHeroIdx >= static_cast<int>(m_heroes.size())) m_activeHeroIdx = 0;
+        m_currentPlayerIdx = 0;
+        m_reachable.clear();
+        m_selected = {-999, -999};
+        m_worldHUD.setCurrentPlayerId(1);
+        p2justEndedTurn = true;
+
+        // Restore P1 fog immediately (correct even if AI combat triggers below)
+        FogOfWar::hideAll(m_map);
+        if (!m_heroes.empty())
+            FogOfWar::updateVision(m_map, m_heroes);
+        if (!m_heroes.empty() && m_activeHeroIdx < static_cast<int>(m_heroes.size())) {
+            float hx2, hy2;
+            m_hexRenderer.grid().hexToWorld(m_heroes[m_activeHeroIdx].pos, hx2, hy2);
+            m_camera.setPosition(hx2, hy2);
+        }
+    }
+
     // Reset per-day build limit for all towns
     for (auto& t : m_towns) t.builtToday = 0;
 
     // FishingHouse daily income (+150 gold per player-owned house)
     for (const auto& wo : m_worldObjects) {
-        if (wo.type != WorldObjectType::FishingHouse) continue;
-        if (wo.collected) continue;
-        if (wo.faction != 1) continue;   // faction field holds ownerId; 1 = player
-        m_playerResources.add(ResourceType::Gold, 150);
+        if (wo.type != WorldObjectType::FishingHouse || wo.collected) continue;
+        if (wo.faction == 1)
+            m_playerResources.add(ResourceType::Gold, 150);
+        else if (wo.faction == 2 && m_numHumanPlayers == 2)
+            m_player2Resources.add(ResourceType::Gold, 150);
     }
 
     // Restore hero movement pools and daily mana regen for enemy heroes
@@ -453,6 +517,7 @@ void Game::doEndTurn()
         h.mana = std::min(h.maxMana, h.mana + manaRegen);
     }
 
+    if (!m_heroes.empty()) {
         // Enemy hero AI — strength-aware, full move pool
         if (!m_heroes.empty()) {
             Hero& playerHero = m_heroes[m_activeHeroIdx];
@@ -537,7 +602,8 @@ void Game::doEndTurn()
                             if (!playerGhostWalk) tryGoal(playerHero.pos);
                             if (aggressive) {
                                 for (const auto& t : m_towns)
-                                    if (t.ownerId == 1) tryGoal(t.pos);
+                                    if (t.ownerId > 0 && t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers))
+                                        tryGoal(t.pos);
                             }
                         }
                     }
@@ -550,7 +616,7 @@ void Game::doEndTurn()
                         // Only block passage through player towns, not destination
                         if (!aggressive && t->townId != 0) {
                             for (const auto& town : m_towns)
-                                if (town.id == t->townId && town.ownerId == 1) return 999;
+                                if (town.id == t->townId && town.ownerId > 0 && town.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) return 999;
                         }
                         int base = eHero.moveCost(t->terrain);
                         if (m_roadHexes.count(c)) base = std::max(1, base / 2);
@@ -673,16 +739,21 @@ void Game::doEndTurn()
                             } else if (t.ownerId == 0) {
                                 t.ownerId = eHero.id;
                                 gLog("Enemy %s captured %s\n", eHero.name.c_str(), t.name.c_str());
-                            } else if (t.ownerId == 1) {
+                            } else if (t.ownerId > 0 && t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) {
                                 // Off-screen siege: compare attacker vs garrison strength
                                 Hero garHero;
                                 garHero.faction = t.faction;
                                 garHero.army    = t.garrison;
-                                // Include any player hero garrisoned in the town
+                                // Include any hero garrisoned in the town
                                 for (const auto& ph : m_heroes)
                                     if (ph.pos == t.pos)
                                         for (const auto& s : ph.army)
                                             if (s.count > 0) garHero.army.push_back(s);
+                                if (m_numHumanPlayers == 2 && t.ownerId == 2)
+                                    for (const auto& ph : m_player2Heroes)
+                                        if (ph.pos == t.pos)
+                                            for (const auto& s : ph.army)
+                                                if (s.count > 0) garHero.army.push_back(s);
                                 int atkStr = heroStrength(eHero, unitDefs);
                                 int defStr = heroStrength(garHero, unitDefs);
                                 if (t.hasBuilding(BID::FORT)) defStr = defStr * 3 / 2;
@@ -775,16 +846,16 @@ void Game::doEndTurn()
                                        m_playerResources, m_registry);
         if (newWeek) {
             // Capture income totals for week summary popup before adding them
-            m_weekSummaryIncome = m_turns.calculateWeeklyIncome(m_towns, 1);
+            m_weekSummaryIncome = m_turns.calculateWeeklyIncome(m_towns, currentPlayerId());
             for (const auto& r : m_resources)
-                if (r.ownedBy == 1) m_weekSummaryIncome.add(r.type, r.amount);
+                if (r.ownedBy == static_cast<uint32_t>(currentPlayerId())) m_weekSummaryIncome.add(r.type, r.amount);
             m_cachedWeeklyIncome = m_weekSummaryIncome;
             m_weekSummaryWeek = m_turns.week();
             m_showWeekSummary = true;
 
             // Mine income for player-controlled resource nodes
             for (const auto& r : m_resources)
-                if (r.ownedBy == 1) m_playerResources.add(r.type, r.amount);
+                if (r.ownedBy == static_cast<uint32_t>(currentPlayerId())) m_playerResources.add(r.type, r.amount);
 
             // Garrison upkeep — 350 gold/week per garrisoned player hero
             {
@@ -843,7 +914,7 @@ void Game::doEndTurn()
                 const auto& allBuildings = m_registry.buildings();
 
                 for (auto& town : m_towns) {
-                    if (town.ownerId <= 1) continue;
+                    if (town.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) continue;
                     town.builtToday = 0;
 
                     bool built = false;
@@ -1008,7 +1079,7 @@ void Game::doEndTurn()
                 case 11: { // Plague — garrison defenders weakened
                     int lostTotal = 0;
                     for (auto& t : m_towns) {
-                        if (t.ownerId != 1 || t.garrison.empty()) continue;
+                        if (t.ownerId != static_cast<uint32_t>(currentPlayerId()) || t.garrison.empty()) continue;
                         for (auto& s : t.garrison) {
                             int lost = std::max(0, s.count / 5);
                             s.count -= lost;
@@ -1287,6 +1358,58 @@ void Game::doEndTurn()
         }
     }
 
+    // ── Hotseat: after full turn, regen P2 heroes and show "Player 1's Turn" ──
+    if (p2justEndedTurn) {
+        for (auto& h : m_player2Heroes) {
+            h.movePool = h.maxMove;
+            h.path.clear();
+            h.pathStep = 0;
+            int manaRegen = std::max(2, 2 + h.maxMana / 10);
+            h.mana = std::min(h.maxMana, h.mana + manaRegen);
+        }
+        if (m_turns.day() == 1) {  // new week just started
+            auto p2income = m_turns.calculateWeeklyIncome(m_towns, 2);
+            m_player2Resources.addAll(p2income);
+            for (const auto& r : m_resources)
+                if (r.ownedBy == 2) m_player2Resources.add(r.type, r.amount);
+        }
+        m_showPlayerTurnBanner = true;
+        m_playerTurnBannerT    = 2.5f;
+    }
+}
+
+void Game::renderPlayerTurnBanner()
+{
+    float alpha = std::min(1.0f, m_playerTurnBannerT);  // fade out in last second
+    if (alpha <= 0.0f) return;
+
+    ImDrawList* dl = ImGui::GetForegroundDrawList();
+    float sw = static_cast<float>(m_width);
+    float sh = static_cast<float>(m_height);
+
+    // Full-width banner in the centre of the screen
+    float bannerH = 90.0f;
+    float bannerY = (sh - bannerH) * 0.5f;
+    ImU32 bg = IM_COL32(10, 10, 30, static_cast<int>(200 * alpha));
+    dl->AddRectFilled({0, bannerY}, {sw, bannerY + bannerH}, bg);
+    dl->AddRect({0, bannerY}, {sw, bannerY + bannerH},
+                IM_COL32(180, 160, 80, static_cast<int>(220 * alpha)), 0.0f, 0, 2.0f);
+
+    char line1[48];
+    std::snprintf(line1, sizeof(line1), "PLAYER %d", currentPlayerId());
+    const char* line2 = "YOUR TURN";
+
+    ImVec2 sz1 = ImGui::CalcTextSize(line1);
+    ImVec2 sz2 = ImGui::CalcTextSize(line2);
+    float cx = sw * 0.5f;
+    float cy = bannerY + bannerH * 0.5f;
+
+    dl->AddText({cx - sz1.x * 0.5f, cy - sz1.y - 2},
+                IM_COL32(255, 220, 80, static_cast<int>(255 * alpha)), line1);
+    dl->AddText({cx - sz2.x * 0.5f, cy + 2},
+                IM_COL32(200, 200, 255, static_cast<int>(255 * alpha)), line2);
+}
+
 // ── World map render ──────────────────────────────────────────────────────────
 void Game::renderWorldMapImGui()
 {
@@ -1326,6 +1449,9 @@ void Game::renderWorldMapImGui()
     else if (m_showVictory && !inCampaign)      renderVictoryModal();
     else if (m_showDefeat  && !inCampaign)      renderDefeatModal();
     else if (m_showLevelUpModal)                renderLevelUpModal();
+
+    if (m_showPlayerTurnBanner && m_playerTurnBannerT > 0.0f)
+        renderPlayerTurnBanner();
 }
 
 void Game::renderWorldMap()
@@ -1370,7 +1496,7 @@ void Game::onTileClicked(HexCoord h)
     if (tile->townId != 0) {
         Hero& clickHero = m_heroes[m_activeHeroIdx];
         for (auto& t : m_towns) {
-            if (t.id != tile->townId || t.ownerId != 1) continue;
+            if (t.id != tile->townId || t.ownerId != static_cast<uint32_t>(currentPlayerId())) continue;
             if (clickHero.pos == h || HexGrid::distance(clickHero.pos, h) <= 1) {
                 enterTown(&t);
                 return;
@@ -2170,7 +2296,7 @@ void Game::checkTileEvents()
     // Resource node — claim mine (guards if unbeaten)
     if (tile->resourceId != 0) {
         for (auto& r : m_resources) {
-            if (r.id != tile->resourceId || r.ownedBy == 1) continue;
+            if (r.id != tile->resourceId || r.ownedBy == static_cast<uint32_t>(currentPlayerId())) continue;
             if (!r.guardBeaten) {
                 // Mine is guarded — show encounter prompt before committing
                 Hero guardHero;
@@ -2216,7 +2342,7 @@ void Game::checkTileEvents()
     if (tile->townId != 0) {
         for (auto& t : m_towns) {
             if (t.id != tile->townId) continue;
-            if (t.ownerId != 1) {
+            if (t.ownerId != static_cast<uint32_t>(currentPlayerId())) {
                 // Fight the garrison if one exists
                 if (!t.garrison.empty()) {
                     // Build garrison CombatUnits as the "enemy"
@@ -2400,8 +2526,8 @@ void Game::renderWorldOverlay()
         float sx, sy;
         project(town.pos, sx, sy);
 
-        bool isPlayer = (town.ownerId == 1);
-        bool isEnemy  = (town.ownerId > 1);
+        bool isPlayer = (town.ownerId == static_cast<uint32_t>(currentPlayerId()));
+        bool isEnemy  = (town.ownerId != 0 && !isPlayer);
         int  fid      = std::clamp(static_cast<int>(town.faction), 0, NUM_FACTIONS - 1);
 
         ImU32 ringCol = isPlayer ? IM_COL32(120, 180, 255, 255)
@@ -2675,8 +2801,8 @@ void Game::renderWorldOverlay()
         dl->AddCircleFilled({sx, sy}, mineGlow, bgGlow);
         addIcon(ico, sx, sy, mineR);
         // Ownership ring
-        ImU32 ring = r.ownedBy == 1 ? IM_COL32(120, 200, 255, 255)
-                   : r.ownedBy >  1 ? IM_COL32(255, 100, 100, 255)
+        ImU32 ring = r.ownedBy == static_cast<uint32_t>(currentPlayerId()) ? IM_COL32(120, 200, 255, 255)
+                   : r.ownedBy != 0 ? IM_COL32(255, 100, 100, 255)
                                     : IM_COL32(255, 210,  60, 200);
         dl->AddCircle({sx, sy}, mineGlow, ring, 0, 2.0f);
         // Resource name + weekly amount shown below the icon (if not inside a HUD panel)
@@ -2689,8 +2815,8 @@ void Game::renderWorldOverlay()
             dl->AddRectFilled({sx - lw - 2, labelY}, {sx + lw + 2, labelY + 12},
                               IM_COL32(0, 0, 0, 170), 3.0f);
             dl->AddText({sx - lw, labelY + 1},
-                        r.ownedBy == 1 ? IM_COL32(140, 210, 255, 255)
-                                       : IM_COL32(255, 230, 120, 255),
+                        r.ownedBy == static_cast<uint32_t>(currentPlayerId()) ? IM_COL32(140, 210, 255, 255)
+                                                                               : IM_COL32(255, 230, 120, 255),
                         label);
         }
     }
@@ -2960,8 +3086,8 @@ void Game::renderWorldOverlay()
             if (!tt || !tt->explored) continue;
             float mx = mm_cx + static_cast<float>(town.pos.q) * scaleX;
             float my = mm_cy + (static_cast<float>(town.pos.r) + static_cast<float>(town.pos.q) * 0.5f) * scaleY;
-            ImU32 col = town.ownerId == 1 ? IM_COL32( 90, 150, 255, 255)
-                      : town.ownerId >  1 ? IM_COL32(255,  70,  70, 255)
+            ImU32 col = town.ownerId == static_cast<uint32_t>(currentPlayerId()) ? IM_COL32( 90, 150, 255, 255)
+                      : town.ownerId != 0 ? IM_COL32(255,  70,  70, 255)
                                           : IM_COL32(210, 165,  45, 255);
             dl->AddRectFilled({mx-2.f, my-2.f}, {mx+2.f, my+2.f}, col);
             dl->AddRect({mx-2.f, my-2.f}, {mx+2.f, my+2.f}, IM_COL32(255, 255, 255, 220));
@@ -2973,9 +3099,9 @@ void Game::renderWorldOverlay()
             if (!rt || !rt->explored) continue;
             float mx = mm_cx + static_cast<float>(r.pos.q) * scaleX;
             float my = mm_cy + (static_cast<float>(r.pos.r) + static_cast<float>(r.pos.q) * 0.5f) * scaleY;
-            ImU32 col = r.ownedBy == 1 ? IM_COL32(80, 220, 80, 200)
-                      : r.ownedBy  > 1 ? IM_COL32(220, 80, 80, 200)
-                                       : IM_COL32(200, 180, 80, 150);
+            ImU32 col = r.ownedBy == static_cast<uint32_t>(currentPlayerId()) ? IM_COL32(80, 220, 80, 200)
+                      : r.ownedBy  != 0 ? IM_COL32(220, 80, 80, 200)
+                                        : IM_COL32(200, 180, 80, 150);
             dl->AddCircleFilled({mx, my}, 1.5f, col);
         }
 
@@ -4318,14 +4444,14 @@ void Game::renderMineInfoPopup()
                         | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar;
     if (!ImGui::Begin("##mine_info", nullptr, wf)) { ImGui::End(); return; }
 
-    const char* status = r->ownedBy == 1 ? " [Owned]"
+    const char* status = r->ownedBy == static_cast<uint32_t>(currentPlayerId()) ? " [Owned]"
                        : r->guardBeaten  ? " [Captured]"
                        : " [Guarded]";
     ImGui::TextColored({0.9f, 0.75f, 0.2f, 1.0f}, "%s Mine%s  +%d/wk",
                        resourceName(r->type), status, r->amount);
     ImGui::Separator();
 
-    if (r->guardBeaten || r->ownedBy == 1) {
+    if (r->guardBeaten || r->ownedBy == static_cast<uint32_t>(currentPlayerId())) {
         ImGui::TextDisabled("No defenders — mine is unguarded.");
     } else {
         ImGui::TextColored({0.95f, 0.45f, 0.45f, 1.0f}, "Defenders:");
@@ -4626,7 +4752,7 @@ void Game::renderKingdomPanel()
     };
     bool anyTown = false;
     for (const auto& t : m_towns) {
-        if (t.ownerId != 1) continue;
+        if (t.ownerId != static_cast<uint32_t>(currentPlayerId())) continue;
         anyTown = true;
         int fi = static_cast<int>(t.faction);
         char thdr[100];
@@ -4661,7 +4787,7 @@ void Game::renderKingdomPanel()
     int mineCount[RESOURCE_COUNT] = {};
     int mineIncome[RESOURCE_COUNT] = {};
     for (const auto& r : m_resources) {
-        if (r.ownedBy != 1) continue;
+        if (r.ownedBy != static_cast<uint32_t>(currentPlayerId())) continue;
         int ri = static_cast<int>(r.type);
         mineCount[ri]++;
         mineIncome[ri] += r.amount;
@@ -4847,7 +4973,7 @@ void Game::renderTownPortalPopup()
     // Collect player towns sorted by distance
     std::vector<std::pair<int,Town*>> options;
     for (auto& t : m_towns)
-        if (t.ownerId == 1)
+        if (t.ownerId == static_cast<uint32_t>(currentPlayerId()))
             options.push_back({HexGrid::distance(hero.pos, t.pos), &t});
     std::sort(options.begin(), options.end(),
               [](const auto& a, const auto& b){ return a.first < b.first; });

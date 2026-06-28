@@ -185,6 +185,18 @@ void Game::renderMainMenu()
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", kDiffTooltips[i]);
             if (sel) ImGui::PopStyleColor();
         }
+        ImGui::Spacing();
+
+        // Players (hotseat)
+        ImGui::Text("Players:");
+        for (int np = 1; np <= 2; ++np) {
+            if (np > 1) ImGui::SameLine();
+            bool sel = (m_newGameNumPlayers == np);
+            if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.6f, 1.f));
+            char plbl[16]; std::snprintf(plbl, sizeof(plbl), "%dP##np%d", np, np);
+            if (ImGui::Button(plbl, ImVec2((bw - 2) / 2.f, 26))) m_newGameNumPlayers = np;
+            if (sel) ImGui::PopStyleColor();
+        }
         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
 
         ImGui::TextDisabled("Choose a slot. Existing save will be overwritten.");

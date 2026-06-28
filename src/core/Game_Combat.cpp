@@ -1250,7 +1250,7 @@ void Game::enterCombat(Hero& playerHero,
         bool voidLens = false, mergeChamber = false;
         bool resonanceWell = false, mirrorChamber = false;
         for (const auto& town : m_towns) {
-            if (town.ownerId != 1 || town.pos != playerHero.pos) continue;
+            if (town.ownerId != static_cast<uint32_t>(currentPlayerId()) || town.pos != playerHero.pos) continue;
             // Magic-power support buildings
             if (town.hasBuilding(BID::HO_LIGHT_SHRINE))    lightP  += 2;
             if (town.hasBuilding(BID::CW_DEATH_ALTAR))     deathP  += 3;
@@ -1413,7 +1413,7 @@ void Game::exitCombat(bool playerWon)
 
             // Necropolis Gate (EE_NECROPOLIS building): 15% of killed enemies rise as Conscripts
             for (const auto& town : m_towns) {
-                if (town.ownerId != 1 || town.pos != hero.pos) continue;
+                if (town.ownerId != static_cast<uint32_t>(currentPlayerId()) || town.pos != hero.pos) continue;
                 if (!town.hasBuilding(BID::EE_NECROPOLIS)) break;
                 int risen = m_combat.enemyStartCount() * 15 / 100;
                 if (risen > 0) {
@@ -1558,7 +1558,7 @@ void Game::exitCombat(bool playerWon)
             bool noEnemyHeroes = m_enemyHeroes.empty();
             bool noEnemyTowns  = true;
             for (const auto& t : m_towns)
-                if (t.ownerId > 1) { noEnemyTowns = false; break; }
+                if (t.ownerId > static_cast<uint32_t>(m_numHumanPlayers)) { noEnemyTowns = false; break; }
             if (noEnemyHeroes && noEnemyTowns) {
                 m_showVictory = true;
                 m_audio.playSound("victory");
@@ -1749,7 +1749,7 @@ void Game::exitCombat(bool playerWon)
                     if (!h.army.empty()) { anyUnit = true; break; }
                 bool anyTown = false;
                 for (const auto& t : m_towns)
-                    if (t.ownerId == 1) { anyTown = true; break; }
+                    if (t.ownerId == static_cast<uint32_t>(currentPlayerId())) { anyTown = true; break; }
                 m_finalDefeat = !anyUnit && !anyTown;
             }
             if (m_state == GameState::Campaign && m_finalDefeat)

@@ -181,7 +181,7 @@ bool Game::init(const std::string& title, int width, int height)
         // Find the idx-th player-owned town and jump to it
         int count = 0;
         for (auto& t : m_towns) {
-            if (t.ownerId != 1) continue;
+            if (t.ownerId != static_cast<uint32_t>(currentPlayerId())) continue;
             if (count == idx) {
                 float tx, ty;
                 m_hexRenderer.grid().hexToWorld(t.pos, tx, ty);
@@ -482,6 +482,18 @@ void Game::startNewGame()
     m_showTownLostPopup = false;
     m_showCombatResult = false;
 
+    // Multiplayer reset
+    m_numHumanPlayers      = m_newGameNumPlayers;
+    m_currentPlayerIdx     = 0;
+    m_player1Heroes.clear();
+    m_player1Resources     = Resources{};
+    m_player1ActiveHeroIdx = 0;
+    m_player2Heroes.clear();
+    m_player2Resources     = Resources{};
+    m_player2ActiveHeroIdx = 0;
+    m_showPlayerTurnBanner = false;
+    m_playerTurnBannerT    = 0.0f;
+
     // Generate world procedurally using selected settings
     static constexpr MapSize kMapSizes[] = {
         MapSize::Small, MapSize::Medium, MapSize::Large, MapSize::XLarge
@@ -651,8 +663,36 @@ void Game::startNewGame()
         {"Flesh-Weave", "Graft Sovereign", "Marrow Sculptor"},     // Amalgamate
         {"Synth-One", "Accord Delegate", "Unity Seeker"},          // Convergence
     };
+    // Player 2 setup (hotseat): use startPositions[1] and a different faction
+    if (m_numHumanPlayers == 2 && wgResult.startPositions.size() >= 2) {
+        int p2fi = (fi + 1) % 9;
+        m_player2Resources.set(ResourceType::Gold, 5000);
+        m_player2Resources.set(ResourceType::Iron, 20);
+        m_player2ActiveHeroIdx = 0;
+
+        Hero p2hero;
+        p2hero.id      = 2;
+        p2hero.name    = "Player 2";
+        p2hero.faction = kFactions[p2fi];
+        p2hero.pos     = wgResult.startPositions[1];
+        p2hero.movePool = p2hero.maxMove;
+        p2hero.knownSpells = { kFactionStartSpell[p2fi] };
+        // Assign a class for P2
+        {
+            auto cls4fac = m_classRegistry.getClassesForFaction(p2hero.faction);
+            if (!cls4fac.empty()) {
+                const HeroClassDef* cls = cls4fac[0];
+                p2hero.classId = cls->id;
+            }
+        }
+        giveStartingArmy(p2hero, kT1Count[diff], kT2Count[diff]);
+        if (HexTile* ht = m_map.getTile(p2hero.pos)) ht->heroId = p2hero.id;
+        m_player2Heroes.push_back(p2hero);
+    }
+
     uint32_t nameRng = wgp.seed ^ 0xABCD1234u;
-    for (int i = 1; i < static_cast<int>(wgResult.startPositions.size()) && i <= 3; ++i) {
+    int aiStartIdx = m_numHumanPlayers;  // skip P2's position slot in 2P mode
+    for (int i = aiStartIdx; i < static_cast<int>(wgResult.startPositions.size()) && i <= 3; ++i) {
         FactionId ef = (i < static_cast<int>(wgResult.towns.size()))
                        ? wgResult.towns[i].faction : FactionId::EternalEmpire;
         int efi = std::clamp(static_cast<int>(ef), 0, 8);
@@ -733,11 +773,26 @@ void Game::startNewGame()
                 const BuildingDef* def = m_registry.getBuildingDef(bid);
                 if (def) wt.weeklyIncome.addAll(def->weeklyIncome);
             }
+        } else if (m_numHumanPlayers == 2 && i == 1) {
+            // Player 2's starting town
+            int p2fi = (fi + 1) % 9;
+            wt.ownerId = 2;
+            wt.faction = kFactions[p2fi];
+            int hallId = (static_cast<int>(wt.faction) + 1) * 100;
+            wt.builtBuildings.push_back(BID::MAGE_GUILD);
+            wt.builtBuildings.push_back(hallId);
+            for (int bid : wt.builtBuildings) {
+                const BuildingDef* def = m_registry.getBuildingDef(bid);
+                if (def) wt.weeklyIncome.addAll(def->weeklyIncome);
+            }
         } else {
             // Assign enemy town to the corresponding AI hero (heroes are 99+i)
-            bool assignedToAI = (i >= 1 && i <= static_cast<int>(m_enemyHeroes.size()));
+            uint32_t aiId = 99u + static_cast<uint32_t>(i);
+            bool assignedToAI = false;
+            for (const auto& eh : m_enemyHeroes)
+                if (eh.id == aiId) { assignedToAI = true; break; }
             if (assignedToAI) {
-                wt.ownerId = 99u + static_cast<uint32_t>(i);
+                wt.ownerId = aiId;
                 // Pre-build same starting buildings as the player
                 int hallId = (static_cast<int>(wt.faction) + 1) * 100;
                 wt.builtBuildings.push_back(BID::MAGE_GUILD);

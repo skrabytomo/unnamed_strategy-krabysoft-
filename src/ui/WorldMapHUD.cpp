@@ -257,7 +257,7 @@ void WorldMapHUD::drawTownPanel(UIRenderer& rdr, const std::vector<Town>& towns)
 {
     std::vector<const Town*> playerTowns;
     for (const auto& t : towns)
-        if (t.ownerId == 1) playerTowns.push_back(&t);
+        if (t.ownerId == static_cast<uint32_t>(m_currentPlayerId)) playerTowns.push_back(&t);
 
     m_townCount = static_cast<int>(playerTowns.size());
     if (m_townCount == 0) return;

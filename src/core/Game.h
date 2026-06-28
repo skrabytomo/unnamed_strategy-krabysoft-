@@ -113,6 +113,10 @@ private:
     void saveGame(const std::string& path);
     bool loadGame(const std::string& path);
 
+    // ── Hotseat multiplayer ───────────────────────────────────────────────────
+    void renderPlayerTurnBanner();
+    int  currentPlayerId() const { return m_currentPlayerIdx + 1; }
+
     // ── Level-up modal ─────────────────────────────────────────────────────────
     void renderLevelUpModal();
 
@@ -482,6 +486,22 @@ private:
     int  m_newGameFaction    = 0;   // 0=HolyOrder ... 8=Convergence
     int  m_newGameDifficulty = 1;   // 0=Easy, 1=Normal, 2=Hard
     int  m_newGameClassId    = 0;   // classId of chosen hero class (0=auto)
+
+    // ── Hotseat multiplayer state ─────────────────────────────────────────────
+    int  m_numHumanPlayers      = 1;   // 1=singleplayer, 2=hotseat
+    int  m_currentPlayerIdx     = 0;   // 0-based (0=P1, 1=P2)
+    int  m_newGameNumPlayers    = 1;   // new-game menu selection
+
+    // Stored state swapped in/out of m_heroes/m_playerResources on turn change
+    std::vector<Hero> m_player1Heroes;
+    int               m_player1ActiveHeroIdx = 0;
+    Resources         m_player1Resources;
+    std::vector<Hero> m_player2Heroes;
+    int               m_player2ActiveHeroIdx = 0;
+    Resources         m_player2Resources;
+
+    bool  m_showPlayerTurnBanner = false;
+    float m_playerTurnBannerT    = 0.0f;
 
     // ── Battle Simulator ─────────────────────────────────────────────────────
     bool  m_fromBattleSim     = false;
