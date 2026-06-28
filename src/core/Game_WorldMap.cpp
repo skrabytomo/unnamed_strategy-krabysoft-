@@ -1513,7 +1513,13 @@ void Game::doEndTurn()
             auto p2income = m_turns.calculateWeeklyIncome(m_towns, 2);
             m_player2Resources.addAll(p2income);
             for (const auto& r : m_resources)
-                if (r.ownedBy == 2) m_player2Resources.add(r.type, r.amount);
+                if (r.ownedBy == 2u) m_player2Resources.add(r.type, r.amount);
+            // P2 garrison upkeep (mirrors P1 logic in the newWeek block above)
+            int p2GarrisonCount = 0;
+            for (const auto& h : m_player2Heroes)
+                if (h.isGarrisoned) ++p2GarrisonCount;
+            if (p2GarrisonCount > 0)
+                m_player2Resources.add(ResourceType::Gold, -(p2GarrisonCount * 350));
         }
         m_showPlayerTurnBanner = true;
         m_playerTurnBannerT    = 2.5f;
@@ -2501,7 +2507,7 @@ void Game::checkTileEvents()
                     return;
                 }
                 // No garrison — capture immediately
-                t.ownerId = 1;
+                t.ownerId = static_cast<uint32_t>(currentPlayerId());
                 t.garrison.clear();
                 gLog("Captured town: %s\n", t.name.c_str());
                 m_capturedTownName = t.name;
@@ -3144,7 +3150,7 @@ void Game::renderWorldOverlay()
             bool isFight = (enemyHovered != nullptr);
             if (!isFight && ht->townId != 0)
                 for (const auto& t : m_towns)
-                    if (t.id == ht->townId && t.ownerId > 1) { isFight = true; break; }
+                    if (t.id == ht->townId && t.ownerId > static_cast<uint32_t>(m_numHumanPlayers)) { isFight = true; break; }
 
             ImGui::BeginTooltip();
             if (enemyHovered) {
@@ -5284,7 +5290,7 @@ void Game::renderFoundCityPopup()
             newTown.name    = std::string(kFacNames[i]) + " Settlement";
             newTown.faction = static_cast<FactionId>(i);
             newTown.pos     = cityPos;
-            newTown.ownerId = 1;
+            newTown.ownerId = static_cast<uint32_t>(currentPlayerId());
             if (HexTile* ht = m_map.getTile(newTown.pos)) ht->townId = newTown.id;
             m_towns.push_back(newTown);
 
