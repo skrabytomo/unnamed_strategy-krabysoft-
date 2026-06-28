@@ -190,14 +190,17 @@ DamageCalc::DamageEstimate DamageCalc::estimate(const CombatUnit& atk, const Com
     est.minDmg = dmin;
     est.maxDmg = dmax;
 
-    // Estimate kills from damage range
-    // Kills = (damage - top_hp_offset) / maxHp, roughly
+    // Estimate kills: top unit dies first (costs def.hp damage), then each maxHp
+    // of overflow kills one more unit. ceil formula was missing the +1 for the
+    // top unit itself, causing a systematic undercount by 1 whenever top unit dies.
     if (def.maxHp > 0) {
-        int topHpOffset = def.hp;  // hp of the top unit
-        est.minKills = std::max(0, (dmin - topHpOffset + def.maxHp - 1) / def.maxHp);
-        est.maxKills = std::max(0, (dmax - topHpOffset + def.maxHp - 1) / def.maxHp);
-        est.minKills = std::min(est.minKills, def.count);
-        est.maxKills = std::min(est.maxKills, def.count);
+        int topHp = def.hp;
+        auto killsFor = [&](int dmg) -> int {
+            if (dmg < topHp) return 0;
+            return 1 + (dmg - topHp) / def.maxHp;
+        };
+        est.minKills = std::min(killsFor(dmin), def.count);
+        est.maxKills = std::min(killsFor(dmax), def.count);
     }
 
     return est;
