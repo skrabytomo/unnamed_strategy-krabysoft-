@@ -574,6 +574,14 @@ void Game::doEndTurn()
                     // Combat with player?
                     if (eHero.pos == playerHero.pos) {
                         if (!combatTriggered) {
+                            // Clear all encounter-specific pending IDs so a stale Crypt/Utopia
+                            // fight from an earlier unresolved combat doesn't fire here.
+                            m_pendingCryptId         = 0;
+                            m_pendingUtopiaId        = 0;
+                            m_pendingMineId          = 0;
+                            m_pendingNeutralOutpostId = 0;
+                            m_lastBanditCampId       = 0;
+                            m_pendingTownCaptureId   = 0;
                             m_lastCombatEnemyId = eHero.id;
                             auto pUnits = makeHeroUnits(playerHero, unitDefs, true);
                             auto eUnits = makeHeroUnits(eHero, unitDefs, false);
@@ -2265,6 +2273,13 @@ void Game::checkTileEvents()
         if (enemyPtr) {
             // Move enemy off this tile so the player can stand here after combat
             if (HexTile* et = m_map.getTile(enemyPtr->pos)) et->heroId = 0;
+            // Clear encounter-specific pending IDs from any prior unresolved fight.
+            m_pendingCryptId          = 0;
+            m_pendingUtopiaId         = 0;
+            m_pendingMineId           = 0;
+            m_pendingNeutralOutpostId = 0;
+            m_lastBanditCampId        = 0;
+            m_pendingTownCaptureId    = 0;
             m_lastCombatEnemyId = enemyPtr->id;
             auto pUnits = makeHeroUnits(hero, m_registry.units(), true);
             auto eUnits = makeHeroUnits(*enemyPtr, m_registry.units(), false);
@@ -4140,7 +4155,7 @@ void Game::renderCryptPopup()
     WorldObject* obj = nullptr;
     for (auto& o : m_worldObjects)
         if (o.id == m_pendingCryptId) { obj = &o; break; }
-    if (!obj) { m_showCryptPopup = false; return; }
+    if (!obj) { m_pendingCryptId = 0; m_showCryptPopup = false; return; }
 
     ImGuiIO& io = ImGui::GetIO();
     ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
@@ -4179,6 +4194,7 @@ void Game::renderCryptPopup()
             if (!known) h.knownSpells.push_back(spellId);
         }
         obj->collected = true;
+        m_pendingCryptId = 0;
         m_showCryptPopup = false;
     }
     ImGui::PopStyleColor();
@@ -4191,7 +4207,7 @@ void Game::renderUtopiaPopup()
     WorldObject* obj = nullptr;
     for (auto& o : m_worldObjects)
         if (o.id == m_pendingUtopiaId) { obj = &o; break; }
-    if (!obj || obj->collected) { m_showUtopiaPopup = false; return; }
+    if (!obj || obj->collected) { m_pendingUtopiaId = 0; m_showUtopiaPopup = false; return; }
 
     ImGuiIO& io = ImGui::GetIO();
     ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
@@ -4221,7 +4237,7 @@ void Game::renderUtopiaPopup()
             char buf[48]; std::snprintf(buf, sizeof(buf), "Artifact acquired! (Utopia)");
             pushPickupEffect(obj->pos, buf, IM_COL32(255, 200, 50, 255));
         }
-        obj->collected = true; m_showUtopiaPopup = false;
+        obj->collected = true; m_pendingUtopiaId = 0; m_showUtopiaPopup = false;
     }
     ImGui::PopStyleColor();
     ImGui::Spacing();
@@ -4243,7 +4259,7 @@ void Game::renderUtopiaPopup()
         char buf[56];
         std::snprintf(buf, sizeof(buf), "+2000 Gold +10 Resource (Utopia)");
         pushPickupEffect(obj->pos, buf, IM_COL32(255, 215, 0, 255));
-        obj->collected = true; m_showUtopiaPopup = false;
+        obj->collected = true; m_pendingUtopiaId = 0; m_showUtopiaPopup = false;
     }
     ImGui::PopStyleColor();
     ImGui::Spacing();
@@ -4275,7 +4291,7 @@ void Game::renderUtopiaPopup()
                 pushPickupEffect(obj->pos, buf, IM_COL32(100, 220, 100, 255));
             }
         }
-        obj->collected = true; m_showUtopiaPopup = false;
+        obj->collected = true; m_pendingUtopiaId = 0; m_showUtopiaPopup = false;
     }
     ImGui::PopStyleColor();
     ImGui::End();

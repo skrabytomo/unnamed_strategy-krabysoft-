@@ -1462,13 +1462,18 @@ void Game::exitCombat(bool playerWon)
             m_lastBanditCampId = 0;
         }
 
-        // Crypt reward popup
+        // Crypt reward popup — do NOT zero m_pendingCryptId here; the popup render
+        // function needs it to find the WorldObject. It is cleared on popup close.
         if (m_pendingCryptId != 0) {
             for (auto& o : m_worldObjects) {
                 if (o.id == m_pendingCryptId && !o.collected) {
-                    // Pick a random spell as bonus
-                    if (!m_heroes.empty() && !m_heroes[m_activeHeroIdx].knownSpells.empty()) {
-                        o.questState = m_heroes[m_activeHeroIdx].knownSpells[0]; // give first known spell variant
+                    // Pick a bonus spell (prefer one the hero doesn't know yet)
+                    if (!m_heroes.empty()) {
+                        const Hero& h = m_heroes[m_activeHeroIdx];
+                        int bonus = 1 + static_cast<int>(o.value % 8);
+                        for (int sid : h.knownSpells)
+                            if (sid == bonus) { bonus = (bonus % 8) + 1; break; }
+                        o.questState = bonus;
                     } else {
                         o.questState = 1 + static_cast<int>(o.value % 8);
                     }
@@ -1476,13 +1481,13 @@ void Game::exitCombat(bool playerWon)
                     break;
                 }
             }
-            m_pendingCryptId = 0;
+            // Only clear if no popup was shown (object already collected or missing)
+            if (!m_showCryptPopup) m_pendingCryptId = 0;
         }
 
-        // Utopia reward popup
+        // Utopia reward popup — do NOT zero m_pendingUtopiaId here; cleared on popup close.
         if (m_pendingUtopiaId != 0) {
             m_showUtopiaPopup = true;
-            m_pendingUtopiaId = 0;
         }
 
         // Mine guard beaten — only mark on player win, not on fight acceptance
