@@ -219,7 +219,7 @@ void CampaignManager::startMission(int id)
 
 void CampaignManager::onWeekStart(int week, LuaEngine& lua)
 {
-    if (m_over) return;
+    if (m_over || m_missions.empty()) return;
     if (m_pendingDecIdx >= 0) return;  // unresolved decision — wait for player
     auto& mission = m_missions[m_currentIdx];
 
@@ -252,7 +252,7 @@ void CampaignManager::onWeekStart(int week, LuaEngine& lua)
 
 void CampaignManager::onTownCaptured(uint32_t townId)
 {
-    if (m_over) return;
+    if (m_over || m_missions.empty()) return;
     for (auto& obj : m_missions[m_currentIdx].objectives) {
         if (obj.type == ObjectiveType::CaptureTown &&
             obj.targetId == townId && !obj.completed)
@@ -265,7 +265,7 @@ void CampaignManager::onTownCaptured(uint32_t townId)
 
 void CampaignManager::onHeroDefeated(uint32_t heroId)
 {
-    if (m_over) return;
+    if (m_over || m_missions.empty()) return;
     // heroId == 0 means the PLAYER hero was defeated — don't complete any DefeatHero objective
     if (heroId == 0) { checkAllObjectives(); return; }
     for (auto& obj : m_missions[m_currentIdx].objectives) {
@@ -280,7 +280,7 @@ void CampaignManager::onHeroDefeated(uint32_t heroId)
 
 void CampaignManager::onTileReached(HexCoord pos)
 {
-    if (m_over) return;
+    if (m_over || m_missions.empty()) return;
     for (auto& obj : m_missions[m_currentIdx].objectives) {
         if (obj.type == ObjectiveType::ReachTile &&
             obj.targetTile == pos && !obj.completed)
@@ -293,7 +293,7 @@ void CampaignManager::onTileReached(HexCoord pos)
 
 void CampaignManager::onResourcesChecked(ResourceType type, int amount)
 {
-    if (m_over) return;
+    if (m_over || m_missions.empty()) return;
     for (auto& obj : m_missions[m_currentIdx].objectives) {
         if (obj.type == ObjectiveType::CollectResources &&
             obj.resourceType == type && !obj.completed &&
@@ -384,7 +384,7 @@ void CampaignManager::tryCompleteObjective(CampaignObjective& obj, bool success)
 
 void CampaignManager::checkAllObjectives()
 {
-    if (m_over) return;
+    if (m_over || m_missions.empty()) return;
     const auto& mission = m_missions[m_currentIdx];
 
     bool allRequired = true;

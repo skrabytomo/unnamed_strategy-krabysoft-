@@ -44,7 +44,7 @@ void CombatEngine::addLog(const std::string& msg)
     if (m_silent) return;
     m_log.push_back({msg});
     if (m_logCb) m_logCb(msg);
-    gLog("[Combat] %s\n", msg.c_str());
+    else gLog("[Combat] %s\n", msg.c_str());
 }
 
 // ── Start battle ───────────────────────────────────────────────────────────────
