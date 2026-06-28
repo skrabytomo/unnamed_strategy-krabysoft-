@@ -623,12 +623,16 @@ void Game::renderTavern()
     };
 
     // ── Defeated heroes first (cheaper rehire) ────────────────────────────────
-    if (!m_defeatedHeroPool.empty()) {
+    // In 2P mode each player only sees their own defeated heroes
+    auto& activeDefeatedPool = (m_numHumanPlayers >= 2 && currentPlayerId() == 2)
+                               ? m_p2DefeatedHeroPool
+                               : m_defeatedHeroPool;
+    if (!activeDefeatedPool.empty()) {
         ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f),
                            "Defeated Heroes  (%dg to rehire):", REHIRE_COST);
         bool canRehire = m_playerResources.get(ResourceType::Gold) >= REHIRE_COST;
-        for (int i = 0; i < (int)m_defeatedHeroPool.size(); ++i) {
-            Hero& dh = m_defeatedHeroPool[i];
+        for (int i = 0; i < (int)activeDefeatedPool.size(); ++i) {
+            Hero& dh = activeDefeatedPool[i];
             ImGui::PushID(1000 + i);
             ImGui::Separator();
             const HeroClassDef* cls = m_classRegistry.getClass(dh.classId);
@@ -645,7 +649,7 @@ void Game::renderTavern()
                 m_playerResources.add(ResourceType::Gold, -REHIRE_COST);
                 spawnHero(dh);
                 gLog("Rehired defeated hero: %s\n", dh.name.c_str());
-                m_defeatedHeroPool.erase(m_defeatedHeroPool.begin() + i);
+                activeDefeatedPool.erase(activeDefeatedPool.begin() + i);
             }
             if (!canRehire) ImGui::EndDisabled();
             ImGui::PopID();

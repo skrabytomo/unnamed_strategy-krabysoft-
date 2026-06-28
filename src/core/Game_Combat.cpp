@@ -1761,7 +1761,10 @@ void Game::exitCombat(bool playerWon)
                 m_map.forEach([&](HexTile& t){
                     if (t.heroId == defeated.id) t.heroId = 0;
                 });
-                m_defeatedHeroPool.push_back(defeated);
+                if (m_numHumanPlayers >= 2 && currentPlayerId() == 2)
+                    m_p2DefeatedHeroPool.push_back(defeated);
+                else
+                    m_defeatedHeroPool.push_back(defeated);
                 m_heroes.erase(m_heroes.begin() + m_activeHeroIdx);
                 m_activeHeroIdx = m_heroes.empty() ? 0 : std::min(m_activeHeroIdx, (int)m_heroes.size() - 1);
             }

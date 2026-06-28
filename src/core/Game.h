@@ -198,7 +198,8 @@ private:
     // ── Heroes ────────────────────────────────────────────────────────────────
     std::vector<Hero> m_heroes;
     std::vector<Hero> m_enemyHeroes;
-    std::vector<Hero> m_defeatedHeroPool; // heroes removed from map after defeat/retreat; hireable in tavern
+    std::vector<Hero> m_defeatedHeroPool;   // P1 (or 1P) defeated heroes — hireable in tavern
+    std::vector<Hero> m_p2DefeatedHeroPool; // P2 defeated heroes — only shown in P2's tavern
     int               m_activeHeroIdx = 0;
 
     HexCoord       m_hovered  {-999, -999};
@@ -367,8 +368,12 @@ private:
     uint32_t    m_pendingTownCaptureId = 0;
 
     // ── Town-lost notification (enemy captured player town) ───────────────────
-    bool        m_showTownLostPopup = false;
+    bool        m_showTownLostPopup   = false;
     std::string m_lostTownName;
+    // 2P: P2's town lost during AI turn — deferred until P2's turn starts
+    bool        m_showP2TownLostPopup = false;
+    std::string m_p2LostTownName;
+    bool        m_p2Defeated          = false;
 
     // ── Unit exchange between player heroes ────────────────────────────────────
     bool        m_showUnitExchange  = false;

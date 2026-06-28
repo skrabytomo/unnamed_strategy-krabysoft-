@@ -447,6 +447,10 @@ bool Game::loadGame(const std::string& path)
     m_showVictory            = false;
     m_showDefeat             = false;
     m_finalDefeat            = false;
+    m_showP2TownLostPopup    = false;
+    m_p2LostTownName.clear();
+    m_p2Defeated             = false;
+    m_p2DefeatedHeroPool.clear();
     m_showCombatResult       = false;
     m_showWeekSummary        = false;
     m_pendingMineId          = 0;

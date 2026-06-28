@@ -495,6 +495,19 @@ void Game::doEndTurn()
         m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, 2);
         for (const auto& r : m_resources)
             if (r.ownedBy == 2u) m_cachedWeeklyIncome.add(r.type, r.amount);
+        // If AI captured P2's town during P1's turn, notify P2 now
+        if (m_showP2TownLostPopup) {
+            m_lostTownName        = m_p2LostTownName;
+            m_showTownLostPopup   = true;
+            m_showP2TownLostPopup = false;
+            m_p2LostTownName.clear();
+        }
+        // If P2 was fully eliminated during P1's AI turn, show defeat now
+        if (m_p2Defeated) {
+            m_finalDefeat = true;
+            m_showDefeat  = true;
+            m_p2Defeated  = false;
+        }
         // If a new week started while P2 was waiting, show their week summary now
         if (m_showP2WeekSummary) {
             m_weekSummaryIncome  = m_p2WeekSummaryIncome;
@@ -832,14 +845,30 @@ void Game::doEndTurn()
                                 int defStr = heroStrength(garHero, unitDefs);
                                 if (t.hasBuilding(BID::FORT)) defStr = defStr * 3 / 2;
                                 if (atkStr > defStr) {
+                                    uint32_t capturedFromPlayer = t.ownerId;
                                     t.ownerId = eHero.id;
                                     t.garrison.clear();
-                                    m_lostTownName       = t.name;
-                                    m_showTownLostPopup  = true;
-                                    gLog("Enemy %s sieged and captured your town %s!\n",
-                                           eHero.name.c_str(), t.name.c_str());
-                                    // Check for total defeat: no heroes with armies, no player towns
-                                    {
+                                    if (m_numHumanPlayers >= 2 && capturedFromPlayer == 2u) {
+                                        // AI took P2's town during P1's turn — defer notification
+                                        m_p2LostTownName      = t.name;
+                                        m_showP2TownLostPopup = true;
+                                        gLog("Enemy %s sieged and captured P2 town %s!\n",
+                                               eHero.name.c_str(), t.name.c_str());
+                                        // Check P2 defeat (must use P2's stored heroes)
+                                        bool anyUnit = false;
+                                        for (const auto& h : m_player2Heroes)
+                                            if (!h.army.empty()) { anyUnit = true; break; }
+                                        bool anyTown2 = false;
+                                        for (const auto& tt2 : m_towns)
+                                            if (tt2.ownerId == 2u) { anyTown2 = true; break; }
+                                        if (!anyUnit && !anyTown2)
+                                            m_p2Defeated = true;
+                                    } else {
+                                        m_lostTownName      = t.name;
+                                        m_showTownLostPopup = true;
+                                        gLog("Enemy %s sieged and captured your town %s!\n",
+                                               eHero.name.c_str(), t.name.c_str());
+                                        // Check P1 defeat
                                         bool anyUnit = false;
                                         for (const auto& h : m_heroes)
                                             if (!h.army.empty()) { anyUnit = true; break; }
