@@ -259,19 +259,14 @@ static ResourceType aiBlockingResource(const Town& town,
 {
     for (int bid : buildOrder) {
         if (town.hasBuilding(bid)) continue;
-        if (!town.canBuild(bid, allDefs)) continue;
         const BuildingDef* def = nullptr;
         for (const auto& d : allDefs) if (d.id == bid) { def = &d; break; }
         if (!def) continue;
-        if (res.canAfford(def->cost)) return static_cast<ResourceType>(RESOURCE_COUNT);
-        ResourceType worst = static_cast<ResourceType>(RESOURCE_COUNT);
-        int worstDef = 0;
         for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
             auto type = static_cast<ResourceType>(rt);
-            int deficit = def->cost.get(type) - res.get(type);
-            if (deficit > worstDef) { worstDef = deficit; worst = type; }
+            if (def->cost.get(type) > res.get(type))
+                return type;
         }
-        return worst;
     }
     return static_cast<ResourceType>(RESOURCE_COUNT);
 }
@@ -1697,7 +1692,6 @@ void Game::doEndTurn()
                                         int deficit = 0;
                                         for (int bid2 : kBuildOrder[fIdx]) {
                                             if (town.hasBuilding(bid2)) continue;
-                                            if (!town.canBuild(bid2, allBuildings)) continue;
                                             const BuildingDef* def2 = nullptr;
                                             for (const auto& d : allBuildings) if (d.id == bid2) { def2 = &d; break; }
                                             if (!def2) continue;
@@ -1705,7 +1699,7 @@ void Game::doEndTurn()
                                             break;
                                         }
                                         if (deficit <= 0) break;
-                                        int toBuy = (deficit + SELL_RATE - 1) / SELL_RATE;
+                                        int toBuy = deficit;
                                         int canBuy = buildRes.get(sellType) / SELL_RATE;
                                         int trades = std::min(toBuy, canBuy);
                                         if (trades > 0) {

@@ -479,11 +479,11 @@ void Game::saveGame(const std::string& customName)
     if (name.empty()) {
         if (isCampaign) {
             char buf[64];
-            std::snprintf(buf, sizeof(buf), "Campaign – Week %d", m_turns.week());
+            std::snprintf(buf, sizeof(buf), "Campaign - Week %d", m_turns.week());
             name = buf;
         } else {
             char buf[64];
-            std::snprintf(buf, sizeof(buf), "%s – Week %d", heroName.c_str(), m_turns.week());
+            std::snprintf(buf, sizeof(buf), "%s - Week %d", heroName.c_str(), m_turns.week());
             name = buf;
         }
     }

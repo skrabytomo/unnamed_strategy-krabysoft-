@@ -173,6 +173,43 @@ void TownScreen::rebuildRecruitButtons()
         m_recruitBtns.push_back(rb);
         y += 30.0f;
         if (y + 26 > m_recruitPanel.bounds.bottom() - 4) break;
+
+        // Upgrade button: shown when a PathA dwelling is active and the hero
+        // has base-tier (None path) stacks of the same tier in their army.
+        if (m_hero && dw.path == UpgradePath::PathA && m_registry) {
+            const UnitDef* baseUd  = nullptr;
+            const UnitDef* pathAUd = nullptr;
+            for (const auto& ud : m_registry->units()) {
+                if (ud.faction == m_town->faction && ud.tier == dw.tier) {
+                    if (ud.path == UpgradePath::None)  baseUd  = &ud;
+                    if (ud.path == UpgradePath::PathA) pathAUd = &ud;
+                }
+            }
+            if (baseUd && pathAUd) {
+                UnitStack* heroStack = nullptr;
+                for (auto& s : m_hero->army)
+                    if (s.defId == baseUd->id) { heroStack = &s; break; }
+                if (heroStack && heroStack->count > 0) {
+                    std::string upLabel = "Upgrade " + baseUd->name
+                                        + " x" + std::to_string(heroStack->count)
+                                        + " -> " + pathAUd->name;
+                    RecruitBtn rb2;
+                    rb2.btn = Button(upLabel, {x, y, bw, 26.0f});
+                    rb2.btn.colorBorder = UIColor::hex(UITheme::GOLD, 0.9f);
+                    int capturedBaseId  = baseUd->id;
+                    int capturedPathAId = pathAUd->id;
+                    rb2.btn.onClick = [this, capturedBaseId, capturedPathAId]{
+                        if (!m_hero) return;
+                        for (auto& s : m_hero->army)
+                            if (s.defId == capturedBaseId) { s.defId = capturedPathAId; break; }
+                        rebuildRecruitButtons();
+                    };
+                    m_recruitBtns.push_back(rb2);
+                    y += 30.0f;
+                    if (y + 26 > m_recruitPanel.bounds.bottom() - 4) break;
+                }
+            }
+        }
     }
 }
 
