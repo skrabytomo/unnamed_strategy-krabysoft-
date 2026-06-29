@@ -110,13 +110,24 @@ void Game::updateCombat(float dt)
     }
 
     if (m_fromBattleSim && m_simAutoPlay) {
-        // Watch mode: fire one unit action per tick at a human-visible pace
-        m_simAutoPlayTimer -= dt;
-        if (m_simAutoPlayTimer <= 0.f) {
-            m_simAutoPlayTimer = 0.4f;
-            auto ph = m_combat.phase();
-            if (ph == CombatPhase::PlayerTurn || ph == CombatPhase::EnemyTurn)
-                m_combat.processOneAIAction();
+        if (m_watchingAI) {
+            // Watch AI: resolve entire combat instantly (no per-action delay)
+            for (int guard = 0; guard < 2000; ++guard) {
+                auto ph = m_combat.phase();
+                if (ph == CombatPhase::Victory || ph == CombatPhase::Defeat) break;
+                if (ph == CombatPhase::PlayerTurn || ph == CombatPhase::EnemyTurn)
+                    m_combat.processOneAIAction();
+                else break;
+            }
+        } else {
+            // Battle-sim watch mode: fire one unit action per tick at a human-visible pace
+            m_simAutoPlayTimer -= dt;
+            if (m_simAutoPlayTimer <= 0.f) {
+                m_simAutoPlayTimer = 0.4f;
+                auto ph = m_combat.phase();
+                if (ph == CombatPhase::PlayerTurn || ph == CombatPhase::EnemyTurn)
+                    m_combat.processOneAIAction();
+            }
         }
     } else {
         if (m_combat.phase() == CombatPhase::EnemyTurn)
@@ -937,11 +948,31 @@ void Game::renderSpellPanel()
         // Draw icon over the card
         ImVec2 icoPos = {cardPos.x + 6.0f, cardPos.y + (CARD_H - ICON_SZ) * 0.5f};
         if (m_spellIconTex.ok()) {
-            int   idx = sid - 1;
-            float u0  = (idx % 5) * 0.2f, v0 = (idx / 5) * 0.2f;
+            // Atlas layout: 5 cols × N rows, each row = one school, 5 spells per row.
+            // Row 0: Light  (IDs  1- 4)   → atlas col = slot within school (0-3)
+            // Row 1: Blood  (IDs 11-14)
+            // Row 2: Death  (IDs 21-24, +Venomous Cloud 24 col 4)
+            // Row 3: Nature (IDs 30-34)   ← need row 3 in atlas
+            // Row 4: Forge  (IDs 40-44)   ← need row 4
+            // Row 5: Flesh  (IDs 50-54)   ← need row 5
+            // Row 6: Neutral(IDs 60-62)   ← need row 6
+            // Current atlas is 5×5 (rows 0-4 exist; rows 5-6 missing).
+            int row = 0, col = 0;
+            if      (sid >= 1  && sid <= 4)  { row = 0; col = sid - 1; }
+            else if (sid >= 11 && sid <= 14) { row = 1; col = sid - 11; }
+            else if (sid >= 21 && sid <= 25) { row = 2; col = sid - 21; }
+            else if (sid >= 30 && sid <= 34) { row = 3; col = sid - 30; }
+            else if (sid >= 40 && sid <= 44) { row = 4; col = sid - 40; }
+            else if (sid >= 50 && sid <= 54) { row = 5; col = sid - 50; }
+            else if (sid >= 60 && sid <= 62) { row = 6; col = sid - 60; }
+            // Clamp to atlas bounds (7 rows now exist; all schools covered)
+            static const int kAtlasRows = 7;
+            if (row >= kAtlasRows) row = kAtlasRows - 1;
+            float u0 = col * 0.2f, v0 = row * (1.0f / kAtlasRows);
+            float u1 = u0 + 0.2f,  v1 = v0 + (1.0f / kAtlasRows);
             dl2->AddImageRounded((ImTextureID)(uintptr_t)m_spellIconTex.id(),
                 icoPos, {icoPos.x + ICON_SZ, icoPos.y + ICON_SZ},
-                {u0, v0}, {u0+0.2f, v0+0.2f}, IM_COL32_WHITE, ICON_SZ * 0.5f);
+                {u0, v0}, {u1, v1}, IM_COL32_WHITE, ICON_SZ * 0.5f);
         } else {
             dl2->AddCircleFilled({icoPos.x + ICON_SZ*0.5f, icoPos.y + ICON_SZ*0.5f},
                 ICON_SZ*0.5f, IM_COL32((int)(sc.x*200),(int)(sc.y*200),(int)(sc.z*200),200));
@@ -1308,6 +1339,24 @@ void Game::enterCombat(Hero& playerHero,
         m_combatDmgEffects.push_back({sx, sy, 1.5f, dmg, false});
         (void)targetId;
     });
+    m_combat.setHealCallback([this](uint32_t targetId, int amount, HexCoord pos) {
+        float wx, wy;
+        m_combat.grid().hexGrid().hexToWorld(pos, wx, wy);
+        float sx = wx * m_combatBoardScale + m_combatBoardOffX;
+        float sy = wy * m_combatBoardScale + m_combatBoardOffY;
+        m_particles.emit(sx, sy, ParticlePreset::Heal);
+        if (m_settingsShowDmgNums)
+            m_combatDmgEffects.push_back({sx, sy, 1.5f, amount, true});
+        (void)targetId;
+    });
+    m_combat.setMoraleCallback([this](uint32_t unitId, HexCoord pos) {
+        float wx, wy;
+        m_combat.grid().hexGrid().hexToWorld(pos, wx, wy);
+        float sx = wx * m_combatBoardScale + m_combatBoardOffX;
+        float sy = wy * m_combatBoardScale + m_combatBoardOffY;
+        m_particles.emit(sx, sy, ParticlePreset::Morale, 10);
+        (void)unitId;
+    });
     // Build sprite animators for every unit
     m_combatAnimators.clear();
     const auto& unitDefs = m_registry.units();
@@ -1444,7 +1493,8 @@ void Game::exitCombat(bool playerWon)
             for (auto& t : m_towns)
                 if (t.id == m_pendingTownCaptureId) { captured = &t; break; }
             if (captured) {
-                captured->ownerId = static_cast<uint32_t>(currentPlayerId());
+                uint32_t prevOwner = captured->ownerId;
+                captured->ownerId = 1;
                 captured->garrison.clear();
                 m_capturedTownName = captured->name;
                 m_showCapturePopup = true;
@@ -1453,7 +1503,7 @@ void Game::exitCombat(bool playerWon)
                 ScriptContext townCtx;
                 townCtx.townId = captured->id;
                 m_triggers.fire(TriggerType::TownCaptured, townCtx);
-                m_campaign.onTownCaptured(captured->id);
+                m_campaign.onTownCaptured(captured->id, prevOwner);
             }
             m_pendingTownCaptureId = 0;
         }
@@ -1802,7 +1852,11 @@ void Game::exitCombat(bool playerWon)
         }
     }
     m_audio.playMusic("worldmap_music");
-    if (m_fromBattleSim) {
+    if (m_fromBattleSim && m_watchingAI) {
+        m_fromBattleSim = false;
+        m_simAutoPlay   = false;
+        enterWorldMap();
+    } else if (m_fromBattleSim) {
         m_fromBattleSim = false;
         m_state         = GameState::MainMenu;
         m_menuMode      = 5;

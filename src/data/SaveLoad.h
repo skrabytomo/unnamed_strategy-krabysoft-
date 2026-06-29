@@ -206,6 +206,10 @@ namespace SaveLoad
     bool saveGame(const std::string& path, const GameSaveData& data);
     bool loadGame(const std::string& path, GameSaveData& out);
 
+    // String variants — serialize to/from JSON without touching disk
+    std::string saveGameToString(const GameSaveData& data);
+    bool        loadGameFromString(const std::string& json, GameSaveData& out);
+
     // Convenience: pack/unpack live game objects
     GameSaveData packState(const HexMap& map,
                            const std::vector<Hero>& heroes,

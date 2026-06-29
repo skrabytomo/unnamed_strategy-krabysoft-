@@ -186,10 +186,266 @@ static int heroStrength(const Hero& hero, const std::vector<UnitDef>& defs)
 }
 
 // ── World map update ──────────────────────────────────────────────────────────
+void Game::watchAiMovePlayerHero()
+{
+    if (m_heroes.empty()) return;
+    Hero& hero = m_heroes[m_activeHeroIdx];
+    const auto& udefs = m_registry.units();
+
+    hero.movePool = hero.maxMove;
+
+    int myStr = heroStrength(hero, udefs);
+    int bestOppStr = 0;
+    for (const auto& eh : m_enemyHeroes) {
+        int s = heroStrength(eh, udefs);
+        if (s > bestOppStr) bestOppStr = s;
+    }
+    float strRatio   = bestOppStr > 0 ? (float)myStr / bestOppStr : 99.f;
+    bool veryWeak    = strRatio < 0.4f;
+    bool softRetreat = strRatio < 0.6f;
+    bool dominant    = strRatio >= 1.2f;
+
+    while (hero.movePool > 0) {
+        struct Cand { HexCoord pos; float score; };
+        std::vector<Cand> cands;
+        auto add = [&](HexCoord pos, float val) {
+            if (pos == hero.pos) return;
+            int d = std::max(1, HexGrid::distance(hero.pos, pos));
+            cands.push_back({pos, val / d});
+        };
+
+        if (veryWeak) {
+            // Retreat to own town
+            for (const auto& t : m_towns)
+                if (t.ownerId == 1) add(t.pos, 500.f);
+        } else {
+            // Own town to recruit
+            for (const auto& t : m_towns) {
+                if (t.ownerId != 1) continue;
+                bool hasU = false;
+                for (const auto& dw : t.dwellings) if (dw.available > 0) { hasU = true; break; }
+                if (hasU && (int)hero.army.size() < 7) add(t.pos, 250.f);
+            }
+            // Towns
+            for (const auto& t : m_towns) {
+                if (t.ownerId == 0)  add(t.pos, 150.f);
+                else if (t.ownerId != 1) add(t.pos, 200.f); // enemy town
+            }
+            // Resources
+            for (const auto& r : m_resources) {
+                if (r.ownedBy == 1) continue;
+                add(r.pos, 60.f);
+            }
+            // World objects
+            for (const auto& obj : m_worldObjects) {
+                if (obj.collected) continue;
+                float val = 0.f;
+                if (obj.type == WorldObjectType::ArtifactChest)   val = 80.f;
+                else if (obj.type == WorldObjectType::TreasureChest) val = 70.f;
+                else if (obj.type == WorldObjectType::XPShrine    ||
+                         obj.type == WorldObjectType::ForestShrine ||
+                         obj.type == WorldObjectType::StatShrine   ||
+                         obj.type == WorldObjectType::SpellScroll  ||
+                         obj.type == WorldObjectType::SwampAltar)   val = 50.f;
+                if (val > 0.f) add(obj.pos, val);
+            }
+            // Enemy heroes
+            if (!softRetreat && !m_enemyHeroes.empty()) {
+                for (const auto& eh : m_enemyHeroes) {
+                    int dist = HexGrid::distance(hero.pos, eh.pos);
+                    if (dominant || dist <= 8)
+                        add(eh.pos, 300.f);
+                }
+            }
+        }
+
+        if (cands.empty()) break;
+        std::sort(cands.begin(), cands.end(),
+                  [](const Cand& a, const Cand& b){ return a.score > b.score; });
+        HexCoord goal = cands[0].pos;
+
+        auto costFn = [&](HexCoord c) -> int {
+            const HexTile* t = m_map.getTile(c);
+            if (!t || !hero.canEnter(t->terrain) || t->blocked) return 999;
+            int base = hero.moveCost(t->terrain);
+            if (m_roadHexes.count(c)) base = std::max(1, base / 2);
+            return base;
+        };
+        auto path = Pathfinder::find(m_map, hero.pos, goal, costFn);
+        if (path.empty()) break;
+
+        HexCoord next = path[0];
+        const HexTile* nt = m_map.getTile(next);
+        if (!nt) break;
+        int cost = hero.moveCost(nt->terrain);
+        if (hero.movePool < cost) break;
+
+        if (HexTile* old = m_map.getTile(hero.pos)) old->heroId = 0;
+        hero.pos = next;
+        hero.movePool -= cost;
+        if (HexTile* nT = m_map.getTile(hero.pos)) nT->heroId = hero.id;
+
+        // Claim resource
+        if (nt->resourceId != 0) {
+            for (auto& r : m_resources)
+                if (r.id == nt->resourceId) { r.ownedBy = 1; break; }
+        }
+        // Claim or visit town
+        if (nt->townId != 0) {
+            for (auto& t : m_towns) {
+                if (t.id != nt->townId) continue;
+                if (t.ownerId != 1) {
+                    uint32_t prevOwner = t.ownerId;
+                    t.ownerId = 1;
+                    m_campaign.onTownCaptured(t.id, prevOwner);
+                }
+                // Recruit from now-owned town
+                if (t.ownerId == 1) {
+                    // Recruit all available units from player-owned town
+                    for (auto& dw : t.dwellings) {
+                        if (dw.available <= 0) continue;
+                        for (const auto& ud : udefs) {
+                            if (ud.faction == t.faction && ud.tier == dw.tier
+                                && ud.path == dw.path) {
+                                int recruited = dw.available;
+                                dw.available = 0;
+                                bool merged = false;
+                                for (auto& s : hero.army)
+                                    if (s.defId == ud.id) { s.count += recruited; merged = true; break; }
+                                if (!merged && hero.army.size() < 7)
+                                    hero.army.push_back({ud.id, recruited});
+                                break;
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+        }
+        // Collect world objects
+        for (auto& obj : m_worldObjects) {
+            if (obj.collected || obj.pos != hero.pos) continue;
+            obj.collected = true;
+        }
+
+        // Combat: stepped onto enemy hero
+        for (auto& eHero : m_enemyHeroes) {
+            if (eHero.pos != hero.pos) continue;
+            m_lastCombatEnemyId = eHero.id;
+            auto pUnits = makeHeroUnits(hero,  udefs, true);
+            auto eUnits = makeHeroUnits(eHero, udefs, false);
+            // Auto-resolve combat in watch AI mode
+            m_fromBattleSim = true;
+            m_simAutoPlay   = true;
+            m_simAutoPlayTimer = 0.f;
+            enterCombat(hero, pUnits, eHero, eUnits);
+            return;
+        }
+    }
+}
+
 void Game::updateWorldMap(float dt)
 {
     m_mapTime += dt;
     m_hexRenderer.update(dt);
+
+    // Watch AI auto-advance end-turn
+    if (m_watchingAI) {
+        // Auto-dismiss any blocking modals so the sim can continue
+        if (m_showVictory || m_showDefeat) {
+            m_watchingAI  = false;
+            m_fogDisabled = false;
+            return;
+        }
+        if (m_showCombatResult)        m_showCombatResult        = false;
+        if (m_showTownLostPopup)       m_showTownLostPopup       = false;
+        if (m_showWeekSummary)         m_showWeekSummary         = false;
+        if (m_showEncounterPrompt) {
+            // Auto-accept encounters (fight neutral stacks)
+            if (m_encounterOnAccept) { m_encounterOnAccept(); m_encounterOnAccept = nullptr; }
+            m_showEncounterPrompt = false;
+        }
+        if (m_showDwellingPopup) {
+            // Auto-recruit all available units from standalone dwelling
+            if (!m_heroes.empty() && m_pendingObjId != 0) {
+                Hero& dh = m_heroes[m_activeHeroIdx];
+                for (auto& obj : m_worldObjects) {
+                    if (obj.id != m_pendingObjId) continue;
+                    const auto& udefs2 = m_registry.units();
+                    FactionId dwFaction = static_cast<FactionId>(obj.faction);
+                    for (const auto& ud : udefs2) {
+                        if (ud.tier != obj.value) continue;
+                        if (ud.faction != dwFaction) continue;
+                        int can = obj.available;
+                        if (can <= 0) break;
+                        obj.available = 0;
+                        bool merged = false;
+                        for (auto& s : dh.army)
+                            if (s.defId == ud.id) { s.count += can; merged = true; break; }
+                        if (!merged && dh.army.size() < 7)
+                            dh.army.push_back({ud.id, can});
+                        break;
+                    }
+                    break;
+                }
+            }
+            m_showDwellingPopup = false;
+        }
+        if (m_showQuestPopup)          m_showQuestPopup          = false;
+        if (m_showTreasureChestPopup)  m_showTreasureChestPopup  = false;
+        if (m_showCryptPopup)          m_showCryptPopup          = false;
+        if (m_showUtopiaPopup)         m_showUtopiaPopup         = false;
+        if (m_showStatShrinePopup)     m_showStatShrinePopup     = false;
+        if (m_showTreeKnowledgePopup)  m_showTreeKnowledgePopup  = false;
+        if (m_showShipyardPopup)       m_showShipyardPopup       = false;
+        if (m_showSiegeCampPrompt)     m_showSiegeCampPrompt     = false;
+        if (m_showMineInfoPopup)       m_showMineInfoPopup       = false;
+        if (m_showLevelUpModal && !m_levelUpOffers.empty() && !m_heroes.empty()) {
+            // Auto-pick first skill offer
+            Hero& lvlHero = m_heroes[m_activeHeroIdx];
+            const auto& offer = m_levelUpOffers[0];
+            int prevTier = 0;
+            if (const SkillInstance* existing = lvlHero.skills.getSkill(offer.skillId))
+                prevTier = static_cast<int>(existing->tier);
+            LevelUpSystem::applyOffer(offer, lvlHero.skills);
+            // Apply passive skill bonuses
+            if (const SkillDef* sd = findSkillDef(offer.skillId)) {
+                int v = offer.isUpgrade ? (sd->values[prevTier+1] - sd->values[prevTier]) : sd->values[0];
+                if (sd->effectType == SkillEffectType::MovementBonus) {
+                    lvlHero.maxMove += v; lvlHero.movePool = std::max(lvlHero.movePool, lvlHero.maxMove);
+                } else if (sd->effectType == SkillEffectType::VisionBonus) {
+                    lvlHero.visionRange += v;
+                }
+            }
+            m_levelUpOffers.clear();
+            if (m_pendingLevelUps > 1) {
+                m_pendingLevelUps--;
+                const HeroClassDef* ncls = m_classRegistry.getClass(lvlHero.classId);
+                if (ncls) {
+                    std::vector<SkillDef> allSkills(SKILL_DEFS, SKILL_DEFS + SKILL_DEF_COUNT);
+                    m_levelUpOffers = LevelUpSystem::generateOffers(
+                        *ncls, lvlHero.skills, lvlHero.level, allSkills, lvlHero.faction);
+                }
+                if (m_levelUpOffers.empty())
+                    m_levelUpOffers.push_back({SkillID::OFFENSE, false, false, "Learn Offense"});
+            } else {
+                m_pendingLevelUps = 0;
+                m_showLevelUpModal = false;
+            }
+        }
+
+        m_watchAITimer -= dt;
+        if (m_watchAITimer <= 0.f) {
+            m_watchAITimer = 1.0f / m_watchAISpeed;
+            if (!m_showCombatResult && !m_showLevelUpModal) {
+                watchAiMovePlayerHero();
+                // If watchAiMovePlayerHero triggered combat, skip doEndTurn this tick
+                if (m_state == GameState::WorldMap)
+                    doEndTurn();
+            }
+        }
+        return;
+    }
 
     const auto& mouse = m_input.mouse();
 
@@ -257,28 +513,66 @@ void Game::updateWorldMap(float dt)
         // First click → center camera + select hero; second click on same hero → inspect
         if (!uiHandled) {
             bool heroClickHandled = false;
-            for (int hi = 0; hi < static_cast<int>(m_heroes.size()); ++hi) {
-                const Hero& h = m_heroes[hi];
-                float wx, wy;
-                m_hexRenderer.grid().hexToWorld(h.pos, wx, wy);
-                float sx, sy;
-                m_camera.worldToScreen(wx, wy, sx, sy);
-                float dx = static_cast<float>(mouse.x) - sx;
-                float dy = static_cast<float>(mouse.y) - sy;
-                if (dx * dx + dy * dy < 20.0f * 20.0f) {
-                    if (m_heroClickTarget == hi) {
-                        m_showHeroInspect = true;
-                        m_heroClickTarget = -1;
-                    } else {
-                        m_heroClickTarget = hi;
-                        m_activeHeroIdx   = hi;
+
+            // Hot-seat P2 turn: clicks select/move enemy heroes instead of player heroes
+            if (m_hotSeatMode && m_hotSeatP2Turn) {
+                // Click on an enemy hero sprite → select it
+                for (int ehi = 0; ehi < (int)m_enemyHeroes.size(); ++ehi) {
+                    const Hero& eh = m_enemyHeroes[ehi];
+                    float wx, wy; m_hexRenderer.grid().hexToWorld(eh.pos, wx, wy);
+                    float sx, sy; m_camera.worldToScreen(wx, wy, sx, sy);
+                    float dx = static_cast<float>(mouse.x) - sx;
+                    float dy = static_cast<float>(mouse.y) - sy;
+                    if (dx * dx + dy * dy < 20.0f * 20.0f) {
+                        m_selectedEnemyHero = ehi;
+                        heroClickHandled = true;
+                        uiHandled = true;
+                        break;
+                    }
+                }
+                // No hero clicked → move selected enemy hero to hovered tile
+                if (!heroClickHandled && m_selectedEnemyHero >= 0
+                    && m_selectedEnemyHero < (int)m_enemyHeroes.size()
+                    && m_map.inBounds(m_hovered)) {
+                    Hero& eh = m_enemyHeroes[m_selectedEnemyHero];
+                    auto moveCost = [&](HexCoord to) -> int {
+                        const HexTile* t = m_map.getTile(to);
+                        if (!t || t->terrain == Terrain::Water) return 9999;
+                        return BASE_MOVE_COST[static_cast<int>(t->terrain)];
+                    };
+                    auto p2path = Pathfinder::find(m_map, eh.pos, m_hovered, moveCost);
+                    if (!p2path.empty()) {
+                        eh.path     = p2path;
+                        eh.pathStep = 0;
                     }
                     heroClickHandled = true;
                     uiHandled = true;
-                    break;
                 }
+            } else {
+                // Normal P1 turn hero selection
+                for (int hi = 0; hi < static_cast<int>(m_heroes.size()); ++hi) {
+                    const Hero& h = m_heroes[hi];
+                    float wx, wy;
+                    m_hexRenderer.grid().hexToWorld(h.pos, wx, wy);
+                    float sx, sy;
+                    m_camera.worldToScreen(wx, wy, sx, sy);
+                    float dx = static_cast<float>(mouse.x) - sx;
+                    float dy = static_cast<float>(mouse.y) - sy;
+                    if (dx * dx + dy * dy < 20.0f * 20.0f) {
+                        if (m_heroClickTarget == hi) {
+                            m_showHeroInspect = true;
+                            m_heroClickTarget = -1;
+                        } else {
+                            m_heroClickTarget = hi;
+                            m_activeHeroIdx   = hi;
+                        }
+                        heroClickHandled = true;
+                        uiHandled = true;
+                        break;
+                    }
+                }
+                if (!heroClickHandled) m_heroClickTarget = -1;
             }
-            if (!heroClickHandled) m_heroClickTarget = -1;
         }
 
         // Minimap click: pan camera to clicked map position
@@ -626,6 +920,41 @@ void Game::doEndTurn()
     // Reset per-day build limit for all towns
     for (auto& t : m_towns) t.builtToday = 0;
 
+    // ── Hot-seat: alternate between Player 1 and Player 2 ────────────────────
+    if (m_hotSeatMode) {
+        // Restore movement for whichever side is about to play
+        for (auto& h : m_heroes)      h.movePool = h.maxMove;
+        for (auto& h : m_enemyHeroes) {
+            h.movePool = h.maxMove;
+            int mr = std::max(2, 2 + h.maxMana / 10);
+            h.mana = std::min(h.maxMana, h.mana + mr);
+        }
+
+        if (!m_hotSeatP2Turn) {
+            // P1 ended their day → hand off to P2
+            m_hotSeatP2Turn     = true;
+            m_hotSeatHandoff    = true;
+            m_selectedEnemyHero = m_enemyHeroes.empty() ? -1 : 0;
+            // Rebuild fog from P2 hero positions
+            if (!m_fogDisabled) {
+                FogOfWar::hideAll(m_map);
+                for (auto& h : m_enemyHeroes) FogOfWar::updateVision(m_map, h);
+            }
+            return;   // don't run AI or week processing until P2 also ends
+        } else {
+            // P2 ended their day → hand off back to P1
+            m_hotSeatP2Turn     = false;
+            m_hotSeatHandoff    = true;
+            m_selectedEnemyHero = -1;
+            // Rebuild fog from P1 hero positions
+            if (!m_fogDisabled) {
+                FogOfWar::hideAll(m_map);
+                for (auto& h : m_heroes) FogOfWar::updateVision(m_map, h);
+            }
+            // FALL THROUGH — process week/income as normal
+        }
+    }
+
     // FishingHouse daily income (+150 gold per player-owned house)
     for (const auto& wo : m_worldObjects) {
         if (wo.type != WorldObjectType::FishingHouse || wo.collected) continue;
@@ -638,22 +967,98 @@ void Game::doEndTurn()
     }
 
     // Restore hero movement pools and daily mana regen for enemy heroes
-    for (auto& h : m_heroes)      h.movePool = h.maxMove;
-    for (auto& h : m_enemyHeroes) {
-        h.movePool = h.maxMove;
-        int manaRegen = std::max(2, 2 + h.maxMana / 10);
-        h.mana = std::min(h.maxMana, h.mana + manaRegen);
+    if (!m_hotSeatMode) {
+        for (auto& h : m_heroes)      h.movePool = h.maxMove;
+        for (auto& h : m_enemyHeroes) {
+            h.movePool = h.maxMove;
+            int manaRegen = std::max(2, 2 + h.maxMana / 10);
+            h.mana = std::min(h.maxMana, h.mana + manaRegen);
+        }
     }
 
-    if (!m_heroes.empty()) {
-        // Enemy hero AI — strength-aware, full move pool
-        if (!m_heroes.empty()) {
+        // Enemy hero AI — omniscient (full map visibility, no fog), faction-optimal
+        // Skipped in hot-seat mode: P2 controls their own heroes manually.
+        if (!m_hotSeatMode && !m_heroes.empty()) {
             Hero& playerHero = m_heroes[m_activeHeroIdx];
             const auto& unitDefs = m_registry.units();
             bool combatTriggered = false;
 
-            for (auto& eHero : m_enemyHeroes) {
-                if (combatTriggered) continue; // let remaining heroes move; combat only fires once
+            // ── Helper: apply a skill's world-map stat effects ────────────────
+            auto aiApplySkillBonus = [](Hero& hero, const SkillDef* def, int v) {
+                if (!def) return;
+                if (def->effectType == SkillEffectType::MovementBonus) {
+                    hero.maxMove += v;
+                    hero.movePool = std::max(hero.movePool, hero.maxMove);
+                } else if (def->effectType == SkillEffectType::VisionBonus) {
+                    hero.visionRange += v;
+                } else if (def->effectType == SkillEffectType::MagicSchoolBonus) {
+                    if      (def->statName == "lightPower")  hero.lightPower  += v;
+                    else if (def->statName == "bloodPower")  hero.bloodPower  += v;
+                    else if (def->statName == "deathPower")  hero.deathPower  += v;
+                    else if (def->statName == "naturePower") hero.naturePower += v;
+                    else if (def->statName == "forgePower")  hero.forgePower  += v;
+                    else if (def->statName == "fleshPower")  hero.fleshPower  += v;
+                }
+            };
+
+            // ── Helper: advance one skill for an AI hero on level-up ─────────
+            // Prioritises upgrading existing skills, then learns next pool skill.
+            auto aiLearnNextSkill = [this, &aiApplySkillBonus](Hero& hero) {
+                const HeroClassDef* cls = m_classRegistry.getClass(hero.classId);
+                if (!cls || cls->skillPool.empty()) return;
+                // First: upgrade any upgradeable skill already learned (most efficient)
+                for (int sid : cls->skillPool) {
+                    if (SkillInstance* s = hero.skills.getSkill(sid)) {
+                        if (s->canUpgrade()) {
+                            int prevTierIdx = static_cast<int>(s->tier);
+                            s->upgrade();
+                            if (const SkillDef* def = findSkillDef(sid)) {
+                                int delta = def->values[prevTierIdx + 1] - def->values[prevTierIdx];
+                                aiApplySkillBonus(hero, def, delta);
+                            }
+                            return;
+                        }
+                    }
+                }
+                // Then: learn next unlearned skill from pool
+                for (int sid : cls->skillPool) {
+                    if (!hero.skills.hasSkill(sid) && hero.skills.canLearn(sid)) {
+                        hero.skills.learn(sid);
+                        if (const SkillDef* def = findSkillDef(sid))
+                            aiApplySkillBonus(hero, def, def->values[0]);
+                        return;
+                    }
+                }
+            };
+
+            // ── Omniscient threat state ───────────────────────────────────────
+            int plStr = heroStrength(playerHero, unitDefs);
+            // Weak player = just fought a battle (army below expected for this week)
+            bool playerIsWeak = (plStr > 0 && plStr < m_turns.week() * 350);
+
+            // Player's key faction resource — AI denies these mines first
+            static const ResourceType kFactionResource[9] = {
+                ResourceType::FaithStones,   // HolyOrder
+                ResourceType::FaithStones,   // CrimsonWardens
+                ResourceType::VerdantSap,    // Thornkin
+                ResourceType::Mercury,       // EternalEmpire
+                ResourceType::BloodEssence,  // Bloodsworn
+                ResourceType::Mercury,       // Voidkin
+                ResourceType::Iron,          // IronAssembly
+                ResourceType::BloodEssence,  // Amalgamate
+                ResourceType::Gold,          // Convergence
+            };
+            int plFidx = static_cast<int>(playerHero.faction);
+            ResourceType denialRes = (plFidx >= 0 && plFidx < 9)
+                                   ? kFactionResource[plFidx] : ResourceType::Gold;
+
+            for (int ehi = 0; ehi < static_cast<int>(m_enemyHeroes.size()); ++ehi) {
+                if (combatTriggered) break;
+                auto& eHero = m_enemyHeroes[ehi];
+
+                // ── Hero roles: raider hunts player, economic grabs map, defender guards towns
+                bool isRaider   = (ehi == 0);
+                bool isDefender = (ehi >= 2);
 
                 // Recruit from any owned town within 1 tile (free for AI)
                 for (auto& t : m_towns) {
@@ -678,65 +1083,95 @@ void Game::doEndTurn()
                 }
 
                 int eiStr = heroStrength(eHero, unitDefs);
-                int plStr = heroStrength(playerHero, unitDefs);
-                // Fight if we have ≥70% of player strength; otherwise focus economy
-                bool aggressive = (eiStr * 10 >= plStr * 7);
-                // Retreat to nearest owned town when at < 40% of player strength
+                // Raider: attack if ≥50% strength OR player is wounded; Economic: only if 1.5×; Defender: never
+                bool aggressive = isDefender ? false
+                                : isRaider   ? (playerIsWeak || eiStr * 10 >= plStr * 5)
+                                :              (eiStr * 10 >= plStr * 15);
+                // Retreat when very weak regardless of role
                 bool veryWeak   = (eiStr * 10 <  plStr * 4);
 
-                while (eHero.movePool > 0) {
-                    HexCoord goal = {};
-                    bool goalSet = false;
+                // Graduated retreat thresholds
+                float strRatio = plStr > 0 ? (float)eiStr / plStr : 99.f;
+                bool softRetreat = strRatio < 0.6f;
+                bool dominant    = strRatio >= 1.2f;
+                bool playerGhostWalk = playerHero.ghostWalkSpecialty;
 
-                    auto tryGoal = [&](HexCoord pos, int bias = 0) {
-                        int d = HexGrid::distance(eHero.pos, pos) - bias;
-                        if (!goalSet || d < HexGrid::distance(eHero.pos, goal)) {
-                            goal = pos; goalSet = true;
-                        }
+                // Pinned by siege camp: enemy hero can't leave their besieged town
+                bool pinnedBySiege = false;
+                for (const auto& t : m_towns) {
+                    if (t.ownerId != eHero.id || !t.underSiege) continue;
+                    if (HexGrid::distance(eHero.pos, t.pos) <= 1) { pinnedBySiege = true; break; }
+                }
+                if (pinnedBySiege) { eHero.movePool = 0; }
+
+                // Snap camera to this enemy hero so Watch AI is visible
+                if (m_watchingAI) {
+                    float ewx, ewy;
+                    m_hexRenderer.grid().hexToWorld(eHero.pos, ewx, ewy);
+                    m_camera.setPosition(ewx, ewy);
+                }
+
+                while (eHero.movePool > 0) {
+                    // Score-based candidate selection: value / distance
+                    struct Cand { HexCoord pos; float score; };
+                    std::vector<Cand> cands;
+                    auto add = [&](HexCoord pos, float val) {
+                        if (pos == eHero.pos) return; // don't target current position
+                        int d = std::max(1, HexGrid::distance(eHero.pos, pos));
+                        cands.push_back({pos, val / d});
                     };
 
                     if (veryWeak) {
-                        // Retreat: head to nearest owned town to regroup / garrison
                         for (const auto& t : m_towns)
-                            if (t.ownerId == eHero.id) tryGoal(t.pos, 5);
+                            if (t.ownerId == eHero.id) add(t.pos, 500.f);
+                    } else if (isDefender) {
+                        for (const auto& r : m_resources)
+                            if (r.ownedBy != eHero.id) add(r.pos, 60.f);
+                        for (const auto& t : m_towns)
+                            if (t.ownerId == eHero.id) add(t.pos, 80.f);
                     } else {
-                        // Unowned mines (always valuable)
+                        // Own town to recruit
+                        for (const auto& t : m_towns) {
+                            if (t.ownerId != eHero.id) continue;
+                            bool hasU = false;
+                            for (const auto& dw : t.dwellings) if (dw.available > 0) { hasU = true; break; }
+                            if (hasU && (int)eHero.army.size() < 7) add(t.pos, 250.f);
+                        }
+                        // Towns
+                        for (const auto& t : m_towns) {
+                            if (t.ownerId == 0)  add(t.pos, 150.f);
+                            else if (t.ownerId == 1) add(t.pos, 200.f);
+                        }
+                        // Resources
                         for (const auto& r : m_resources) {
                             if (r.ownedBy == eHero.id) continue;
-                            tryGoal(r.pos, 3);
+                            add(r.pos, r.type == denialRes ? 120.f : 60.f);
                         }
-                        // Valuable world objects (XP, spells, stat boosts, artifacts)
+                        // World objects
                         for (const auto& obj : m_worldObjects) {
                             if (obj.collected) continue;
-                            if (obj.type == WorldObjectType::XPShrine      ||
-                                obj.type == WorldObjectType::SpellScroll   ||
-                                obj.type == WorldObjectType::StatShrine    ||
-                                obj.type == WorldObjectType::ArtifactChest ||
-                                obj.type == WorldObjectType::TreasureChest ||
-                                obj.type == WorldObjectType::ForestShrine  ||
-                                obj.type == WorldObjectType::SwampAltar) {
-                                tryGoal(obj.pos, 2);
-                            }
+                            float val = 0.f;
+                            if (obj.type == WorldObjectType::ArtifactChest)  val = 80.f;
+                            else if (obj.type == WorldObjectType::TreasureChest) val = 70.f;
+                            else if (obj.type == WorldObjectType::XPShrine   ||
+                                     obj.type == WorldObjectType::ForestShrine||
+                                     obj.type == WorldObjectType::StatShrine  ||
+                                     obj.type == WorldObjectType::SpellScroll ||
+                                     obj.type == WorldObjectType::SwampAltar)  val = 50.f;
+                            if (val > 0.f) add(obj.pos, val);
                         }
-                        // Neutral towns
-                        for (const auto& t : m_towns) {
-                            if (t.ownerId != 0) continue;
-                            tryGoal(t.pos);
-                        }
-                        // GhostWalk: enemy AI cannot target the player hero directly
-                        bool playerGhostWalk = playerHero.ghostWalkSpecialty;
-                        // Player towns / hero (only if aggressive or nothing else to do)
-                        if (aggressive || !goalSet) {
-                            if (!playerGhostWalk) tryGoal(playerHero.pos);
-                            if (aggressive) {
-                                for (const auto& t : m_towns)
-                                    if (t.ownerId > 0 && t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers))
-                                        tryGoal(t.pos);
-                            }
+                        // Player hero
+                        if (!softRetreat && !playerGhostWalk) {
+                            int dist = HexGrid::distance(eHero.pos, playerHero.pos);
+                            if (dominant || dist <= 8 || isRaider)
+                                add(playerHero.pos, 300.f);
                         }
                     }
 
-                    if (!goalSet) break;
+                    if (cands.empty()) break;
+                    std::sort(cands.begin(), cands.end(),
+                              [](const Cand& a, const Cand& b){ return a.score > b.score; });
+                    HexCoord goal = cands[0].pos;
 
                     auto costFn = [this, &eHero, aggressive](HexCoord c) -> int {
                         const HexTile* t = m_map.getTile(c);
@@ -767,21 +1202,16 @@ void Game::doEndTurn()
 
                     // Combat with player?
                     if (eHero.pos == playerHero.pos) {
-                        if (!combatTriggered) {
-                            // Clear all encounter-specific pending IDs so a stale Crypt/Utopia
-                            // fight from an earlier unresolved combat doesn't fire here.
-                            m_pendingCryptId         = 0;
-                            m_pendingUtopiaId        = 0;
-                            m_pendingMineId          = 0;
-                            m_pendingNeutralOutpostId = 0;
-                            m_lastBanditCampId       = 0;
-                            m_pendingTownCaptureId   = 0;
-                            m_lastCombatEnemyId = eHero.id;
-                            auto pUnits = makeHeroUnits(playerHero, unitDefs, true);
-                            auto eUnits = makeHeroUnits(eHero, unitDefs, false);
-                            enterCombat(playerHero, pUnits, eHero, eUnits);
-                            combatTriggered = true;
+                        m_lastCombatEnemyId = eHero.id;
+                        auto pUnits = makeHeroUnits(playerHero, unitDefs, true);
+                        auto eUnits = makeHeroUnits(eHero, unitDefs, false);
+                        if (m_watchingAI) {
+                            m_fromBattleSim = true;
+                            m_simAutoPlay   = true;
+                            m_simAutoPlayTimer = 0.f;
                         }
+                        enterCombat(playerHero, pUnits, eHero, eUnits);
+                        combatTriggered = true;
                         break;
                     }
 
@@ -792,10 +1222,10 @@ void Game::doEndTurn()
                         if (obj.type == WorldObjectType::XPShrine) {
                             int prevLevel = eHero.level;
                             if (eHero.addXp(obj.value) && eHero.level > prevLevel) {
-                                // Grant stat bonus on level up (alternating ATK/DEF)
                                 int gained = eHero.level - prevLevel;
                                 eHero.attack  += (gained + 1) / 2;
                                 eHero.defense += gained / 2;
+                                for (int g = 0; g < gained; ++g) aiLearnNextSkill(eHero);
                             }
                             gLog("Enemy %s gained %d XP from shrine\n",
                                    eHero.name.c_str(), obj.value);
@@ -816,6 +1246,7 @@ void Game::doEndTurn()
                                 int gained = eHero.level - prevLevel;
                                 eHero.attack  += (gained + 1) / 2;
                                 eHero.defense += gained / 2;
+                                for (int g = 0; g < gained; ++g) aiLearnNextSkill(eHero);
                             }
                             gLog("Enemy %s gained %d XP from forest shrine\n",
                                    eHero.name.c_str(), obj.value);
@@ -864,6 +1295,22 @@ void Game::doEndTurn()
                                         eHero.army.erase(eHero.army.begin() + weakIdx);
                                 }
                                 eHero.movePool = 0; // done retreating for this turn
+                            } else if (t.ownerId == eHero.id) {
+                                // Stepped into own town — recruit immediately and keep moving
+                                for (auto& dw : t.dwellings) {
+                                    if (dw.available <= 0) continue;
+                                    for (const auto& ud : unitDefs) {
+                                        if (ud.faction == t.faction && ud.tier == dw.tier && ud.path == dw.path) {
+                                            int n = dw.available; dw.available = 0;
+                                            bool merged = false;
+                                            for (auto& s : eHero.army)
+                                                if (s.defId == ud.id) { s.count += n; merged = true; break; }
+                                            if (!merged && eHero.army.size() < 7)
+                                                eHero.army.push_back({ud.id, n});
+                                            break;
+                                        }
+                                    }
+                                }
                             } else if (t.ownerId == 0) {
                                 t.ownerId = eHero.id;
                                 gLog("Enemy %s captured %s\n", eHero.name.c_str(), t.name.c_str());
@@ -934,6 +1381,13 @@ void Game::doEndTurn()
             }
         }
 
+        // Snap camera back to player hero after enemy turns (Watch AI)
+        if (m_watchingAI && !m_heroes.empty()) {
+            float pwx, pwy;
+            m_hexRenderer.grid().hexToWorld(m_heroes[m_activeHeroIdx].pos, pwx, pwy);
+            m_camera.setPosition(pwx, pwy);
+        }
+
         // Infestation specialty (Flesh Architect/Amalgamate): FleshZone spreads each turn
         auto applyInfestation = [&](std::vector<Hero>& heroList) {
             for (auto& hero : heroList) {
@@ -998,6 +1452,25 @@ void Game::doEndTurn()
         applyBlightAura(m_heroes);
         applyBlightAura(m_enemyHeroes);
 
+        // ── Siege camp resolution ─────────────────────────────────────────────
+        // Update underSiege flag for every town
+        for (auto& t : m_towns) t.underSiege = false;
+        for (const auto& h : m_heroes) {
+            if (!h.isSiegeCamping || h.siegeTargetTownId == 0) continue;
+            for (auto& t : m_towns)
+                if (t.id == h.siegeTargetTownId) t.underSiege = true;
+        }
+        // Trigger siege combat for any town that has camped heroes this turn
+        for (auto& t : m_towns) {
+            if (!t.underSiege) continue;
+            // Reset fortify flag for next turn
+            bool fortified = t.siegeFortified;
+            t.siegeFortified = false;
+            triggerSiegeCombat(t.id);
+            // triggerSiegeCombat may change game state; stop processing if combat started
+            if (m_state == GameState::Combat) return;
+        }
+
         bool newWeek = m_turns.endTurn(m_towns, m_heroes,
                                        m_playerResources, m_registry,
                                        static_cast<uint32_t>(currentPlayerId()));
@@ -1008,11 +1481,20 @@ void Game::doEndTurn()
                 if (r.ownedBy == static_cast<uint32_t>(currentPlayerId())) m_weekSummaryIncome.add(r.type, r.amount);
             m_cachedWeeklyIncome = m_weekSummaryIncome;
             m_weekSummaryWeek = m_turns.week();
-            m_showWeekSummary = true;
+            if (!m_watchingAI) m_showWeekSummary = true;
 
             // Mine income for player-controlled resource nodes
             for (const auto& r : m_resources)
                 if (r.ownedBy == static_cast<uint32_t>(currentPlayerId())) m_playerResources.add(r.type, r.amount);
+
+            // Hot-seat: apply income for P2 towns and mines
+            if (m_hotSeatMode) {
+                Resources p2income = m_turns.calculateWeeklyIncome(m_towns, 2);
+                m_player2Resources.addAll(p2income);
+                for (const auto& r : m_resources)
+                    if (!m_enemyHeroes.empty() && r.ownedBy == m_enemyHeroes[0].id)
+                        m_player2Resources.add(r.type, r.amount);
+            }
 
             // Garrison upkeep — 350 gold/week per garrisoned player hero
             {
@@ -1024,6 +1506,15 @@ void Game::doEndTurn()
                     m_playerResources.add(ResourceType::Gold, -upkeep);
                     gLog("Garrison upkeep: -%dg (%d hero%s dug in)\n",
                          upkeep, garrisonCount, garrisonCount == 1 ? "" : "es");
+                }
+            }
+
+            // Apply March bonus (10% move) for heroes who used March last week
+            for (auto& h : m_heroes) {
+                h.marchBonusActive = false;  // reset; will re-enable if cooldown was set last week
+                if (h.marchCooldownWeek == m_turns.week()) {
+                    // Cooldown expires this week — grant the bonus move pool
+                    h.movePool = std::min(h.maxMove + h.maxMove / 10, h.movePool + h.maxMove / 10);
                 }
             }
 
@@ -1060,12 +1551,9 @@ void Game::doEndTurn()
             }
 
             // Auto-save at start of each new week
-            if (m_state == GameState::Campaign)
-                saveGame("saves/campaign" + std::to_string(m_campaignActiveSlot) + ".json");
-            else
-                saveGame("saves/save" + std::to_string(m_activeSlot) + ".json");
+            if (m_settingsAutoSave) saveGame();
 
-            // ── AI town building: one building per week, priority dwellings ──────────
+            // ── AI town building: faction-specific priority order ─────────────────
             {
                 Resources richRes;
                 richRes.add(ResourceType::Gold,         999999);
@@ -1077,35 +1565,110 @@ void Game::doEndTurn()
 
                 const auto& allBuildings = m_registry.buildings();
 
+                // Faction-specific build order — first buildable entry wins each week.
+                // Entries tried in order; first that satisfies prereqs & resources gets built.
+                // PathA upgrade dwellings are included for key tiers (T3-T5).
+                static const std::vector<int> kBuildOrder[9] = {
+                    // HolyOrder (0): Hall + T1 dwelling first, then Fort
+                    { BID::HO_HALL, BID::HO_T1_BASE, BID::FORT, BID::MARKET,
+                      BID::MAGE_GUILD, BID::HO_LIGHT_SHRINE, BID::HO_T2_BASE,
+                      BID::TOWN_HALL, BID::HO_T3_BASE, BID::HO_T3_A,
+                      BID::MAGE_GUILD_T2, BID::HO_T4_BASE, BID::HO_T4_A,
+                      BID::CITY_HALL, BID::HO_T5_BASE, BID::HO_T5_A,
+                      BID::HO_RELIQUARY, BID::HO_T6_BASE, BID::HO_T6_A },
+                    // CrimsonWardens (1): Economy first, T1_A upgrade, T2 early (ranged), Warden Brand
+                    { BID::CW_HALL, BID::CW_T1, BID::CW_T1_A, BID::MARKET, BID::CW_T2, BID::CW_T2_A,
+                      BID::FORT, BID::CW_WARDEN_BRAND, BID::CW_T3, BID::CW_T3_A,
+                      BID::TOWN_HALL, BID::CW_DEATH_ALTAR, BID::CW_T4, BID::CW_T4_A,
+                      BID::CITY_HALL, BID::CW_T5, BID::CW_T5_A, BID::CW_T6, BID::CW_T6_A },
+                    // Thornkin (2): Symbiosis Web early, T1_A upgrade, key upgrades (PathA=paired)
+                    { BID::TK_GROVE_HEART, BID::TK_T1, BID::TK_T1_A, BID::TK_SYMBIOSIS_WEB,
+                      BID::MARKET, BID::TK_T2, BID::TK_T2_A,
+                      BID::TK_ANCIENT_CIRCLE, BID::FORT, BID::TK_T3, BID::TK_T3_A,
+                      BID::TOWN_HALL, BID::TK_T4, BID::TK_T4_A,
+                      BID::CITY_HALL, BID::TK_T5, BID::TK_T5_A, BID::TK_T6, BID::TK_T6_A },
+                    // EternalEmpire (3): Necropolis + Monument (second-life) ASAP, T1/T2 upgrades
+                    { BID::EE_THRONE, BID::EE_T1, BID::EE_T1_A, BID::EE_NECROPOLIS,
+                      BID::FORT, BID::EE_T2, BID::EE_T2_A, BID::MARKET,
+                      BID::EE_MONUMENT, BID::EE_T3, BID::EE_T3_A,
+                      BID::TOWN_HALL, BID::EE_T4, BID::EE_T4_A,
+                      BID::MAGE_GUILD, BID::CITY_HALL, BID::EE_T5, BID::EE_T5_A,
+                      BID::EE_T6, BID::EE_T6_A },
+                    // Bloodsworn (4): Aggression-first — fast T1/T2, Blood Altar early
+                    { BID::BS_WAR_HALL, BID::BS_T1, BID::BS_T1_A, BID::BS_T2, BID::BS_T2_A,
+                      BID::FORT, BID::MARKET, BID::BS_T3, BID::BS_T3_A,
+                      BID::BS_BLOOD_ALTAR, BID::BS_WAR_SHRINE,
+                      BID::TOWN_HALL, BID::BS_T4, BID::BS_T4_A,
+                      BID::CITY_HALL, BID::BS_T5, BID::BS_T5_A, BID::BS_T6, BID::BS_T6_A },
+                    // Voidkin (5): Market gate, Mage Guild (spell-dependent), T1_A, Void Lens
+                    { BID::VK_NEXUS, BID::MARKET, BID::VK_T1, BID::VK_T1_A,
+                      BID::MAGE_GUILD, BID::VK_T2, BID::VK_T2_A,
+                      BID::FORT, BID::VK_RIFT_GATE, BID::VK_T3, BID::VK_T3_A,
+                      BID::TOWN_HALL, BID::VK_VOID_LENS, BID::VK_T4, BID::VK_T4_A,
+                      BID::CITY_HALL, BID::VK_T5, BID::VK_T5_A, BID::VK_T6, BID::VK_T6_A },
+                    // IronAssembly (6): Blueprint Vault early, Overclock, PathA (Runic line)
+                    { BID::IA_FORGE_HALL, BID::FORT, BID::IA_T1, BID::IA_T1_A,
+                      BID::IA_BLUEPRINT_VAULT, BID::MARKET, BID::IA_T2, BID::IA_T2_A,
+                      BID::WAREHOUSE, BID::IA_OVERCLOCK, BID::IA_T3, BID::IA_T3_A,
+                      BID::TOWN_HALL, BID::WAREHOUSE_T2, BID::IA_T4, BID::IA_T4_A,
+                      BID::CITY_HALL, BID::IA_T5, BID::IA_T5_A, BID::IA_T6, BID::IA_T6_A },
+                    // Amalgamate (7): Merge Chamber early (Adaptation), economy
+                    { BID::AM_GRAFTING_HALL, BID::AM_T1, BID::AM_T1_A, BID::MARKET,
+                      BID::AM_T2, BID::AM_T2_A, BID::FORT, BID::AM_MERGE_CHAMBER,
+                      BID::AM_T3, BID::AM_T3_A, BID::TOWN_HALL, BID::AM_FLESH_VAULT,
+                      BID::AM_T4, BID::AM_T4_A, BID::CITY_HALL,
+                      BID::AM_T5, BID::AM_T5_A, BID::AM_T6, BID::AM_T6_A },
+                    // Convergence (8): Economy + all dwellings + path-A upgrades
+                    { BID::CV_SYNTHESIS_HUB, BID::CV_T1, BID::CV_T1_A, BID::MARKET,
+                      BID::CV_T2, BID::CV_T2_A, BID::FORT, BID::MAGE_GUILD,
+                      BID::CV_T3, BID::CV_T3_A, BID::TOWN_HALL,
+                      BID::CV_T4, BID::CV_T4_A, BID::CV_RESONANCE_WELL, BID::CITY_HALL,
+                      BID::CV_T5, BID::CV_T5_A, BID::CV_MIRROR_CHAMBER, BID::CV_T6, BID::CV_T6_A },
+                };
+
                 for (auto& town : m_towns) {
-                    if (town.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) continue;
+                    if (town.ownerId == 0) continue;
+                    // In Watch AI mode also build for player towns using actual resources
+                    if (town.ownerId == 1 && !m_watchingAI) continue;
                     town.builtToday = 0;
 
                     bool built = false;
-                    // Priority 1: lowest unbought base dwelling (tier 1-6)
+                    int fIdx = static_cast<int>(town.faction);
+                    // Player towns spend real resources; enemy towns have infinite
+                    Resources& buildRes = (town.ownerId == 1) ? m_playerResources : richRes;
+
+                    // Try faction priority list first
+                    if (fIdx >= 0 && fIdx < 9) {
+                        for (int bid : kBuildOrder[fIdx]) {
+                            if (town.build(bid, allBuildings, buildRes)) {
+                                gLog("AI %s built BID=%d (priority)\n", town.name.c_str(), bid);
+                                built = true; break;
+                            }
+                        }
+                    }
+
+                    // Fallback: lowest unbought base dwelling tier
                     for (int tier = 1; tier <= 6 && !built; ++tier) {
                         for (const auto& def : allBuildings) {
                             if (def.category != BuildingCategory::UnitDwelling) continue;
                             if (def.faction != town.faction) continue;
                             if (def.tier != tier) continue;
                             if (def.path != UpgradePath::None) continue;
-                            Resources tmp = richRes;
-                            if (town.build(def.id, allBuildings, tmp)) {
+                            if (town.build(def.id, allBuildings, buildRes)) {
                                 gLog("AI %s built %s\n", town.name.c_str(), def.name.c_str());
                                 built = true; break;
                             }
                         }
                     }
-                    // Priority 2: fort or support
+                    // Last resort: any fort or support building
                     if (!built) {
                         for (const auto& def : allBuildings) {
                             if (def.faction != town.faction && def.faction != FactionId::None) continue;
                             if (def.category != BuildingCategory::Fort &&
                                 def.category != BuildingCategory::Support) continue;
-                            Resources tmp = richRes;
-                            if (town.build(def.id, allBuildings, tmp)) {
+                            if (town.build(def.id, allBuildings, buildRes)) {
                                 gLog("AI %s built %s\n", town.name.c_str(), def.name.c_str());
-                                built = true; break;
+                                break;
                             }
                         }
                     }
@@ -1567,13 +2130,25 @@ void Game::doEndTurn()
             }
 
             // Auto-save at week start if enabled
-            if (m_settingsAutoSave) {
-                if (m_state == GameState::Campaign)
-                    saveGame("saves/campaign" + std::to_string(m_campaignActiveSlot) + ".json");
-                else if (m_activeSlot >= 0)
-                    saveGame("saves/save" + std::to_string(m_activeSlot) + ".json");
-            }
+            if (m_settingsAutoSave) saveGame();
         }
+    // Watch AI: passive victory/defeat check (needed when last enemy town captured without combat)
+    if (m_watchingAI && !m_showVictory && !m_showDefeat) {
+        bool noEnemyHeroes = m_enemyHeroes.empty();
+        bool noEnemyTowns  = true;
+        for (const auto& t : m_towns)
+            if (t.ownerId > 1) { noEnemyTowns = false; break; }
+        if (noEnemyHeroes && noEnemyTowns && !m_heroes.empty()) {
+            m_showVictory = true;
+            m_audio.playSound("victory");
+        }
+        if (!m_showVictory) {
+            bool anyTown = false;
+            for (const auto& t : m_towns) if (t.ownerId == 1) { anyTown = true; break; }
+            bool anyArmy = !m_heroes.empty() && !m_heroes[m_activeHeroIdx].army.empty();
+            if (!anyTown && !anyArmy) { m_showDefeat = true; m_finalDefeat = true; }
+        }
+    }
     }
 
     // ── Hotseat: after full turn, regen non-P1 heroes and show "Player 1's Turn" ─
@@ -1696,7 +2271,9 @@ void Game::renderPlayerTurnBanner()
 void Game::renderWorldMapImGui()
 {
     m_ui.beginFrame();
-    m_worldHUD.draw(m_ui, m_playerResources, m_cachedWeeklyIncome,
+    m_worldHUD.draw(m_ui,
+                    (m_hotSeatMode && m_hotSeatP2Turn) ? m_player2Resources : m_playerResources,
+                    m_cachedWeeklyIncome,
                     m_turns, m_heroes, m_activeHeroIdx, m_towns);
     m_ui.endFrame();
     m_ui.flushText(ImGui::GetBackgroundDrawList());
@@ -1723,6 +2300,10 @@ void Game::renderWorldMapImGui()
     if (m_showEncounterPrompt)    renderEncounterPrompt();
     if (m_showTownLostPopup)      renderTownLostPopup();
     if (m_showWeekSummary)        renderWeekSummary();
+    if (m_hotSeatHandoff)         renderHotSeatHandoff();
+    if (m_showSiegeCampPrompt)    renderSiegeCampPrompt();
+    renderSiegeIndicator();
+    renderMarchButton();
     if (m_showPauseMenu)          renderPauseMenu();
     // Modal popups — only one at a time (ImGui popup stack conflict otherwise)
     // In campaign mode, victory/defeat are handled by the campaign HUD, not these modals.
@@ -1732,8 +2313,52 @@ void Game::renderWorldMapImGui()
     else if (m_showDefeat  && !inCampaign)      renderDefeatModal();
     else if (m_showLevelUpModal)                renderLevelUpModal();
 
-    if (m_showPlayerTurnBanner && m_playerTurnBannerT > 0.0f)
-        renderPlayerTurnBanner();
+    // Watch AI overlay — minimal HUD showing current week + stop button
+    if (m_watchingAI) {
+        ImGuiIO& io = ImGui::GetIO();
+        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, 8), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+        ImGui::SetNextWindowBgAlpha(0.80f);
+        ImGuiWindowFlags wf = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                              ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
+        if (ImGui::Begin("##watchai_hud", nullptr, wf)) {
+            static const char* kFacNames[] = {
+                "Holy Order","Crimson Wardens","Thornkin","Eternal Empire",
+                "Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"
+            };
+            const auto& udefs = m_registry.units();
+            ImGui::TextColored({1.f,0.82f,0.2f,1.f}, "WATCH AI vs AI");
+            ImGui::SameLine(0, 16);
+            ImGui::Text("Week %d", m_turns.week());
+            ImGui::SameLine(0, 16);
+            ImGui::SetNextItemWidth(100);
+            ImGui::SliderFloat("Speed##waispeed", &m_watchAISpeed, 0.25f, 8.0f, "%.1fx");
+            ImGui::SameLine(0, 8);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0.1f, 1.0f));
+            if (ImGui::Button("Stop##waistop")) {
+                m_watchingAI  = false;
+                m_fogDisabled = false;
+                m_state = GameState::MainMenu;
+            }
+            ImGui::PopStyleColor();
+            // Show army strength comparison
+            if (!m_heroes.empty() && !m_enemyHeroes.empty()) {
+                const Hero& ph = m_heroes[m_activeHeroIdx];
+                const Hero& eh = m_enemyHeroes[0];
+                int pStr = heroStrength(ph, udefs);
+                int eStr = heroStrength(eh, udefs);
+                ImGui::Separator();
+                ImGui::TextColored({0.4f,0.7f,1.f,1.f}, "%s  (%s)  Str:%d  Army:%zu",
+                    ph.name.c_str(), kFacNames[static_cast<int>(ph.faction)],
+                    pStr, ph.army.size());
+                ImGui::TextColored({1.f,0.45f,0.4f,1.f}, "%s  (%s)  Str:%d  Army:%zu",
+                    eh.name.c_str(), kFacNames[static_cast<int>(eh.faction)],
+                    eStr, eh.army.size());
+                ImGui::TextDisabled("Player Gold: %d",
+                    m_playerResources.get(ResourceType::Gold));
+            }
+        }
+        ImGui::End();
+    }
 }
 
 void Game::renderWorldMap()
@@ -1771,6 +2396,24 @@ void Game::onTileClicked(HexCoord h)
 {
     const HexTile* tile = m_map.getTile(h);
     if (!tile) return;
+
+    // Hot-seat P2 turn: delegate clicks to enemy hero control
+    if (m_hotSeatMode && m_hotSeatP2Turn) {
+        if (tile->townId != 0 && m_selectedEnemyHero >= 0
+            && m_selectedEnemyHero < (int)m_enemyHeroes.size()) {
+            Hero& p2Hero = m_enemyHeroes[m_selectedEnemyHero];
+            for (auto& t : m_towns) {
+                if (t.id != tile->townId || t.ownerId != 2) continue;
+                if (p2Hero.pos == h || HexGrid::distance(p2Hero.pos, h) <= 1) {
+                    enterTown(&t);
+                    return;
+                }
+                break;
+            }
+        }
+        // P2 movement is handled in the hot-seat click block above (lines ~518+)
+        return;
+    }
 
     if (m_heroes.empty()) return;
 
@@ -1859,6 +2502,40 @@ void Game::updateHeroMovement(float dt)
             hero.path.clear();
             hero.pathStep = 0;
             m_selected = {-999,-999};
+        }
+    }
+
+    // ── Hot-seat P2: animate selected enemy hero movement ─────────────────────
+    if (m_hotSeatMode && m_hotSeatP2Turn
+        && m_selectedEnemyHero >= 0
+        && m_selectedEnemyHero < (int)m_enemyHeroes.size()) {
+        Hero& eh = m_enemyHeroes[m_selectedEnemyHero];
+        if (!eh.path.empty() && eh.pathStep < (int)eh.path.size()) {
+            HexCoord next = eh.path[eh.pathStep];
+            const HexTile* tile = m_map.getTile(next);
+            int cost = tile ? eh.moveCost(tile->terrain) : 999;
+            if (eh.movePool < cost) {
+                eh.path.clear(); eh.pathStep = 0;
+            } else {
+                if (HexTile* oldT = m_map.getTile(eh.pos)) oldT->heroId = 0;
+                eh.pos = next;
+                eh.movePool -= cost;
+                eh.pathStep++;
+                if (HexTile* newT = m_map.getTile(eh.pos)) newT->heroId = eh.id;
+                if (!m_fogDisabled) FogOfWar::updateVision(m_map, eh);
+                // Collect nearby resources/objects (simplified)
+                for (auto& r : m_resources) {
+                    if (r.pos == eh.pos && r.ownedBy == 0) {
+                        r.ownedBy = eh.id;
+                        m_player2Resources.add(r.type, r.amount);
+                        char buf[32]; std::snprintf(buf, sizeof(buf), "+%d", r.amount);
+                        pushPickupEffect(eh.pos, buf, IM_COL32(100, 200, 255, 255));
+                    }
+                }
+                if (eh.pathStep >= (int)eh.path.size()) {
+                    eh.path.clear(); eh.pathStep = 0;
+                }
+            }
         }
     }
 }
@@ -2664,8 +3341,21 @@ void Game::checkTileEvents()
     if (tile->townId != 0) {
         for (auto& t : m_towns) {
             if (t.id != tile->townId) continue;
-            if (t.ownerId != static_cast<uint32_t>(currentPlayerId())) {
-                // Fight the garrison if one exists
+            if (t.ownerId != 1) {
+                // If player is adjacent (not ON the town yet) and town has garrison → offer Siege or Attack
+                bool alreadyCamping = false;
+                for (const auto& h2 : m_heroes)
+                    if (h2.isSiegeCamping && h2.siegeTargetTownId == t.id) { alreadyCamping = true; break; }
+
+                if (!t.garrison.empty() && !alreadyCamping
+                    && HexGrid::distance(hero.pos, t.pos) == 1) {
+                    // Offer: attack now OR lay siege camp
+                    m_siegePromptTownId     = t.id;
+                    m_showSiegeCampPrompt   = true;
+                    return;
+                }
+
+                // Fight the garrison if one exists (direct attack or hero already on town tile)
                 if (!t.garrison.empty()) {
                     // Build garrison CombatUnits as the "enemy"
                     Hero garrisonHero; // dummy hero for the garrison
@@ -2681,7 +3371,8 @@ void Game::checkTileEvents()
                     return;
                 }
                 // No garrison — capture immediately
-                t.ownerId = static_cast<uint32_t>(currentPlayerId());
+                uint32_t prevOwner = t.ownerId;
+                t.ownerId = 1;
                 t.garrison.clear();
                 gLog("Captured town: %s\n", t.name.c_str());
                 m_capturedTownName = t.name;
@@ -2692,7 +3383,7 @@ void Game::checkTileEvents()
                     tCtx.townId = t.id;
                     m_triggers.fire(TriggerType::TownCaptured, tCtx);
                 }
-                m_campaign.onTownCaptured(t.id);
+                m_campaign.onTownCaptured(t.id, prevOwner);
             }
             enterTown(&t);
             return;
@@ -3861,6 +4552,49 @@ void Game::renderHeroInspect()
             int t = static_cast<int>(s.tier);
             ImGui::Text("  %s (%s)", sd->name.c_str(), (t >= 0 && t <= 2) ? tierStr[t] : "Basic");
         }
+
+        // Archetype label
+        static const int kMight[] = { SkillID::OFFENSE, SkillID::DEFENSE_SKILL, SkillID::ARCHERY,
+            SkillID::LEADERSHIP, SkillID::TACTICS, SkillID::LOGISTICS,
+            SkillID::SCOUTING, SkillID::FIRST_AID, SkillID::LUCK };
+        static const int kMagic[] = { SkillID::LIGHT_MAGIC, SkillID::BLOOD_MAGIC,
+            SkillID::DEATH_MAGIC, SkillID::NATURE_MAGIC, SkillID::FORGE_MAGIC, SkillID::FLESH_MAGIC };
+        int mightN = 0, magicN = 0;
+        for (int sid : kMight) if (hero.skills.hasSkill(sid)) ++mightN;
+        for (int sid : kMagic) if (hero.skills.hasSkill(sid)) ++magicN;
+
+        const char* archetypeLabel   = nullptr;
+        ImVec4      archetypeColour  = {1,1,1,1};
+        if      (mightN >= 5 && magicN == 0)         { archetypeLabel = "★ PURE MIGHT";  archetypeColour = {1.0f,0.75f,0.2f,1}; }
+        else if (magicN >= 4 && mightN <= 1)         { archetypeLabel = "★ PURE MAGIC";  archetypeColour = {0.6f,0.5f,1.0f,1}; }
+        else if (mightN >= 3 && magicN >= 2)         { archetypeLabel = "★ WARLORD";     archetypeColour = {0.8f,0.3f,0.3f,1}; }
+        else if (mightN >= 4)                        { archetypeLabel = "Might Build";    archetypeColour = {1.0f,0.85f,0.5f,1}; }
+        else if (mightN >= 2)                        { archetypeLabel = "Might Synergy";  archetypeColour = {0.9f,0.8f,0.5f,1}; }
+        else if (magicN >= 3)                        { archetypeLabel = "Magic Synergy";  archetypeColour = {0.7f,0.6f,1.0f,1}; }
+        else if (magicN >= 2)                        { archetypeLabel = "Dual Magic";     archetypeColour = {0.7f,0.6f,1.0f,1}; }
+
+        if (archetypeLabel) {
+            ImGui::Spacing();
+            ImGui::TextColored(archetypeColour, "%s", archetypeLabel);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                if (mightN >= 5 && magicN == 0)
+                    ImGui::TextUnformatted("+1 Speed and +10% HP to all units in combat");
+                else if (magicN >= 4 && mightN <= 1)
+                    ImGui::TextUnformatted("+3 to all casting stats, spells cost -1 mana");
+                else if (mightN >= 3 && magicN >= 2)
+                    ImGui::TextUnformatted("+1 Morale and +1 Luck to all units in combat");
+                else if (mightN >= 4)
+                    ImGui::TextUnformatted("+2 ATK/DEF to all units in combat");
+                else if (mightN >= 2)
+                    ImGui::TextUnformatted("+1 ATK/DEF to all units in combat");
+                else if (magicN >= 3)
+                    ImGui::TextUnformatted("+2 to all casting stats");
+                else if (magicN >= 2)
+                    ImGui::TextUnformatted("+1 to all casting stats");
+                ImGui::EndTooltip();
+            }
+        }
     }
 
     {
@@ -4189,13 +4923,10 @@ void Game::renderDefeatModal()
             }
             ImGui::SameLine();
         }
-        if (ImGui::Button(m_finalDefeat ? "Load Last Save" : "Load Last Save", ImVec2(m_finalDefeat ? bw * 0.6f : -1, 36))) {
+        if (ImGui::Button("Load Last Save", ImVec2(m_finalDefeat ? bw * 0.6f : -1, 36))) {
             m_showDefeat  = false;
             m_finalDefeat = false;
-            if (m_state == GameState::Campaign)
-                loadGame("saves/campaign" + std::to_string(m_campaignActiveSlot) + ".json");
-            else
-                loadGame("saves/save" + std::to_string(m_activeSlot) + ".json");
+            if (m_activeSaveId) loadGame(m_activeSaveId);
             m_audio.playMusic("worldmap_music");
             ImGui::CloseCurrentPopup();
         }
@@ -5562,5 +6293,259 @@ void Game::renderShipyardPopup()
         ImGui::TextWrapped("Disembark onto land first before building another.");
     }
 
+    ImGui::End();
+}
+
+// ── Siege camp prompt ─────────────────────────────────────────────────────────
+void Game::renderSiegeCampPrompt()
+{
+    if (!m_showSiegeCampPrompt) return;
+
+    Town* town = nullptr;
+    for (auto& t : m_towns) if (t.id == m_siegePromptTownId) { town = &t; break; }
+    if (!town) { m_showSiegeCampPrompt = false; return; }
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
+                            ImGuiCond_Always, {0.5f, 0.5f});
+    ImGui::SetNextWindowSize({440, 0}, ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.96f);
+    ImGuiWindowFlags wf = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
+                        | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar;
+    if (!ImGui::Begin("##siegeprompt", nullptr, wf)) { ImGui::End(); return; }
+
+    ImGui::TextColored({1.0f, 0.7f, 0.2f, 1.0f}, "Besiege %s?", town->name.c_str());
+    ImGui::Separator(); ImGui::Spacing();
+
+    // Garrison summary
+    ImGui::TextColored({0.9f, 0.4f, 0.4f, 1.0f}, "Garrison:");
+    for (const auto& s : town->garrison) {
+        const UnitDef* ud = m_registry.getUnitDef(s.defId);
+        if (ud) ImGui::Text("  %-22s x%d", ud->name.c_str(), s.count);
+    }
+
+    ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+    ImGui::TextWrapped("Attack now or lay siege and wait for allies. "
+                       "While sieged, defenders cannot leave the town, "
+                       "but they may Fortify (+4 DEF, stronger walls, +3 tower dmg).");
+    ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+    Hero& hero = m_heroes[m_activeHeroIdx];
+    float bw = (ImGui::GetWindowWidth() - 40.0f) / 3.0f;
+
+    // Attack now
+    ImGui::PushStyleColor(ImGuiCol_Button,        {0.55f, 0.15f, 0.15f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.70f, 0.20f, 0.20f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  {0.40f, 0.10f, 0.10f, 1.0f});
+    if (ImGui::Button("Attack Now!", {bw, 34})) {
+        m_showSiegeCampPrompt = false;
+        Hero garrisonHero;
+        garrisonHero.id      = 0;
+        garrisonHero.name    = town->name + " Garrison";
+        garrisonHero.faction = town->faction;
+        garrisonHero.army    = town->garrison;
+        m_lastCombatEnemyId  = 0;
+        m_pendingTownCaptureId = town->id;
+        auto pUnits = makeHeroUnits(hero, m_registry.units(), true);
+        auto gUnits = makeHeroUnits(garrisonHero, m_registry.units(), false);
+        enterCombat(hero, pUnits, garrisonHero, gUnits);
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Storm the town immediately. No waiting for allies.\nYou face the full garrison alone.");
+    ImGui::PopStyleColor(3);
+    ImGui::SameLine(0, 6);
+
+    // Lay siege
+    ImGui::PushStyleColor(ImGuiCol_Button,        {0.15f, 0.35f, 0.60f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.20f, 0.45f, 0.75f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  {0.10f, 0.25f, 0.45f, 1.0f});
+    if (ImGui::Button("Lay Siege", {bw, 34})) {
+        m_showSiegeCampPrompt = false;
+        hero.isSiegeCamping    = true;
+        hero.siegeTargetTownId = town->id;
+        town->underSiege       = true;
+        // Spend 25% of remaining movement
+        int cost = std::max(1, hero.movePool / 4);
+        hero.movePool = std::max(0, hero.movePool - cost);
+        pushPickupEffect(hero.pos, "Siege Camp!", IM_COL32(100, 160, 255, 255));
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Park your army outside the town.\n"
+                          "Defenders can't leave. Allied heroes can join before\n"
+                          "the siege assault fires automatically at end of turn.\n"
+                          "Costs 25%% of remaining movement.");
+    ImGui::PopStyleColor(3);
+    ImGui::SameLine(0, 6);
+
+    // Cancel
+    if (ImGui::Button("Retreat", {bw, 34}))
+        m_showSiegeCampPrompt = false;
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Back away. Do nothing this action.");
+
+    ImGui::End();
+}
+
+// ── Siege indicator overlay ───────────────────────────────────────────────────
+void Game::renderSiegeIndicator()
+{
+    // Draw a pulsing ring around any besieged town visible on screen
+    auto* dl = ImGui::GetBackgroundDrawList();
+    for (const auto& t : m_towns) {
+        if (!t.underSiege) continue;
+        float wx, wy;
+        m_hexRenderer.grid().hexToWorld(t.pos, wx, wy);
+        float sx, sy;
+        m_camera.worldToScreen(wx, wy, sx, sy);
+        // Pulsing alpha
+        float pulse = 0.55f + 0.35f * sinf(m_mapTime * 3.0f);
+        ImU32 col = IM_COL32(255, 200, 60, static_cast<int>(pulse * 255));
+        dl->AddCircle({sx, sy}, 28.0f, col, 24, 3.0f);
+        dl->AddText({sx - 20.0f, sy - 32.0f}, IM_COL32(255,200,60,230), "SIEGE");
+    }
+    // Highlight camped heroes with a blue tent icon
+    for (const auto& h : m_heroes) {
+        if (!h.isSiegeCamping) continue;
+        float wx, wy;
+        m_hexRenderer.grid().hexToWorld(h.pos, wx, wy);
+        float sx, sy;
+        m_camera.worldToScreen(wx, wy, sx, sy);
+        dl->AddCircleFilled({sx, sy - 24.0f}, 6.0f, IM_COL32(100, 180, 255, 200));
+        dl->AddText({sx - 12.0f, sy - 38.0f}, IM_COL32(100,180,255,230), "Camp");
+    }
+}
+
+// ── Siege combat trigger ──────────────────────────────────────────────────────
+void Game::triggerSiegeCombat(uint32_t townId)
+{
+    Town* town = nullptr;
+    for (auto& t : m_towns) if (t.id == townId) { town = &t; break; }
+    if (!town || town->garrison.empty()) return;
+
+    // Collect all camping heroes for this town (combine their armies)
+    std::vector<Hero*> campers;
+    for (auto& h : m_heroes)
+        if (h.isSiegeCamping && h.siegeTargetTownId == townId) campers.push_back(&h);
+    if (campers.empty()) return;
+
+    // Lift siege camp flags
+    for (auto* h : campers) {
+        h->isSiegeCamping    = false;
+        h->siegeTargetTownId = 0;
+    }
+
+    // Lead attacker = first camper; merge other campers' armies into them
+    Hero& lead = *campers[0];
+    for (size_t i = 1; i < campers.size(); ++i) {
+        for (auto& s : campers[i]->army) {
+            bool merged = false;
+            for (auto& ls : lead.army)
+                if (ls.defId == s.defId) { ls.count += s.count; merged = true; break; }
+            if (!merged && lead.army.size() < 7) lead.army.push_back(s);
+        }
+        campers[i]->army.clear();
+    }
+
+    // Build garrison defender hero
+    Hero garrisonHero;
+    garrisonHero.id      = 0;
+    garrisonHero.name    = town->name + " Garrison";
+    garrisonHero.faction = town->faction;
+    garrisonHero.army    = town->garrison;
+
+    // Apply fortify bonuses to garrison hero stats
+    if (town->siegeFortified || town->fortifyDefBonus > 0) {
+        garrisonHero.defense += town->fortifyDefBonus;
+    }
+
+    m_lastCombatEnemyId    = 0;
+    m_pendingTownCaptureId = town->id;
+
+    auto pUnits = makeHeroUnits(lead, m_registry.units(), true);
+    auto gUnits = makeHeroUnits(garrisonHero, m_registry.units(), false);
+
+    // Boost garrison units' defense from fortify
+    if (town->fortifyDefBonus > 0) {
+        for (auto& u : gUnits) u.defense += town->fortifyDefBonus;
+    }
+
+    // Reset fortify state after combat is entered
+    town->underSiege       = false;
+    town->siegeFortified   = false;
+    town->fortifyDefBonus  = 0;
+    town->fortifyWallBonus = 0;
+    town->fortifyTowerBonus= 0;
+
+    enterCombat(lead, pUnits, garrisonHero, gUnits);
+}
+
+// ── March button — visible when hero is selected and no siege target nearby ──
+void Game::renderMarchButton()
+{
+    // Only show when player controls active hero and game is in world map
+    if (m_hotSeatP2Turn) return;
+    if (m_heroes.empty() || m_activeHeroIdx < 0 ||
+        m_activeHeroIdx >= static_cast<int>(m_heroes.size())) return;
+
+    Hero& hero = m_heroes[m_activeHeroIdx];
+    if (hero.isSiegeCamping) return;  // already camped
+
+    // Check if adjacent to any enemy town (siege option is already shown instead)
+    bool nearEnemyTown = false;
+    for (const auto& t : m_towns) {
+        if (t.ownerId != 0 && t.ownerId != 1 &&
+            HexGrid::distance(hero.pos, t.pos) <= 1) {
+            nearEnemyTown = true;
+            break;
+        }
+    }
+    if (nearEnemyTown) return;
+
+    int curWeek = m_turns.week();
+    bool onCooldown = (hero.marchCooldownWeek > curWeek);
+
+    ImGuiIO& io = ImGui::GetIO();
+    float panelW = 200.0f;
+    float panelH = 90.0f;
+    float px = io.DisplaySize.x - panelW - 8.0f;
+    float py = io.DisplaySize.y - panelH - 60.0f;  // above End Turn button area
+
+    ImGui::SetNextWindowPos(ImVec2(px, py), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(panelW, panelH));
+    ImGui::SetNextWindowBgAlpha(0.85f);
+    ImGuiWindowFlags wf = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                          ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar;
+
+    if (ImGui::Begin("##march_btn", nullptr, wf)) {
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.4f, 1.0f), "MARCH");
+        ImGui::Separator();
+
+        if (onCooldown) {
+            ImGui::TextDisabled("Cooldown: Week %d", hero.marchCooldownWeek);
+            ImGui::BeginDisabled();
+            ImGui::Button("March!", ImVec2(-1, 0));
+            ImGui::EndDisabled();
+        } else {
+            int cost = std::max(1, hero.movePool / 4);  // 25% of current movePool
+            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f),
+                               "Cost: %d MP  Bonus: +%d MP", cost, hero.maxMove / 10);
+            if (ImGui::Button("March!", ImVec2(-1, 0))) {
+                hero.movePool -= cost;
+                if (hero.movePool < 0) hero.movePool = 0;
+                // +10% maxMove added at start of next week
+                hero.marchCooldownWeek = curWeek + 1;
+                hero.marchBonusActive  = true;
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "March Order\n\n"
+                    "Push your troops to move faster.\n"
+                    "Costs 25%% of current movement.\n"
+                    "Grants +10%% movement next week.\n"
+                    "Cooldown: 1 week."
+                );
+            }
+        }
+    }
     ImGui::End();
 }

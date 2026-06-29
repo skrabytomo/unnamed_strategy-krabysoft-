@@ -18,9 +18,10 @@ struct DamageResult
 class DamageCalc
 {
 public:
-    // Standard melee/ranged attack
+    // Standard melee/ranged attack. isRanged=true suppresses retaliation (HoMM rule).
     static DamageResult attack(CombatUnit& attacker, CombatUnit& defender,
-                                const CombatGrid& grid, bool isRetaliation = false);
+                                const CombatGrid& grid, bool isRetaliation = false,
+                                bool isRanged = false);
 
     // Tile modifier for a unit standing on a tile
     // Returns damage multiplier (1.0 = normal)

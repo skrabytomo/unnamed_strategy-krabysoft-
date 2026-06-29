@@ -93,6 +93,8 @@ void Game::renderMainMenu()
         ImGui::Spacing();
         if (ImGui::Button("Battle Sim", ImVec2(bw, 40))) m_menuMode = 5;
         ImGui::Spacing();
+        if (ImGui::Button("Watch AI vs AI", ImVec2(bw, 40))) m_menuMode = 6;
+        ImGui::Spacing();
         if (ImGui::Button("Settings",   ImVec2(bw, 40))) m_menuMode = 3;
         ImGui::Spacing();
         if (ImGui::Button("Map Editor", ImVec2(bw, 40))) { enterEditor(); }
@@ -187,45 +189,72 @@ void Game::renderMainMenu()
         }
         ImGui::Spacing();
 
-        // Players (hotseat)
-        ImGui::Text("Players:");
-        for (int np = 1; np <= 2; ++np) {
-            if (np > 1) ImGui::SameLine();
-            bool sel = (m_newGameNumPlayers == np);
-            if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.6f, 1.f));
-            char plbl[16]; std::snprintf(plbl, sizeof(plbl), "%dP##np%d", np, np);
-            if (ImGui::Button(plbl, ImVec2((bw - 2) / 2.f, 26))) m_newGameNumPlayers = np;
-            if (sel) ImGui::PopStyleColor();
+        // Hot-Seat toggle
+        ImGui::Text("Mode:");
+        {
+            bool sel1 = !m_newGameHotSeat;
+            bool sel2 =  m_newGameHotSeat;
+            if (sel1) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.2f, 1.f));
+            if (ImGui::Button("vs AI##hs0", ImVec2((bw - 4) / 2.f, 26))) m_newGameHotSeat = false;
+            if (sel1) ImGui::PopStyleColor();
+            ImGui::SameLine(0, 4);
+            if (sel2) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.3f, 0.6f, 1.f));
+            if (ImGui::Button("2-Player Hot-Seat##hs1", ImVec2((bw - 4) / 2.f, 26))) m_newGameHotSeat = true;
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Two human players take turns on the same screen.");
+            if (sel2) ImGui::PopStyleColor();
         }
+
+        if (m_newGameHotSeat) {
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.f, 1.f), "Player 2 Faction:");
+            static const char* kFacNames2[] = {
+                "Holy Order","Crimson Wardens","Thornkin","Eternal Empire",
+                "Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"
+            };
+            for (int i = 0; i < 9; ++i) {
+                if (i % 3 != 0) ImGui::SameLine();
+                bool sel = (m_p2Faction == i);
+                if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.3f, 0.6f, 1.f));
+                char f2Lbl[40]; std::snprintf(f2Lbl, sizeof(f2Lbl), "%s##p2f%d", kFacNames2[i], i);
+                if (ImGui::Button(f2Lbl, ImVec2((bw - 4) / 3.f, 26))) {
+                    m_p2Faction  = i;
+                    m_p2ClassId  = 0;
+                }
+                if (sel) ImGui::PopStyleColor();
+            }
+            ImGui::Spacing();
+            FactionId p2f = static_cast<FactionId>(m_p2Faction);
+            auto p2classes = m_classRegistry.getClassesForFaction(p2f);
+            if (!p2classes.empty()) {
+                ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.f, 1.f), "Player 2 Class:");
+                bool p2Valid = false;
+                for (auto* c : p2classes) if (c->id == m_p2ClassId) { p2Valid = true; break; }
+                if (!p2Valid) m_p2ClassId = p2classes[0]->id;
+                for (int ci = 0; ci < (int)p2classes.size(); ++ci) {
+                    const HeroClassDef* cls = p2classes[ci];
+                    if (ci % 2 != 0) ImGui::SameLine();
+                    bool sel = (m_p2ClassId == cls->id);
+                    if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.3f, 0.6f, 1.f));
+                    char clbl[48]; std::snprintf(clbl, sizeof(clbl), "%s##p2cl%d", cls->name.c_str(), cls->id);
+                    if (ImGui::Button(clbl, ImVec2((bw - 4) / 2.f, 26))) m_p2ClassId = cls->id;
+                    if (ImGui::IsItemHovered() && !cls->specialtyDesc.empty())
+                        ImGui::SetTooltip("Specialty: %s", cls->specialtyDesc.c_str());
+                    if (sel) ImGui::PopStyleColor();
+                }
+            }
+        }
+
         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
 
-        ImGui::TextDisabled("Choose a slot. Existing save will be overwritten.");
-        ImGui::Spacing();
-
-        for (int s = 0; s < 5; ++s) {
-            std::string path = "saves/save" + std::to_string(s) + ".json";
-            SlotMeta meta = readSlotMeta(path);
-            char lbl[200];
-            if (meta.exists)
-                std::snprintf(lbl, sizeof(lbl),
-                    "Slot %d  |  %s  (%s)  Day %d  Week %d  [overwrite]##ng%d",
-                    s + 1, meta.heroName.c_str(), meta.factionName.c_str(),
-                    meta.day, meta.week, s);
-            else
-                std::snprintf(lbl, sizeof(lbl), "Slot %d  |  Empty##ng%d", s + 1, s);
-
-            ImVec4 tc = meta.exists ? ImVec4(1.0f, 0.65f, 0.15f, 1.0f)
-                                    : ImVec4(0.5f, 0.9f,  0.5f,  1.0f);
-            ImGui::PushStyleColor(ImGuiCol_Text, tc);
-            if (ImGui::Button(lbl, ImVec2(bw, 36))) {
-                m_activeSlot = s;
-                startNewGame();
-                m_state    = GameState::WorldMap;
-                m_menuMode = 0;
-            }
-            ImGui::PopStyleColor();
-            ImGui::Spacing();
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.45f, 0.15f, 1.0f));
+        if (ImGui::Button("Start New Game", ImVec2(bw, 42))) {
+            m_activeSaveId = 0; // will create a new row on first save
+            startNewGame();
+            m_state    = GameState::WorldMap;
+            m_menuMode = 0;
         }
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
         ImGui::Separator(); ImGui::Spacing();
         if (ImGui::Button("Back##ng", ImVec2(bw, 30))) m_menuMode = 0;
     }
@@ -234,82 +263,55 @@ void Game::renderMainMenu()
         header("Load Game");
 
         // General saves (5 slots)
-        ImGui::TextColored({0.7f, 0.7f, 0.7f, 1.0f}, "General Saves");
-        ImGui::Separator();
-        ImGui::Spacing();
-        bool anyGeneral = false;
-        for (int s = 0; s < 5; ++s) {
-            std::string path = "saves/save" + std::to_string(s) + ".json";
-            SlotMeta meta = readSlotMeta(path);
-            if (!meta.exists) {
-                ImGui::TextDisabled("Slot %d  |  Empty", s + 1);
-                ImGui::Spacing();
-                continue;
-            }
-            anyGeneral = true;
-            char lbl[200];
-            std::snprintf(lbl, sizeof(lbl),
-                "Slot %d  |  %s  (%s)  Day %d  Week %d##ld%d",
-                s + 1, meta.heroName.c_str(), meta.factionName.c_str(),
-                meta.day, meta.week, s);
-            float delBtnW = 52.0f;
-            if (ImGui::Button(lbl, ImVec2(bw - delBtnW - 4, 36))) {
-                m_activeSlot = s;
-                if (loadGame(path)) {
-                    m_state    = GameState::WorldMap;
-                    m_menuMode = 0;
-                }
-            }
-            ImGui::SameLine(0, 4);
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.1f, 0.1f, 1.0f));
-            char delLbl[24]; std::snprintf(delLbl, sizeof(delLbl), "Del##dg%d", s);
-            if (ImGui::Button(delLbl, ImVec2(delBtnW, 36))) {
-                std::remove(path.c_str());
-            }
-            ImGui::PopStyleColor();
-            ImGui::Spacing();
-        }
-        if (!anyGeneral) { ImGui::Spacing(); ImGui::TextDisabled("No general saves found."); ImGui::Spacing(); }
+        // List all saves from DB, newest first, grouped by type
+        auto allSaves = m_saveDB.listAll();
+        auto generalSaves  = m_saveDB.list(false);
+        auto campaignSaves = m_saveDB.list(true);
 
-        // Campaign saves (3 slots)
+        static const char* kMissionNames[] = { "I. The Border Burns", "II. The Thornwood Passage", "III. The Convergence Point" };
+
+        auto renderSaveList = [&](std::vector<SaveEntry>& entries, bool isCampaign) {
+            if (entries.empty()) {
+                ImGui::Spacing();
+                ImGui::TextDisabled(isCampaign ? "No campaign saves found." : "No saves found.");
+                ImGui::Spacing();
+                return;
+            }
+            float delBtnW = 52.0f;
+            for (auto& e : entries) {
+                char lbl[256];
+                if (isCampaign) {
+                    const char* mname = (e.missionIdx >= 0 && e.missionIdx < 3) ? kMissionNames[e.missionIdx] : "?";
+                    std::snprintf(lbl, sizeof(lbl), "%s  |  %s  |  %s  Day %d  Week %d##ldc%lld",
+                        e.name.c_str(), mname, e.heroName.c_str(), e.day, e.week, (long long)e.id);
+                } else {
+                    std::snprintf(lbl, sizeof(lbl), "%s  |  %s  (%s)  Day %d  Week %d##ldg%lld",
+                        e.name.c_str(), e.heroName.c_str(), e.factionName.c_str(), e.day, e.week, (long long)e.id);
+                }
+                if (ImGui::Button(lbl, ImVec2(bw - delBtnW - 4, 36))) {
+                    if (loadGame(e.id)) {
+                        m_state    = GameState::WorldMap;
+                        m_menuMode = 0;
+                    }
+                }
+                ImGui::SameLine(0, 4);
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.1f, 0.1f, 1.0f));
+                char delLbl[32]; std::snprintf(delLbl, sizeof(delLbl), "Del##del%lld", (long long)e.id);
+                if (ImGui::Button(delLbl, ImVec2(delBtnW, 36)))
+                    m_saveDB.del(e.id);
+                ImGui::PopStyleColor();
+                ImGui::Spacing();
+            }
+        };
+
+        ImGui::TextColored({0.7f, 0.7f, 0.7f, 1.0f}, "General Saves");
+        ImGui::Separator(); ImGui::Spacing();
+        renderSaveList(generalSaves, false);
+
         ImGui::Spacing();
         ImGui::TextColored({0.7f, 0.7f, 0.7f, 1.0f}, "Campaign Saves");
-        ImGui::Separator();
-        ImGui::Spacing();
-        static const char* kMissionNames[] = { "I. The Border Burns", "II. The Thornwood Passage", "III. The Convergence Point" };
-        bool anyCampaign = false;
-        for (int s = 0; s < 3; ++s) {
-            std::string path = "saves/campaign" + std::to_string(s) + ".json";
-            SlotMeta meta = readSlotMeta(path);
-            if (!meta.exists) {
-                ImGui::TextDisabled("Camp %d  |  Empty", s + 1);
-                ImGui::Spacing();
-                continue;
-            }
-            anyCampaign = true;
-            const char* mname = (meta.missionIdx >= 0 && meta.missionIdx < 3) ? kMissionNames[meta.missionIdx] : "?";
-            char lbl[200];
-            std::snprintf(lbl, sizeof(lbl),
-                "Camp %d  |  %s  |  %s  Day %d  Week %d##ldc%d",
-                s + 1, mname, meta.heroName.c_str(), meta.day, meta.week, s);
-            float delBtnW = 52.0f;
-            if (ImGui::Button(lbl, ImVec2(bw - delBtnW - 4, 36))) {
-                m_campaignActiveSlot = s;
-                if (loadGame(path)) {
-                    m_state    = GameState::WorldMap;
-                    m_menuMode = 0;
-                }
-            }
-            ImGui::SameLine(0, 4);
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.1f, 0.1f, 1.0f));
-            char delLbl[24]; std::snprintf(delLbl, sizeof(delLbl), "Del##dc%d", s);
-            if (ImGui::Button(delLbl, ImVec2(delBtnW, 36))) {
-                std::remove(path.c_str());
-            }
-            ImGui::PopStyleColor();
-            ImGui::Spacing();
-        }
-        if (!anyCampaign) { ImGui::Spacing(); ImGui::TextDisabled("No campaign saves found."); ImGui::Spacing(); }
+        ImGui::Separator(); ImGui::Spacing();
+        renderSaveList(campaignSaves, true);
 
         ImGui::Separator(); ImGui::Spacing();
         if (ImGui::Button("Back##ld", ImVec2(bw, 30))) m_menuMode = 0;
@@ -331,6 +333,24 @@ void Game::renderMainMenu()
         if (ImGui::Checkbox("Fullscreen", &m_settingsFullscreen))
             SDL_SetWindowFullscreen(m_window,
                 m_settingsFullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+
+        // Resolution picker (windowed mode only)
+        if (!m_settingsFullscreen) {
+            static const char* kResLabels[] = { "1280 x 720", "1600 x 900", "1920 x 1080", "2560 x 1440" };
+            static const int   kResW[]      = { 1280, 1600, 1920, 2560 };
+            static const int   kResH[]      = { 720,  900,  1080, 1440 };
+            // Determine current index
+            int curW, curH;
+            SDL_GetWindowSize(m_window, &curW, &curH);
+            int resIdx = 0;
+            for (int i = 0; i < 4; ++i)
+                if (kResW[i] == curW && kResH[i] == curH) { resIdx = i; break; }
+            if (ImGui::Combo("Resolution", &resIdx, kResLabels, 4)) {
+                SDL_SetWindowSize(m_window, kResW[resIdx], kResH[resIdx]);
+                SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+            }
+        }
+
         ImGui::Checkbox("Floating Combat Numbers", &m_settingsShowDmgNums);
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("Show damage numbers floating above units during combat.");
@@ -464,6 +484,67 @@ void Game::renderMainMenu()
 
         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
         if (ImGui::Button("Back##sim", ImVec2(bw, 30))) m_menuMode = 0;
+    }
+    // ── 6: Watch AI vs AI ─────────────────────────────────────────────────────
+    else if (m_menuMode == 6) {
+        header("WATCH AI vs AI");
+
+        static const char* kFacNames[] = {
+            "Holy Order","Crimson Wardens","Thornkin","Eternal Empire",
+            "Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"
+        };
+
+        ImGui::TextColored({0.4f, 0.8f, 1.0f, 1.0f}, "Faction 1 (Blue):");
+        for (int i = 0; i < 9; ++i) {
+            if (i % 3 != 0) ImGui::SameLine();
+            bool sel = (m_watchAIFaction1 == i);
+            if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.4f, 0.6f, 1.f));
+            char lbl[40]; std::snprintf(lbl, sizeof(lbl), "%s##w1f%d", kFacNames[i], i);
+            if (ImGui::Button(lbl, ImVec2((bw - 4) / 3.f, 26))) m_watchAIFaction1 = i;
+            if (sel) ImGui::PopStyleColor();
+        }
+        ImGui::Spacing();
+
+        ImGui::TextColored({1.0f, 0.5f, 0.3f, 1.0f}, "Faction 2 (Red):");
+        for (int i = 0; i < 9; ++i) {
+            if (i % 3 != 0) ImGui::SameLine();
+            bool sel = (m_watchAIFaction2 == i);
+            if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.2f, 0.1f, 1.f));
+            char lbl[40]; std::snprintf(lbl, sizeof(lbl), "%s##w2f%d", kFacNames[i], i);
+            if (ImGui::Button(lbl, ImVec2((bw - 4) / 3.f, 26))) m_watchAIFaction2 = i;
+            if (sel) ImGui::PopStyleColor();
+        }
+        ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+        ImGui::Text("Auto-advance speed:");
+        ImGui::SetNextItemWidth(bw);
+        ImGui::SliderFloat("##waisp", &m_watchAISpeed, 0.25f, 4.0f, "%.2fx");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("1.0 = 1 end-turn per second. Higher = faster.");
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.45f, 0.15f, 1.0f));
+        if (ImGui::Button("Start Watching", ImVec2(bw, 42))) {
+            m_newGameFaction = m_watchAIFaction1;
+            m_newGameMapSize = 1;  // Medium map
+            m_newGameDifficulty = 1;
+            m_newGameClassId = 0;
+            startNewGame();
+            // Override enemy faction to m_watchAIFaction2
+            if (!m_enemyHeroes.empty())
+                m_enemyHeroes[0].faction = static_cast<FactionId>(m_watchAIFaction2);
+            for (auto& t : m_towns)
+                if (t.ownerId > 1)
+                    t.faction = static_cast<FactionId>(m_watchAIFaction2);
+            m_watchingAI  = true;
+            m_fogDisabled = true;
+            m_watchAITimer= 1.0f / m_watchAISpeed;
+            m_state    = GameState::WorldMap;
+            m_menuMode = 0;
+        }
+        ImGui::PopStyleColor();
+        ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+        if (ImGui::Button("Back##wai", ImVec2(bw, 30))) m_menuMode = 0;
     }
 
     ImGui::End();

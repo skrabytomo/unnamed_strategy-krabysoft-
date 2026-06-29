@@ -5,6 +5,7 @@
 #include "../data/Resources.h"
 #include "../hero/Hero.h"
 #include <functional>
+#include <unordered_map>
 #include <imgui.h>
 
 class TownScreen
@@ -29,6 +30,7 @@ private:
     void rebuildBuildingButtons();
     void rebuildRecruitButtons();
     void drawBuildingTree(UIRenderer& rdr);
+    void drawPanorama(UIRenderer& rdr);
     void drawRecruitPanel(UIRenderer& rdr);
     void drawIncomePanel(UIRenderer& rdr);
 
@@ -72,6 +74,13 @@ private:
     // Faction art for the town screen banner (set from Game)
     ImTextureID m_townBannerTex = nullptr;
 
+    // Building category icon atlas: 6 cols × 1 row (64×64 each)
+    // Column order matches BuildingCategory enum: Dwelling/Support/Economy/Special/Fort/MageGuild
+    ImTextureID m_buildingIconTex = nullptr;
+
+    // Per-building art keyed by BID (optional — shown in tooltip preview + button thumbnail)
+    std::unordered_map<int, ImTextureID> m_buildingArt;
+
     // Unit sprite textures [tier-1] for the recruit panel
     static constexpr int MAX_TIERS = 6;
     ImTextureID m_unitTex[MAX_TIERS] = {};
@@ -79,11 +88,20 @@ private:
     // Recruit destination toggle
     bool m_recruitToGarrison = false;
 
+    // Building view mode: true = panorama grid, false = list
+    bool m_panoramaMode = true;
+
 public:
-    void setTownBannerTex(ImTextureID t) { m_townBannerTex = t; }
+    void setTownBannerTex(ImTextureID t)    { m_townBannerTex    = t; }
+    void setBuildingIconTex(ImTextureID t)  { m_buildingIconTex  = t; }
+    void setBuildingArt(int bid, ImTextureID t) { if (t) m_buildingArt[bid] = t; }
     void setUnitTex(int tierIdx, ImTextureID t) {
         if (tierIdx >= 0 && tierIdx < MAX_TIERS) m_unitTex[tierIdx] = t;
     }
     void setRecruitTarget(bool toGarrison) { m_recruitToGarrison = toGarrison; }
     bool recruitToGarrison() const { return m_recruitToGarrison; }
+
+    // Called instead of building directly when a PathA upgrade is clicked.
+    // Args: pathA building id, pathB building id.
+    std::function<void(int, int)> onUpgradePathChoice;
 };

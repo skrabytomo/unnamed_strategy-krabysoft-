@@ -1,6 +1,7 @@
 #include "Game.h"
 #include <cstdio>
 #include <algorithm>
+#include "../town/BuildingRegistry.h"
 #include "../magic/SpellRegistry.h"
 #include "../world/HexGrid.h"
 #include "../world/FogOfWar.h"
@@ -54,7 +55,7 @@ void Game::renderTown()
                 m_showMageGuildPanel = !m_showMageGuildPanel;
             ImGui::SameLine();
         }
-        if (town && town->ownerId == static_cast<uint32_t>(currentPlayerId())) {
+        if (town && town->ownerId == currentPlayerId()) {
             if (ImGui::Button(m_showTavernPanel ? "[Tavern X]" : "Tavern"))
                 m_showTavernPanel = !m_showTavernPanel;
             ImGui::SameLine();
@@ -71,7 +72,7 @@ void Game::renderTown()
         {
             bool anyMarket = false;
             for (const auto& t : m_towns)
-                if (t.ownerId == static_cast<uint32_t>(currentPlayerId()) && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
+                if (t.ownerId == currentPlayerId() && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
             if (!anyMarket) ImGui::BeginDisabled();
             if (ImGui::Button(m_showMarketPanel ? "[Market X]" : "Market"))
                 m_showMarketPanel = !m_showMarketPanel;
@@ -88,6 +89,75 @@ void Game::renderTown()
                 m_showArtifactForgePanel = !m_showArtifactForgePanel;
             ImGui::SameLine();
         }
+        // Fortify — only when this town is under siege and not yet fortified this turn
+        // Resolve mutable pointer so we can set fortify flags
+        Town* mutableTown = nullptr;
+        if (town) { for (auto& t : m_towns) if (t.id == town->id) { mutableTown = &t; break; } }
+        if (mutableTown && mutableTown->underSiege && !mutableTown->siegeFortified) {
+            // Cost: 500 Gold + 5 of faction primary resource
+            auto factionPrimary = [](FactionId f) -> ResourceType {
+                switch (f) {
+                    case FactionId::HolyOrder:     return ResourceType::FaithStones;
+                    case FactionId::CrimsonWardens:return ResourceType::FaithStones;
+                    case FactionId::Thornkin:      return ResourceType::VerdantSap;
+                    case FactionId::EternalEmpire: return ResourceType::Mercury;
+                    case FactionId::Bloodsworn:    return ResourceType::BloodEssence;
+                    case FactionId::Voidkin:       return ResourceType::VerdantSap;
+                    case FactionId::IronAssembly:  return ResourceType::Iron;
+                    case FactionId::Amalgamate:    return ResourceType::BloodEssence;
+                    case FactionId::Convergence:   return ResourceType::Mercury;
+                    default:                       return ResourceType::Gold;
+                }
+            };
+            ResourceType primRes = factionPrimary(mutableTown->faction);
+            Resources& res = (m_hotSeatMode && m_hotSeatP2Turn) ? m_player2Resources : m_playerResources;
+            bool canAfford = res.get(ResourceType::Gold) >= 500 &&
+                             res.get(primRes) >= 5;
+
+            ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.7f, 0.4f, 0.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.6f, 0.0f, 1.0f));
+            if (!canAfford) ImGui::BeginDisabled();
+            if (ImGui::Button("Fortify!")) {
+                res.add(ResourceType::Gold, -500);
+                res.add(primRes, -5);
+                mutableTown->siegeFortified    = true;
+                mutableTown->fortifyDefBonus   = 4;
+                mutableTown->fortifyWallBonus  = 2;
+                mutableTown->fortifyTowerBonus = 3;
+            }
+            if (!canAfford) ImGui::EndDisabled();
+            ImGui::PopStyleColor(2);
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                if (canAfford) {
+                    ImGui::SetTooltip(
+                        "Fortify\n\n"
+                        "Rally defenders before the siege assault.\n"
+                        "+4 DEF to all garrison units\n"
+                        "+2 wall HP rounds\n"
+                        "+3 tower damage per shot\n\n"
+                        "Cost: 500 Gold + 5 %s\n"
+                        "One use per siege turn.",
+                        resourceName(primRes)
+                    );
+                } else {
+                    ImGui::SetTooltip(
+                        "Fortify\n\n"
+                        "Insufficient resources.\n"
+                        "Requires 500 Gold + 5 %s.",
+                        resourceName(primRes)
+                    );
+                }
+            }
+            ImGui::SameLine();
+        } else if (mutableTown && mutableTown->underSiege && mutableTown->siegeFortified) {
+            ImGui::BeginDisabled();
+            ImGui::Button("Fortified");
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGui::SetTooltip("Already fortified this siege turn.");
+            ImGui::SameLine();
+        }
+
         // Spacer + exit button pushed to the right
         ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - 130.0f);
         ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.5f, 0.05f, 0.05f, 1.0f));
@@ -104,6 +174,7 @@ void Game::renderTown()
     if (m_showArtifactForgePanel) renderArtifactForge();
     if (m_showGarrisonPanel)     renderGarrisonPanel();
     if (m_showCapturePopup) renderCapturePopup();
+    if (m_showUpgradePathPopup) renderUpgradePathPopup();
     endImGuiFrame();
 }
 
@@ -339,7 +410,7 @@ void Game::renderMageGuild()
         ImGui::End(); return;
     }
 
-    ImGui::Text("Gold: %d", m_playerResources.get(ResourceType::Gold));
+    ImGui::Text("Gold: %d", currentResources().get(ResourceType::Gold));
     if (costMult < 1.0f)
         ImGui::TextColored(ImVec4(0.4f,1.f,0.6f,1.f), "Tier %d discount: %.0f%% off",
                            tierLevel, (1.0f - costMult) * 100.0f);
@@ -357,7 +428,7 @@ void Game::renderMageGuild()
             ImGui::TextColored(ImVec4(0.4f,1.f,0.4f,1.f), "[known] %s", sp->name);
         } else {
             int cost = static_cast<int>(entries_ref[i].goldCost * costMult);
-            bool canAfford = m_playerResources.get(ResourceType::Gold) >= cost;
+            bool canAfford = currentResources().get(ResourceType::Gold) >= cost;
             if (!canAfford) ImGui::BeginDisabled();
             char btn[80];
             if (costMult < 1.0f)
@@ -367,7 +438,7 @@ void Game::renderMageGuild()
                 std::snprintf(btn, sizeof(btn), "Learn %s  (%dg)", sp->name, cost);
             if (ImGui::Button(btn, ImVec2(-1,0))) {
                 hero.knownSpells.push_back(sp->id);
-                m_playerResources.add(ResourceType::Gold, -cost);
+                currentResources().add(ResourceType::Gold, -cost);
             }
             if (!canAfford) ImGui::EndDisabled();
         }
@@ -396,13 +467,13 @@ void Game::renderMageGuild()
             ImGui::TextColored(ImVec4(0.4f,1.f,0.4f,1.f), "[known] %s", sp->name);
         } else {
             int cost = static_cast<int>(ne.goldCost * costMult);
-            bool canAfford = m_playerResources.get(ResourceType::Gold) >= cost;
+            bool canAfford = currentResources().get(ResourceType::Gold) >= cost;
             if (!canAfford) ImGui::BeginDisabled();
             char btn[80];
             std::snprintf(btn, sizeof(btn), "Learn %s  (%dg)", sp->name, cost);
             if (ImGui::Button(btn, ImVec2(-1, 0))) {
                 hero.knownSpells.push_back(sp->id);
-                m_playerResources.add(ResourceType::Gold, -cost);
+                currentResources().add(ResourceType::Gold, -cost);
             }
             if (!canAfford) ImGui::EndDisabled();
         }
@@ -434,9 +505,9 @@ void Game::renderArtifactForge()
     ImGui::Separator();
 
     // Show current resources
-    ImGui::Text("Gold: %d", m_playerResources.get(ResourceType::Gold));
+    ImGui::Text("Gold: %d", currentResources().get(ResourceType::Gold));
     ImGui::SameLine(160.0f);
-    ImGui::Text("Iron: %d", m_playerResources.get(ResourceType::Iron));
+    ImGui::Text("Iron: %d", currentResources().get(ResourceType::Iron));
     ImGui::Separator();
 
     auto craftables = m_artifactRegistry.getCraftable();
@@ -462,7 +533,7 @@ void Game::renderArtifactForge()
         bool canAfford = true;
         for (int rt = 0; rt < RESOURCE_COUNT && canAfford; ++rt) {
             int needed = art->craftCost.get(static_cast<ResourceType>(rt));
-            if (needed > 0 && m_playerResources.get(static_cast<ResourceType>(rt)) < needed)
+            if (needed > 0 && currentResources().get(static_cast<ResourceType>(rt)) < needed)
                 canAfford = false;
         }
 
@@ -498,7 +569,7 @@ void Game::renderArtifactForge()
                 // Deduct cost
                 for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
                     int needed = art->craftCost.get(static_cast<ResourceType>(rt));
-                    if (needed > 0) m_playerResources.add(static_cast<ResourceType>(rt), -needed);
+                    if (needed > 0) currentResources().add(static_cast<ResourceType>(rt), -needed);
                 }
                 // Auto-equip if slot is free, else add to inventory
                 if (hero.artifacts.getEquipped(art->slot) == 0) {
@@ -521,7 +592,7 @@ void Game::renderArtifactForge()
 void Game::renderTavern()
 {
     const Town* town = m_townScreen.currentTown();
-    if (!town || town->ownerId != static_cast<uint32_t>(currentPlayerId())) return;  // only in owned towns
+    if (!town || town->ownerId != currentPlayerId()) return;  // only in owned towns
 
     static constexpr int HIRE_COST  = 2500;
     static constexpr int MAX_HEROES = 3;
@@ -534,7 +605,7 @@ void Game::renderTavern()
         ImGui::End(); return;
     }
 
-    ImGui::Text("Gold: %d", m_playerResources.get(ResourceType::Gold));
+    ImGui::Text("Gold: %d", currentResources().get(ResourceType::Gold));
     ImGui::Separator();
 
     if (static_cast<int>(m_heroes.size()) >= MAX_HEROES) {
@@ -628,9 +699,9 @@ void Game::renderTavern()
     if (!activeDefeatedPool.empty()) {
         ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f),
                            "Defeated Heroes  (%dg to rehire):", REHIRE_COST);
-        bool canRehire = m_playerResources.get(ResourceType::Gold) >= REHIRE_COST;
-        for (int i = 0; i < (int)activeDefeatedPool.size(); ++i) {
-            Hero& dh = activeDefeatedPool[i];
+        bool canRehire = currentResources().get(ResourceType::Gold) >= REHIRE_COST;
+        for (int i = 0; i < (int)m_defeatedHeroPool.size(); ++i) {
+            Hero& dh = m_defeatedHeroPool[i];
             ImGui::PushID(1000 + i);
             ImGui::Separator();
             const HeroClassDef* cls = m_classRegistry.getClass(dh.classId);
@@ -644,7 +715,7 @@ void Game::renderTavern()
             char btn[48];
             std::snprintf(btn, sizeof(btn), "Rehire %s", dh.name.c_str());
             if (ImGui::Button(btn, ImVec2(-1, 0))) {
-                m_playerResources.add(ResourceType::Gold, -REHIRE_COST);
+                currentResources().add(ResourceType::Gold, -REHIRE_COST);
                 spawnHero(dh);
                 gLog("Rehired defeated hero: %s\n", dh.name.c_str());
                 activeDefeatedPool.erase(activeDefeatedPool.begin() + i);
@@ -657,7 +728,7 @@ void Game::renderTavern()
 
     // ── Fresh candidates ──────────────────────────────────────────────────────
     ImGui::TextDisabled("Choose a hero to hire  (%dg each):", HIRE_COST);
-    bool canAfford = m_playerResources.get(ResourceType::Gold) >= HIRE_COST;
+    bool canAfford = currentResources().get(ResourceType::Gold) >= HIRE_COST;
 
     for (int c = 0; c < NUM_CANDIDATES; ++c) {
         Hero cand = buildHero(c);
@@ -694,8 +765,8 @@ void Game::renderTavern()
         char btnLabel[48];
         std::snprintf(btnLabel, sizeof(btnLabel), "Hire %s", cand.name.c_str());
         if (ImGui::Button(btnLabel, ImVec2(-1, 0))) {
-            m_playerResources.add(ResourceType::Gold, -HIRE_COST);
-            cand.id  = m_nextHeroId++;
+            currentResources().add(ResourceType::Gold, -HIRE_COST);
+            cand.id  = 200u + static_cast<uint32_t>(m_heroes.size());
             spawnHero(cand);
             gLog("Hired hero: %s (%s)\n", cand.name.c_str(), cls ? cls->name : "?");
         }
@@ -706,6 +777,98 @@ void Game::renderTavern()
     ImGui::Separator();
     ImGui::TextDisabled("Roster: %d/%d heroes", (int)m_heroes.size(), MAX_HEROES);
     ImGui::End();
+}
+
+// ── Upgrade Path A/B choice popup ─────────────────────────────────────────────
+void Game::renderUpgradePathPopup()
+{
+    const Town* ct = m_townScreen.currentTown();
+    if (!ct) { m_showUpgradePathPopup = false; return; }
+    Town* town = nullptr;
+    for (auto& t : m_towns) if (t.id == ct->id) { town = &t; break; }
+    if (!town) { m_showUpgradePathPopup = false; return; }
+
+    const BuildingDef* defA = m_registry.getBuildingDef(m_upgradePathA);
+    const BuildingDef* defB = m_registry.getBuildingDef(m_upgradePathB);
+    if (!defA || !defB) { m_showUpgradePathPopup = false; return; }
+
+    // Find unit defs for each path
+    const UnitDef* unitA = nullptr;
+    const UnitDef* unitB = nullptr;
+    for (const auto& ud : m_registry.units()) {
+        if (ud.faction == town->faction && ud.tier == defA->tier && ud.path == UpgradePath::PathA)
+            unitA = &ud;
+        if (ud.faction == town->faction && ud.tier == defB->tier && ud.path == UpgradePath::PathB)
+            unitB = &ud;
+    }
+
+    ImGui::OpenPopup("Choose Upgrade Path");
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(560, 0));
+
+    if (ImGui::BeginPopupModal("Choose Upgrade Path", nullptr,
+            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.4f, 1.0f),
+                           "Choose an upgrade path for Tier %d:", defA->tier);
+        ImGui::TextDisabled("This choice is permanent — the other path will be locked out.");
+        ImGui::Spacing();
+
+        auto drawPathCol = [&](const BuildingDef* def, const UnitDef* ud, const char* label) {
+            ImGui::BeginGroup();
+            ImGui::TextColored(ImVec4(0.6f, 0.9f, 1.0f, 1.0f), "%s", label);
+            ImGui::Separator();
+            ImGui::Text("%s", def->name.c_str());
+            if (!def->description.empty())
+                ImGui::TextDisabled("%s", def->description.c_str());
+            ImGui::Spacing();
+            if (ud) {
+                ImGui::Text("Unit: %s", ud->name.c_str());
+                ImGui::Text("HP %d  ATK %d  DEF %d", ud->hp, ud->attack, ud->defense);
+                ImGui::Text("Dmg %d-%d  Spd %d", ud->damage_min, ud->damage_max, ud->speed);
+                if (ud->range > 0) ImGui::Text("Range %d (%d shots)", ud->range, ud->shots);
+                if (ud->flying)    ImGui::TextColored(ImVec4(0.7f,0.8f,1.0f,1.0f), "[Flying]");
+                if (ud->vampiric)  ImGui::TextColored(ImVec4(0.9f,0.3f,0.3f,1.0f), "[Vampiric]");
+            } else {
+                ImGui::TextDisabled("(no unit data)");
+            }
+            ImGui::Spacing();
+            ImGui::Text("Cost: %s", def->cost.get(ResourceType::Gold) > 0 ?
+                        (std::to_string(def->cost.get(ResourceType::Gold)) + " Gold").c_str() : "?");
+            ImGui::EndGroup();
+        };
+
+        ImGui::Columns(2, "##pathcols", true);
+        drawPathCol(defA, unitA, "  PATH A  ");
+        ImGui::NextColumn();
+        drawPathCol(defB, unitB, "  PATH B  ");
+        ImGui::Columns(1);
+        ImGui::Spacing();
+        ImGui::Separator();
+
+        auto tryBuild = [&](int buildingId) {
+            m_townScreen.currentTown();  // ensure valid
+            town->build(buildingId, m_registry.buildings(), m_playerResources);
+            m_showUpgradePathPopup = false;
+            ImGui::CloseCurrentPopup();
+        };
+
+        ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.1f, 0.4f, 0.7f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.6f, 1.0f, 1.0f));
+        if (ImGui::Button("Choose Path A", ImVec2(200, 0))) tryBuild(m_upgradePathA);
+        ImGui::PopStyleColor(2);
+        ImGui::SameLine(0, 20);
+        ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.5f, 0.2f, 0.6f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 0.3f, 0.9f, 1.0f));
+        if (ImGui::Button("Choose Path B", ImVec2(200, 0))) tryBuild(m_upgradePathB);
+        ImGui::PopStyleColor(2);
+        ImGui::SameLine(0, 20);
+        if (ImGui::Button("Cancel")) {
+            m_showUpgradePathPopup = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
 }
 
 // ── Capture notification popup ────────────────────────────────────────────────
@@ -773,10 +936,7 @@ void Game::renderPauseMenu()
         ImGui::Spacing();
 
         if (ImGui::Button("Save Game  [F5]", ImVec2(-1, 32))) {
-            if (m_state == GameState::Campaign)
-                saveGame("saves/campaign" + std::to_string(m_campaignActiveSlot) + ".json");
-            else
-                saveGame("saves/save" + std::to_string(m_activeSlot) + ".json");
+            saveGame();
             m_showPauseMenu = false;
             ImGui::CloseCurrentPopup();
         }
@@ -898,6 +1058,59 @@ void Game::renderWeekSummary()
     }
 }
 
+// ── Hot-seat handoff screen ───────────────────────────────────────────────────
+void Game::renderHotSeatHandoff()
+{
+    ImGui::OpenPopup("##hotseat_handoff");
+    ImVec2 centre = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(centre, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(340, 0), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.97f);
+
+    if (ImGui::BeginPopupModal("##hotseat_handoff", nullptr,
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize)) {
+        // Dim the title bar text via centering
+        const char* title = m_hotSeatP2Turn ? "PLAYER 2's TURN" : "PLAYER 1's TURN";
+        ImVec4 col = m_hotSeatP2Turn ? ImVec4(0.4f, 0.7f, 1.0f, 1.0f)
+                                      : ImVec4(1.0f, 0.85f, 0.2f, 1.0f);
+        float tw = ImGui::CalcTextSize(title).x;
+        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - tw) * 0.5f);
+        ImGui::TextColored(col, "%s", title);
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Show whose resources
+        const Resources& res = m_hotSeatP2Turn ? m_player2Resources : m_playerResources;
+        ImGui::TextColored(ImVec4(0.7f,0.7f,0.7f,1.f), "Resources:");
+        ImGui::Text("  Gold: %d   Iron: %d",
+            res.get(ResourceType::Gold), res.get(ResourceType::Iron));
+        ImGui::Spacing();
+
+        const char* hint = m_hotSeatP2Turn
+            ? "Pass the device to Player 2, then click Continue."
+            : "Pass the device to Player 1, then click Continue.";
+        ImGui::TextWrapped("%s", hint);
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        float bw = ImGui::GetWindowWidth() - 32.0f;
+        if (ImGui::Button("Continue", ImVec2(bw, 36))) {
+            m_hotSeatHandoff = false;
+            ImGui::CloseCurrentPopup();
+            // Snap camera to the active player's hero
+            const std::vector<Hero>* activeHeroes = m_hotSeatP2Turn
+                ? &m_enemyHeroes : &(const std::vector<Hero>&)m_heroes;
+            if (!activeHeroes->empty()) {
+                float cx, cy;
+                m_hexRenderer.grid().hexToWorld((*activeHeroes)[0].pos, cx, cy);
+                m_camera.setPosition(cx, cy);
+            }
+        }
+        ImGui::EndPopup();
+    }
+}
+
 // ── State transitions ─────────────────────────────────────────────────────────
 void Game::enterTown(Town* town)
 {
@@ -907,13 +1120,21 @@ void Game::enterTown(Town* town)
     // Only treat the hero as "in town" if they are physically on or adjacent to the town tile.
     // Remote access (via HUD panel) still opens the screen but routes recruits to the garrison.
     Hero* hero = nullptr;
-    if (!m_heroes.empty()) {
+    if (m_hotSeatMode && m_hotSeatP2Turn && !m_enemyHeroes.empty()) {
+        // P2's turn: look in enemyHeroes
+        int sel = (m_selectedEnemyHero >= 0 && m_selectedEnemyHero < (int)m_enemyHeroes.size())
+                  ? m_selectedEnemyHero : 0;
+        Hero& h = m_enemyHeroes[sel];
+        if (h.pos == town->pos || HexGrid::distance(h.pos, town->pos) <= 1)
+            hero = &h;
+    } else if (!m_heroes.empty()) {
         Hero& h = m_heroes[m_activeHeroIdx];
         if (h.pos == town->pos || HexGrid::distance(h.pos, town->pos) <= 1)
             hero = &h;
     }
-    // Entering a player-owned town restores hero HP fully
-    if (hero && town->ownerId == static_cast<uint32_t>(currentPlayerId()) && hero->heroHp < hero->heroMaxHp) {
+    // Entering an owned town restores hero HP fully
+    int currentPlayerId = (m_hotSeatMode && m_hotSeatP2Turn) ? 2 : 1;
+    if (hero && town->ownerId == currentPlayerId && hero->heroHp < hero->heroMaxHp) {
         hero->heroHp = hero->heroMaxHp;
         pushPickupEffect(town->pos, "Hero healed!", IM_COL32(180, 255, 180, 255));
     }
@@ -932,11 +1153,74 @@ void Game::enterTown(Town* town)
     // Wire faction art + unit textures for the recruit panel
     {
         int fid = std::clamp(static_cast<int>(town->faction), 0, NUM_FACTIONS - 1);
-        m_townScreen.setTownBannerTex(m_townTex[fid].ok()
-            ? (ImTextureID)(uintptr_t)m_townTex[fid].id() : nullptr);
+        m_townScreen.setTownBannerTex(m_portraitTex[fid].ok()
+            ? (ImTextureID)(uintptr_t)m_portraitTex[fid].id() : nullptr);
+        m_townScreen.setBuildingIconTex(m_buildingIconTex.ok()
+            ? (ImTextureID)(uintptr_t)m_buildingIconTex.id() : nullptr);
+        // Per-faction single-tier buildings
+        auto setFA = [&](int bid, const Texture* tex) {
+            m_townScreen.setBuildingArt(bid,
+                tex[fid].ok() ? (ImTextureID)(uintptr_t)tex[fid].id() : nullptr);
+        };
+        setFA(BID::FORT,      m_fortTex);
+        setFA(BID::MARKET,    m_marketTex);
+        setFA(BID::TOWN_HALL, m_townHallTex);
+        setFA(BID::CITY_HALL, m_cityHallTex);
+
+        // Faction-specific mage guild art
+        static const int kMageGuildBIDs[MAGE_GUILD_TIERS] = {
+            BID::MAGE_GUILD, BID::MAGE_GUILD_T2, BID::MAGE_GUILD_T3, BID::MAGE_GUILD_T4
+        };
+        for (int t = 0; t < MAGE_GUILD_TIERS; ++t)
+            m_townScreen.setBuildingArt(kMageGuildBIDs[t],
+                m_mageGuildTex[fid][t].ok()
+                    ? (ImTextureID)(uintptr_t)m_mageGuildTex[fid][t].id() : nullptr);
+
+        // Faction-specific warehouse art
+        static const int kWarehouseBIDs[WAREHOUSE_TIERS] = {
+            BID::WAREHOUSE, BID::WAREHOUSE_T2, BID::WAREHOUSE_T3
+        };
+        for (int t = 0; t < WAREHOUSE_TIERS; ++t)
+            m_townScreen.setBuildingArt(kWarehouseBIDs[t],
+                m_warehouseTex[fid][t].ok()
+                    ? (ImTextureID)(uintptr_t)m_warehouseTex[fid][t].id() : nullptr);
         for (int t = 0; t < NUM_UNIT_TIERS; ++t)
             m_townScreen.setUnitTex(t, m_unitTex[fid][t].ok()
                 ? (ImTextureID)(uintptr_t)m_unitTex[fid][t].id() : nullptr);
+
+        // HolyOrder dwelling art (base + A/B variants per tier)
+        if (town->faction == FactionId::HolyOrder) {
+            static const int kHOBIDs[HO_DWELLING_TIERS][HO_DWELLING_VARIANTS] = {
+                { BID::HO_T1_BASE, BID::HO_T1_A, BID::HO_T1_B },
+                { BID::HO_T2_BASE, BID::HO_T2_A, BID::HO_T2_B },
+                { BID::HO_T3_BASE, BID::HO_T3_A, BID::HO_T3_B },
+                { BID::HO_T4_BASE, BID::HO_T4_A, BID::HO_T4_B },
+                { BID::HO_T5_BASE, BID::HO_T5_A, BID::HO_T5_B },
+                { BID::HO_T6_BASE, BID::HO_T6_A, BID::HO_T6_B },
+            };
+            for (int t = 0; t < HO_DWELLING_TIERS; ++t)
+                for (int v = 0; v < HO_DWELLING_VARIANTS; ++v)
+                    m_townScreen.setBuildingArt(kHOBIDs[t][v],
+                        m_hoDwellingTex[t][v].ok()
+                            ? (ImTextureID)(uintptr_t)m_hoDwellingTex[t][v].id() : nullptr);
+        }
+
+        // CrimsonWardens dwelling art (base + A/B variants per tier)
+        if (town->faction == FactionId::CrimsonWardens) {
+            static const int kCWBIDs[CW_DWELLING_TIERS][CW_DWELLING_VARIANTS] = {
+                { BID::CW_T1, BID::CW_T1_A, BID::CW_T1_B },
+                { BID::CW_T2, BID::CW_T2_A, BID::CW_T2_B },
+                { BID::CW_T3, BID::CW_T3_A, BID::CW_T3_B },
+                { BID::CW_T4, BID::CW_T4_A, BID::CW_T4_B },
+                { BID::CW_T5, BID::CW_T5_A, BID::CW_T5_B },
+                { BID::CW_T6, BID::CW_T6_A, BID::CW_T6_B },
+            };
+            for (int t = 0; t < CW_DWELLING_TIERS; ++t)
+                for (int v = 0; v < CW_DWELLING_VARIANTS; ++v)
+                    m_townScreen.setBuildingArt(kCWBIDs[t][v],
+                        m_cwDwellingTex[t][v].ok()
+                            ? (ImTextureID)(uintptr_t)m_cwDwellingTex[t][v].id() : nullptr);
+        }
     }
     // Play faction-specific theme; fall back to generic town_music
     int fid = static_cast<int>(town->faction);
@@ -973,7 +1257,7 @@ void Game::renderMarketplace()
     // Gate: need at least one player town with MARKET
     bool anyMarket = false;
     for (const auto& t : m_towns)
-        if (t.ownerId == static_cast<uint32_t>(currentPlayerId()) && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
+        if (t.ownerId == currentPlayerId() && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
     if (!anyMarket) { m_showMarketPanel = false; return; }
 
     static const int SELL_RATE = 4;  // HoMM3-style 4:1 exchange
@@ -1013,7 +1297,7 @@ void Game::renderMarketplace()
 
     for (int i = 0; i < RESOURCE_COUNT; ++i) {
         ImVec2 cp = { rowX + i * (CARD_W + CARD_GAP), rowY };
-        int val   = m_playerResources.get(static_cast<ResourceType>(i));
+        int val   = currentResources().get(static_cast<ResourceType>(i));
         bool isSell = (m_marketSellType == i);
         bool isBuy  = (m_marketBuyType  == i);
 
@@ -1121,7 +1405,7 @@ void Game::renderMarketplace()
     ImGui::Spacing();
 
     // ── Trade buttons ─────────────────────────────────────────────────────────
-    int have      = m_playerResources.get(static_cast<ResourceType>(m_marketSellType));
+    int have      = currentResources().get(static_cast<ResourceType>(m_marketSellType));
     int maxTrades = have / SELL_RATE;
 
     ImGui::TextColored(ImVec4(0.9f, 0.75f, 0.3f, 1.0f),
@@ -1138,8 +1422,8 @@ void Game::renderMarketplace()
 
     auto doTrade = [&](int count) {
         if (count <= 0 || count > maxTrades) return;
-        m_playerResources.add(static_cast<ResourceType>(m_marketSellType), -(count * SELL_RATE));
-        m_playerResources.add(static_cast<ResourceType>(m_marketBuyType),   count * BUY_RATE);
+        currentResources().add(static_cast<ResourceType>(m_marketSellType), -(count * SELL_RATE));
+        currentResources().add(static_cast<ResourceType>(m_marketBuyType),   count * BUY_RATE);
     };
 
     ImGui::Spacing();

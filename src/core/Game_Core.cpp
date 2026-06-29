@@ -24,16 +24,6 @@ extern "C" {
 
 static constexpr const char* HIDEOUT_PATH = "saves/hideout.db";
 
-static std::string slotPath(int slot)
-{
-    return "saves/save" + std::to_string(slot) + ".json";
-}
-
-static std::string campaignSlotPath(int slot)
-{
-    return "saves/campaign" + std::to_string(slot) + ".json";
-}
-
 // ── Init ──────────────────────────────────────────────────────────────────────
 bool Game::init(const std::string& title, int width, int height)
 {
@@ -132,6 +122,86 @@ bool Game::init(const std::string& title, int width, int height)
         m_townTex[i].load(m_basePath + rel, false, false);
     }
 
+    // Load building category icon atlas
+    m_buildingIconTex.load(m_basePath + "assets/buildings/icons_buildings.png", true, false);
+
+    // Load per-faction single-tier building art (3x3 spritesheet, row-major faction order)
+    static const struct { const char* dir; const char* base; } kFactionBuildings[] = {
+        { "fort",      "fort"      },
+        { "market",    "market"    },
+        { "town_hall", "town_hall" },
+        { "city_hall", "city_hall" },
+    };
+    auto loadFactionTiles = [&](Texture* tex, const char* dir, const char* base) {
+        for (int f = 0; f < NUM_FACTIONS; ++f) {
+            char buf[128];
+            std::snprintf(buf, sizeof(buf), "assets/buildings/%s/%s_f%d.png", dir, base, f);
+            tex[f].load(m_basePath + buf, false, false);
+        }
+    };
+    loadFactionTiles(m_fortTex,     "fort",      "fort");
+    loadFactionTiles(m_marketTex,   "market",    "market");
+    loadFactionTiles(m_townHallTex, "town_hall", "town_hall");
+    loadFactionTiles(m_cityHallTex, "city_hall", "city_hall");
+
+    // Load per-faction mage guild art: mage_guild/mage_guild_f{0-8}_t{1-4}.png
+    for (int f = 0; f < NUM_FACTIONS; ++f)
+        for (int t = 0; t < MAGE_GUILD_TIERS; ++t) {
+            char buf[128];
+            std::snprintf(buf, sizeof(buf),
+                "assets/buildings/mage_guild/mage_guild_f%d_t%d.png", f, t + 1);
+            m_mageGuildTex[f][t].load(m_basePath + buf, false, false);
+        }
+
+    // Load per-faction warehouse art: warehouse/warehouse_f{0-8}_t{1-3}.png
+    for (int f = 0; f < NUM_FACTIONS; ++f)
+        for (int t = 0; t < WAREHOUSE_TIERS; ++t) {
+            char buf[128];
+            std::snprintf(buf, sizeof(buf),
+                "assets/buildings/warehouse/warehouse_f%d_t%d.png", f, t + 1);
+            m_warehouseTex[f][t].load(m_basePath + buf, false, false);
+        }
+
+    // Load HolyOrder dwelling art (base + A/B upgrade per tier)
+    // Files: assets/units/holy_order/<DwellingName>[— Variant].png
+    // nullptr entries = no art uploaded yet for that variant (falls back to icon)
+    static const struct { const char* base; const char* varA; const char* varB; } kHODwellings[6] = {
+        { "Prison Yard",     "Prison Yard \xe2\x80\x94 Fast Death",     "Prison Yard \xe2\x80\x94 Hardened"        },
+        { "Militia Barracks","Militia Barracks \xe2\x80\x94 Arsonist",  "Militia Barracks \xe2\x80\x94 Devoted"    },
+        { "Apothecary",      "Plague Doctor \xe2\x80\x94 Sacrifice",    "Plague Doctor \xe2\x80\x94 Toxic Cloud"   },
+        { nullptr,           nullptr,                                     nullptr                                    }, // T4 no art yet
+        { "Seraph",          "Seraph \xe2\x80\x94 Wide Aura",           "Seraph \xe2\x80\x94 Unchained"            },
+        { "Winged Hussar",   "Winged Hussar \xe2\x80\x94 Desperation",  "Winged Hussar \xe2\x80\x94 Both Meters"  },
+    };
+    for (int t = 0; t < HO_DWELLING_TIERS; ++t) {
+        const char* names[3] = { kHODwellings[t].base, kHODwellings[t].varA, kHODwellings[t].varB };
+        for (int v = 0; v < HO_DWELLING_VARIANTS; ++v) {
+            if (!names[v]) continue;
+            char buf[256];
+            std::snprintf(buf, sizeof(buf), "assets/units/holy_order/%s.png", names[v]);
+            m_hoDwellingTex[t][v].load(m_basePath + buf, false, false);
+        }
+    }
+
+    // CrimsonWardens dwelling art
+    static const struct { const char* base; const char* varA; const char* varB; } kCWDwellings[6] = {
+        { "Ossuary",       "Hollow Knight",      "Marked Guard"      },
+        { "Archer Crypt",  "Bone Sniper",        "Marrow Archer"     },
+        { "Shade Hollow",  "Wight Paladin",      "Greater Wight"     },
+        { "Blood Roost",   "Crusader Vampire",   "Blood Vampire"     },
+        { "Lich Spire",    "High Lich",          "Undying Lich"      },
+        { "Dragon Crypts", "Holy Bone Dragon",   "Abyssal Dragon"    },
+    };
+    for (int t = 0; t < CW_DWELLING_TIERS; ++t) {
+        const char* names[3] = { kCWDwellings[t].base, kCWDwellings[t].varA, kCWDwellings[t].varB };
+        for (int v = 0; v < CW_DWELLING_VARIANTS; ++v) {
+            if (!names[v]) continue;
+            char buf[256];
+            std::snprintf(buf, sizeof(buf), "assets/units/crimson_wardens/%s.png", names[v]);
+            m_cwDwellingTex[t][v].load(m_basePath + buf, false, false);
+        }
+    }
+
     // Load combat board terrain backgrounds (assets/terrain/combat/NAME.png)
     static const char* kTerrainBgName[NUM_TERRAIN_TYPES] = {
         "plains", "forest", "highland", "corrupted", "toxic",
@@ -197,6 +267,11 @@ bool Game::init(const std::string& title, int width, int height)
     // Wire TownScreen callbacks
     m_townScreen.init(width, height);
     m_townScreen.onClose = [this]() { exitTown(); };
+    m_townScreen.onUpgradePathChoice = [this](int pathA, int pathB) {
+        m_upgradePathA = pathA;
+        m_upgradePathB = pathB;
+        m_showUpgradePathPopup = true;
+    };
 
     // Wire CombatHUD callbacks
     m_combatHUD.init(width, height);
@@ -207,6 +282,9 @@ bool Game::init(const std::string& title, int width, int height)
 
     // Open hideout DB (non-fatal if it fails)
     m_hideout.open(HIDEOUT_PATH);
+
+    // Open save DB
+    m_saveDB.open("saves/saves.db");
 
     // Scripting
     if (m_lua.init()) {
@@ -303,18 +381,8 @@ void Game::processEvents()
 void Game::update(float dt)
 {
     m_audio.update();
-    if (m_input.keyDown(SDLK_F5)) {
-        if (m_state == GameState::Campaign)
-            saveGame(campaignSlotPath(m_campaignActiveSlot));
-        else
-            saveGame(slotPath(m_activeSlot));
-    }
-    if (m_input.keyDown(SDLK_F9)) {
-        if (m_state == GameState::Campaign)
-            loadGame(campaignSlotPath(m_campaignActiveSlot));
-        else
-            loadGame(slotPath(m_activeSlot));
-    }
+    if (m_input.keyDown(SDLK_F5)) saveGame();
+    if (m_input.keyDown(SDLK_F9)) { if (m_activeSaveId) loadGame(m_activeSaveId); }
     if (m_input.keyDown(SDLK_F2)) {
         if (m_state == GameState::Editor) exitEditor();
         else enterEditor();
@@ -352,11 +420,21 @@ void Game::render()
     SDL_GL_SwapWindow(m_window);
 }
 
+// ── Faction name helper (mirrors factionShortName in Game_MainMenu.cpp) ──────
+static const char* factionNameStr(int f) {
+    switch (f) {
+    case 0: return "Holy Order";     case 1: return "Crimson Wardens";
+    case 2: return "Thornkin";       case 3: return "Eternal Empire";
+    case 4: return "Bloodsworn";     case 5: return "Voidkin";
+    case 6: return "Iron Assembly";  case 7: return "Amalgamate";
+    case 8: return "Convergence";    default: return "Unknown";
+    }
+}
+
 // ── Save / Load ───────────────────────────────────────────────────────────────
-void Game::saveGame(const std::string& path)
+void Game::saveGame(const std::string& customName)
 {
-    SDL_RWops* f = SDL_RWFromFile("saves/.keep", "w");
-    if (f) SDL_RWclose(f);
+    if (!m_saveDB.isOpen()) return;
 
     GameSaveData data = SaveLoad::packState(
         m_map, m_heroes, m_enemyHeroes,
@@ -366,7 +444,6 @@ void Game::saveGame(const std::string& path)
         m_turns.day(), m_turns.week(),
         m_mapSize,
         m_newGameDifficulty, m_activeHeroIdx);
-
     data.campaign = m_campaign.toSaveState();
 
     // N-player hotseat — pack all player states
@@ -390,20 +467,55 @@ void Game::saveGame(const std::string& path)
         }
     }
 
-    if (SaveLoad::saveGame(path, data))
-        gLog("Game saved to %s\n", path.c_str());
-    else
-        fprintf(stderr, "Save failed: %s\n", path.c_str());
-}
+    std::string jsonStr = SaveLoad::saveGameToString(data);
+    if (jsonStr.empty()) { fprintf(stderr, "Save serialization failed\n"); return; }
 
-bool Game::loadGame(const std::string& path)
-{
-    GameSaveData data;
-    if (!SaveLoad::loadGame(path, data)) {
-        fprintf(stderr, "Load failed: %s\n", path.c_str());
-        return false;
+    bool isCampaign = data.campaign.active;
+    std::string heroName   = m_heroes.empty() ? "" : m_heroes[0].name;
+    std::string factionStr = m_heroes.empty() ? "" : factionNameStr(static_cast<int>(m_heroes[0].faction));
+
+    // Auto-generate name if not provided
+    std::string name = customName;
+    if (name.empty()) {
+        if (isCampaign) {
+            char buf[64];
+            std::snprintf(buf, sizeof(buf), "Campaign – Week %d", m_turns.week());
+            name = buf;
+        } else {
+            char buf[64];
+            std::snprintf(buf, sizeof(buf), "%s – Week %d", heroName.c_str(), m_turns.week());
+            name = buf;
+        }
     }
 
+    m_activeSaveId = m_saveDB.upsert(m_activeSaveId, name, jsonStr, isCampaign,
+                                     data.campaign.missionIdx,
+                                     heroName, factionStr,
+                                     data.day, data.week);
+    if (m_activeSaveId)
+        gLog("Game saved (id %lld, \"%s\")\n", (long long)m_activeSaveId, name.c_str());
+    else
+        fprintf(stderr, "Save DB write failed\n");
+}
+
+Hero* Game::currentActiveHero()
+{
+    if (m_hotSeatMode && m_hotSeatP2Turn) {
+        if (m_enemyHeroes.empty()) return nullptr;
+        int sel = (m_selectedEnemyHero >= 0 && m_selectedEnemyHero < (int)m_enemyHeroes.size())
+                  ? m_selectedEnemyHero : 0;
+        return &m_enemyHeroes[sel];
+    }
+    if (m_heroes.empty()) return nullptr;
+    return &m_heroes[m_activeHeroIdx];
+}
+const Hero* Game::currentActiveHero() const
+{
+    return const_cast<Game*>(this)->currentActiveHero();
+}
+
+bool Game::loadGameApply(GameSaveData& data)
+{
     m_mapSize = static_cast<MapSize>(data.mapSizeEnum);
     m_map.create(m_mapSize);
 
@@ -507,14 +619,12 @@ bool Game::loadGame(const std::string& path)
         m_players[0].defeatedPool = std::move(tempP1Defeated);
         m_players[1].defeatedPool = SaveLoad::unpackHeroes(data.p2DefeatedHeroes);
     } else {
-        // 1P or no playerStates — P1's defeated pool came from unpackState
         m_players[0].defeatedPool = std::move(tempP1Defeated);
     }
 
     m_worldHUD.setCurrentPlayerId(currentPlayerId());
     m_worldHUD.setNumHumanPlayers(m_numHumanPlayers);
 
-    // Ensure tavern hires after load don't reuse IDs already held by loaded heroes
     {
         uint32_t maxId = 299;
         auto scanHero = [&](const Hero& h){ if (h.id > maxId) maxId = h.id; };
@@ -527,7 +637,6 @@ bool Game::loadGame(const std::string& path)
         m_nextHeroId = maxId + 1;
     }
 
-    // Recalculate weekly income display for current player
     {
         uint32_t cid = static_cast<uint32_t>(currentPlayerId());
         m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, cid);
@@ -535,8 +644,36 @@ bool Game::loadGame(const std::string& path)
             if (r.ownedBy == cid) m_cachedWeeklyIncome.add(r.type, r.amount);
     }
 
-    gLog("Game loaded from %s (day %d week %d)\n", path.c_str(), day, week);
+    gLog("Game loaded (day %d week %d)\n", day, week);
     return true;
+}
+
+bool Game::loadGame(int64_t saveId)
+{
+    if (!m_saveDB.isOpen()) return false;
+    std::string jsonStr;
+    if (!m_saveDB.load(saveId, jsonStr)) {
+        fprintf(stderr, "LoadGame: row %lld not found\n", (long long)saveId);
+        return false;
+    }
+    GameSaveData data;
+    if (!SaveLoad::loadGameFromString(jsonStr, data)) {
+        fprintf(stderr, "LoadGame: JSON parse failed for id %lld\n", (long long)saveId);
+        return false;
+    }
+    m_activeSaveId = saveId;
+    return loadGameApply(data);
+}
+
+bool Game::loadGameFile(const std::string& path)
+{
+    GameSaveData data;
+    if (!SaveLoad::loadGame(path, data)) {
+        fprintf(stderr, "Load failed: %s\n", path.c_str());
+        return false;
+    }
+    m_activeSaveId = 0; // file load doesn't have a DB id
+    return loadGameApply(data);
 }
 
 // ── New game (reset + world gen) ──────────────────────────────────────────────
@@ -815,6 +952,27 @@ void Game::startNewGame()
                 eHero.ghostWalkSpecialty  = (ecls->specialty == SpecialtyType::GhostWalk);
                 eHero.blightAuraSpecialty = (ecls->specialty == SpecialtyType::BlightAura);
                 eHero.infestationSpecialty = (ecls->specialty == SpecialtyType::Infestation);
+                // Grant first two skills from class pool at Basic tier (mirrors player hero creation)
+                auto applyStartSkill = [&eHero](int sid) {
+                    eHero.skills.learn(sid);
+                    if (const SkillDef* def = findSkillDef(sid)) {
+                        int v = def->values[0];
+                        if (def->effectType == SkillEffectType::MovementBonus) {
+                            eHero.maxMove += v; eHero.movePool = eHero.maxMove;
+                        } else if (def->effectType == SkillEffectType::VisionBonus) {
+                            eHero.visionRange += v;
+                        } else if (def->effectType == SkillEffectType::MagicSchoolBonus) {
+                            if      (def->statName == "lightPower")  eHero.lightPower  += v;
+                            else if (def->statName == "bloodPower")  eHero.bloodPower  += v;
+                            else if (def->statName == "deathPower")  eHero.deathPower  += v;
+                            else if (def->statName == "naturePower") eHero.naturePower += v;
+                            else if (def->statName == "forgePower")  eHero.forgePower  += v;
+                            else if (def->statName == "fleshPower")  eHero.fleshPower  += v;
+                        }
+                    }
+                };
+                if (ecls->skillPool.size() >= 1) applyStartSkill(ecls->skillPool[0]);
+                if (ecls->skillPool.size() >= 2) applyStartSkill(ecls->skillPool[1]);
             }
         }
         // School power scales enemy hero spells (roughly half player's starting tier)
@@ -1142,6 +1300,50 @@ void Game::startNewGame()
 
     FogOfWar::hideAll(m_map);
     FogOfWar::updateVision(m_map, m_heroes[0]);
+
+    // ── Hot-seat: configure P2 hero from menu choices ─────────────────────────
+    m_hotSeatMode   = m_newGameHotSeat;
+    m_hotSeatP2Turn = false;
+    m_hotSeatHandoff = false;
+    m_selectedEnemyHero = -1;
+    m_player2Resources = Resources{};
+    m_player2Resources.set(ResourceType::Gold, 5000);
+    m_player2Resources.set(ResourceType::Iron, 20);
+
+    if (m_hotSeatMode && !m_enemyHeroes.empty()) {
+        // Override first enemy hero to use P2's chosen faction/class
+        static constexpr FactionId kFacs[] = {
+            FactionId::HolyOrder, FactionId::CrimsonWardens, FactionId::Thornkin,
+            FactionId::EternalEmpire, FactionId::Bloodsworn, FactionId::Voidkin,
+            FactionId::IronAssembly, FactionId::Amalgamate, FactionId::Convergence
+        };
+        Hero& p2Hero = m_enemyHeroes[0];
+        FactionId p2f = kFacs[std::clamp(m_p2Faction, 0, 8)];
+        p2Hero.faction = p2f;
+        p2Hero.name    = "Player 2";
+        p2Hero.army.clear();
+        giveStartingArmy(p2Hero, kT1Count[diff], kT2Count[diff]);
+        // Apply P2's chosen class
+        const HeroClassDef* p2cls = nullptr;
+        if (m_p2ClassId != 0) p2cls = m_classRegistry.getClass(m_p2ClassId);
+        if (!p2cls) {
+            auto cp = m_classRegistry.getClassesForFaction(p2f);
+            if (!cp.empty()) p2cls = cp[0];
+        }
+        if (p2cls) {
+            p2Hero.classId = p2cls->id;
+            p2Hero.ghostWalkSpecialty   = (p2cls->specialty == SpecialtyType::GhostWalk);
+            p2Hero.blightAuraSpecialty  = (p2cls->specialty == SpecialtyType::BlightAura);
+            p2Hero.infestationSpecialty = (p2cls->specialty == SpecialtyType::Infestation);
+        }
+        // Fix P2's starting town faction to match
+        for (auto& t : m_towns) {
+            if (t.ownerId == p2Hero.id) {
+                t.faction = p2f;
+                break;
+            }
+        }
+    }
 
     float hx, hy;
     m_hexRenderer.grid().hexToWorld(m_heroes[0].pos, hx, hy);

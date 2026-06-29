@@ -47,6 +47,13 @@ void CombatEngine::addLog(const std::string& msg)
     else gLog("[Combat] %s\n", msg.c_str());
 }
 
+void CombatEngine::logMoraleSurge(const CombatUnit& u)
+{
+    addLog(u.name + " morale surge \xe2\x80\x94 bonus action!");
+    if (m_moraleCb) m_moraleCb(u.id, u.pos);
+}
+
+
 // ── Start battle ───────────────────────────────────────────────────────────────
 void CombatEngine::startBattle(
     const Hero& playerHero, const std::vector<CombatUnit>& playerUnits,
@@ -267,6 +274,84 @@ void CombatEngine::startBattle(
     };
     applySkills(m_playerHero, true);
     applySkills(m_enemyHero,  false);
+
+    // ── Skill archetype bonuses — compound rewards for committed playstyle ─────
+    auto applyArchetype = [this](Hero& hero, bool isPlayer) {
+        const HeroSkills& skills = hero.skills;
+
+        static const int kMight[] = {
+            SkillID::OFFENSE, SkillID::DEFENSE_SKILL, SkillID::ARCHERY,
+            SkillID::LEADERSHIP, SkillID::TACTICS, SkillID::LOGISTICS,
+            SkillID::SCOUTING, SkillID::FIRST_AID, SkillID::LUCK
+        };
+        static const int kMagic[] = {
+            SkillID::LIGHT_MAGIC, SkillID::BLOOD_MAGIC, SkillID::DEATH_MAGIC,
+            SkillID::NATURE_MAGIC, SkillID::FORGE_MAGIC, SkillID::FLESH_MAGIC
+        };
+
+        int mightCount = 0, magicCount = 0;
+        for (int sid : kMight) if (skills.hasSkill(sid)) ++mightCount;
+        for (int sid : kMagic) if (skills.hasSkill(sid)) ++magicCount;
+
+        if (mightCount == 0 && magicCount == 0) return;
+
+        // Flat combo bonuses — stacking more skills of same type gives unit bonuses
+        int mightBonus = (mightCount >= 4) ? 2 : (mightCount >= 2) ? 1 : 0;
+        int magicBonus = (magicCount >= 3) ? 2 : (magicCount >= 2) ? 1 : 0;
+
+        if (mightBonus > 0) {
+            for (auto& u : m_grid.units()) {
+                if (u.isPlayer != isPlayer || !u.alive) continue;
+                u.attack  += mightBonus;
+                u.defense += mightBonus;
+            }
+            addLog(hero.name + " Might synergy (x" + std::to_string(mightCount)
+                   + "): +" + std::to_string(mightBonus) + " ATK/DEF to all units");
+        }
+        if (magicBonus > 0) {
+            hero.lightPower  += magicBonus;
+            hero.bloodPower  += magicBonus;
+            hero.deathPower  += magicBonus;
+            hero.naturePower += magicBonus;
+            hero.forgePower  += magicBonus;
+            hero.fleshPower  += magicBonus;
+            addLog(hero.name + " Magic synergy (x" + std::to_string(magicCount)
+                   + "): +" + std::to_string(magicBonus) + " to all casting stats");
+        }
+
+        // Archetype bonuses — pure commitment gets a special bonus
+        bool pureMight = (mightCount >= 5 && magicCount == 0);
+        bool pureMagic = (magicCount >= 4 && mightCount <= 1);
+        bool warlord   = (!pureMight && !pureMagic && mightCount >= 3 && magicCount >= 2);
+
+        if (pureMight) {
+            for (auto& u : m_grid.units()) {
+                if (u.isPlayer != isPlayer || !u.alive) continue;
+                u.speed += 1;
+                int hpGain = (u.hp + 9) / 10;
+                u.hp    += hpGain;
+                u.maxHp += (u.maxHp + 9) / 10;
+            }
+            addLog(hero.name + " PURE MIGHT: all units +1 Speed, +10% HP");
+        } else if (pureMagic) {
+            hero.lightPower  += 3;
+            hero.bloodPower  += 3;
+            hero.deathPower  += 3;
+            hero.naturePower += 3;
+            hero.forgePower  += 3;
+            hero.fleshPower  += 3;
+            addLog(hero.name + " PURE MAGIC: +3 to all casting stats");
+        } else if (warlord) {
+            for (auto& u : m_grid.units()) {
+                if (u.isPlayer != isPlayer || !u.alive) continue;
+                u.morale = std::min(100, u.morale + 1);
+                u.luck   = std::min(5, u.luck + 1);
+            }
+            addLog(hero.name + " WARLORD: all units +1 Morale, +1 Luck");
+        }
+    };
+    applyArchetype(m_playerHero, true);
+    applyArchetype(m_enemyHero,  false);
 
     // Harmony specialty (Warsinger) — each unit adjacent to an ally gets +1 ATK/DEF
     auto applyHarmony = [this](const Hero& hero, bool isPlayer) {
@@ -636,8 +721,10 @@ void CombatEngine::advanceTurn()
     if (next) {
         // Regeneration: restore full HP of top unit at start of turn
         if (next->regenerates && next->alive) {
+            int regained = next->maxHp - next->hp;
             next->hp = next->maxHp;
             addLog(next->name + " regenerates!");
+            if (regained > 0 && m_healCb) m_healCb(next->id, regained, next->pos);
         }
         m_phase = next->isPlayer ? CombatPhase::PlayerTurn : CombatPhase::EnemyTurn;
         if (!next->isPlayer) processAITurn();
@@ -727,7 +814,8 @@ bool CombatEngine::submitAction(const CombatAction& action)
             }
         }
 
-        auto result = DamageCalc::attack(*unit, *target, m_grid);
+        bool wasRanged = (unit->range > 0 && HexGrid::distance(unit->pos, target->pos) > 1);
+        auto result = DamageCalc::attack(*unit, *target, m_grid, false, wasRanged);
         if (csBonus) unit->attack -= 2;
 
         std::ostringstream ss;
@@ -761,7 +849,7 @@ bool CombatEngine::submitAction(const CombatAction& action)
             return true;
 
         if (result.moraleTrigger) {
-            addLog(unit->name + " morale surge — bonus action!");
+            logMoraleSurge(*unit);
             unit->hasActed = false;
             unit->hasMoved = false;
         } else {
@@ -810,7 +898,7 @@ bool CombatEngine::submitAction(const CombatAction& action)
             }
         }
 
-        auto result = DamageCalc::attack(*unit, *target, m_grid);
+        auto result = DamageCalc::attack(*unit, *target, m_grid, false, true);
         if (csShotBonus) unit->attack -= 2;
 
         std::ostringstream ss;
@@ -922,6 +1010,7 @@ bool CombatEngine::submitAction(const CombatAction& action)
                     int healed = potency;
                     t->hp = std::min(t->maxHp, t->hp + healed);
                     ss << " → " << t->name << " healed " << healed;
+                    if (m_healCb) m_healCb(t->id, healed, t->pos);
                     break;
                 }
                 case SpellEffect::AttackBuff: {
@@ -1093,13 +1182,13 @@ void CombatEngine::aiActPassive(CombatUnit& unit)
     // Ranged: shoot if in range and have shots
     if (unit.range > 0 && unit.shotsLeft > 0 && dist <= unit.range) {
         unit.shotsLeft--;
-        auto result = DamageCalc::attack(unit, *target, m_grid);
+        auto result = DamageCalc::attack(unit, *target, m_grid, false, true);
         std::ostringstream ss;
         ss << unit.name << " shoots " << target->name << " for " << result.damage;
         addLog(ss.str());
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
-            addLog(unit.name + " morale surge — bonus action!");
+            logMoraleSurge(unit);
             unit.hasActed = false; unit.hasMoved = false; return;
         }
         unit.hasActed = true; advanceTurn(); return;
@@ -1114,7 +1203,7 @@ void CombatEngine::aiActPassive(CombatUnit& unit)
         applyWardenMarkSplash(unit, tpos, tid, result.damage);
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
-            addLog(unit.name + " morale surge — bonus action!");
+            logMoraleSurge(unit);
             unit.hasActed = false; unit.hasMoved = false; return;
         }
         unit.hasActed = true; advanceTurn(); return;
@@ -1137,7 +1226,7 @@ void CombatEngine::aiActPassive(CombatUnit& unit)
                 applyWardenMarkSplash(unit, tpos, tid, result.damage);
                 if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
                 if (result.moraleTrigger) {
-                    addLog(unit.name + " morale surge — bonus action!");
+                    logMoraleSurge(unit);
                     unit.hasActed = false; unit.hasMoved = false; return;
                 }
                 unit.hasActed = true; advanceTurn(); return;
@@ -1162,14 +1251,14 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
     // Ranged: shoot nearest enemy if in range and have shots
     if (unit.range > 0 && unit.shotsLeft > 0 && bestDist <= unit.range) {
         unit.shotsLeft--;
-        auto result = DamageCalc::attack(unit, *target, m_grid);
+        auto result = DamageCalc::attack(unit, *target, m_grid, false, true);
         std::ostringstream ss;
         ss << unit.name << " shoots " << target->name << " for " << result.damage << " dmg";
         if (result.killed) ss << " (" << result.killed << " killed)";
         addLog(ss.str());
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
-            addLog(unit.name + " morale surge — bonus action!");
+            logMoraleSurge(unit);
             unit.hasActed = false; unit.hasMoved = false; return;
         }
         unit.hasActed = true; advanceTurn(); return;
@@ -1185,7 +1274,7 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
         applyWardenMarkSplash(unit, tpos, tid, result.damage);
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
-            addLog(unit.name + " morale surge — bonus action!");
+            logMoraleSurge(unit);
             unit.hasActed = false; unit.hasMoved = false; return;
         }
         unit.hasActed = true; advanceTurn(); return;
@@ -1213,7 +1302,7 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
                 applyWardenMarkSplash(unit, tpos, tid, result.damage);
                 if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
                 if (result.moraleTrigger) {
-                    addLog(unit.name + " morale surge — bonus action!");
+                    logMoraleSurge(unit);
                     unit.hasActed = false; unit.hasMoved = false; return;
                 }
                 unit.hasActed = true; advanceTurn(); return;
@@ -1265,13 +1354,13 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
         }
         if (shtTarget) {
             unit.shotsLeft--;
-            auto result = DamageCalc::attack(unit, *shtTarget, m_grid);
+            auto result = DamageCalc::attack(unit, *shtTarget, m_grid, false, true);
             std::ostringstream ss;
             ss << unit.name << " shoots " << shtTarget->name << " for " << result.damage;
             addLog(ss.str());
             if (!shtTarget->alive) { addLog(shtTarget->name + " destroyed!"); processKillEvents(unit, *shtTarget, result); }
             if (result.moraleTrigger) {
-                addLog(unit.name + " morale surge — bonus action!");
+                logMoraleSurge(unit);
                 unit.hasActed = false; unit.hasMoved = false; return;
             }
             unit.hasActed = true; advanceTurn(); return;
@@ -1302,7 +1391,7 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
         applyWardenMarkSplash(unit, tpos, tid, result.damage);
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
-            addLog(unit.name + " morale surge — bonus action!");
+            logMoraleSurge(unit);
             unit.hasActed = false; unit.hasMoved = false; return;
         }
         unit.hasActed = true; advanceTurn(); return;
@@ -1342,13 +1431,13 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
             int nowDist = HexGrid::distance(unit.pos, target->pos);
             if (unit.range > 0 && unit.shotsLeft > 0 && nowDist <= unit.range && target->alive) {
                 unit.shotsLeft--;
-                auto result = DamageCalc::attack(unit, *target, m_grid);
+                auto result = DamageCalc::attack(unit, *target, m_grid, false, true);
                 std::ostringstream ss;
                 ss << unit.name << " moves+shoots " << target->name << " for " << result.damage;
                 addLog(ss.str());
                 if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
                 if (result.moraleTrigger) {
-                    addLog(unit.name + " morale surge — bonus action!");
+                    logMoraleSurge(unit);
                     unit.hasActed = false; unit.hasMoved = false; return;
                 }
                 unit.hasActed = true; advanceTurn(); return;
@@ -1363,7 +1452,7 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
                 applyWardenMarkSplash(unit, tpos, tid, result.damage);
                 if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
                 if (result.moraleTrigger) {
-                    addLog(unit.name + " morale surge — bonus action!");
+                    logMoraleSurge(unit);
                     unit.hasActed = false; unit.hasMoved = false; return;
                 }
                 unit.hasActed = true; advanceTurn(); return;
@@ -1388,7 +1477,7 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
             applyWardenMarkSplash(unit, tpos, tid, result.damage);
             if (!adj->alive) { addLog(adj->name + " destroyed!"); processKillEvents(unit, *adj, result); }
             if (result.moraleTrigger) {
-                addLog(unit.name + " morale surge — bonus action!");
+                logMoraleSurge(unit);
                 unit.hasActed = false; unit.hasMoved = false; return;
             }
             unit.hasActed = true; advanceTurn(); return;
@@ -1544,6 +1633,7 @@ void CombatEngine::processRoundStartEffects()
             ss << u.name << " takes " << dmg << " poison damage";
             if (!u.alive) ss << " and perishes!";
             addLog(ss.str());
+            if (m_dmgCb) m_dmgCb(u.id, dmg, u.pos);
             --u.poisonRounds;
             if (u.poisonRounds == 0) u.poisonDamage = 0;
         }
@@ -1554,6 +1644,7 @@ void CombatEngine::processRoundStartEffects()
             ss << u.name << " takes " << dmg << " burn damage";
             if (!u.alive) ss << " and is incinerated!";
             addLog(ss.str());
+            if (m_dmgCb) m_dmgCb(u.id, dmg, u.pos);
             --u.burnRounds;
             if (u.burnRounds == 0) u.burnDamage = 0;
         }
@@ -2099,7 +2190,7 @@ void CombatEngine::tryEnemyHeroSpell()
             }
             case SpellEffect::Heal: {
                 int healed = std::min(potency, t->maxHp - t->hp);
-                if (healed > 0) t->hp += healed;
+                if (healed > 0) { t->hp += healed; if (m_healCb) m_healCb(t->id, healed, t->pos); }
                 ss << " → " << t->name << " healed " << healed;
                 break;
             }

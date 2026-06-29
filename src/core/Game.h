@@ -25,6 +25,7 @@
 #include "../data/Resources.h"
 #include "../data/ResourceNode.h"
 #include "../data/SaveLoad.h"
+#include "../data/SaveDB.h"
 #include "../data/MapFormat.h"
 #include "../ui/UIRenderer.h"
 #include "../ui/WorldMapHUD.h"
@@ -109,9 +110,25 @@ private:
     void beginImGuiFrame();
     void endImGuiFrame();
 
-    // ── Save / Load ────────────────────────────────────────────────────────────
-    void saveGame(const std::string& path);
-    bool loadGame(const std::string& path);
+    // ── Save / Load (DB-backed) ────────────────────────────────────────────────
+    // Save to DB. If m_activeSaveId==0 creates a new row; otherwise overwrites.
+    void saveGame(const std::string& customName = "");
+    // Load from DB row id. Returns false on failure.
+    bool loadGame(int64_t saveId);
+    // Legacy file-path load (for campaign autosave compatibility)
+    bool loadGameFile(const std::string& path);
+
+    bool loadGameApply(GameSaveData& data);
+
+    // Returns 1 normally, or 2 when hot-seat P2 is playing.
+    int currentPlayerId() const { return (m_hotSeatMode && m_hotSeatP2Turn) ? 2 : 1; }
+    // Returns the resource pool for the currently active player.
+    Resources& currentResources() {
+        return (m_hotSeatMode && m_hotSeatP2Turn) ? m_player2Resources : m_playerResources;
+    }
+    // Returns the active hero for the current player (P1 from m_heroes, P2 from m_enemyHeroes).
+    Hero* currentActiveHero();
+    const Hero* currentActiveHero() const;
 
     // ── Hotseat multiplayer ───────────────────────────────────────────────────
     void renderPlayerTurnBanner();
@@ -256,6 +273,38 @@ private:
     // ── Faction town art (world map + town screen banner) ─────────────────────
     // File: assets/towns/faction_N.png  (N=0-8)
     Texture           m_townTex[NUM_FACTIONS];
+
+    // ── Building category icon atlas ───────────────────────────────────────────
+    // File: assets/buildings/icons_buildings.png  (384×64, 6 cols × 1 row)
+    Texture           m_buildingIconTex;
+
+    // ── Per-faction single-tier buildings [faction] ───────────────────────────
+    // fort, market, town_hall, city_hall — each has 9 faction variants
+    Texture m_fortTex[NUM_FACTIONS];
+    Texture m_marketTex[NUM_FACTIONS];
+    Texture m_townHallTex[NUM_FACTIONS];
+    Texture m_cityHallTex[NUM_FACTIONS];
+
+    // ── Per-faction mage guild art [faction][tier-1] ──────────────────────────
+    // Files: assets/buildings/mage_guild/mage_guild_f{0-8}_t{1-4}.png
+    static constexpr int MAGE_GUILD_TIERS  = 4;
+    Texture m_mageGuildTex[NUM_FACTIONS][MAGE_GUILD_TIERS];
+
+    // ── Per-faction warehouse art [faction][tier-1] ───────────────────────────
+    // Files: assets/buildings/warehouse/warehouse_f{0-8}_t{1-3}.png
+    static constexpr int WAREHOUSE_TIERS   = 3;
+    Texture m_warehouseTex[NUM_FACTIONS][WAREHOUSE_TIERS];
+
+    // ── HolyOrder dwelling art (base + A + B per tier) ───────────────────────
+    // Files: assets/units/holy_order/<DwellingName>.png
+    // Indexed [tier-1][variant]: 0=base, 1=PathA, 2=PathB
+    static constexpr int HO_DWELLING_TIERS    = 6;
+    static constexpr int HO_DWELLING_VARIANTS = 3;
+    Texture m_hoDwellingTex[HO_DWELLING_TIERS][HO_DWELLING_VARIANTS];
+
+    static constexpr int CW_DWELLING_TIERS    = 6;
+    static constexpr int CW_DWELLING_VARIANTS = 3;
+    Texture m_cwDwellingTex[CW_DWELLING_TIERS][CW_DWELLING_VARIANTS];
 
     // ── Per-unit combat animators (keyed by CombatUnit id) ───────────────────
     std::unordered_map<uint32_t, SpriteAnimator> m_combatAnimators;
@@ -420,6 +469,20 @@ private:
     std::function<void()>   m_encounterOnDecline;   // called when player clicks Retreat
     void renderEncounterPrompt();
 
+    // ── Siege camp ────────────────────────────────────────────────────────────
+    bool     m_showSiegeCampPrompt  = false;
+    uint32_t m_siegePromptTownId    = 0;
+    void renderSiegeCampPrompt();
+    void renderSiegeIndicator();   // world-map overlay showing camped heroes
+    void triggerSiegeCombat(uint32_t townId);   // resolve all camped heroes vs a town
+    void renderMarchButton();      // March ability button for selected hero
+
+    // ── Upgrade Path A/B choice popup ────────────────────────────────────────
+    bool m_showUpgradePathPopup = false;
+    int  m_upgradePathA         = 0;
+    int  m_upgradePathB         = 0;
+    void renderUpgradePathPopup();
+
     // ── Right-click combat unit stat popup ────────────────────────────────────
     uint32_t m_combatRightClickUnitId = 0;
 
@@ -480,10 +543,12 @@ private:
     int  m_tutorialStep         = 0;
     void renderCampaignTutorial();
 
-    // ── Main menu sub-state & save slots ─────────────────────────────────────
+    // ── Save DB ───────────────────────────────────────────────────────────────
+    SaveDB  m_saveDB;
+    int64_t m_activeSaveId = 0;  // 0 = no current save row (new game, not yet saved)
+
+    // ── Main menu sub-state ───────────────────────────────────────────────────
     int  m_menuMode            = 0;   // 0=main, 1=newgame, 2=loadgame, 3=settings, 4=campaign, 5=battlesim
-    int  m_activeSlot          = 0;   // which general save slot (0-4) is in use
-    int  m_campaignActiveSlot  = 0;   // which campaign save slot (0-2) is in use
     int  m_newGameMapSize    = 0;   // 0=Small, 1=Medium, 2=Large, 3=XLarge
     int  m_newGameFaction    = 0;   // 0=HolyOrder ... 8=Convergence
     int  m_newGameDifficulty = 1;   // 0=Easy, 1=Normal, 2=Hard
@@ -521,6 +586,25 @@ private:
     int   m_simWeek           = 5;
     int   m_simFaction1       = 0;
     int   m_simFaction2       = 1;
+
+    // ── Watch AI vs AI mode ────────────────────────────────────────────────────
+    bool  m_watchingAI      = false;   // both sides controlled by AI
+    float m_watchAITimer    = 0.f;     // countdown to next auto end-turn
+    float m_watchAISpeed    = 1.0f;    // delay multiplier (slider: 0.25 – 4.0)
+    int   m_watchAIFaction1 = 0;
+    int   m_watchAIFaction2 = 1;
+    void  watchAiMovePlayerHero();     // runs player hero through same AI logic as enemies
+
+    // ── Hot-seat 2-player mode ─────────────────────────────────────────────────
+    bool      m_hotSeatMode      = false;  // two humans share one screen
+    bool      m_hotSeatP2Turn    = false;  // true = it is player 2's turn
+    bool      m_hotSeatHandoff   = false;  // show handoff screen
+    Resources m_player2Resources;          // P2's resource pool
+    int       m_selectedEnemyHero= -1;     // index into m_enemyHeroes (P2 active hero)
+    bool      m_newGameHotSeat   = false;  // set in new game menu
+    void      renderHotSeatHandoff();
+    int       m_p2Faction        = 1;      // enemy faction index chosen by P2 in menu
+    int       m_p2ClassId        = 0;
 
     // ── Persisted display / audio settings ───────────────────────────────────
     float m_settingsSfxVol       = 0.7f;

@@ -211,7 +211,7 @@ DamageCalc::DamageEstimate DamageCalc::estimate(const CombatUnit& atk, const Com
 // attack > defense: +5% per point (max +300%)
 // defense > attack: -2.5% per point (min 30% damage)
 DamageResult DamageCalc::attack(CombatUnit& attacker, CombatUnit& defender,
-                                  const CombatGrid& grid, bool isRetaliation)
+                                  const CombatGrid& grid, bool isRetaliation, bool isRanged)
 {
     DamageResult result;
 
@@ -324,7 +324,7 @@ DamageResult DamageCalc::attack(CombatUnit& attacker, CombatUnit& defender,
     }
 
     // Retaliation — defender hits back if it hasn't acted yet this round
-    if (!isRetaliation && defender.alive && defender.canRetaliate && !defender.hasActed) {
+    if (!isRetaliation && !isRanged && defender.alive && defender.canRetaliate && !defender.hasActed) {
         DamageResult ret = attack(defender, attacker, grid, true);
         defender.canRetaliate = false;
         result.retaliated = true;

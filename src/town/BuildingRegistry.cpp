@@ -458,7 +458,7 @@ void BuildingRegistry::init()
     using T = UnitTag;
 
     // T1 Penitent
-    addUnit(1001,"Penitent",       F::HolyOrder,1,P::None, 14,3,3,1,3,5, gold(65),  T::Humanoid|T::Holy);
+    addUnit(1001,"Penitent",       F::HolyOrder,1,P::None, 16,3,3,1,3,5, gold(65),  T::Humanoid|T::Holy);
     addUnit(1002,"Penitent(A)",    F::HolyOrder,1,P::PathA,13,3,3,1,4,7, gold(65),  T::Humanoid|T::Holy);
     addUnit(1003,"Penitent(B)",    F::HolyOrder,1,P::PathB,18,3,4,1,2,4, gold(70),  T::Humanoid|T::Holy);
     // T2 Torch Bearer
@@ -602,10 +602,10 @@ void BuildingRegistry::init()
       b.cost=goldAndRes(2500,ResourceType::FaithStones,4);
       b.prerequisites={BID::CW_DEATH_ALTAR}; m_buildings.push_back(b); }
 
-    addUnit(2001,"Skeleton",    F::CrimsonWardens,1,P::None, 12,2,3,1, 3,5, gold(60),        T::Undead);
+    addUnit(2001,"Skeleton",    F::CrimsonWardens,1,P::None, 15,3,3,1, 3,5, gold(60),        T::Undead);
     addUnit(2002,"Bone Archer", F::CrimsonWardens,2,P::None, 22,4,4,3, 5,5, gold(115),       T::Undead);
     m_units.back().range = 5; m_units.back().shots = 3;
-    addUnit(2003,"Wight",       F::CrimsonWardens,3,P::None, 45,6,6,6,10,6, goldAndRes(200,ResourceType::FaithStones,1), T::Undead);
+    addUnit(2003,"Wight",       F::CrimsonWardens,3,P::None, 45,6,6,6,10,6, goldAndRes(180,ResourceType::FaithStones,1), T::Undead);
     m_units.back().regenerates = true;
     addUnit(2004,"Vampire",     F::CrimsonWardens,4,P::None, 55,9,6,8,14,10,goldAndRes(360,ResourceType::FaithStones,2), T::Undead|T::Flying, true);
     m_units.back().vampiric = true;
@@ -753,9 +753,9 @@ void BuildingRegistry::init()
       b.cost=goldAndRes(2500,ResourceType::VerdantSap,4);
       b.prerequisites={BID::TK_ANCIENT_CIRCLE}; m_buildings.push_back(b); }
 
-    addUnit(3001,"Sproutling",    F::Thornkin,1,P::None, 12,2,3,1, 3,5, gold(55),        T::Beast);
+    addUnit(3001,"Sproutling",    F::Thornkin,1,P::None, 15,3,3,1, 3,5, gold(55),        T::Beast);
     addUnit(3002,"Briar",         F::Thornkin,2,P::None, 20,4,4,3, 6,5, goldAndRes(110,ResourceType::VerdantSap,1), T::Beast);
-    addUnit(3003,"Vine Crawler",  F::Thornkin,3,P::None, 25,5,5,5, 9,5, goldAndRes(185,ResourceType::VerdantSap,1), T::Beast);
+    addUnit(3003,"Vine Crawler",  F::Thornkin,3,P::None, 25,5,5,5, 9,5, goldAndRes(170,ResourceType::VerdantSap,1), T::Beast);
     m_units.back().regenerates = true;
     addUnit(3004,"Grove Guardian",F::Thornkin,4,P::None, 58,9,8,9,15,5, goldAndRes(370,ResourceType::VerdantSap,2), T::Beast);
     addUnit(3005,"Ancient Oak",   F::Thornkin,5,P::None, 92,12,11,13,22,6,goldAndRes(630,ResourceType::VerdantSap,3), T::Beast);
@@ -897,7 +897,7 @@ void BuildingRegistry::init()
 
     addUnit(4001,"Conscript",      F::EternalEmpire,1,P::None, 12,2,3,1, 3,4, gold(65),        T::Humanoid|T::Undead);
     addUnit(4002,"Revenant",       F::EternalEmpire,2,P::None, 20,4,4,3, 6,5, goldAndRes(120,ResourceType::BloodEssence,1), T::Undead);
-    addUnit(4003,"Shade Archer",   F::EternalEmpire,3,P::None, 32,5,5,4, 8,6, goldAndRes(210,ResourceType::Mercury,1), T::Undead);
+    addUnit(4003,"Shade Archer",   F::EternalEmpire,3,P::None, 32,5,5,4, 8,6, goldAndRes(225,ResourceType::Mercury,1), T::Undead);
     m_units.back().range = 5; m_units.back().shots = 3;
     addUnit(4004,"Steel Guardian", F::EternalEmpire,4,P::None, 55,9,10,8,14,7, goldAndRes(380,ResourceType::Mercury,2), T::Construct|T::Undead);
     addUnit(4005,"Phantom Knight", F::EternalEmpire,5,P::None, 83,12,11,11,20,8, goldAndRes(600,ResourceType::Mercury,3), T::Undead|T::Flying, true);
@@ -1044,7 +1044,7 @@ void BuildingRegistry::init()
       b.prerequisites={BID::BS_BLOOD_ALTAR}; m_buildings.push_back(b); }
 
     addUnit(5001,"Bloodling",          F::Bloodsworn,1,P::None, 13,3,2,2, 4,5, gold(65),        T::Humanoid|T::BloodBound);
-    addUnit(5002,"Berserker",          F::Bloodsworn,2,P::None, 20,5,4,3, 7,6, goldAndRes(115,ResourceType::BloodEssence,1), T::Humanoid|T::BloodBound);
+    addUnit(5002,"Berserker",          F::Bloodsworn,2,P::None, 20,5,4,3, 6,6, goldAndRes(135,ResourceType::BloodEssence,1), T::Humanoid|T::BloodBound);
     addUnit(5003,"Blood Shaman",       F::Bloodsworn,3,P::None, 27,5,5,3, 6,6, goldAndRes(185,ResourceType::BloodEssence,1), T::Humanoid|T::BloodBound);
     m_units.back().range = 4; m_units.back().shots = 4;
     addUnit(5004,"Ravager",            F::Bloodsworn,4,P::None, 54,10,7,10,18,8, goldAndRes(340,ResourceType::BloodEssence,2), T::Humanoid|T::BloodBound);
@@ -1069,8 +1069,8 @@ void BuildingRegistry::init()
 
     // ── VOIDKIN ───────────────────────────────────────────────────────────────
     { BuildingDef b; b.id=BID::VK_NEXUS; b.name="Void Nexus";
-      b.description="Town Hall - +1000 Gold weekly, +2 unit growth"; b.category=BuildingCategory::Economy;
-      b.faction=F::Voidkin; b.cost=goldAndRes(500,ResourceType::VerdantSap,2); b.weeklyIncome=gold(1000); b.growthBonus=2;
+      b.description="Town Hall - +1000 Gold, +2 VerdantSap weekly, +2 unit growth"; b.category=BuildingCategory::Economy;
+      b.faction=F::Voidkin; b.cost=gold(500); b.weeklyIncome=goldAndRes(1000,ResourceType::VerdantSap,2); b.growthBonus=2;
       m_buildings.push_back(b); }
     { BuildingDef b; b.id=BID::VK_T1; b.name="Wisp Hollow"; b.tier=1; b.weeklyGrowth=13;
       b.description="Produces Void Wisps"; b.category=BuildingCategory::UnitDwelling;
@@ -1078,7 +1078,7 @@ void BuildingRegistry::init()
       b.upgradeA=BID::VK_T1_A; b.upgradeB=BID::VK_T1_B; m_buildings.push_back(b); }
     { BuildingDef b; b.id=BID::VK_T2; b.name="Phase Den"; b.tier=2; b.weeklyGrowth=10;
       b.description="Produces Phase Walkers"; b.category=BuildingCategory::UnitDwelling;
-      b.faction=F::Voidkin; b.cost=goldAndRes(600,ResourceType::VerdantSap,1);
+      b.faction=F::Voidkin; b.cost=gold(600);
       b.prerequisites={BID::VK_T1};
       b.upgradeA=BID::VK_T2_A; b.upgradeB=BID::VK_T2_B; m_buildings.push_back(b); }
     { BuildingDef b; b.id=BID::VK_T3; b.name="Rift Arch"; b.tier=3; b.weeklyGrowth=7;
@@ -1186,13 +1186,17 @@ void BuildingRegistry::init()
       b.cost=goldAndRes(2500,ResourceType::VerdantSap,4);
       b.prerequisites={BID::VK_RIFT_GATE}; m_buildings.push_back(b); }
 
-    addUnit(6001,"Void Wisp",      F::Voidkin,1,P::None, 18,3,3,1, 3,6, gold(70),        T::Void|T::Flying, true);
-    addUnit(6002,"Phase Walker",   F::Voidkin,2,P::None, 24,4,6,2, 6,6, goldAndRes(130,ResourceType::VerdantSap,1), T::Void|T::Flying, true);
-    addUnit(6003,"Rift Archer",    F::Voidkin,3,P::None, 28,6,5,4, 9,7, goldAndRes(225,ResourceType::VerdantSap,1), T::Void|T::Flying, true);
+    addUnit(6001,"Void Wisp",      F::Voidkin,1,P::None, 20,4,3,1, 3,6, gold(70),        T::Void|T::Flying, true);
+    m_units.back().range = 3; m_units.back().shots = 2;
+    addUnit(6002,"Phase Walker",   F::Voidkin,2,P::None, 27,5,6,2, 6,6, goldAndRes(130,ResourceType::VerdantSap,1), T::Void|T::Flying, true);
+    m_units.back().range = 4; m_units.back().shots = 2;
+    addUnit(6003,"Rift Archer",    F::Voidkin,3,P::None, 28,6,5,4, 9,7, goldAndRes(205,ResourceType::VerdantSap,1), T::Void|T::Flying, true);
     m_units.back().range = 5; m_units.back().shots = 5;
-    addUnit(6004,"Void Stalker",   F::Voidkin,4,P::None, 44,9,9,9,15,10,goldAndRes(360,ResourceType::VerdantSap,2), T::Void|T::Flying, true);
-    addUnit(6005,"Entropy Wraith", F::Voidkin,5,P::None, 72,12,11,13,22,12,goldAndRes(640,ResourceType::VerdantSap,3), T::Void|T::Flying, true);
-    addUnit(6006,"Void Colossus",  F::Voidkin,6,P::None,135,16,14,22,34,13,goldAndRes(1220,ResourceType::VerdantSap,5), T::Void|T::Flying, true);
+    addUnit(6004,"Void Stalker",   F::Voidkin,4,P::None, 48,9,9,9,15,10,goldAndRes(360,ResourceType::VerdantSap,2), T::Void|T::Flying, true);
+    m_units.back().range = 5; m_units.back().shots = 3;
+    addUnit(6005,"Entropy Wraith", F::Voidkin,5,P::None, 82,12,11,15,24,12,goldAndRes(640,ResourceType::VerdantSap,3), T::Void|T::Flying, true);
+    m_units.back().range = 4; m_units.back().shots = 2;
+    addUnit(6006,"Void Colossus",  F::Voidkin,6,P::None,135,16,14,22,34,13,goldAndRes(1180,ResourceType::VerdantSap,5), T::Void|T::Flying, true);
     // Voidkin PathA — Phase line (speed+1, all flying)
     addUnit(6011,"Phase Wisp",     F::Voidkin,1,P::PathA, 18,3,3,1, 3,7, goldAndRes(75,ResourceType::VerdantSap,1),  T::Void|T::Flying, true);
     addUnit(6012,"Flicker",        F::Voidkin,2,P::PathA, 24,5,6,2, 6,7, goldAndRes(140,ResourceType::VerdantSap,1), T::Void|T::Flying, true);
@@ -1329,13 +1333,13 @@ void BuildingRegistry::init()
       b.cost=goldAndRes(2500,ResourceType::Iron,6);
       b.minWeek=3; b.prerequisites={BID::IA_BLUEPRINT_VAULT}; m_buildings.push_back(b); }
 
-    addUnit(7001,"Automaton",       F::IronAssembly,1,P::None, 12,3,4,2, 4,5, goldAndRes(75,ResourceType::Iron,1),  T::Mechanical);
+    addUnit(7001,"Automaton",       F::IronAssembly,1,P::None, 12,3,3,2, 4,5, goldAndRes(75,ResourceType::Iron,1),  T::Mechanical);
     m_units.back().range = 3; m_units.back().shots = 1;
     addUnit(7002,"Gun Construct",   F::IronAssembly,2,P::None, 20,4,5,3, 6,5, goldAndRes(140,ResourceType::Iron,2), T::Mechanical);
     m_units.back().range = 5; m_units.back().shots = 1;
-    addUnit(7003,"Steam Walker",    F::IronAssembly,3,P::None, 30,6,6,5,10,5, goldAndRes(215,ResourceType::Iron,3), T::Mechanical);
+    addUnit(7003,"Steam Walker",    F::IronAssembly,3,P::None, 30,6,6,5,10,5, goldAndRes(240,ResourceType::Iron,3), T::Mechanical);
     addUnit(7004,"Siege Bot",       F::IronAssembly,4,P::None, 58,8,9,7,13,4, goldAndRes(400,ResourceType::Iron,5), T::Mechanical);
-    m_units.back().range = 5; m_units.back().shots = 3;
+    m_units.back().range = 5; m_units.back().shots = 2;
     addUnit(7005,"Titan Construct", F::IronAssembly,5,P::None, 75,11,11,15,24,5,goldAndRes(660,ResourceType::Iron,7), T::Mechanical);
     addUnit(7006,"Colossus Prime",  F::IronAssembly,6,P::None,150,15,14,26,42,6,goldAndRes(1350,ResourceType::Iron,10), T::Mechanical);
     // Iron Assembly PathA — Runic line (more Iron cost, better stats)
@@ -1478,8 +1482,8 @@ void BuildingRegistry::init()
       b.cost=goldAndRes(2500,ResourceType::Iron,3);
       b.prerequisites={BID::AM_FLESH_VAULT}; m_buildings.push_back(b); }
 
-    addUnit(8001,"Flesh Crawler",     F::Amalgamate,1,P::None, 11,2,3,1, 4,5, gold(65),        T::OrganicMech);
-    addUnit(8002,"Graft Soldier",     F::Amalgamate,2,P::None, 18,4,4,3, 6,5, goldAndRes(115,ResourceType::Iron,1), T::OrganicMech);
+    addUnit(8001,"Flesh Crawler",     F::Amalgamate,1,P::None, 14,2,3,1, 4,5, gold(65),        T::OrganicMech);
+    addUnit(8002,"Graft Soldier",     F::Amalgamate,2,P::None, 18,4,4,3, 6,5, goldAndRes(105,ResourceType::Iron,1), T::OrganicMech);
     addUnit(8003,"Bone Machine",      F::Amalgamate,3,P::None, 28,5,5,4, 7,6, goldAndRes(195,ResourceType::Iron,2), T::OrganicMech);
     m_units.back().range = 3; m_units.back().shots = 3;
     addUnit(8004,"Fleshwork Knight",  F::Amalgamate,4,P::None, 60,9,7,9,16,7, goldAndRes(360,ResourceType::BloodEssence,2), T::OrganicMech|T::Flying, true);
@@ -1631,7 +1635,7 @@ void BuildingRegistry::init()
 
     addUnit(9001,"Awakened",      F::Convergence,1,P::None, 12,3,3,2, 4,5, gold(70),   T::Humanoid);
     addUnit(9002,"Synthesized",   F::Convergence,2,P::None, 21,5,5,3, 6,6, gold(125),  T::Humanoid);
-    addUnit(9003,"Harmonized",    F::Convergence,3,P::None, 33,7,7,5,10,6, gold(210),  T::Humanoid);
+    addUnit(9003,"Harmonized",    F::Convergence,3,P::None, 33,6,6,5,10,6, gold(230),  T::Humanoid);
     m_units.back().range = 4; m_units.back().shots = 3;
     addUnit(9004,"Resonant",      F::Convergence,4,P::None, 58,10,10,9,16,8, gold(370), T::Humanoid|T::Flying, true);
     addUnit(9005,"Transcendent",  F::Convergence,5,P::None, 74,12,13,14,23,10,gold(640), T::Humanoid|T::Flying, true);

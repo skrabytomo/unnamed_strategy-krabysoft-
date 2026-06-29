@@ -65,8 +65,8 @@ void CampaignHUD::render(CampaignManager& mgr, LuaEngine& lua)
         return;
     }
 
-    // ── Objectives panel (top-left) ────────────────────────────────────────────
-    ImGui::SetNextWindowPos(ImVec2(8, 8), ImGuiCond_Always);
+    // ── Objectives panel (top-left, below the 68px resource bar) ─────────────
+    ImGui::SetNextWindowPos(ImVec2(8, 76), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(260, 0), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.75f);
     if (ImGui::Begin("##objectives", nullptr,
@@ -79,9 +79,9 @@ void CampaignHUD::render(CampaignManager& mgr, LuaEngine& lua)
     }
     ImGui::End();
 
-    // ── Alignment compass (top-right) ─────────────────────────────────────────
+    // ── Alignment compass (top-right, below resource bar) ────────────────────
     float displayW = ImGui::GetIO().DisplaySize.x;
-    ImGui::SetNextWindowPos(ImVec2(displayW - 180, 8), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(displayW - 180, 76), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(172, 180), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.75f);
     if (ImGui::Begin("##alignment", nullptr,

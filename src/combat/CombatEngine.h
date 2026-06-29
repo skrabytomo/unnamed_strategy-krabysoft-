@@ -40,6 +40,8 @@ class CombatEngine
 public:
     using LogCallback    = std::function<void(const std::string&)>;
     using DamageCallback = std::function<void(uint32_t /*targetId*/, int /*damage*/, HexCoord /*pos*/)>;
+    using HealCallback   = std::function<void(uint32_t /*targetId*/, int /*amount*/, HexCoord /*pos*/)>;
+    using MoraleCallback = std::function<void(uint32_t /*unitId*/, HexCoord /*pos*/)>;
 
     CombatEngine() = default;
 
@@ -105,8 +107,10 @@ public:
 
     // Log
     const std::vector<CombatLog>& log() const { return m_log; }
-    void setLogCallback(LogCallback cb) { m_logCb = cb; }
-    void setDamageCallback(DamageCallback cb) { m_dmgCb = cb; }
+    void setLogCallback(LogCallback cb)       { m_logCb    = cb; }
+    void setDamageCallback(DamageCallback cb) { m_dmgCb    = cb; }
+    void setHealCallback(HealCallback cb)     { m_healCb   = cb; }
+    void setMoraleCallback(MoraleCallback cb) { m_moraleCb = cb; }
 
     // XP earned this battle (enemy unit-count × 5, awarded on victory)
     int xpEarned() const { return m_enemyStartCount * 5; }
@@ -150,6 +154,7 @@ private:
     void checkVictory();
     void applyTileEffect(CombatUnit& unit);
     void addLog(const std::string& msg);
+    void logMoraleSurge(const CombatUnit& u);
     void applySymbiosisRound(); // Thornkin bond bonus — called at round start
     void processRoundStartEffects(); // DoT tick, mana regen — called at round start
     void applyTerrainBonuses(); // faction home/penalty terrain stat modifiers at battle start
@@ -182,6 +187,8 @@ private:
     std::vector<CombatLog> m_log;
     LogCallback            m_logCb;
     DamageCallback         m_dmgCb;
+    HealCallback           m_healCb;
+    MoraleCallback         m_moraleCb;
     bool                   m_silent  = false;
     AIDifficulty           m_playerAI = AIDifficulty::Standard;
     AIDifficulty           m_enemyAI  = AIDifficulty::Standard;
