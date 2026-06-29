@@ -23,6 +23,7 @@ public:
 private:
     void drawConfigPanel();
     void drawResultsPanel();
+    void drawOverview();
     void drawMatchupGrid();
     void drawBalanceReport();
     void launchSimulation();

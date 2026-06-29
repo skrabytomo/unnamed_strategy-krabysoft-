@@ -25,6 +25,8 @@ struct FactionMatchup
     float     avgRounds     = 0.0f;
     float     avgF1Survival = 0.0f;   // surviving HP fraction on f1 wins
     float     avgF2Survival = 0.0f;
+    float     avgF1LossRate = 0.0f;   // avg fraction of f1 army killed per battle
+    float     avgF2LossRate = 0.0f;   // avg fraction of f2 army killed per battle
     int       armyCostF1    = 0;      // total gold cost of f1 army
     int       armyCostF2    = 0;
     bool      imbalanced    = false;  // |winRate1 - 0.5| > 0.15

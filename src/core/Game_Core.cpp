@@ -567,6 +567,9 @@ void Game::startNewGame()
     m_showTownLostPopup = false;
     m_showCombatResult = false;
 
+    // Reset campaign state so leftover campaign data doesn't affect skirmish
+    m_campaign.reset();
+
     // Multiplayer reset
     m_numHumanPlayers      = m_newGameNumPlayers;
     m_currentPlayerIdx     = 0;
@@ -1182,8 +1185,12 @@ void Game::loadSettings()
         m_settingsShowDmgNums   = j.value("showDmgNums",  true);
         m_audio.setSfxVolume(m_settingsSfxVol);
         m_audio.setMusicVolume(m_settingsMasVol);
-        if (m_settingsFullscreen)
-            SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+        if (m_settingsFullscreen) {
+            if (SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN_DESKTOP) != 0) {
+                m_settingsFullscreen = false;  // bad display mode — fall back to windowed
+                saveSettings();
+            }
+        }
     } catch (...) {}
 }
 

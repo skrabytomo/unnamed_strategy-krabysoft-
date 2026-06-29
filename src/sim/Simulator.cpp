@@ -36,6 +36,8 @@ FactionMatchup Simulator::runMatchup(FactionId f1, FactionId f2,
     double totalRounds      = 0.0;
     double totalF1Survival  = 0.0;
     double totalF2Survival  = 0.0;
+    double totalF1Loss      = 0.0;
+    double totalF2Loss      = 0.0;
     int    f1WinCount       = 0;
     int    f2WinCount       = 0;
 
@@ -71,9 +73,22 @@ FactionMatchup Simulator::runMatchup(FactionId f1, FactionId f2,
             result = (hp1 >= hp2) ? CombatPhase::Victory : CombatPhase::Defeat;
         }
 
+        // Track losses for both sides every battle (regardless of winner)
+        {
+            double f1Total = 0.0, f1Alive = 0.0;
+            double f2Total = 0.0, f2Alive = 0.0;
+            for (auto& u : engine.grid().units()) {
+                double hp = static_cast<double>(u.maxHp) * u.count;
+                if (u.isPlayer) { f1Total += hp; f1Alive += u.alive ? u.totalHp() : 0.0; }
+                else            { f2Total += hp; f2Alive += u.alive ? u.totalHp() : 0.0; }
+            }
+            if (f1Total > 0.0) totalF1Loss += 1.0 - f1Alive / f1Total;
+            if (f2Total > 0.0) totalF2Loss += 1.0 - f2Alive / f2Total;
+        }
+
         if (result == CombatPhase::Victory) {
             ++wins1;
-            // Measure surviving HP fraction for f1
+            // Measure surviving HP fraction for f1 (winners only)
             double totalHp = 0.0, aliveHp = 0.0;
             for (auto& u : engine.grid().units()) {
                 if (u.isPlayer) {
@@ -83,7 +98,7 @@ FactionMatchup Simulator::runMatchup(FactionId f1, FactionId f2,
             }
             if (totalHp > 0.0) { totalF1Survival += aliveHp / totalHp; ++f1WinCount; }
         } else if (result == CombatPhase::Defeat) {
-            // Measure surviving HP fraction for f2
+            // Measure surviving HP fraction for f2 (winners only)
             double totalHp = 0.0, aliveHp = 0.0;
             for (auto& u : engine.grid().units()) {
                 if (!u.isPlayer) {
@@ -99,6 +114,8 @@ FactionMatchup Simulator::runMatchup(FactionId f1, FactionId f2,
     m.avgRounds     = static_cast<float>(totalRounds / numBattles);
     m.avgF1Survival = f1WinCount > 0 ? static_cast<float>(totalF1Survival / f1WinCount) : 0.0f;
     m.avgF2Survival = f2WinCount > 0 ? static_cast<float>(totalF2Survival / f2WinCount) : 0.0f;
+    m.avgF1LossRate = static_cast<float>(totalF1Loss / numBattles);
+    m.avgF2LossRate = static_cast<float>(totalF2Loss / numBattles);
     m.imbalanced    = std::abs(m.winRate1 - 0.5f) > IMBALANCE_THRESHOLD;
 
     return m;
@@ -221,6 +238,7 @@ SimResult Simulator::run(const SimConfig& cfg, ProgressCallback onProgress)
                 mirror.f2      = f1;
                 mirror.winRate1 = 1.0f - m.winRate1;
                 std::swap(mirror.avgF1Survival, mirror.avgF2Survival);
+                std::swap(mirror.avgF1LossRate, mirror.avgF2LossRate);
                 std::swap(mirror.armyCostF1, mirror.armyCostF2);
                 result.matchups[j][i] = mirror;
                 ++done;
@@ -239,6 +257,7 @@ SimResult Simulator::run(const SimConfig& cfg, ProgressCallback onProgress)
         mirror.f2      = cfg.faction1;
         mirror.winRate1 = 1.0f - m.winRate1;
         std::swap(mirror.avgF1Survival, mirror.avgF2Survival);
+        std::swap(mirror.avgF1LossRate, mirror.avgF2LossRate);
         result.matchups[j][i]  = mirror;
         if (onProgress) onProgress(1, 1);
     }

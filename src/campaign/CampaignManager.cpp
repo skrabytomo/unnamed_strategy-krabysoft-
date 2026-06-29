@@ -199,6 +199,16 @@ std::vector<CampaignMission> CampaignManager::buildCampaign()
 }
 
 // ── CampaignManager ────────────────────────────────────────────────────────────
+void CampaignManager::reset()
+{
+    m_missions.clear();
+    m_currentIdx    = 0;
+    m_over          = false;
+    m_won           = false;
+    m_pendingDecIdx = -1;
+    m_alignment.reset();
+}
+
 void CampaignManager::init()
 {
     m_missions = buildCampaign();
@@ -210,6 +220,10 @@ void CampaignManager::init()
 
 void CampaignManager::startMission(int id)
 {
+    if (id < 0 || id >= static_cast<int>(m_missions.size())) {
+        m_over = true;
+        return;
+    }
     m_currentIdx    = id;
     m_pendingDecIdx = -1;
     gLog("[Campaign] Mission %d: %s\n",
@@ -398,12 +412,13 @@ void CampaignManager::checkAllObjectives()
 
 void CampaignManager::triggerMissionLoss()
 {
-    if (!m_over)
-        completeMission(false);
+    if (m_missions.empty() || m_over) return;
+    completeMission(false);
 }
 
 void CampaignManager::completeMission(bool won)
 {
+    if (m_missions.empty() || m_currentIdx >= static_cast<int>(m_missions.size())) return;
     fireEvent(won ? CampaignEvent::MissionCompleted : CampaignEvent::MissionFailed);
     const auto& mission = m_missions[m_currentIdx];
 

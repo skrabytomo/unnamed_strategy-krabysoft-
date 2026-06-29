@@ -140,6 +140,10 @@ void SimulatorWindow::drawResultsPanel()
     }
 
     if (ImGui::BeginTabBar("ResultTabs")) {
+        if (ImGui::BeginTabItem("Overview")) {
+            drawOverview();
+            ImGui::EndTabItem();
+        }
         if (ImGui::BeginTabItem("Win Rate Grid")) {
             drawMatchupGrid();
             ImGui::EndTabItem();
@@ -150,6 +154,122 @@ void SimulatorWindow::drawResultsPanel()
         }
         ImGui::EndTabBar();
     }
+}
+
+void SimulatorWindow::drawOverview()
+{
+    const SimResult& r = m_result;
+
+    if (r.battlesPerMatchup <= 0) {
+        ImGui::TextDisabled("No data.");
+        return;
+    }
+
+    if (m_allVsAll) {
+        // All-vs-all: show summary stats across all matchups
+        ImGui::TextUnformatted("All vs All — Summary");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        int imbalanceCount = 0;
+        float totalLossA = 0.0f, totalLossB = 0.0f;
+        float totalRounds = 0.0f;
+        int matchupCount = 0;
+        for (int i = 0; i < kFactionCount; ++i) {
+            for (int j = i + 1; j < kFactionCount; ++j) {
+                const auto& m = r.matchups[i][j];
+                if (m.imbalanced) ++imbalanceCount;
+                totalLossA  += m.avgF1LossRate;
+                totalLossB  += m.avgF2LossRate;
+                totalRounds += m.avgRounds;
+                ++matchupCount;
+            }
+        }
+        if (matchupCount > 0) {
+            ImGui::Text("Matchups run:       36  (%d battles each)", r.battlesPerMatchup);
+            ImGui::Text("Imbalanced:         %d / 36", imbalanceCount);
+            ImGui::Text("Avg battle length:  %.1f rounds", totalRounds / matchupCount);
+            float avgLoss = (totalLossA + totalLossB) * 0.5f / matchupCount;
+            ImGui::Text("Avg army losses:    %.1f%%", avgLoss * 100.0f);
+        }
+        return;
+    }
+
+    // Single matchup
+    int i = m_faction1;
+    int j = m_faction2;
+    const auto& m = (i != j) ? r.matchups[i][j] : r.matchups[i][j];
+    if (m.battles <= 0) {
+        ImGui::TextDisabled("No data for this matchup.");
+        return;
+    }
+
+    const char* nameA = factionLabel(m_faction1);
+    const char* nameB = factionLabel(m_faction2);
+    int winsA = static_cast<int>(std::round(m.winRate1 * m.battles));
+    int winsB = m.battles - winsA;
+
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.4f, 1.0f), "  %s  vs  %s", nameA, nameB);
+    ImGui::TextDisabled("  %d battles  |  %d weeks  |  %s vs %s AI",
+        m.battles, r.weeksSimulated,
+        m_ai1 == 0 ? "Passive" : m_ai1 == 2 ? "Tactical" : "Standard",
+        m_ai2 == 0 ? "Passive" : m_ai2 == 2 ? "Tactical" : "Standard");
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Winner block
+    ImGui::TextUnformatted("Results:");
+    ImGui::Spacing();
+
+    auto winCol = [](float wr) {
+        return wr > 0.5f ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f) : ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+    };
+
+    ImGui::TextColored(winCol(m.winRate1),
+        "  %-22s  won %4d / %d  (%.1f%%)", nameA, winsA, m.battles, m.winRate1 * 100.0f);
+    ImGui::TextColored(winCol(1.0f - m.winRate1),
+        "  %-22s  won %4d / %d  (%.1f%%)", nameB, winsB, m.battles, (1.0f - m.winRate1) * 100.0f);
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    ImGui::TextUnformatted("Average losses per battle:");
+    ImGui::Spacing();
+
+    // Loss bars
+    auto drawLossBar = [&](const char* name, float lossRate) {
+        ImGui::Text("  %-22s  lost %.1f%% of army", name, lossRate * 100.0f);
+        float barW = ImGui::GetContentRegionAvail().x - 10.0f;
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        float barH = 8.0f;
+        dl->AddRectFilled(pos, {pos.x + barW, pos.y + barH},
+            IM_COL32(60, 60, 60, 200));
+        dl->AddRectFilled(pos, {pos.x + barW * lossRate, pos.y + barH},
+            IM_COL32(220, 80, 60, 220));
+        ImGui::Dummy({barW, barH + 4.0f});
+    };
+
+    drawLossBar(nameA, m.avgF1LossRate);
+    ImGui::Spacing();
+    drawLossBar(nameB, m.avgF2LossRate);
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    ImGui::Text("  Avg battle length:    %.1f rounds", m.avgRounds);
+    ImGui::Text("  Winner survival (A):  %.1f%%", m.avgF1Survival * 100.0f);
+    ImGui::Text("  Winner survival (B):  %.1f%%", m.avgF2Survival * 100.0f);
+    ImGui::Text("  Army cost A:          %dg", m.armyCostF1);
+    ImGui::Text("  Army cost B:          %dg", m.armyCostF2);
+    ImGui::Spacing();
+    if (m.imbalanced)
+        ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f),
+            "  IMBALANCED — win rate >15%% from 50%%");
+    else
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
+            "  Balanced — within 15%% of 50%%");
 }
 
 void SimulatorWindow::drawMatchupGrid()
@@ -228,7 +348,9 @@ void SimulatorWindow::drawMatchupGrid()
         ImGui::Text("Win rate:      %.1f%% / %.1f%%",
             m.winRate1 * 100.0f, (1.0f - m.winRate1) * 100.0f);
         ImGui::Text("Avg rounds:    %.1f", m.avgRounds);
-        ImGui::Text("Avg survival (winner): A=%.1f%%  B=%.1f%%",
+        ImGui::Text("Avg losses:    A=%.1f%%  B=%.1f%%",
+            m.avgF1LossRate * 100.0f, m.avgF2LossRate * 100.0f);
+        ImGui::Text("Winner surviv: A=%.1f%%  B=%.1f%%",
             m.avgF1Survival * 100.0f, m.avgF2Survival * 100.0f);
         ImGui::Text("Balance grade: %s",
             m.imbalanced ? "IMBALANCED" : "OK");

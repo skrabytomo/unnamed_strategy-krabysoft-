@@ -25,6 +25,8 @@ public:
 
     // Populate the hardcoded 3-mission campaign arc
     void init();
+    // Clear all campaign state (call when entering skirmish/random-map mode)
+    void reset();
 
     // Called once per week from Game (campaign mode)
     void onWeekStart(int week, LuaEngine& lua);
