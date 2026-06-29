@@ -17,7 +17,7 @@ find_package(SQLite3 REQUIRED)
 find_package(Lua 5.4 REQUIRED)
 find_package(nlohmann_json REQUIRED)
 
-# ── ImGui (system package — platform-agnostic detection) ─────────────────────
+# ── ImGui (system package with FetchContent fallback) ─────────────────────────
 find_path(IMGUI_INCLUDE_DIR
     NAMES imgui.h
     PATH_SUFFIXES imgui
@@ -32,29 +32,55 @@ find_library(IMGUI_LIBRARY
     NAMES imgui
     DOC "Dear ImGui library"
 )
-# stb is a separate system lib on Linux; on MSYS2 it's compiled into libimgui.a
+# stb is a separate system lib on Linux; bundled inside libimgui.a on MSYS2
 find_library(STB_LIBRARY NAMES stb)
-if(NOT IMGUI_INCLUDE_DIR OR NOT IMGUI_LIBRARY)
-    message(FATAL_ERROR
-        "ImGui not found. Install the system package:\n"
-        "  Linux (Debian/Ubuntu): sudo apt install libimgui-dev\n"
-        "  MSYS2 (UCRT64):        pacman -S mingw-w64-ucrt-x86_64-imgui")
-endif()
-if(NOT IMGUI_BACKENDS_DIR)
-    set(IMGUI_BACKENDS_DIR "${IMGUI_INCLUDE_DIR}/backends")
-endif()
 
-add_library(imgui_lib INTERFACE)
-target_include_directories(imgui_lib INTERFACE
-    ${IMGUI_INCLUDE_DIR}
-    ${IMGUI_BACKENDS_DIR}
-)
-target_link_libraries(imgui_lib INTERFACE
-    ${IMGUI_LIBRARY}
-    $<$<BOOL:${STB_LIBRARY}>:${STB_LIBRARY}>
-    ${SDL2_LIBRARIES}
-    ${OPENGL_LIBRARIES}
-)
+if(IMGUI_INCLUDE_DIR AND IMGUI_LIBRARY)
+    if(NOT IMGUI_BACKENDS_DIR)
+        set(IMGUI_BACKENDS_DIR "${IMGUI_INCLUDE_DIR}/backends")
+    endif()
+
+    add_library(imgui_lib INTERFACE)
+    target_include_directories(imgui_lib INTERFACE
+        ${IMGUI_INCLUDE_DIR}
+        ${IMGUI_BACKENDS_DIR}
+    )
+    target_link_libraries(imgui_lib INTERFACE
+        ${IMGUI_LIBRARY}
+        $<$<BOOL:${STB_LIBRARY}>:${STB_LIBRARY}>
+        ${SDL2_LIBRARIES}
+        ${OPENGL_LIBRARIES}
+    )
+else()
+    # No system ImGui — build v1.90.8 from source
+    message(STATUS "ImGui system package not found — fetching v1.90.8 from GitHub")
+    include(FetchContent)
+    FetchContent_Declare(imgui
+        GIT_REPOSITORY https://github.com/ocornut/imgui.git
+        GIT_TAG        v1.90.8
+        GIT_SHALLOW    TRUE
+    )
+    FetchContent_MakeAvailable(imgui)
+
+    add_library(imgui_lib STATIC
+        ${imgui_SOURCE_DIR}/imgui.cpp
+        ${imgui_SOURCE_DIR}/imgui_draw.cpp
+        ${imgui_SOURCE_DIR}/imgui_tables.cpp
+        ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+    )
+    target_include_directories(imgui_lib PUBLIC
+        ${imgui_SOURCE_DIR}
+        ${imgui_SOURCE_DIR}/backends
+        ${SDL2_INCLUDE_DIRS}
+        ${OPENGL_INCLUDE_DIR}
+    )
+    target_link_libraries(imgui_lib PUBLIC
+        ${SDL2_LIBRARIES}
+        ${OPENGL_LIBRARIES}
+    )
+endif()
 
 # ── Game sources ──────────────────────────────────────────────────────────────
 file(GLOB_RECURSE SOURCES
