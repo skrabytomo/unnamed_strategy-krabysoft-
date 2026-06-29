@@ -776,6 +776,109 @@ void Game::renderTavern()
 
     ImGui::Separator();
     ImGui::TextDisabled("Roster: %d/%d heroes", (int)m_heroes.size(), MAX_HEROES);
+
+    // ── Artifact Wares (3 rotating Special artifacts for sale each week) ──────
+    ImGui::Separator();
+    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.4f, 1.0f), "Wares  (restocks weekly)");
+
+    auto specials = m_artifactRegistry.getByRarity(ArtifactRarity::Special);
+    std::vector<const ArtifactDef*> forSale;
+    for (auto* a : specials)
+        if (a->shopPrice > 0) forSale.push_back(a);
+
+    uint32_t shopSeed = (uint32_t)(town->pos.q * 1031u + town->pos.r * 7919u + m_turns.week() * 3313u);
+    int wareGold = currentResources().get(ResourceType::Gold);
+    for (int i = 0; i < 3 && !forSale.empty(); ++i) {
+        const ArtifactDef* art = forSale[shopSeed % forSale.size()];
+        shopSeed = shopSeed * 1664525u + 1013904223u;
+        forSale.erase(std::remove(forSale.begin(), forSale.end(), art), forSale.end());
+
+        bool alreadyOwn = false;
+        if (m_activeHeroIdx >= 0 && m_activeHeroIdx < (int)m_heroes.size()) {
+            const Hero& h = m_heroes[m_activeHeroIdx];
+            for (int eq : h.artifacts.equippedIds)
+                if (eq == art->id) { alreadyOwn = true; break; }
+            if (!alreadyOwn)
+                for (int inv : h.artifactInventory)
+                    if (inv == art->id) { alreadyOwn = true; break; }
+        }
+        bool canAffordWare = wareGold >= art->shopPrice;
+
+        ImGui::PushID(2000 + i);
+        if (!canAffordWare || alreadyOwn) ImGui::BeginDisabled();
+        char wareLbl[96];
+        std::snprintf(wareLbl, sizeof(wareLbl), "%s  (%dg)", art->name.c_str(), art->shopPrice);
+        if (ImGui::Button(wareLbl, ImVec2(280, 0))) {
+            currentResources().add(ResourceType::Gold, -art->shopPrice);
+            if (m_activeHeroIdx >= 0 && m_activeHeroIdx < (int)m_heroes.size())
+                m_heroes[m_activeHeroIdx].artifactInventory.push_back(art->id);
+            wareGold = currentResources().get(ResourceType::Gold);
+            gLog("Tavern: bought %s for %dg\n", art->name.c_str(), art->shopPrice);
+        }
+        if (!canAffordWare || alreadyOwn) ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("%s\n%s", art->name.c_str(), art->description.c_str());
+        ImGui::PopID();
+    }
+
+    ImGui::End();
+}
+
+// ── Traveling Artifact Merchant popup (world map object) ─────────────────────
+void Game::renderArtifactMerchantPopup()
+{
+    if (!m_showMerchantPopup) return;
+    ImGui::SetNextWindowPos(ImVec2(400, 200), ImGuiCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(320, 0), ImGuiCond_Always);
+    if (!ImGui::Begin("Traveling Merchant", nullptr,
+                      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::End(); return;
+    }
+    ImGui::Text("Gold: %d", currentResources().get(ResourceType::Gold));
+    ImGui::Separator();
+
+    auto specials = m_artifactRegistry.getByRarity(ArtifactRarity::Special);
+    std::vector<const ArtifactDef*> forSale;
+    for (auto* a : specials)
+        if (a->shopPrice > 0) forSale.push_back(a);
+
+    uint32_t seed = static_cast<uint32_t>(m_merchantSeed);
+    int gold = currentResources().get(ResourceType::Gold);
+    for (int i = 0; i < 3 && !forSale.empty(); ++i) {
+        const ArtifactDef* art = forSale[seed % forSale.size()];
+        seed = seed * 1664525u + 1013904223u;
+        forSale.erase(std::remove(forSale.begin(), forSale.end(), art), forSale.end());
+
+        bool alreadyOwn = false;
+        if (m_activeHeroIdx >= 0 && m_activeHeroIdx < (int)m_heroes.size()) {
+            const Hero& h = m_heroes[m_activeHeroIdx];
+            for (int eq : h.artifacts.equippedIds)
+                if (eq == art->id) { alreadyOwn = true; break; }
+            if (!alreadyOwn)
+                for (int inv : h.artifactInventory)
+                    if (inv == art->id) { alreadyOwn = true; break; }
+        }
+        bool canAfford = gold >= art->shopPrice;
+
+        ImGui::PushID(3000 + i);
+        if (!canAfford || alreadyOwn) ImGui::BeginDisabled();
+        char lbl[96];
+        std::snprintf(lbl, sizeof(lbl), "%s  (%dg)", art->name.c_str(), art->shopPrice);
+        if (ImGui::Button(lbl, ImVec2(280, 0))) {
+            currentResources().add(ResourceType::Gold, -art->shopPrice);
+            if (m_activeHeroIdx >= 0 && m_activeHeroIdx < (int)m_heroes.size())
+                m_heroes[m_activeHeroIdx].artifactInventory.push_back(art->id);
+            gold = currentResources().get(ResourceType::Gold);
+            gLog("Merchant: bought %s for %dg\n", art->name.c_str(), art->shopPrice);
+        }
+        if (!canAfford || alreadyOwn) ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("%s\n%s", art->name.c_str(), art->description.c_str());
+        ImGui::PopID();
+    }
+    ImGui::Separator();
+    if (ImGui::Button("Leave", ImVec2(280, 0)))
+        m_showMerchantPopup = false;
     ImGui::End();
 }
 

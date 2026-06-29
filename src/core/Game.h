@@ -455,6 +455,11 @@ private:
     bool     m_showShipyardPopup = false;
     void     renderShipyardPopup();
 
+    // ── Artifact Merchant popup (world-map merchant; buy Special artifacts) ───
+    bool     m_showMerchantPopup  = false;
+    int      m_merchantSeed       = 0;
+    void     renderArtifactMerchantPopup();
+
     // ── Fishing House (passive income; no popup needed) ───────────────────────
     // Income applied in doEndTurn() each day
 

@@ -417,6 +417,21 @@ void Game::watchAiMovePlayerHero()
                             }
                         }
                     }
+                    // Upgrade base-tier stacks to PathA when PathA dwelling is built
+                    for (const auto& dw : t.dwellings) {
+                        if (dw.path != UpgradePath::PathA) continue;
+                        const UnitDef* pathADef = nullptr;
+                        const UnitDef* baseDef  = nullptr;
+                        for (const auto& ud : udefs) {
+                            if (ud.faction == t.faction && ud.tier == dw.tier) {
+                                if (ud.path == UpgradePath::PathA) pathADef = &ud;
+                                else if (ud.path == UpgradePath::None) baseDef = &ud;
+                            }
+                        }
+                        if (!pathADef || !baseDef) continue;
+                        for (auto& s : hero.army)
+                            if (s.defId == baseDef->id) s.defId = pathADef->id;
+                    }
                 }
                 break;
             }
@@ -1614,7 +1629,7 @@ void Game::doEndTurn()
                 }
             }
 
-            gLog("New week %d — income applied\n", m_turns.week());
+            gLog("New week %d - income applied\n", m_turns.week());
 
             // Enemy hero weekly reinforcements — scale with week number so they stay relevant
             {
@@ -2372,6 +2387,7 @@ void Game::renderWorldMapImGui()
     if (m_showMineInfoPopup)      renderMineInfoPopup();
     if (m_showTreeKnowledgePopup) renderTreeOfKnowledgePopup();
     if (m_showShipyardPopup)      renderShipyardPopup();
+    if (m_showMerchantPopup)      renderArtifactMerchantPopup();
     if (m_showEncounterPrompt)    renderEncounterPrompt();
     if (m_showTownLostPopup)      renderTownLostPopup();
     if (m_showWeekSummary)        renderWeekSummary();
@@ -3364,6 +3380,11 @@ void Game::checkTileEvents()
         case WorldObjectType::FishingHouse:
             // passive income — no interaction when stepped on
             break;
+
+        case WorldObjectType::ArtifactMerchant:
+            m_merchantSeed      = obj.value;
+            m_showMerchantPopup = true;
+            break;
         }
     }
 
@@ -3731,9 +3752,10 @@ void Game::renderWorldOverlay()
         case WorldObjectType::Stables:        ico = 42;              break; // row5 col2
         case WorldObjectType::TreeOfKnowledge:ico = 43;              break; // row5 col3
         case WorldObjectType::ChokeGuard:    ico = 15;               break; // default icon
-        case WorldObjectType::Shipyard:      ico = 15;               break;
-        case WorldObjectType::FishingHouse:  ico = 15;               break;
-        default:                             ico = 15;               break;
+        case WorldObjectType::Shipyard:         ico = 15;          break;
+        case WorldObjectType::FishingHouse:     ico = 15;          break;
+        case WorldObjectType::ArtifactMerchant: ico = ICO_ARTIFACT; break;
+        default:                                ico = 15;          break;
         }
         // Idle glow pulse
         float pulse = 0.5f + 0.5f * sinf(m_mapTime * 2.0f + oi * 1.1f);
@@ -6554,7 +6576,7 @@ void Game::triggerSiegeCombat(uint32_t townId)
     enterCombat(lead, pUnits, garrisonHero, gUnits);
 }
 
-// ── March button — visible when hero is selected and no siege target nearby ──
+// ── March button — sits in the HUD bottom bar, left of End Turn ──────────────
 void Game::renderMarchButton()
 {
     // Only show when player controls active hero and game is in world map
@@ -6563,15 +6585,13 @@ void Game::renderMarchButton()
         m_activeHeroIdx >= static_cast<int>(m_heroes.size())) return;
 
     Hero& hero = m_heroes[m_activeHeroIdx];
-    if (hero.isSiegeCamping) return;  // already camped
+    if (hero.isSiegeCamping) return;
 
-    // Check if adjacent to any enemy town (siege option is already shown instead)
     bool nearEnemyTown = false;
     for (const auto& t : m_towns) {
         if (t.ownerId != 0 && t.ownerId != 1 &&
             HexGrid::distance(hero.pos, t.pos) <= 1) {
-            nearEnemyTown = true;
-            break;
+            nearEnemyTown = true; break;
         }
     }
     if (nearEnemyTown) return;
@@ -6579,46 +6599,43 @@ void Game::renderMarchButton()
     int curWeek = m_turns.week();
     bool onCooldown = (hero.marchCooldownWeek > curWeek);
 
+    // Mirror WorldMapHUD layout constants to sit in row 2 left of End Turn
     ImGuiIO& io = ImGui::GetIO();
-    float panelW = 200.0f;
-    float panelH = 90.0f;
-    float px = io.DisplaySize.x - panelW - 8.0f;
-    float py = io.DisplaySize.y - panelH - 60.0f;  // above End Turn button area
+    float sw = io.DisplaySize.x, sh = io.DisplaySize.y;
+    static constexpr float BOT_H_M = 100.0f, BTN_W_M = 150.0f, BTN_H_M = 40.0f, BTN_GAP_M = 6.0f;
+    float col2X = sw - BTN_W_M - 8.0f;
+    float col1X = col2X - BTN_W_M - BTN_GAP_M;
+    float col0X = col1X - BTN_W_M - BTN_GAP_M;
+    float row2Y = sh - BOT_H_M + 8.0f + BTN_H_M + BTN_GAP_M;
 
-    ImGui::SetNextWindowPos(ImVec2(px, py), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(panelW, panelH));
-    ImGui::SetNextWindowBgAlpha(0.85f);
+    ImGui::SetNextWindowPos(ImVec2(col0X, row2Y), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(BTN_W_M, BTN_H_M));
+    ImGui::SetNextWindowBgAlpha(0.0f);
     ImGuiWindowFlags wf = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                          ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar;
+                          ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar |
+                          ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
     if (ImGui::Begin("##march_btn", nullptr, wf)) {
-        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.4f, 1.0f), "MARCH");
-        ImGui::Separator();
-
-        if (onCooldown) {
-            ImGui::TextDisabled("Cooldown: Week %d", hero.marchCooldownWeek);
-            ImGui::BeginDisabled();
-            ImGui::Button("March!", ImVec2(-1, 0));
-            ImGui::EndDisabled();
-        } else {
-            int cost = std::max(1, hero.movePool / 4);  // 25% of current movePool
-            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f),
-                               "Cost: %d MP  Bonus: +%d MP", cost, hero.maxMove / 10);
-            if (ImGui::Button("March!", ImVec2(-1, 0))) {
-                hero.movePool -= cost;
-                if (hero.movePool < 0) hero.movePool = 0;
-                // +10% maxMove added at start of next week
-                hero.marchCooldownWeek = curWeek + 1;
-                hero.marchBonusActive  = true;
-            }
-            if (ImGui::IsItemHovered()) {
+        if (onCooldown) ImGui::BeginDisabled();
+        if (ImGui::Button("March!", ImVec2(-1, -1))) {
+            int cost = std::max(1, hero.movePool / 4);
+            hero.movePool -= cost;
+            if (hero.movePool < 0) hero.movePool = 0;
+            hero.marchCooldownWeek = curWeek + 1;
+            hero.marchBonusActive  = true;
+        }
+        if (onCooldown) ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            if (onCooldown) {
+                ImGui::SetTooltip("March Order\nOn cooldown until Week %d", hero.marchCooldownWeek);
+            } else {
+                int cost = std::max(1, hero.movePool / 4);
                 ImGui::SetTooltip(
                     "March Order\n\n"
                     "Push your troops to move faster.\n"
-                    "Costs 25%% of current movement.\n"
+                    "Costs 25%% of current movement (%d MP).\n"
                     "Grants +10%% movement next week.\n"
-                    "Cooldown: 1 week."
-                );
+                    "Cooldown: 1 week.", cost);
             }
         }
     }

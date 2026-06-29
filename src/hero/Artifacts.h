@@ -44,6 +44,7 @@ struct ArtifactDef
     ArtifactBonus bonus;
     Resources     craftCost;    // empty = not craftable
     bool          isCraftable   = false;
+    int           shopPrice     = 0;  // gold in Tavern/Merchant shops (0 = not for sale)
 };
 
 // ── Per-hero equipped artifacts ────────────────────────────────────────────────

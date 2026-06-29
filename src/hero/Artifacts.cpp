@@ -75,24 +75,32 @@ void ArtifactRegistry::init()
           []{ Resources r = Resources::gold(1800); r.add(ResourceType::Mercury,2); return r; }(),
           "+3 Death Power"); }
 
-    // ── SPECIAL (world map finds) ─────────────────────────────────────────────
+    // ── SPECIAL (world map finds + shop-buyable) ──────────────────────────────
 
     { ArtifactBonus b; b.attack = 6; b.defense = 4;
-      add("Champion's Blade", S::Weapon, R::Special, b, none, "+6 Attack, +4 Defense"); }
+      add("Champion's Blade", S::Weapon, R::Special, b, none, "+6 Attack, +4 Defense");
+      m_artifacts.back().shopPrice = 4000; }
     { ArtifactBonus b; b.lightPower = 6; b.manaBonus = 10;
-      add("Radiant Staff", S::Weapon, R::Special, b, none, "+6 Light Power, +10 Mana"); }
+      add("Radiant Staff", S::Weapon, R::Special, b, none, "+6 Light Power, +10 Mana");
+      m_artifacts.back().shopPrice = 4000; }
     { ArtifactBonus b; b.deathPower = 6; b.hpBonus = 40;
-      add("Scepter of Ending", S::Weapon, R::Special, b, none, "+6 Death Power, +40 HP"); }
+      add("Scepter of Ending", S::Weapon, R::Special, b, none, "+6 Death Power, +40 HP");
+      m_artifacts.back().shopPrice = 4000; }
     { ArtifactBonus b; b.naturePower = 6; b.moveBonus = 4;
-      add("Root Staff", S::Weapon, R::Special, b, none, "+6 Nature Power, +4 Movement"); }
+      add("Root Staff", S::Weapon, R::Special, b, none, "+6 Nature Power, +4 Movement");
+      m_artifacts.back().shopPrice = 4000; }
     { ArtifactBonus b; b.forgePower = 6;
-      add("Runic Gauntlet", S::Weapon, R::Special, b, none, "+6 Forge Power"); }
+      add("Runic Gauntlet", S::Weapon, R::Special, b, none, "+6 Forge Power");
+      m_artifacts.back().shopPrice = 3500; }
     { ArtifactBonus b; b.defense = 8; b.hpBonus = 50;
-      add("Fortress Shield", S::Shield, R::Special, b, none, "+8 Defense, +50 HP"); }
+      add("Fortress Shield", S::Shield, R::Special, b, none, "+8 Defense, +50 HP");
+      m_artifacts.back().shopPrice = 3500; }
     { ArtifactBonus b; b.moveBonus = 10; b.visionBonus = 3;
-      add("Wings of Speed", S::Cloak, R::Special, b, none, "+10 Movement, +3 Vision"); }
+      add("Wings of Speed", S::Cloak, R::Special, b, none, "+10 Movement, +3 Vision");
+      m_artifacts.back().shopPrice = 3000; }
     { ArtifactBonus b; b.attack=4; b.defense=4; b.manaBonus=8;
-      add("Warlord's Crown", S::Helm, R::Special, b, none, "+4 Attack, +4 Defense, +8 Mana"); }
+      add("Warlord's Crown", S::Helm, R::Special, b, none, "+4 Attack, +4 Defense, +8 Mana");
+      m_artifacts.back().shopPrice = 3500; }
 
     // ── LEGENDARY (unique, world map only) ───────────────────────────────────
 

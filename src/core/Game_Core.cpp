@@ -471,7 +471,7 @@ void Game::saveGame(const std::string& customName)
     if (jsonStr.empty()) { fprintf(stderr, "Save serialization failed\n"); return; }
 
     bool isCampaign = data.campaign.active;
-    std::string heroName   = m_heroes.empty() ? "" : m_heroes[0].name;
+    std::string heroName   = (m_heroes.empty() || m_heroes[0].name.empty()) ? "Save" : m_heroes[0].name;
     std::string factionStr = m_heroes.empty() ? "" : factionNameStr(static_cast<int>(m_heroes[0].faction));
 
     // Auto-generate name if not provided
@@ -1220,6 +1220,16 @@ void Game::startNewGame()
             HexCoord p = pickTile();
             m_worldObjects.push_back({m_nextObjId++, WorldObjectType::ArtifactChest, p,
                 1 + static_cast<int>(lcg() % 8), ResourceType::Gold, false});
+        }
+        // Artifact Merchants — permanent shops stocking 3 Special artifacts each
+        for (int am = 0; am < 2 + scale; ++am) {
+            HexCoord p = pickTile();
+            WorldObject wo;
+            wo.id    = m_nextObjId++;
+            wo.type  = WorldObjectType::ArtifactMerchant;
+            wo.pos   = p;
+            wo.value = static_cast<int>(lcg() & 0x7FFFFFFF);  // per-merchant RNG seed
+            m_worldObjects.push_back(wo);
         }
         for (int x = 0; x < 3 * scale; ++x) {
             HexCoord p = pickTile();

@@ -789,13 +789,15 @@ bool CombatEngine::submitAction(const CombatAction& action)
         CombatUnit* target = m_grid.getUnit(action.targetUnitId);
         if (!target || target->isPlayer || !target->alive) return false;
 
-        // Check adjacency for melee
-        if (unit->range == 0) {
-            if (HexGrid::distance(unit->pos, target->pos) > 1) return false;
-        } else {
-            // Ranged — check shots remaining
-            if (unit->shotsLeft <= 0) return false;
+        // Check adjacency for melee; ranged units fall back to melee when out of ammo
+        int dist = HexGrid::distance(unit->pos, target->pos);
+        if (unit->range > 0 && unit->shotsLeft > 0) {
+            // Ranged attack — must be within range
+            if (dist > unit->range) return false;
             unit->shotsLeft--;
+        } else {
+            // Melee attack (pure melee, or ranged unit out of ammo)
+            if (dist > 1) return false;
         }
 
         HexCoord targetPos = target->pos;
