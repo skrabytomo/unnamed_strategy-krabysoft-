@@ -185,6 +185,97 @@ static int heroStrength(const Hero& hero, const std::vector<UnitDef>& defs)
     return s;
 }
 
+// ── File-scope AI constants ───────────────────────────────────────────────────
+
+// Per-faction key resource — used for mine denial (player) and mine focus (enemy)
+static const ResourceType kFactionResource[9] = {
+    ResourceType::FaithStones,   // HolyOrder
+    ResourceType::FaithStones,   // CrimsonWardens
+    ResourceType::VerdantSap,    // Thornkin
+    ResourceType::Mercury,       // EternalEmpire
+    ResourceType::BloodEssence,  // Bloodsworn
+    ResourceType::Mercury,       // Voidkin
+    ResourceType::Iron,          // IronAssembly
+    ResourceType::BloodEssence,  // Amalgamate
+    ResourceType::Gold,          // Convergence
+};
+
+// Faction-specific build priority order
+static const std::vector<int> kBuildOrder[9] = {
+    { BID::HO_HALL, BID::HO_T1_BASE, BID::FORT, BID::MARKET,
+      BID::MAGE_GUILD, BID::HO_LIGHT_SHRINE, BID::HO_T2_BASE,
+      BID::TOWN_HALL, BID::HO_T3_BASE, BID::HO_T3_A,
+      BID::MAGE_GUILD_T2, BID::HO_T4_BASE, BID::HO_T4_A,
+      BID::CITY_HALL, BID::HO_T5_BASE, BID::HO_T5_A,
+      BID::HO_RELIQUARY, BID::HO_T6_BASE, BID::HO_T6_A },
+    { BID::CW_HALL, BID::CW_T1, BID::CW_T1_A, BID::MARKET, BID::CW_T2, BID::CW_T2_A,
+      BID::FORT, BID::CW_WARDEN_BRAND, BID::CW_T3, BID::CW_T3_A,
+      BID::TOWN_HALL, BID::CW_DEATH_ALTAR, BID::CW_T4, BID::CW_T4_A,
+      BID::CITY_HALL, BID::CW_T5, BID::CW_T5_A, BID::CW_T6, BID::CW_T6_A },
+    { BID::TK_GROVE_HEART, BID::TK_T1, BID::TK_T1_A, BID::TK_SYMBIOSIS_WEB,
+      BID::MARKET, BID::TK_T2, BID::TK_T2_A,
+      BID::TK_ANCIENT_CIRCLE, BID::FORT, BID::TK_T3, BID::TK_T3_A,
+      BID::TOWN_HALL, BID::TK_T4, BID::TK_T4_A,
+      BID::CITY_HALL, BID::TK_T5, BID::TK_T5_A, BID::TK_T6, BID::TK_T6_A },
+    { BID::EE_THRONE, BID::EE_T1, BID::EE_T1_A, BID::EE_NECROPOLIS,
+      BID::FORT, BID::EE_T2, BID::EE_T2_A, BID::MARKET,
+      BID::EE_MONUMENT, BID::EE_T3, BID::EE_T3_A,
+      BID::TOWN_HALL, BID::EE_T4, BID::EE_T4_A,
+      BID::MAGE_GUILD, BID::CITY_HALL, BID::EE_T5, BID::EE_T5_A,
+      BID::EE_T6, BID::EE_T6_A },
+    { BID::BS_WAR_HALL, BID::BS_T1, BID::BS_T1_A, BID::BS_T2, BID::BS_T2_A,
+      BID::FORT, BID::MARKET, BID::BS_T3, BID::BS_T3_A,
+      BID::BS_BLOOD_ALTAR, BID::BS_WAR_SHRINE,
+      BID::TOWN_HALL, BID::BS_T4, BID::BS_T4_A,
+      BID::CITY_HALL, BID::BS_T5, BID::BS_T5_A, BID::BS_T6, BID::BS_T6_A },
+    { BID::VK_NEXUS, BID::MARKET, BID::VK_T1, BID::VK_T1_A,
+      BID::MAGE_GUILD, BID::VK_T2, BID::VK_T2_A,
+      BID::FORT, BID::VK_RIFT_GATE, BID::VK_T3, BID::VK_T3_A,
+      BID::TOWN_HALL, BID::VK_VOID_LENS, BID::VK_T4, BID::VK_T4_A,
+      BID::CITY_HALL, BID::VK_T5, BID::VK_T5_A, BID::VK_T6, BID::VK_T6_A },
+    { BID::IA_FORGE_HALL, BID::FORT, BID::IA_T1, BID::IA_T1_A,
+      BID::IA_BLUEPRINT_VAULT, BID::MARKET, BID::IA_T2, BID::IA_T2_A,
+      BID::WAREHOUSE, BID::IA_OVERCLOCK, BID::IA_T3, BID::IA_T3_A,
+      BID::TOWN_HALL, BID::WAREHOUSE_T2, BID::IA_T4, BID::IA_T4_A,
+      BID::CITY_HALL, BID::IA_T5, BID::IA_T5_A, BID::IA_T6, BID::IA_T6_A },
+    { BID::AM_GRAFTING_HALL, BID::AM_T1, BID::AM_T1_A, BID::MARKET,
+      BID::AM_T2, BID::AM_T2_A, BID::FORT, BID::AM_MERGE_CHAMBER,
+      BID::AM_T3, BID::AM_T3_A, BID::TOWN_HALL, BID::AM_FLESH_VAULT,
+      BID::AM_T4, BID::AM_T4_A, BID::CITY_HALL,
+      BID::AM_T5, BID::AM_T5_A, BID::AM_T6, BID::AM_T6_A },
+    { BID::CV_SYNTHESIS_HUB, BID::CV_T1, BID::CV_T1_A, BID::MARKET,
+      BID::CV_T2, BID::CV_T2_A, BID::FORT, BID::MAGE_GUILD,
+      BID::CV_T3, BID::CV_T3_A, BID::TOWN_HALL,
+      BID::CV_T4, BID::CV_T4_A, BID::CV_RESONANCE_WELL, BID::CITY_HALL,
+      BID::CV_T5, BID::CV_T5_A, BID::CV_MIRROR_CHAMBER, BID::CV_T6, BID::CV_T6_A },
+};
+
+// Returns the ResourceType blocking the first prereqs-met but unaffordable building.
+// Returns static_cast<ResourceType>(RESOURCE_COUNT) if nothing is blocked by resources.
+static ResourceType aiBlockingResource(const Town& town,
+                                        const std::vector<int>& buildOrder,
+                                        const std::vector<BuildingDef>& allDefs,
+                                        const Resources& res)
+{
+    for (int bid : buildOrder) {
+        if (town.hasBuilding(bid)) continue;
+        if (!town.canBuild(bid, allDefs)) continue;
+        const BuildingDef* def = nullptr;
+        for (const auto& d : allDefs) if (d.id == bid) { def = &d; break; }
+        if (!def) continue;
+        if (res.canAfford(def->cost)) return static_cast<ResourceType>(RESOURCE_COUNT);
+        ResourceType worst = static_cast<ResourceType>(RESOURCE_COUNT);
+        int worstDef = 0;
+        for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
+            auto type = static_cast<ResourceType>(rt);
+            int deficit = def->cost.get(type) - res.get(type);
+            if (deficit > worstDef) { worstDef = deficit; worst = type; }
+        }
+        return worst;
+    }
+    return static_cast<ResourceType>(RESOURCE_COUNT);
+}
+
 // ── World map update ──────────────────────────────────────────────────────────
 void Game::watchAiMovePlayerHero()
 {
@@ -231,10 +322,23 @@ void Game::watchAiMovePlayerHero()
                 if (t.ownerId == 0)  add(t.pos, 150.f);
                 else if (t.ownerId != 1) add(t.pos, 200.f); // enemy town
             }
-            // Resources
-            for (const auto& r : m_resources) {
-                if (r.ownedBy == 1) continue;
-                add(r.pos, 60.f);
+            // Resources — prioritise the mine type blocking our next build
+            {
+                ResourceType neededMineRes = static_cast<ResourceType>(RESOURCE_COUNT);
+                const auto& allDefs = m_registry.buildings();
+                for (const auto& t : m_towns) {
+                    if (t.ownerId != 1) continue;
+                    int fi = static_cast<int>(t.faction);
+                    if (fi >= 0 && fi < 9) {
+                        neededMineRes = aiBlockingResource(t, kBuildOrder[fi], allDefs, m_playerResources);
+                        if (static_cast<int>(neededMineRes) < RESOURCE_COUNT) break;
+                    }
+                }
+                for (const auto& r : m_resources) {
+                    if (r.ownedBy == 1) continue;
+                    float val = (r.type == neededMineRes) ? 180.f : 60.f;
+                    add(r.pos, val);
+                }
             }
             // World objects
             for (const auto& obj : m_worldObjects) {
@@ -1037,17 +1141,6 @@ void Game::doEndTurn()
             bool playerIsWeak = (plStr > 0 && plStr < m_turns.week() * 350);
 
             // Player's key faction resource — AI denies these mines first
-            static const ResourceType kFactionResource[9] = {
-                ResourceType::FaithStones,   // HolyOrder
-                ResourceType::FaithStones,   // CrimsonWardens
-                ResourceType::VerdantSap,    // Thornkin
-                ResourceType::Mercury,       // EternalEmpire
-                ResourceType::BloodEssence,  // Bloodsworn
-                ResourceType::Mercury,       // Voidkin
-                ResourceType::Iron,          // IronAssembly
-                ResourceType::BloodEssence,  // Amalgamate
-                ResourceType::Gold,          // Convergence
-            };
             int plFidx = static_cast<int>(playerHero.faction);
             ResourceType denialRes = (plFidx >= 0 && plFidx < 9)
                                    ? kFactionResource[plFidx] : ResourceType::Gold;
@@ -1142,10 +1235,18 @@ void Game::doEndTurn()
                             if (t.ownerId == 0)  add(t.pos, 150.f);
                             else if (t.ownerId == 1) add(t.pos, 200.f);
                         }
-                        // Resources
-                        for (const auto& r : m_resources) {
-                            if (r.ownedBy == eHero.id) continue;
-                            add(r.pos, r.type == denialRes ? 120.f : 60.f);
+                        // Resources — deny player's key resource and favour own faction's
+                        {
+                            int eFidx = static_cast<int>(eHero.faction);
+                            ResourceType enemyKeyRes = (eFidx >= 0 && eFidx < 9)
+                                                     ? kFactionResource[eFidx] : ResourceType::Gold;
+                            for (const auto& r : m_resources) {
+                                if (r.ownedBy == eHero.id) continue;
+                                float val = 60.f;
+                                if (r.type == denialRes)   val = std::max(val, 120.f);
+                                if (r.type == enemyKeyRes) val = std::max(val, 100.f);
+                                add(r.pos, val);
+                            }
                         }
                         // World objects
                         for (const auto& obj : m_worldObjects) {
@@ -1565,67 +1666,6 @@ void Game::doEndTurn()
 
                 const auto& allBuildings = m_registry.buildings();
 
-                // Faction-specific build order — first buildable entry wins each week.
-                // Entries tried in order; first that satisfies prereqs & resources gets built.
-                // PathA upgrade dwellings are included for key tiers (T3-T5).
-                static const std::vector<int> kBuildOrder[9] = {
-                    // HolyOrder (0): Hall + T1 dwelling first, then Fort
-                    { BID::HO_HALL, BID::HO_T1_BASE, BID::FORT, BID::MARKET,
-                      BID::MAGE_GUILD, BID::HO_LIGHT_SHRINE, BID::HO_T2_BASE,
-                      BID::TOWN_HALL, BID::HO_T3_BASE, BID::HO_T3_A,
-                      BID::MAGE_GUILD_T2, BID::HO_T4_BASE, BID::HO_T4_A,
-                      BID::CITY_HALL, BID::HO_T5_BASE, BID::HO_T5_A,
-                      BID::HO_RELIQUARY, BID::HO_T6_BASE, BID::HO_T6_A },
-                    // CrimsonWardens (1): Economy first, T1_A upgrade, T2 early (ranged), Warden Brand
-                    { BID::CW_HALL, BID::CW_T1, BID::CW_T1_A, BID::MARKET, BID::CW_T2, BID::CW_T2_A,
-                      BID::FORT, BID::CW_WARDEN_BRAND, BID::CW_T3, BID::CW_T3_A,
-                      BID::TOWN_HALL, BID::CW_DEATH_ALTAR, BID::CW_T4, BID::CW_T4_A,
-                      BID::CITY_HALL, BID::CW_T5, BID::CW_T5_A, BID::CW_T6, BID::CW_T6_A },
-                    // Thornkin (2): Symbiosis Web early, T1_A upgrade, key upgrades (PathA=paired)
-                    { BID::TK_GROVE_HEART, BID::TK_T1, BID::TK_T1_A, BID::TK_SYMBIOSIS_WEB,
-                      BID::MARKET, BID::TK_T2, BID::TK_T2_A,
-                      BID::TK_ANCIENT_CIRCLE, BID::FORT, BID::TK_T3, BID::TK_T3_A,
-                      BID::TOWN_HALL, BID::TK_T4, BID::TK_T4_A,
-                      BID::CITY_HALL, BID::TK_T5, BID::TK_T5_A, BID::TK_T6, BID::TK_T6_A },
-                    // EternalEmpire (3): Necropolis + Monument (second-life) ASAP, T1/T2 upgrades
-                    { BID::EE_THRONE, BID::EE_T1, BID::EE_T1_A, BID::EE_NECROPOLIS,
-                      BID::FORT, BID::EE_T2, BID::EE_T2_A, BID::MARKET,
-                      BID::EE_MONUMENT, BID::EE_T3, BID::EE_T3_A,
-                      BID::TOWN_HALL, BID::EE_T4, BID::EE_T4_A,
-                      BID::MAGE_GUILD, BID::CITY_HALL, BID::EE_T5, BID::EE_T5_A,
-                      BID::EE_T6, BID::EE_T6_A },
-                    // Bloodsworn (4): Aggression-first — fast T1/T2, Blood Altar early
-                    { BID::BS_WAR_HALL, BID::BS_T1, BID::BS_T1_A, BID::BS_T2, BID::BS_T2_A,
-                      BID::FORT, BID::MARKET, BID::BS_T3, BID::BS_T3_A,
-                      BID::BS_BLOOD_ALTAR, BID::BS_WAR_SHRINE,
-                      BID::TOWN_HALL, BID::BS_T4, BID::BS_T4_A,
-                      BID::CITY_HALL, BID::BS_T5, BID::BS_T5_A, BID::BS_T6, BID::BS_T6_A },
-                    // Voidkin (5): Market gate, Mage Guild (spell-dependent), T1_A, Void Lens
-                    { BID::VK_NEXUS, BID::MARKET, BID::VK_T1, BID::VK_T1_A,
-                      BID::MAGE_GUILD, BID::VK_T2, BID::VK_T2_A,
-                      BID::FORT, BID::VK_RIFT_GATE, BID::VK_T3, BID::VK_T3_A,
-                      BID::TOWN_HALL, BID::VK_VOID_LENS, BID::VK_T4, BID::VK_T4_A,
-                      BID::CITY_HALL, BID::VK_T5, BID::VK_T5_A, BID::VK_T6, BID::VK_T6_A },
-                    // IronAssembly (6): Blueprint Vault early, Overclock, PathA (Runic line)
-                    { BID::IA_FORGE_HALL, BID::FORT, BID::IA_T1, BID::IA_T1_A,
-                      BID::IA_BLUEPRINT_VAULT, BID::MARKET, BID::IA_T2, BID::IA_T2_A,
-                      BID::WAREHOUSE, BID::IA_OVERCLOCK, BID::IA_T3, BID::IA_T3_A,
-                      BID::TOWN_HALL, BID::WAREHOUSE_T2, BID::IA_T4, BID::IA_T4_A,
-                      BID::CITY_HALL, BID::IA_T5, BID::IA_T5_A, BID::IA_T6, BID::IA_T6_A },
-                    // Amalgamate (7): Merge Chamber early (Adaptation), economy
-                    { BID::AM_GRAFTING_HALL, BID::AM_T1, BID::AM_T1_A, BID::MARKET,
-                      BID::AM_T2, BID::AM_T2_A, BID::FORT, BID::AM_MERGE_CHAMBER,
-                      BID::AM_T3, BID::AM_T3_A, BID::TOWN_HALL, BID::AM_FLESH_VAULT,
-                      BID::AM_T4, BID::AM_T4_A, BID::CITY_HALL,
-                      BID::AM_T5, BID::AM_T5_A, BID::AM_T6, BID::AM_T6_A },
-                    // Convergence (8): Economy + all dwellings + path-A upgrades
-                    { BID::CV_SYNTHESIS_HUB, BID::CV_T1, BID::CV_T1_A, BID::MARKET,
-                      BID::CV_T2, BID::CV_T2_A, BID::FORT, BID::MAGE_GUILD,
-                      BID::CV_T3, BID::CV_T3_A, BID::TOWN_HALL,
-                      BID::CV_T4, BID::CV_T4_A, BID::CV_RESONANCE_WELL, BID::CITY_HALL,
-                      BID::CV_T5, BID::CV_T5_A, BID::CV_MIRROR_CHAMBER, BID::CV_T6, BID::CV_T6_A },
-                };
-
                 for (auto& town : m_towns) {
                     if (town.ownerId == 0) continue;
                     // In Watch AI mode also build for player towns using actual resources
@@ -1636,6 +1676,48 @@ void Game::doEndTurn()
                     int fIdx = static_cast<int>(town.faction);
                     // Player towns spend real resources; enemy towns have infinite
                     Resources& buildRes = (town.ownerId == 1) ? m_playerResources : richRes;
+
+                    // Watch AI trading: if a player town has a Market and is resource-blocked,
+                    // trade just enough surplus (specialist first, gold last) at 4:1 to unblock.
+                    if (town.ownerId == 1 && m_watchingAI && fIdx >= 0 && fIdx < 9) {
+                        bool hasMarket = false;
+                        for (const auto& t : m_towns)
+                            if (t.ownerId == 1 && t.hasBuilding(BID::MARKET)) { hasMarket = true; break; }
+                        if (hasMarket) {
+                            auto neededType = aiBlockingResource(town, kBuildOrder[fIdx], allBuildings, buildRes);
+                            if (static_cast<int>(neededType) < RESOURCE_COUNT) {
+                                constexpr int SELL_RATE = 4;
+                                // Two passes: sell non-gold first, gold second
+                                for (int pass = 0; pass < 2 && static_cast<int>(neededType) < RESOURCE_COUNT; ++pass) {
+                                    for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
+                                        auto sellType = static_cast<ResourceType>(rt);
+                                        if (sellType == neededType) continue;
+                                        if (pass == 0 && sellType == ResourceType::Gold) continue;
+                                        // Recheck deficit
+                                        int deficit = 0;
+                                        for (int bid2 : kBuildOrder[fIdx]) {
+                                            if (town.hasBuilding(bid2)) continue;
+                                            if (!town.canBuild(bid2, allBuildings)) continue;
+                                            const BuildingDef* def2 = nullptr;
+                                            for (const auto& d : allBuildings) if (d.id == bid2) { def2 = &d; break; }
+                                            if (!def2) continue;
+                                            deficit = std::max(0, def2->cost.get(neededType) - buildRes.get(neededType));
+                                            break;
+                                        }
+                                        if (deficit <= 0) break;
+                                        int toBuy = (deficit + SELL_RATE - 1) / SELL_RATE;
+                                        int canBuy = buildRes.get(sellType) / SELL_RATE;
+                                        int trades = std::min(toBuy, canBuy);
+                                        if (trades > 0) {
+                                            buildRes.add(sellType, -(trades * SELL_RATE));
+                                            buildRes.add(neededType, trades);
+                                            gLog("Watch AI traded %d→%d for build\n", (int)sellType, (int)neededType);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     // Try faction priority list first
                     if (fIdx >= 0 && fIdx < 9) {
