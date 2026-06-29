@@ -17,18 +17,43 @@ find_package(SQLite3 REQUIRED)
 find_package(Lua 5.4 REQUIRED)
 find_package(nlohmann_json REQUIRED)
 
-# ── ImGui (system package) ────────────────────────────────────────────────────
+# ── ImGui (system package — platform-agnostic detection) ─────────────────────
+find_path(IMGUI_INCLUDE_DIR
+    NAMES imgui.h
+    PATH_SUFFIXES imgui
+    DOC "Dear ImGui include directory"
+)
+find_path(IMGUI_BACKENDS_DIR
+    NAMES imgui_impl_sdl2.h
+    PATH_SUFFIXES imgui/backends imgui
+    DOC "Dear ImGui backends include directory"
+)
+find_library(IMGUI_LIBRARY
+    NAMES imgui
+    DOC "Dear ImGui library"
+)
+# stb is a separate system lib on Linux; on MSYS2 it's compiled into libimgui.a
+find_library(STB_LIBRARY NAMES stb)
+if(NOT IMGUI_INCLUDE_DIR OR NOT IMGUI_LIBRARY)
+    message(FATAL_ERROR
+        "ImGui not found. Install the system package:\n"
+        "  Linux (Debian/Ubuntu): sudo apt install libimgui-dev\n"
+        "  MSYS2 (UCRT64):        pacman -S mingw-w64-ucrt-x86_64-imgui")
+endif()
+if(NOT IMGUI_BACKENDS_DIR)
+    set(IMGUI_BACKENDS_DIR "${IMGUI_INCLUDE_DIR}/backends")
+endif()
+
 add_library(imgui_lib INTERFACE)
 target_include_directories(imgui_lib INTERFACE
-    /usr/include/imgui
-    /usr/include/imgui/backends
+    ${IMGUI_INCLUDE_DIR}
+    ${IMGUI_BACKENDS_DIR}
 )
 target_link_libraries(imgui_lib INTERFACE
-    /usr/lib/x86_64-linux-gnu/libimgui.a
-    /usr/lib/x86_64-linux-gnu/libstb.a
+    ${IMGUI_LIBRARY}
+    $<$<BOOL:${STB_LIBRARY}>:${STB_LIBRARY}>
     ${SDL2_LIBRARIES}
     ${OPENGL_LIBRARIES}
-    GL
 )
 
 # ── Game sources ──────────────────────────────────────────────────────────────
