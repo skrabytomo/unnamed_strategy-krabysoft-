@@ -700,8 +700,8 @@ void Game::renderTavern()
         ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f),
                            "Defeated Heroes  (%dg to rehire):", REHIRE_COST);
         bool canRehire = currentResources().get(ResourceType::Gold) >= REHIRE_COST;
-        for (int i = 0; i < (int)m_defeatedHeroPool.size(); ++i) {
-            Hero& dh = m_defeatedHeroPool[i];
+        for (int i = 0; i < (int)activeDefeatedPool.size(); ++i) {
+            Hero& dh = activeDefeatedPool[i];
             ImGui::PushID(1000 + i);
             ImGui::Separator();
             const HeroClassDef* cls = m_classRegistry.getClass(dh.classId);

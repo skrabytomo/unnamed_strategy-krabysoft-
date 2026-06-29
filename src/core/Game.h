@@ -120,8 +120,6 @@ private:
 
     bool loadGameApply(GameSaveData& data);
 
-    // Returns 1 normally, or 2 when hot-seat P2 is playing.
-    int currentPlayerId() const { return (m_hotSeatMode && m_hotSeatP2Turn) ? 2 : 1; }
     // Returns the resource pool for the currently active player.
     Resources& currentResources() {
         return (m_hotSeatMode && m_hotSeatP2Turn) ? m_player2Resources : m_playerResources;

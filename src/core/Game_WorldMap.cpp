@@ -2149,7 +2149,6 @@ void Game::doEndTurn()
             if (!anyTown && !anyArmy) { m_showDefeat = true; m_finalDefeat = true; }
         }
     }
-    }
 
     // ── Hotseat: after full turn, regen non-P1 heroes and show "Player 1's Turn" ─
     if (lastPlayerEndedTurn) {
