@@ -1313,6 +1313,8 @@ void Game::startNewGame()
 
     // ── Hot-seat: configure P2 hero from menu choices ─────────────────────────
     m_hotSeatMode   = m_newGameHotSeat;
+    if (m_hotSeatMode) m_numHumanPlayers = 2;
+    m_worldHUD.setNumHumanPlayers(m_numHumanPlayers);
     m_hotSeatP2Turn = false;
     m_hotSeatHandoff = false;
     m_selectedEnemyHero = -1;

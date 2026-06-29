@@ -1619,6 +1619,44 @@ void Game::exitCombat(bool playerWon)
             });
             m_campaign.onHeroDefeated(defeatedId);
             m_lastCombatEnemyId = 0;
+
+            // AI emergency replacement: spawn immediately so AI isn't inert until next weekly phase
+            if (!m_hotSeatMode && m_enemyHeroes.empty()) {
+                static const char* kEmergNames[] = {
+                    "Emergency Marshal","Relief Commander","Last Defender","Surge Marshal"
+                };
+                for (auto& recruitTown : m_towns) {
+                    if (recruitTown.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) continue;
+                    uint32_t newId = 500u;
+                    for (const auto& h : m_heroes)      newId = std::max(newId, h.id + 1u);
+                    for (const auto& h : m_enemyHeroes) newId = std::max(newId, h.id + 1u);
+                    Hero newHero;
+                    newHero.id       = newId;
+                    newHero.faction  = recruitTown.faction;
+                    newHero.name     = kEmergNames[newId % 4];
+                    newHero.movePool = newHero.maxMove;
+                    int t1count = 6 + m_turns.week() * 2;
+                    for (const auto& ud : m_registry.units()) {
+                        if (ud.faction == newHero.faction && ud.tier == 1
+                            && ud.path == UpgradePath::None) {
+                            newHero.army.push_back({ud.id, t1count});
+                            break;
+                        }
+                    }
+                    HexCoord spawnPos = recruitTown.pos;
+                    for (auto& nb : HexGrid::neighbors(recruitTown.pos)) {
+                        const HexTile* nt = m_map.getTile(nb);
+                        if (nt && nt->terrain != Terrain::Water && nt->heroId == 0) {
+                            spawnPos = nb; break;
+                        }
+                    }
+                    newHero.pos = spawnPos;
+                    if (HexTile* ht = m_map.getTile(spawnPos)) ht->heroId = newHero.id;
+                    m_enemyHeroes.push_back(std::move(newHero));
+                    gLog("AI emergency recruit at %s\n", recruitTown.name.c_str());
+                    break;
+                }
+            }
         }
 
         m_hideout.addXP(50);

@@ -1049,6 +1049,7 @@ void Game::doEndTurn()
             m_hotSeatP2Turn     = true;
             m_hotSeatHandoff    = true;
             m_selectedEnemyHero = m_enemyHeroes.empty() ? -1 : 0;
+            m_worldHUD.setCurrentPlayerId(2);
             // Rebuild fog from P2 hero positions
             if (!m_fogDisabled) {
                 FogOfWar::hideAll(m_map);
@@ -1060,6 +1061,7 @@ void Game::doEndTurn()
             m_hotSeatP2Turn     = false;
             m_hotSeatHandoff    = true;
             m_selectedEnemyHero = -1;
+            m_worldHUD.setCurrentPlayerId(1);
             // Rebuild fog from P1 hero positions
             if (!m_fogDisabled) {
                 FogOfWar::hideAll(m_map);
@@ -2361,10 +2363,17 @@ void Game::renderPlayerTurnBanner()
 void Game::renderWorldMapImGui()
 {
     m_ui.beginFrame();
-    m_worldHUD.draw(m_ui,
-                    (m_hotSeatMode && m_hotSeatP2Turn) ? m_player2Resources : m_playerResources,
-                    m_cachedWeeklyIncome,
-                    m_turns, m_heroes, m_activeHeroIdx, m_towns);
+    {
+        const std::vector<Hero>& hudHeroes = (m_hotSeatMode && m_hotSeatP2Turn)
+                                             ? m_enemyHeroes : m_heroes;
+        int hudHeroIdx = (m_hotSeatMode && m_hotSeatP2Turn)
+                         ? (m_selectedEnemyHero < 0 ? 0 : m_selectedEnemyHero)
+                         : m_activeHeroIdx;
+        m_worldHUD.draw(m_ui,
+                        (m_hotSeatMode && m_hotSeatP2Turn) ? m_player2Resources : m_playerResources,
+                        m_cachedWeeklyIncome,
+                        m_turns, hudHeroes, hudHeroIdx, m_towns);
+    }
     m_ui.endFrame();
     m_ui.flushText(ImGui::GetBackgroundDrawList());
     renderWorldOverlay();
