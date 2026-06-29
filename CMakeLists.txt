@@ -35,7 +35,7 @@ find_library(IMGUI_LIBRARY
 # stb is a separate system lib on Linux; bundled inside libimgui.a on MSYS2
 find_library(STB_LIBRARY NAMES stb)
 
-if(IMGUI_INCLUDE_DIR AND IMGUI_LIBRARY)
+if(IMGUI_INCLUDE_DIR AND IMGUI_LIBRARY AND EXISTS "${IMGUI_LIBRARY}")
     if(NOT IMGUI_BACKENDS_DIR)
         set(IMGUI_BACKENDS_DIR "${IMGUI_INCLUDE_DIR}/backends")
     endif()
