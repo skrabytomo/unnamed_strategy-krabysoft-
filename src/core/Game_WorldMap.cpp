@@ -2397,6 +2397,7 @@ void Game::renderWorldMapImGui()
     if (m_showTreeKnowledgePopup) renderTreeOfKnowledgePopup();
     if (m_showShipyardPopup)      renderShipyardPopup();
     if (m_showMerchantPopup)      renderArtifactMerchantPopup();
+    if (m_showArenaPopup)         renderArenaPopup();
     if (m_showEncounterPrompt)    renderEncounterPrompt();
     if (m_showTownLostPopup)      renderTownLostPopup();
     if (m_showWeekSummary)        renderWeekSummary();
@@ -3394,6 +3395,40 @@ void Game::checkTileEvents()
             m_merchantSeed      = obj.value;
             m_showMerchantPopup = true;
             break;
+
+        case WorldObjectType::Arena: {
+            if (!m_heroes.empty()) {
+                Hero& h = m_heroes[m_activeHeroIdx];
+                if (obj.questState == static_cast<int>(h.id)) break;
+                m_showArenaPopup = true;
+                m_pendingObjId   = obj.id;
+            }
+            break;
+        }
+
+        case WorldObjectType::ExperienceWell:
+            if (!obj.collected && !m_heroes.empty()) {
+                obj.collected = true;
+                int xp = 500 + m_turns.week() * 100;
+                Hero& h = m_heroes[m_activeHeroIdx];
+                char buf[32]; std::snprintf(buf, sizeof(buf), "+%d XP (Well)", xp);
+                pushPickupEffect(h.pos, buf, IM_COL32(160, 255, 160, 255));
+                int oldLevel = h.level;
+                if (h.addXp(xp)) {
+                    int levelsGained = h.level - oldLevel;
+                    const HeroClassDef* cls = m_classRegistry.getClass(h.classId);
+                    if (cls) {
+                        std::vector<SkillDef> allSkills(SKILL_DEFS, SKILL_DEFS + SKILL_DEF_COUNT);
+                        m_levelUpOffers = LevelUpSystem::generateOffers(*cls, h.skills, h.level, allSkills, h.faction);
+                    }
+                    if (m_levelUpOffers.empty())
+                        m_levelUpOffers.push_back({SkillID::OFFENSE, false, false, "Learn Offense"});
+                    m_pendingLevelUps = levelsGained;
+                    m_showLevelUpModal = true;
+                }
+                gLog("Experience Well: +%d XP\n", xp);
+            }
+            break;
         }
     }
 
@@ -3764,6 +3799,8 @@ void Game::renderWorldOverlay()
         case WorldObjectType::Shipyard:         ico = 15;          break;
         case WorldObjectType::FishingHouse:     ico = 15;          break;
         case WorldObjectType::ArtifactMerchant: ico = ICO_ARTIFACT; break;
+        case WorldObjectType::Arena:            ico = ICO_ARTIFACT; break;
+        case WorldObjectType::ExperienceWell:   ico = ICO_XP;       break;
         default:                                ico = 15;          break;
         }
         // Idle glow pulse
@@ -6649,4 +6686,27 @@ void Game::renderMarchButton()
         }
     }
     ImGui::End();
+}
+
+// ── Arena combat entry ────────────────────────────────────────────────────────
+void Game::startArenaCombat()
+{
+    m_showArenaPopup = false;
+    if (m_heroes.empty()) return;
+    Hero& h = m_heroes[m_activeHeroIdx];
+    // Mark this hero as having visited this arena
+    for (auto& o : m_worldObjects)
+        if (o.id == m_pendingObjId) { o.questState = static_cast<int>(h.id); break; }
+
+    Hero arenaHero;
+    arenaHero.faction = h.faction;
+    arenaHero.name    = "Arena Champion";
+    int week = m_turns.week();
+    auto units = makeFactionUnits(h.faction, false);
+    for (auto& u : units) u.count = std::max(1, u.count * week / 2);
+
+    m_lastCombatEnemyId    = 0;
+    m_pendingTownCaptureId = 0;
+    auto pUnits = makeHeroUnits(h, m_registry.units(), true);
+    enterCombat(h, pUnits, arenaHero, units);
 }

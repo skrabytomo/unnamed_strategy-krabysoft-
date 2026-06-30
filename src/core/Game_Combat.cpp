@@ -1727,6 +1727,26 @@ void Game::exitCombat(bool playerWon)
             }
         }
 
+        // Arena bonus on win
+        if (m_pendingObjId != 0) {
+            for (const auto& o : m_worldObjects) {
+                if (o.id == m_pendingObjId && o.type == WorldObjectType::Arena) {
+                    if (!m_heroes.empty()) {
+                        Hero& h = m_heroes[m_activeHeroIdx];
+                        if (m_arenaBonusChoice == 0) {
+                            h.attack++;
+                            pushPickupEffect(h.pos, "+1 ATK (Arena)", IM_COL32(255, 200, 50, 255));
+                        } else {
+                            h.defense++;
+                            pushPickupEffect(h.pos, "+1 DEF (Arena)", IM_COL32(100, 200, 255, 255));
+                        }
+                    }
+                    m_pendingObjId = 0;
+                    break;
+                }
+            }
+        }
+
         // Apply hero specialties on victory
         if (!m_heroes.empty()) {
             Hero& hero = m_heroes[m_activeHeroIdx];

@@ -37,6 +37,8 @@ enum class WorldObjectType : uint8_t
     Shipyard,           // hero buys a boat here; value=boats already sold (cost = 2000+value*1000 gold + 10 Iron)
     FishingHouse,       // built from a boat on land; gives +150 gold/day; faction field = ownerId (1=player)
     ArtifactMerchant,   // traveling merchant; value=rng seed; stocks 3 Special artifacts for sale; revisitable
+    Arena,              // fight for +1 ATK or +1 DEF (choice popup); questState=visiting hero id (visited once per hero)
+    ExperienceWell,     // free XP boost; collected once; value=0 (xp scales with week at visit time)
 };
 
 struct WorldObject

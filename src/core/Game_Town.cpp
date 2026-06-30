@@ -882,6 +882,24 @@ void Game::renderArtifactMerchantPopup()
     ImGui::End();
 }
 
+// ── Arena choice popup ────────────────────────────────────────────────────────
+void Game::renderArenaPopup()
+{
+    if (!m_showArenaPopup) return;
+    ImGui::SetNextWindowPos(ImVec2(400, 220), ImGuiCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_Always);
+    if (!ImGui::Begin("Arena", nullptr,
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize))
+        { ImGui::End(); return; }
+    ImGui::Text("A champion awaits. Choose your prize:");
+    ImGui::Spacing();
+    if (ImGui::Button("Fight for +1 Attack",  ImVec2(260, 0))) { m_arenaBonusChoice = 0; startArenaCombat(); }
+    if (ImGui::Button("Fight for +1 Defense", ImVec2(260, 0))) { m_arenaBonusChoice = 1; startArenaCombat(); }
+    ImGui::Separator();
+    if (ImGui::Button("Leave", ImVec2(260, 0))) m_showArenaPopup = false;
+    ImGui::End();
+}
+
 // ── Upgrade Path A/B choice popup ─────────────────────────────────────────────
 void Game::renderUpgradePathPopup()
 {

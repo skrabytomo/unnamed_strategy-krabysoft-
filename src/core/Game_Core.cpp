@@ -1231,6 +1231,16 @@ void Game::startNewGame()
             wo.value = static_cast<int>(lcg() & 0x7FFFFFFF);  // per-merchant RNG seed
             m_worldObjects.push_back(wo);
         }
+        // Arenas — 2-3 per map
+        for (int a = 0; a < 2 + (scale > 0 ? 1 : 0); ++a) {
+            WorldObject awo; awo.id = m_nextObjId++; awo.type = WorldObjectType::Arena;
+            awo.pos = pickTile(); m_worldObjects.push_back(awo);
+        }
+        // Experience Wells — 3-4 per map
+        for (int w = 0; w < 3 + scale; ++w) {
+            WorldObject ewo; ewo.id = m_nextObjId++; ewo.type = WorldObjectType::ExperienceWell;
+            ewo.pos = pickTile(); m_worldObjects.push_back(ewo);
+        }
         for (int x = 0; x < 3 * scale; ++x) {
             HexCoord p = pickTile();
             m_worldObjects.push_back({m_nextObjId++, WorldObjectType::XPShrine, p,

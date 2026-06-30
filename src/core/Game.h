@@ -460,6 +460,12 @@ private:
     int      m_merchantSeed       = 0;
     void     renderArtifactMerchantPopup();
 
+    // ── Arena (fight for +ATK or +DEF) ───────────────────────────────────────
+    bool     m_showArenaPopup    = false;
+    int      m_arenaBonusChoice  = 0;   // 0=ATK, 1=DEF
+    void     renderArenaPopup();
+    void     startArenaCombat();
+
     // ── Fishing House (passive income; no popup needed) ───────────────────────
     // Income applied in doEndTurn() each day
 
