@@ -29,7 +29,7 @@ private:
     void drawTurnOrder(UIRenderer& rdr, const CombatEngine& engine);
     void drawHeroInfo(UIRenderer& rdr, const CombatEngine& engine);
     void drawCombatLog(UIRenderer& rdr, const CombatEngine& engine);
-    void drawActionBar(UIRenderer& rdr);
+    void drawActionBar(UIRenderer& rdr, const CombatUnit* active);
 
     int m_screenW = 1280, m_screenH = 720;
 

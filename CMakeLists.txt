@@ -14,6 +14,12 @@ if(WIN32)
     find_package(GLEW REQUIRED)
 endif()
 find_package(SQLite3 REQUIRED)
+# Target name changed from SQLite::SQLite3 to SQLite3::SQLite3 in newer CMake
+if(TARGET SQLite3::SQLite3)
+    set(SQLITE_TARGET SQLite3::SQLite3)
+else()
+    set(SQLITE_TARGET SQLite::SQLite3)
+endif()
 find_package(Lua 5.4 REQUIRED)
 find_package(nlohmann_json QUIET)
 if(NOT nlohmann_json_FOUND)
@@ -117,7 +123,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${SDL2_LIBRARIES}
     ${OPENGL_LIBRARIES}
-    SQLite3::SQLite3
+    ${SQLITE_TARGET}
     nlohmann_json::nlohmann_json
     imgui_lib
     ${LUA_LIBRARIES}
@@ -188,5 +194,5 @@ set(FULLGAME_SOURCES
 
 add_executable(fullgame_sim ${FULLGAME_SOURCES})
 target_include_directories(fullgame_sim PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(fullgame_sim PRIVATE SQLite3::SQLite3)
+target_link_libraries(fullgame_sim PRIVATE ${SQLITE_TARGET})
 target_compile_features(fullgame_sim PRIVATE cxx_std_20)

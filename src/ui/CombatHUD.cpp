@@ -65,7 +65,7 @@ void CombatHUD::draw(UIRenderer& rdr, const CombatEngine& engine)
     drawUnitInfo(rdr, active, true);
     drawUnitInfo(rdr, m_hoveredUnit, false);
     drawCombatLog(rdr, engine);
-    drawActionBar(rdr);
+    drawActionBar(rdr, active);
 
     // Phase display
     std::string phaseStr;
@@ -408,8 +408,9 @@ void CombatHUD::drawCombatLog(UIRenderer& rdr, const CombatEngine& engine)
     }
 }
 
-void CombatHUD::drawActionBar(UIRenderer& rdr)
+void CombatHUD::drawActionBar(UIRenderer& rdr, const CombatUnit* active)
 {
+    m_waitBtn.enabled = !(active && active->waitUsed);
     m_actionPanel.draw(rdr);
     m_waitBtn.draw(rdr);
     m_defendBtn.draw(rdr);

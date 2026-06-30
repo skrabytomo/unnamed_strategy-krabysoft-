@@ -1103,7 +1103,7 @@ void CombatEngine::wait()
 {
     if (m_phase != CombatPhase::PlayerTurn) return;
     CombatUnit* unit = activeUnit();
-    if (!unit) return;
+    if (!unit || unit->waitUsed) return;
     unit->waitUsed = true;
     addLog(unit->name + " waits");
     m_waitQueue.push_back(unit->id);
