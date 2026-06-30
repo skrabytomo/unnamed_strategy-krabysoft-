@@ -117,7 +117,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${SDL2_LIBRARIES}
     ${OPENGL_LIBRARIES}
-    SQLite::SQLite3
+    SQLite3::SQLite3
     nlohmann_json::nlohmann_json
     imgui_lib
     ${LUA_LIBRARIES}
@@ -188,5 +188,5 @@ set(FULLGAME_SOURCES
 
 add_executable(fullgame_sim ${FULLGAME_SOURCES})
 target_include_directories(fullgame_sim PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(fullgame_sim PRIVATE SQLite::SQLite3)
+target_link_libraries(fullgame_sim PRIVATE SQLite3::SQLite3)
 target_compile_features(fullgame_sim PRIVATE cxx_std_20)
