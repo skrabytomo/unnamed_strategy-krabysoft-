@@ -1636,7 +1636,7 @@ void Game::doEndTurn()
             // Enemy hero weekly reinforcements — scale with week number so they stay relevant
             {
                 int week = m_turns.week();
-                int reinforceCount = 2 + week;  // 3 on week 1, grows by 1 per week
+                int reinforceCount = 2 + std::min(week, 40);  // grows week 1-40, then plateaus
                 for (auto& eHero : m_enemyHeroes) {
                     if (eHero.army.empty()) continue;
                     // Count towns owned by this enemy hero
@@ -1815,6 +1815,57 @@ void Game::doEndTurn()
                         if (HexTile* ht = m_map.getTile(spawnPos)) ht->heroId = newHero.id;
                         m_enemyHeroes.push_back(std::move(newHero));
                         gLog("AI recruited hero at %s (week %d)\n",
+                             recruitTown.name.c_str(), m_turns.week());
+                        break;
+                    }
+                }
+            }
+
+            // ── Watch AI: player-side hero recruitment (mirrors enemy logic) ───
+            if (m_watchingAI && static_cast<int>(m_heroes.size()) < 6) {
+                constexpr int WATCH_HIRE_COST = 2500;
+                static const char* kWatchNames[] = {
+                    "Allied Vanguard","Field Marshal","War Envoy",
+                    "Sworn Guard","Kingdom Champion","Border Warden"
+                };
+                if (m_playerResources.get(ResourceType::Gold) >= WATCH_HIRE_COST) {
+                    for (auto& recruitTown : m_towns) {
+                        if (recruitTown.ownerId != 1) continue;
+                        bool occupied = false;
+                        for (const auto& h : m_heroes)
+                            if (h.pos == recruitTown.pos) { occupied = true; break; }
+                        if (occupied) continue;
+
+                        uint32_t newId = 100u;
+                        for (const auto& h : m_heroes) newId = std::max(newId, h.id + 1u);
+                        uint32_t nameSeed = (m_turns.week() * 6271u)
+                                          ^ static_cast<uint32_t>(recruitTown.pos.q * 431u + recruitTown.pos.r);
+                        Hero newHero;
+                        newHero.id       = newId;
+                        newHero.faction  = recruitTown.faction;
+                        newHero.name     = kWatchNames[nameSeed % 6];
+                        newHero.movePool = newHero.maxMove;
+
+                        int t1count = 6 + m_turns.week() * 2;
+                        for (const auto& ud : m_registry.units()) {
+                            if (ud.faction == newHero.faction && ud.tier == 1
+                                && ud.path == UpgradePath::None) {
+                                newHero.army.push_back({ud.id, t1count});
+                                break;
+                            }
+                        }
+                        HexCoord spawnPos = recruitTown.pos;
+                        for (auto& nb : HexGrid::neighbors(recruitTown.pos)) {
+                            const HexTile* nt = m_map.getTile(nb);
+                            if (nt && nt->terrain != Terrain::Water && nt->heroId == 0) {
+                                spawnPos = nb; break;
+                            }
+                        }
+                        newHero.pos = spawnPos;
+                        if (HexTile* ht = m_map.getTile(spawnPos)) ht->heroId = newHero.id;
+                        m_playerResources.add(ResourceType::Gold, -WATCH_HIRE_COST);
+                        m_heroes.push_back(std::move(newHero));
+                        gLog("Watch AI recruited player hero at %s (week %d)\n",
                              recruitTown.name.c_str(), m_turns.week());
                         break;
                     }
@@ -2190,7 +2241,7 @@ void Game::doEndTurn()
 
             ScriptContext ctx; ctx.heroId = 0;
             m_triggers.fire(TriggerType::WeekStart, ctx);
-            if (m_turns.week() >= 10)
+            if (m_turns.week() >= 10 && !m_hideout.isMilestoneComplete(Milestone::WEEK_10_REACHED))
                 m_hideout.completeMilestone(Milestone::WEEK_10_REACHED);
             if (m_state == GameState::Campaign) {
                 m_campaign.onWeekStart(m_turns.week(), m_lua);
