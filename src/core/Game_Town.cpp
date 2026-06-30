@@ -969,7 +969,9 @@ void Game::renderUpgradePathPopup()
 
         auto tryBuild = [&](int buildingId) {
             m_townScreen.currentTown();  // ensure valid
-            town->build(buildingId, m_registry.buildings(), m_playerResources);
+            bool efficient = !m_heroes.empty() && m_heroes[m_activeHeroIdx].efficientSpecialty;
+            town->build(buildingId, m_registry.buildings(), m_playerResources,
+                        efficient ? 0.8f : 1.0f);
             m_showUpgradePathPopup = false;
             ImGui::CloseCurrentPopup();
         };

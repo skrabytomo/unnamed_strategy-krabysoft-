@@ -89,7 +89,22 @@ bool Game::init(const std::string& title, int width, int height)
         for (int t = 0; t < NUM_UNIT_TIERS; ++t) {
             char rel[80];
             std::snprintf(rel, sizeof(rel), "assets/sprites/faction_%d_t%d.png", i, t + 1);
-            m_unitTex[i][t].load(m_basePath + rel, false, false);
+            if (!m_unitTex[i][t].load(m_basePath + rel, false, false) && t > 0) {
+                // Missing sheet — reuse one tier lower as a fallback
+                char fb[80];
+                std::snprintf(fb, sizeof(fb), "assets/sprites/faction_%d_t%d.png", i, t);
+                m_unitTex[i][t].load(m_basePath + fb, false, false);
+                gLog("WARN: Missing sprite %s, using tier-%d fallback\n", rel, t);
+            }
+            // Derive actual frame count from pixel dimensions (standard sheets are ~square frames)
+            if (m_unitTex[i][t].ok() && m_unitTex[i][t].height() > 0) {
+                int nc = static_cast<int>(
+                    std::round(static_cast<float>(m_unitTex[i][t].width()) /
+                               static_cast<float>(m_unitTex[i][t].height())));
+                m_unitTexCols[i][t] = std::max(1, nc);
+            } else {
+                m_unitTexCols[i][t] = 8;
+            }
         }
 
     // SDL cursors

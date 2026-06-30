@@ -261,6 +261,7 @@ private:
     static constexpr int NUM_FACTIONS  = 9;
     static constexpr int NUM_UNIT_TIERS = 6;
     Texture           m_unitTex[NUM_FACTIONS][NUM_UNIT_TIERS];
+    int               m_unitTexCols[NUM_FACTIONS][NUM_UNIT_TIERS] = {};  // frame count per sheet
     Texture           m_portraitTex[NUM_FACTIONS];
 
     // ── Combat board terrain backgrounds: one per Terrain enum value ──────────

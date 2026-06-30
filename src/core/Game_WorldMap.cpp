@@ -755,8 +755,9 @@ void Game::updateWorldMap(float dt)
     auto initAnim = [&](const Hero& h, bool mirror) {
         if (m_heroMapAnimators.find(h.id) == m_heroMapAnimators.end()) {
             SpriteAnimator a;
-            a.faction = std::min(static_cast<int>(h.faction), NUM_FACTIONS - 1);
-            a.tier = 1; a.mirror = mirror;
+            a.faction  = std::min(static_cast<int>(h.faction), NUM_FACTIONS - 1);
+            a.tier     = 1; a.mirror = mirror;
+            a.numCols  = m_unitTexCols[a.faction][0];
             a.setState(AnimState::Idle);
             m_heroMapAnimators[h.id] = a;
         }
@@ -1877,7 +1878,7 @@ void Game::doEndTurn()
             m_weeklyEventBody.clear();
             m_weekChoiceOptions.clear();
             // Use week number + a pseudo-hash for varied but deterministic events
-            int evtRoll = ((m_turns.week() * 2654435761u) >> 8) % 24;
+            int evtRoll = ((m_turns.week() * 2654435761u) >> 8) % 28;
             switch (evtRoll) {
                 case 0: { // no event
                     break;
@@ -2237,6 +2238,74 @@ void Game::doEndTurn()
                     m_weekChoiceOptions.push_back({"Walk away", "You have no time for riddles.", [](){}});
                     break;
                 }
+                case 24: { // Wandering Herd — enemy hero loses units from their largest stack
+                    int lostTotal = 0;
+                    if (!m_enemyHeroes.empty()) {
+                        Hero& enemy = m_enemyHeroes[0];
+                        int best = 0, bestIdx = -1;
+                        for (int i = 0; i < (int)enemy.army.size(); ++i)
+                            if (enemy.army[i].count > best) { best = enemy.army[i].count; bestIdx = i; }
+                        if (bestIdx >= 0) {
+                            int lost = std::max(1, best / 6);
+                            enemy.army[bestIdx].count -= lost;
+                            lostTotal = lost;
+                        }
+                    }
+                    m_weeklyEventHeadline = "Wandering Herd Stampede";
+                    m_weeklyEventBody = lostTotal > 0
+                        ? "A wild beast stampede disrupts enemy camps, scattering " + std::to_string(lostTotal) + " soldiers."
+                        : "A wild beast stampede sweeps across enemy territory.";
+                    break;
+                }
+                case 25: { // Ancient Discovery — hero gains +50 XP
+                    if (!m_heroes.empty()) {
+                        Hero& h = m_heroes[m_activeHeroIdx];
+                        int oldLvl = h.level;
+                        if (h.addXp(50) && h.level > oldLvl) {
+                            const HeroClassDef* cls = m_classRegistry.getClass(h.classId);
+                            if (cls) {
+                                std::vector<SkillDef> allSkills(SKILL_DEFS, SKILL_DEFS + SKILL_DEF_COUNT);
+                                m_levelUpOffers = LevelUpSystem::generateOffers(*cls, h.skills, h.level, allSkills, h.faction);
+                            }
+                            if (m_levelUpOffers.empty())
+                                m_levelUpOffers.push_back({SkillID::OFFENSE, false, false, "Learn Offense"});
+                            m_pendingLevelUps = h.level - oldLvl;
+                            m_showLevelUpModal = true;
+                        }
+                    }
+                    m_weeklyEventHeadline = "Ancient Discovery";
+                    m_weeklyEventBody = "Your scouts unearth inscriptions from a forgotten age. +50 XP for your hero.";
+                    break;
+                }
+                case 26: { // Trade Caravan — bonus resources
+                    m_playerResources.add(ResourceType::Gold, 350);
+                    m_playerResources.add(ResourceType::Iron, 2);
+                    m_playerResources.add(ResourceType::FaithStones, 1);
+                    m_weeklyEventHeadline = "Trade Caravan Passes";
+                    m_weeklyEventBody = "A laden merchant convoy pays toll to cross your lands: +350 Gold, +2 Iron, +1 Faith Stones.";
+                    break;
+                }
+                case 27: { // Supply Raid — choice: intercept or let pass
+                    m_weeklyEventHeadline = "Supply Convoy Spotted";
+                    m_weeklyEventBody = "Scouts report an enemy supply convoy moving through the region. You can intercept it.";
+                    m_weekChoiceOptions.clear();
+                    m_weekChoiceOptions.push_back({"Intercept (-200 Gold, hero -5 MP)", "+8 Iron, enemy hero loses 10 units", [this](){
+                        if (m_playerResources.get(ResourceType::Gold) >= 200) {
+                            m_playerResources.add(ResourceType::Gold, -200);
+                            m_playerResources.add(ResourceType::Iron, 8);
+                            if (!m_heroes.empty()) {
+                                Hero& h = m_heroes[m_activeHeroIdx];
+                                h.movePool = std::max(0, h.movePool - 5);
+                            }
+                            if (!m_enemyHeroes.empty()) {
+                                Hero& e = m_enemyHeroes[0];
+                                for (auto& s : e.army) if (s.count > 0) { s.count = std::max(1, s.count - 10); break; }
+                            }
+                        }
+                    }});
+                    m_weekChoiceOptions.push_back({"Let it pass", "No action taken this week.", [](){}});
+                    break;
+                }
             }
 
             ScriptContext ctx; ctx.heroId = 0;
@@ -2318,7 +2387,7 @@ void Game::doEndTurn()
                     ps.resources.add(ResourceType::Gold, -(garrisonCount * 350));
                 // Mirror weekly events (resource + silent hero-stat events only)
                 {
-                    int evtRoll = ((m_turns.week() * 2654435761u) >> 8) % 24;
+                    int evtRoll = ((m_turns.week() * 2654435761u) >> 8) % 28;
                     auto piHero = [&]() -> Hero* {
                         if (ps.heroes.empty()) return nullptr;
                         int idx = std::min(ps.activeHeroIdx, (int)ps.heroes.size() - 1);
@@ -3681,6 +3750,12 @@ void Game::renderWorldOverlay()
         ICO_CRYPT        = 29,
         ICO_UTOPIA       = 30,
         ICO_TREASURE     = 31,
+        ICO_ARENA        = 32,
+        ICO_MERCHANT     = 33,
+        ICO_CHOKE_GUARD  = 34,
+        ICO_SHIPYARD     = 35,
+        ICO_FISH_HOUSE   = 36,
+        ICO_XP_WELL      = 37,
     };
 
     // ── Road network ──────────────────────────────────────────────────────────
@@ -3846,12 +3921,12 @@ void Game::renderWorldOverlay()
         case WorldObjectType::WitchHut:       ico = 41;              break; // row5 col1
         case WorldObjectType::Stables:        ico = 42;              break; // row5 col2
         case WorldObjectType::TreeOfKnowledge:ico = 43;              break; // row5 col3
-        case WorldObjectType::ChokeGuard:    ico = 15;               break; // default icon
-        case WorldObjectType::Shipyard:         ico = 15;          break;
-        case WorldObjectType::FishingHouse:     ico = 15;          break;
-        case WorldObjectType::ArtifactMerchant: ico = ICO_ARTIFACT; break;
-        case WorldObjectType::Arena:            ico = ICO_ARTIFACT; break;
-        case WorldObjectType::ExperienceWell:   ico = ICO_XP;       break;
+        case WorldObjectType::ChokeGuard:       ico = ICO_CHOKE_GUARD; break;
+        case WorldObjectType::Shipyard:         ico = ICO_SHIPYARD;    break;
+        case WorldObjectType::FishingHouse:     ico = ICO_FISH_HOUSE;  break;
+        case WorldObjectType::ArtifactMerchant: ico = ICO_MERCHANT;    break;
+        case WorldObjectType::Arena:            ico = ICO_ARENA;       break;
+        case WorldObjectType::ExperienceWell:   ico = ICO_XP_WELL;     break;
         default:                                ico = 15;          break;
         }
         // Idle glow pulse
@@ -4193,6 +4268,44 @@ void Game::renderWorldOverlay()
     }
 
     // ── Hover tooltip: days to reach or Fight ─────────────────────────────────
+    static auto worldObjectLabel = [](WorldObjectType t) -> const char* {
+        switch (t) {
+        case WorldObjectType::SpellScroll:      return "Spell Scroll";
+        case WorldObjectType::ArtifactChest:    return "Artifact Chest";
+        case WorldObjectType::XPShrine:         return "XP Shrine";
+        case WorldObjectType::ResourceCache:    return "Resource Cache";
+        case WorldObjectType::Observatory:      return "Observatory";
+        case WorldObjectType::StatShrine:       return "Stat Shrine";
+        case WorldObjectType::BanditCamp:       return "Bandit Camp";
+        case WorldObjectType::UnitDwelling:     return "Unit Dwelling";
+        case WorldObjectType::QuestGiver:       return "Quest Giver";
+        case WorldObjectType::QuestTarget:      return "Quest Target";
+        case WorldObjectType::ForestShrine:     return "Forest Shrine";
+        case WorldObjectType::HighlandRuin:     return "Highland Ruin";
+        case WorldObjectType::HolyFountain:     return "Holy Fountain";
+        case WorldObjectType::Oasis:            return "Oasis";
+        case WorldObjectType::Campfire:         return "Campfire";
+        case WorldObjectType::LavaCrystal:      return "Lava Crystal";
+        case WorldObjectType::SwampAltar:       return "Swamp Altar";
+        case WorldObjectType::TreasureChest:    return "Treasure Chest";
+        case WorldObjectType::Crypt:            return "Crypt";
+        case WorldObjectType::Utopia:           return "Utopia";
+        case WorldObjectType::Landmark:         return "Landmark";
+        case WorldObjectType::CursedGround:     return "Cursed Ground";
+        case WorldObjectType::NeutralOutpost:   return "Neutral Outpost";
+        case WorldObjectType::WitchHut:         return "Witch Hut";
+        case WorldObjectType::Stables:          return "Stables";
+        case WorldObjectType::TreeOfKnowledge:  return "Tree of Knowledge";
+        case WorldObjectType::ChokeGuard:       return "Chokepoint Guard";
+        case WorldObjectType::Shipyard:         return "Shipyard";
+        case WorldObjectType::FishingHouse:     return "Fishing House";
+        case WorldObjectType::ArtifactMerchant: return "Traveling Merchant";
+        case WorldObjectType::Arena:            return "Arena";
+        case WorldObjectType::ExperienceWell:   return "Experience Well";
+        default:                                return nullptr;
+        }
+    };
+
     if (m_map.inBounds(m_hovered) && !m_heroes.empty()) {
         const HexTile* ht = m_map.getTile(m_hovered);
         const Hero& activeHero = m_heroes[m_activeHeroIdx];
@@ -4232,6 +4345,13 @@ void Game::renderWorldOverlay()
             } else if (isFight) {
                 ImGui::TextColored({1.0f, 0.3f, 0.3f, 1.0f}, "Fight!");
             } else {
+                // Object label at hovered tile (shown above movement cost)
+                for (const auto& obj : m_worldObjects) {
+                    if (obj.pos != m_hovered || obj.collected) continue;
+                    if (const char* lbl = worldObjectLabel(obj.type))
+                        ImGui::TextColored({1.f, 0.9f, 0.4f, 1.f}, "%s", lbl);
+                    break;
+                }
                 // Movement cost tooltip (roads halve terrain cost)
                 auto costFn = [this, &activeHero](HexCoord c) -> int {
                     const HexTile* t = m_map.getTile(c);
@@ -6771,10 +6891,12 @@ void Game::startArenaCombat()
         if (o.id == m_pendingObjId) { o.questState = static_cast<int>(h.id); break; }
 
     Hero arenaHero;
-    arenaHero.faction = h.faction;
+    // Arena champion uses a deterministic neutral faction (not the player's own)
+    int fIdx = (static_cast<int>(h.faction) + 1) % 9;
+    arenaHero.faction = static_cast<FactionId>(fIdx);
     arenaHero.name    = "Arena Champion";
     int week = m_turns.week();
-    auto units = makeFactionUnits(h.faction, false);
+    auto units = makeFactionUnits(arenaHero.faction, false);
     for (auto& u : units) u.count = std::max(1, u.count * week / 2);
 
     m_lastCombatEnemyId    = 0;

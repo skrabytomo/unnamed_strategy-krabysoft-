@@ -320,7 +320,12 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
         bool limitReach = m_town->builtToday >= 1;
         bool prereqMet  = m_town->canBuild(def.id, m_registry->buildings(),
                                             m_currentWeek, m_blueprintDiscount);
-        bool affordable = m_playerRes->canAfford(def.cost);
+        float bldCostMult = (m_hero && m_hero->efficientSpecialty) ? 0.8f : 1.0f;
+        Resources effCost = def.cost;
+        if (bldCostMult != 1.0f)
+            for (int ri = 0; ri < RESOURCE_COUNT; ++ri)
+                effCost.amounts[ri] = static_cast<int>(def.cost.amounts[ri] * bldCostMult);
+        bool affordable = m_playerRes->canAfford(effCost);
 
         std::string label;
         if (built) {
@@ -424,7 +429,8 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
                 }
             }
             if (!handledByCallback) {
-                m_town->build(def.id, m_registry->buildings(), *m_playerRes);
+                float cm = (m_hero && m_hero->efficientSpecialty) ? 0.8f : 1.0f;
+                m_town->build(def.id, m_registry->buildings(), *m_playerRes, cm);
             }
             needRebuild = true;
         }
@@ -501,7 +507,12 @@ void TownScreen::drawPanorama(UIRenderer& rdr)
         bool limitReach = m_town->builtToday >= 1;
         bool prereqMet  = m_town->canBuild(def.id, m_registry->buildings(),
                                             m_currentWeek, m_blueprintDiscount);
-        bool affordable = m_playerRes->canAfford(def.cost);
+        float panCostMult = (m_hero && m_hero->efficientSpecialty) ? 0.8f : 1.0f;
+        Resources panEffCost = def.cost;
+        if (panCostMult != 1.0f)
+            for (int ri = 0; ri < RESOURCE_COUNT; ++ri)
+                panEffCost.amounts[ri] = static_cast<int>(def.cost.amounts[ri] * panCostMult);
+        bool affordable = m_playerRes->canAfford(panEffCost);
         bool canBuild   = prereqMet && affordable && !built && !limitReach;
 
         auto artIt     = m_buildingArt.find(def.id);
@@ -599,7 +610,7 @@ void TownScreen::drawPanorama(UIRenderer& rdr)
         }
 
         if (ImGui::IsItemClicked() && canBuild) {
-            m_town->build(def.id, m_registry->buildings(), *m_playerRes);
+            m_town->build(def.id, m_registry->buildings(), *m_playerRes, panCostMult);
             needRebuild = true;
         }
 

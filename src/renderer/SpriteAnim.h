@@ -22,13 +22,14 @@ struct SpriteAnimator
     int       faction  = 0;    // 0-8
     int       tier     = 1;    // 1-6, selects which per-unit texture
     bool      mirror   = false; // enemy units face left
+    int       numCols  = 8;    // actual frame count derived from texture dimensions
 
     // Column offsets — must match the source sprite sheet column layout
     static constexpr int COL_IDLE   = 0;  // cols 0-3
     static constexpr int COL_ATTACK = 4;  // cols 4-5
     static constexpr int COL_HURT   = 6;  // col  6
     static constexpr int COL_DEAD   = 7;  // col  7
-    static constexpr int TOTAL_COLS = 8;  // total columns in the sprite sheet
+    static constexpr int TOTAL_COLS = 8;  // default columns (overridden per sprite)
 
     void setState(AnimState s)
     {
@@ -56,7 +57,7 @@ struct SpriteAnimator
     void getUV(float& u0, float& v0, float& u1, float& v1) const
     {
         int col = atlasCol();
-        float fw = 1.0f / TOTAL_COLS;
+        float fw = 1.0f / numCols;
 
         float pu0 = col * fw;
         float pu1 = pu0 + fw;
@@ -89,11 +90,13 @@ private:
 
     int atlasCol() const
     {
+        int col = 0;
         switch (state) {
-        case AnimState::Idle:   return COL_IDLE   + frame;
-        case AnimState::Attack: return COL_ATTACK + frame;
-        case AnimState::Hurt:   return COL_HURT;
-        default:                return COL_DEAD;
+        case AnimState::Idle:   col = COL_IDLE   + frame; break;
+        case AnimState::Attack: col = COL_ATTACK + frame; break;
+        case AnimState::Hurt:   col = COL_HURT;           break;
+        default:                col = COL_DEAD;            break;
         }
+        return std::min(col, numCols - 1);  // clamp to actual sheet width
     }
 };

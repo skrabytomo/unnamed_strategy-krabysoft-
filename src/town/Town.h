@@ -64,8 +64,10 @@ public:
     int weeklyGrowth(int tier) const;
 
     // ── Actions ───────────────────────────────────────────────────────────────
-    // Build a building — returns false if prerequisites not met or already built
-    bool build(int buildingId, const std::vector<BuildingDef>& defs, Resources& playerRes);
+    // Build a building — returns false if prerequisites not met or already built.
+    // costMult: multiplier applied to build cost (e.g. 0.8 for 20% discount)
+    bool build(int buildingId, const std::vector<BuildingDef>& defs, Resources& playerRes,
+               float costMult = 1.0f);
 
     // Called every week — add growth to available pools
     void onWeekStart(const std::vector<BuildingDef>& defs);

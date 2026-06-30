@@ -1363,9 +1363,10 @@ void Game::enterCombat(Hero& playerHero,
     for (const auto& u : m_combat.grid().units()) {
         SpriteAnimator anim;
         auto [fac, tier] = unitFactionTier(u, unitDefs);
-        anim.faction = fac;
-        anim.tier    = std::max(1, std::min(6, tier));
-        anim.mirror  = !u.isPlayer;  // enemy faces left
+        anim.faction  = fac;
+        anim.tier     = std::max(1, std::min(6, tier));
+        anim.mirror   = !u.isPlayer;  // enemy faces left
+        anim.numCols  = m_unitTexCols[fac][anim.tier - 1];
         m_combatAnimators[u.id] = anim;
     }
 

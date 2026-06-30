@@ -49,7 +49,8 @@ int Town::weeklyGrowth(int tier) const
     return base;
 }
 
-bool Town::build(int buildingId, const std::vector<BuildingDef>& defs, Resources& playerRes)
+bool Town::build(int buildingId, const std::vector<BuildingDef>& defs, Resources& playerRes,
+                 float costMult)
 {
     if (builtToday >= 1) return false;
     if (!canBuild(buildingId, defs)) return false;
@@ -58,12 +59,18 @@ bool Town::build(int buildingId, const std::vector<BuildingDef>& defs, Resources
     for (auto& d : defs) if (d.id == buildingId) { def = &d; break; }
     if (!def) return false;
 
-    if (!playerRes.canAfford(def->cost)) {
+    Resources cost = def->cost;
+    if (costMult != 1.0f) {
+        for (int i = 0; i < RESOURCE_COUNT; ++i)
+            cost.amounts[i] = static_cast<int>(cost.amounts[i] * costMult);
+    }
+
+    if (!playerRes.canAfford(cost)) {
         gLog("Town %s: cannot afford %s\n", name.c_str(), def->name.c_str());
         return false;
     }
 
-    playerRes.spend(def->cost);
+    playerRes.spend(cost);
     builtBuildings.push_back(buildingId);
     builtToday = 1;
 
