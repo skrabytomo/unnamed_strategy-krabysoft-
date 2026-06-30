@@ -4842,13 +4842,32 @@ void Game::renderHeroInspect()
 
             if (ImGui::IsItemHovered() && hasUnit && ud) {
                 ImGui::BeginTooltip();
-                ImGui::Text("%s  x%d", ud->name.c_str(), stack.count);
+                // Name + path label
+                if (ud->path == UpgradePath::PathA)
+                    ImGui::TextColored(ImVec4(0.4f,0.8f,1.0f,1.0f), "%s  x%d  [Path A]", ud->name.c_str(), stack.count);
+                else if (ud->path == UpgradePath::PathB)
+                    ImGui::TextColored(ImVec4(0.8f,0.5f,1.0f,1.0f), "%s  x%d  [Path B]", ud->name.c_str(), stack.count);
+                else
+                    ImGui::Text("%s  x%d", ud->name.c_str(), stack.count);
+                ImGui::Separator();
                 ImGui::TextDisabled("ATK %d  DEF %d  HP %d  SPD %d",
                                     ud->attack, ud->defense, ud->hp, ud->speed);
-                ImGui::TextDisabled("Total HP: %d", ud->hp * stack.count);
-                if (ud->range > 0) ImGui::TextDisabled("Ranged  shots %d", ud->shots);
-                if (ud->flying)    ImGui::TextDisabled("Flying");
-                if (ud->vampiric)  ImGui::TextDisabled("Vampiric");
+                ImGui::TextDisabled("Dmg %d-%d    Total HP: %d",
+                                    ud->damage_min, ud->damage_max, ud->hp * stack.count);
+                if (ud->range > 0) ImGui::TextDisabled("Ranged  %d shots  range %d", ud->shots, ud->range);
+                // Traits
+                if (ud->flying)           ImGui::TextColored(ImVec4(0.7f,0.8f,1.0f,1.0f),  "[Flying]");
+                if (ud->vampiric)         ImGui::TextColored(ImVec4(0.9f,0.3f,0.3f,1.0f),  "[Vampiric]");
+                if (ud->regenerates)      ImGui::TextColored(ImVec4(0.4f,0.9f,0.5f,1.0f),  "[Regenerates]");
+                if (ud->moraleImmune)     ImGui::TextColored(ImVec4(0.6f,0.6f,0.6f,1.0f),  "[Morale Immune]");
+                if (ud->hasSecondLife)    ImGui::TextColored(ImVec4(0.7f,0.5f,1.0f,1.0f),
+                                              ud->secondLifeFullHeal ? "[Second Life — full HP]" : "[Second Life]");
+                if (ud->rapidEvolution)   ImGui::TextColored(ImVec4(0.4f,0.9f,0.7f,1.0f),  "[Rapid Evolution]");
+                if (ud->adaptationDouble) ImGui::TextColored(ImVec4(0.4f,0.9f,0.7f,1.0f),  "[Double Adaptation]");
+                // Tags
+                if (hasTag(ud->tags, UnitTag::Undead))     ImGui::TextDisabled("Type: Undead");
+                else if (hasTag(ud->tags, UnitTag::Holy))  ImGui::TextDisabled("Type: Holy");
+                else if (hasTag(ud->tags, UnitTag::Void))  ImGui::TextDisabled("Type: Void");
                 ImGui::EndTooltip();
             }
             ++slotIdx;
@@ -5324,6 +5343,8 @@ void Game::renderDwellingPopup()
         ImGui::SameLine();
     }
     if (ImGui::Button("Close", {80, 28}))
+        m_showDwellingPopup = false;
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape))
         m_showDwellingPopup = false;
 
     ImGui::End();
