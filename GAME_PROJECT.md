@@ -257,6 +257,44 @@ When a hero is selected and not adjacent to an enemy town, a **March** button ap
 - Faction home terrain clusters near starting towns
 - Balance pass: resource accessibility, town spacing
 
+### World Objects *(all implemented)*
+One-shot or revisitable map objects scattered by the world generator:
+
+| Object | Effect | Notes |
+|---|---|---|
+| XPShrine | +XP on step | one-time |
+| ArtifactChest | gives an artifact | one-time |
+| ResourceCache | gives resources | one-time |
+| SpellScroll | teaches a spell | one-time |
+| Observatory | reveals FoW in radius | resets weekly |
+| StatShrine | pay 1000g → +1 stat (max 3 uses) | revisitable |
+| BanditCamp | fight bandits for gold | one-time |
+| UnitDwelling | recruit units weekly | revisitable |
+| QuestGiver / QuestTarget | linked quest pair | — |
+| ForestShrine | +75 XP | terrain-specific |
+| HighlandRuin | reveals radius (permanent) | terrain-specific |
+| HolyFountain | restores mana | resets weekly |
+| Oasis | restores move pool | resets weekly |
+| Campfire | +150 gold | terrain-specific |
+| LavaCrystal | +3 Mercury | terrain-specific |
+| SwampAltar | teaches a spell | terrain-specific |
+| TreasureChest | choice: gold / XP / stat | one-time |
+| Crypt | guarded; gold + spell scroll reward | one-time |
+| Utopia | 4 T6 guards; major reward choice | one-time |
+| Landmark | XP + lore on first visit | one-time |
+| CursedGround | damages army on entry (charges) | — |
+| NeutralOutpost | guarded; capture → weekly T1 production | one-time |
+| WitchHut | teaches one random secondary skill | revisitable |
+| Stables | permanently +3 hero maxMove | one-time per game |
+| TreeOfKnowledge | pay 2000g → +1 level | one-time per game |
+| Barrier | impassable blocker; removed via trigger | scenario |
+| ChokeGuard | fixed-power guardian blocking passage | one-time |
+| Shipyard | hero buys a boat | revisitable |
+| FishingHouse | built from boat on land; +150g/day | passive |
+| ArtifactMerchant | permanent shop: 3 Special artifacts for sale (seed per merchant) | revisitable |
+| **Arena** | choose +1 ATK or +1 DEF; fight scaled champion to earn it; per-hero visit lock | 2-3/map |
+| **ExperienceWell** | free XP (500 + week×100); triggers level-up modal | 3-4/map, one-time |
+
 ---
 
 ## CAMPAIGN
