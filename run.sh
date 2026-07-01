@@ -2,4 +2,4 @@
 set -e
 git pull
 cmake --build build -j4
-exec build/unnamed_strategy
+exec build/bin/unnamed_strategy
