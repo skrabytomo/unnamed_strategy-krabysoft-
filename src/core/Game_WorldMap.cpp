@@ -1273,6 +1273,16 @@ void Game::doEndTurn()
             ResourceType denialRes = (plFidx >= 0 && plFidx < 9)
                                    ? kFactionResource[plFidx] : ResourceType::Gold;
 
+            // Difficulty tunes how boldly the AI commits. Hard attacks at a lower
+            // strength ratio and retreats less readily; Easy is more timid.
+            // aggrPct = raider will attack at eiStr*10 >= nearHumanStr*aggrPct;
+            // retreatPct = veryWeak below eiStr*10 < nearHumanStr*retreatPct.
+            int diffIdx = std::clamp(m_newGameDifficulty, 0, 2);
+            static const int kAggrPct[3]    = { 6, 5, 4 };  // Easy 60% / Normal 50% / Hard 40%
+            static const int kRetreatPct[3] = { 5, 4, 3 };  // Easy 50% / Normal 40% / Hard 30%
+            int aggrPct    = kAggrPct[diffIdx];
+            int retreatPct = kRetreatPct[diffIdx];
+
             // ── Gather ALL human-controlled heroes (not just the active one) so
             //    the AI hunts whichever human hero is nearest, across all players. ─
             struct HumanHero { HexCoord pos; int str; };
@@ -1365,12 +1375,13 @@ void Game::doEndTurn()
                 HexCoord targetPos = target ? target->pos : playerHero.pos;
                 if (nearHumanStr <= 0) nearHumanStr = plStr;
 
-                // Raider: attack if ≥50% strength OR opponent is wounded; Economic: only if 1.5×; Defender: never
+                // Raider: attack at the difficulty-scaled ratio OR when the opponent
+                // is wounded; Economic: only at 1.5×; Defender: never.
                 bool aggressive = isDefender ? false
-                                : isRaider   ? (playerIsWeak || eiStr * 10 >= nearHumanStr * 5)
+                                : isRaider   ? (playerIsWeak || eiStr * 10 >= nearHumanStr * aggrPct)
                                 :              (eiStr * 10 >= nearHumanStr * 15);
-                // Retreat when very weak regardless of role
-                bool veryWeak   = (eiStr * 10 <  nearHumanStr * 4);
+                // Retreat when very weak regardless of role (difficulty-scaled)
+                bool veryWeak   = (eiStr * 10 <  nearHumanStr * retreatPct);
 
                 // Graduated retreat thresholds
                 float strRatio = nearHumanStr > 0 ? (float)eiStr / nearHumanStr : 99.f;
@@ -1842,7 +1853,12 @@ void Game::doEndTurn()
             {
                 const auto& unitDefs = m_registry.units();
                 int week = m_turns.week();
-                int reinforceCount = 2 + std::min(week, 40);  // grows week 1-40, then plateaus
+                // Difficulty scales the reinforcement rate: Easy 0.75x, Normal 1x,
+                // Hard 1.5x — the single biggest lever on how fast the AI out-grows
+                // the player (world-map AI was previously difficulty-invariant).
+                static const float kReinforceMult[3] = { 0.75f, 1.0f, 1.5f };
+                float diffMult = kReinforceMult[std::clamp(m_newGameDifficulty, 0, 2)];
+                int reinforceCount = static_cast<int>((2 + std::min(week, 40)) * diffMult);
                 for (auto& eHero : m_enemyHeroes) {
                     // Count towns owned by this enemy hero
                     int ownedTowns = 0;
@@ -2021,7 +2037,9 @@ void Game::doEndTurn()
 
             // ── AI hero recruitment — one per week from owned tavern town ─────
             {
-                constexpr int AI_HERO_CAP = 6;
+                // Hard fields more heroes than Easy/Normal (more map pressure).
+                static const int kHeroCap[3] = { 5, 6, 8 };
+                const int AI_HERO_CAP = kHeroCap[std::clamp(m_newGameDifficulty, 0, 2)];
                 if (static_cast<int>(m_enemyHeroes.size()) < AI_HERO_CAP) {
                     static const char* kAINames[] = {
                         "Drafted Sword","Hired Blade","Road Warden",
