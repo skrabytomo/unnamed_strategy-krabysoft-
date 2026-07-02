@@ -656,9 +656,12 @@ ResourceType WorldGen::terrainResource(Terrain t, uint32_t rng)
         case Terrain::Wasteland:
         case Terrain::Highland:     return ResourceType::Iron;
         case Terrain::Swamp:        return ResourceType::Mercury;
-        // Plains is the terrain default/fallback covering most of the map —
-        // Gold is the other universal resource, an appropriate match.
-        case Terrain::Plains:
+        // Plains is the terrain default/fallback covering most of the map.
+        // Split it 50/50 Gold/Iron: both are universal (every faction needs iron
+        // to refine for upgrades), and iron was still too scarce with only the
+        // rocky/industrial terrain family supplying it.
+        case Terrain::Plains:       return (rng & 1) ? ResourceType::Iron
+                                                     : ResourceType::Gold;
         default:                    return ResourceType::Gold;
     }
 }

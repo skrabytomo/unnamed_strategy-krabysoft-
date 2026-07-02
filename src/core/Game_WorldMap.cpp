@@ -354,12 +354,17 @@ void Game::watchAiMovePlayerHero()
                          obj.type == WorldObjectType::SwampAltar)   val = 50.f;
                 if (val > 0.f) add(obj.pos, val);
             }
-            // Enemy heroes
+            // Enemy heroes — same sqrt-damped, week-scaled hunt value as the enemy
+            // AI, so the watched player hero also commits to fights late game
+            // instead of orbiting mines forever (Watch AI stalemate).
             if (!softRetreat && !m_enemyHeroes.empty()) {
                 for (const auto& eh : m_enemyHeroes) {
                     int dist = HexGrid::distance(hero.pos, eh.pos);
-                    if (dominant || dist <= 8)
-                        add(eh.pos, 300.f);
+                    if (dominant || dist <= 8) {
+                        float huntVal = 300.f + m_turns.week() * 10.f;
+                        cands.push_back({eh.pos,
+                            huntVal / std::sqrt((float)std::max(1, dist))});
+                    }
                 }
             }
         }
@@ -1119,7 +1124,7 @@ void Game::doEndTurn()
         uint32_t nextCid = static_cast<uint32_t>(nextIdx + 1);
         m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, nextCid);
         for (const auto& r : m_resources)
-            if (r.ownedBy == nextCid) m_cachedWeeklyIncome.add(r.type, r.amount);
+            if (r.ownedBy == nextCid) m_cachedWeeklyIncome.add(r.type, mineYield(r));
 
         // Deliver deferred notifications for this player
         auto& notifs = m_playerNotifs[nextIdx];
@@ -1215,7 +1220,7 @@ void Game::doEndTurn()
 
         m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, 1);
         for (const auto& r : m_resources)
-            if (r.ownedBy == 1u) m_cachedWeeklyIncome.add(r.type, r.amount);
+            if (r.ownedBy == 1u) m_cachedWeeklyIncome.add(r.type, mineYield(r));
 
         FogOfWar::hideAll(m_map);
         if (!m_heroes.empty()) FogOfWar::updateVision(m_map, m_heroes);
@@ -1380,6 +1385,12 @@ void Game::doEndTurn()
                 bool aggressive = isDefender ? false
                                 : isRaider   ? (playerIsWeak || eiStr * 10 >= nearHumanStr * aggrPct)
                                 :              (eiStr * 10 >= nearHumanStr * 15);
+                // Late-game escalation: past week 20 any non-defender at >=80%
+                // relative strength commits — prevents the endless "both sides farm
+                // mines and never engage" stalemate once the map is exhausted.
+                if (m_turns.week() >= 20 && !isDefender
+                    && eiStr * 10 >= nearHumanStr * 8)
+                    aggressive = true;
                 // Retreat when very weak regardless of role (difficulty-scaled)
                 bool veryWeak   = (eiStr * 10 <  nearHumanStr * retreatPct);
 
@@ -1483,14 +1494,29 @@ void Game::doEndTurn()
                                      obj.type == WorldObjectType::StatShrine  ||
                                      obj.type == WorldObjectType::SpellScroll ||
                                      obj.type == WorldObjectType::SwampAltar)  val = 50.f;
+                            // Guarded high-value sites: worth clearing once the hero
+                            // can plausibly beat the guardians (checked on arrival).
+                            else if (obj.type == WorldObjectType::Crypt      ||
+                                     obj.type == WorldObjectType::Utopia     ||
+                                     obj.type == WorldObjectType::BanditCamp) {
+                                int siteStr = 400 + m_turns.week() * 150;
+                                if (obj.type == WorldObjectType::Utopia) siteStr *= 2;
+                                if (eiStr >= siteStr * 14 / 10) val = 110.f;
+                            }
                             if (val > 0.f) add(obj.pos, val);
                         }
-                        // Nearest human hero — untargetable once a combat is queued.
-                        // GhostWalk now just halves the score instead of exempting.
+                        // Nearest human hero. The old score (300/dist) meant a hero
+                        // 30 hexes away NEVER outbid a mine 2 hexes away, at any
+                        // strength — both sides orbited trinkets forever and the game
+                        // stalemated. Hunt value now grows with the week and decays
+                        // with sqrt(dist), so late-game confrontation always wins out.
                         if (!softRetreat && !combatTriggered) {
                             int dist = HexGrid::distance(eHero.pos, targetPos);
-                            if (dominant || dist <= 8 || isRaider)
-                                add(targetPos, 300.f * ghostMult);
+                            if (dominant || dist <= 8 || isRaider) {
+                                float huntVal = 300.f + m_turns.week() * 10.f;
+                                cands.push_back({targetPos,
+                                    huntVal * ghostMult / std::sqrt((float)std::max(1, dist))});
+                            }
                         }
                     }
 
@@ -1547,6 +1573,35 @@ void Game::doEndTurn()
                     // Collect world objects — apply meaningful effects to enemy hero
                     for (auto& obj : m_worldObjects) {
                         if (obj.collected || obj.pos != eHero.pos) continue;
+                        // Guarded sites resolve as an off-screen fight, and only when
+                        // strong enough — walking over one no longer silently deletes
+                        // it (previous behavior collected EVERYTHING unconditionally).
+                        if (obj.type == WorldObjectType::Crypt      ||
+                            obj.type == WorldObjectType::Utopia     ||
+                            obj.type == WorldObjectType::BanditCamp) {
+                            int siteStr = 400 + m_turns.week() * 150;
+                            bool utopia = (obj.type == WorldObjectType::Utopia);
+                            if (utopia) siteStr *= 2;
+                            if (eiStr < siteStr * 14 / 10) continue;  // too risky — leave it
+                            obj.collected = true;
+                            // Casualties: ~15% off the largest stack (harder than a mine guard)
+                            if (!eHero.army.empty()) {
+                                int bigIdx = 0;
+                                for (int i = 1; i < (int)eHero.army.size(); ++i)
+                                    if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
+                                eHero.army[bigIdx].count =
+                                    std::max(1, eHero.army[bigIdx].count -
+                                             eHero.army[bigIdx].count * 15 / 100);
+                            }
+                            aiHeroAwardXp(eHero, siteStr / 4);
+                            if (utopia && obj.value > 0)
+                                aiEquipOrStashArtifact(eHero, obj.value);
+                            gLog("Enemy %s cleared %s (week %d)\n", eHero.name.c_str(),
+                                 utopia ? "Utopia" :
+                                 (obj.type == WorldObjectType::Crypt ? "Crypt" : "Bandit Camp"),
+                                 m_turns.week());
+                            continue;
+                        }
                         obj.collected = true;
                         if (obj.type == WorldObjectType::XPShrine) {
                             aiHeroAwardXp(eHero, obj.value);
@@ -1813,14 +1868,14 @@ void Game::doEndTurn()
             // Capture income totals for week summary popup before adding them
             m_weekSummaryIncome = m_turns.calculateWeeklyIncome(m_towns, currentPlayerId());
             for (const auto& r : m_resources)
-                if (r.ownedBy == static_cast<uint32_t>(currentPlayerId())) m_weekSummaryIncome.add(r.type, r.amount);
+                if (r.ownedBy == static_cast<uint32_t>(currentPlayerId())) m_weekSummaryIncome.add(r.type, mineYield(r));
             m_cachedWeeklyIncome = m_weekSummaryIncome;
             m_weekSummaryWeek = m_turns.week();
             if (!m_watchingAI) m_showWeekSummary = true;
 
             // Mine income for player-controlled resource nodes
             for (const auto& r : m_resources)
-                if (r.ownedBy == static_cast<uint32_t>(currentPlayerId())) m_playerResources.add(r.type, r.amount);
+                if (r.ownedBy == static_cast<uint32_t>(currentPlayerId())) m_playerResources.add(r.type, mineYield(r));
 
             // (Other human players' weekly income is applied in the
             //  lastPlayerEndedTurn block below via m_players[pi].resources.)
@@ -2660,7 +2715,7 @@ void Game::doEndTurn()
                 auto piIncome = m_turns.calculateWeeklyIncome(m_towns, pid);
                 ps.resources.addAll(piIncome);
                 for (const auto& r : m_resources)
-                    if (r.ownedBy == pid) ps.resources.add(r.type, r.amount);
+                    if (r.ownedBy == pid) ps.resources.add(r.type, mineYield(r));
                 // Garrison upkeep
                 int garrisonCount = 0;
                 for (const auto& h : ps.heroes) if (h.isGarrisoned) ++garrisonCount;
@@ -2718,7 +2773,7 @@ void Game::doEndTurn()
                 auto& notifs = m_playerNotifs[pi];
                 notifs.weekIncome  = piIncome;
                 for (const auto& r : m_resources)
-                    if (r.ownedBy == pid) notifs.weekIncome.add(r.type, r.amount);
+                    if (r.ownedBy == pid) notifs.weekIncome.add(r.type, mineYield(r));
                 notifs.weekNum     = m_turns.week();
                 notifs.weekSummary = true;
             }

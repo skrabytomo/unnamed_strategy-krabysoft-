@@ -1656,6 +1656,16 @@ void BuildingRegistry::init()
     addUnit(9024,"Harmony Knight",     F::Convergence,4,P::PathB, 62,10,10,9,16,8, gold(390), T::Humanoid|T::Flying, true);
     addUnit(9025,"Transcendent Prime", F::Convergence,5,P::PathB, 80,12,13,14,23,10,gold(670), T::Humanoid|T::Flying, true);
     addUnit(9026,"Harmonic Unity",     F::Convergence,6,P::PathB,145,16,15,23,37,12,gold(1320), T::Humanoid|T::Flying, true);
+
+    // ── Refined iron for upgrades (design: every faction refines iron) ────────
+    // All PathA/PathB upgrade dwellings additionally cost iron, scaling with tier
+    // (T1 = 2 ... T6 = 7). Applied uniformly here rather than in each of the ~108
+    // per-faction definitions above.
+    for (auto& b : m_buildings) {
+        if (b.category == BuildingCategory::UnitDwelling
+            && b.path != UpgradePath::None && b.tier >= 1)
+            b.cost.add(ResourceType::Iron, 1 + b.tier);
+    }
 }
 
 const BuildingDef* BuildingRegistry::getBuildingDef(int id) const {

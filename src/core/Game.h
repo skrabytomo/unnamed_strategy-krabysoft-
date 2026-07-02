@@ -616,6 +616,12 @@ private:
     void  watchAiMoveSupportHero(Hero& hero, bool isCourier); // scouts/courier: no combat
     // Award XP to an AI hero and auto-apply level-ups (stats + class skills, no UI).
     void  aiHeroAwardXp(Hero& hero, int xp);
+    // Weekly yield of a mine, scaled by game week so mines stay relevant late game:
+    // gold mines +5/week, special resources +1 per 10 weeks.
+    int   mineYield(const ResourceNode& r) const {
+        int week = m_turns.week();
+        return r.amount + (r.type == ResourceType::Gold ? week * 5 : week / 10);
+    }
     // Equip a picked-up artifact into a free slot (or better-stat swap), else stash it.
     void  aiEquipOrStashArtifact(Hero& hero, int artifactId);
 

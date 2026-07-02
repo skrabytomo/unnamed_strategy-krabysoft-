@@ -673,7 +673,7 @@ bool Game::loadGameApply(GameSaveData& data)
         uint32_t cid = static_cast<uint32_t>(currentPlayerId());
         m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, cid);
         for (const auto& r : m_resources)
-            if (r.ownedBy == cid) m_cachedWeeklyIncome.add(r.type, r.amount);
+            if (r.ownedBy == cid) m_cachedWeeklyIncome.add(r.type, mineYield(r));
     }
 
     gLog("Game loaded (day %d week %d)\n", day, week);
@@ -1402,7 +1402,7 @@ void Game::startNewGame()
     // Initial income cache
     m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, 1);
     for (const auto& r : m_resources)
-        if (r.ownedBy == 1u) m_cachedWeeklyIncome.add(r.type, r.amount);
+        if (r.ownedBy == 1u) m_cachedWeeklyIncome.add(r.type, mineYield(r));
 }
 
 // ── Settings persistence ──────────────────────────────────────────────────────
