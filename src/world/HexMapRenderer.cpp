@@ -128,13 +128,13 @@ void main() {
     if (uUseTexture != 0) {
         vec2 uv = vTexCoord;
         if (uTerrain == 9) {
-            // World-space UV: continuous across hex boundaries, no per-hex seams.
-            // GL_REPEAT on the sampler handles wrap — no fract() needed.
-            float warpX = sin(vWorldPos.y * 0.008 + uTime * 0.7) * 0.018;
-            float warpY = sin(vWorldPos.x * 0.006 - uTime * 0.5) * 0.012;
-            uv = vWorldPos * 0.012;
-            uv.x += uTime * 0.022 + warpX;
-            uv.y += uTime * 0.010 + warpY;
+            // Per-hex UV + scroll offset — same UV basis every other terrain uses.
+            // The previous world-space projection left a visible diamond-shaped gap
+            // where adjacent hexes meet; per-hex UV can't produce that seam since
+            // it's identical to how gap-free terrain types already sample.
+            float warpX = sin(vWorldPos.y * 0.008 + uTime * 0.7) * 0.02;
+            float warpY = sin(vWorldPos.x * 0.006 - uTime * 0.5) * 0.02;
+            uv = vTexCoord + vec2(uTime * 0.05 + warpX, uTime * 0.03 + warpY);
         }
 
         vec3 tex = texture(uTerrainTex, uv).rgb;
