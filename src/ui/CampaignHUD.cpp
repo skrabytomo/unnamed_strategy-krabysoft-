@@ -66,27 +66,34 @@ void CampaignHUD::render(CampaignManager& mgr, LuaEngine& lua)
     }
 
     // ── Objectives panel (top-left, below the 68px resource bar) ─────────────
+    // NoInputs: purely informational — clicks pass through to the map/towns
+    // underneath instead of being swallowed.
+    float objBottom = 76.0f;
     ImGui::SetNextWindowPos(ImVec2(8, 76), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(260, 0), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.75f);
     if (ImGui::Begin("##objectives", nullptr,
             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize))
+            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize |
+            ImGuiWindowFlags_NoInputs))
     {
         ImGui::TextColored(ImVec4(1,0.85f,0.3f,1), "%s", mission->name.c_str());
         ImGui::Separator();
         drawObjectives(*mission);
+        objBottom = 76.0f + ImGui::GetWindowHeight();
     }
     ImGui::End();
 
-    // ── Alignment compass (top-right, below resource bar) ────────────────────
-    float displayW = ImGui::GetIO().DisplaySize.x;
-    ImGui::SetNextWindowPos(ImVec2(displayW - 180, 76), ImGuiCond_Always);
+    // ── Alignment compass — stacked below the objectives on the LEFT.
+    // It used to sit at (displayW-180, 76), directly on top of the world HUD's
+    // right panel (HUD_RIGHT = sw-185), covering the Heroes/Towns list and making
+    // towns unclickable in campaign. NoInputs for click-through as well.
+    ImGui::SetNextWindowPos(ImVec2(8, objBottom + 6.0f), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(172, 180), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.75f);
     if (ImGui::Begin("##alignment", nullptr,
             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-            ImGuiWindowFlags_NoMove))
+            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs))
     {
         drawAlignmentCompass(mgr.alignment());
     }

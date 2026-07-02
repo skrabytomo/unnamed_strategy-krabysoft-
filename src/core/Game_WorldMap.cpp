@@ -4692,14 +4692,14 @@ void Game::renderWorldOverlay()
         // Clip all minimap drawing to its bounds
         dl->PushClipRect({mm_left, mm_top}, {mm_left+MINI_W, mm_top+MINI_H}, true);
 
-        // Draw explored terrain tiles as 2×2 dots
+        // Draw explored terrain tiles as 2×2 dots (fog-disabled = everything, bright)
         for (const HexCoord& c : m_map.coords()) {
             const HexTile* t = m_map.getTile(c);
-            if (!t || !t->explored) continue;
+            if (!t || (!m_fogDisabled && !t->explored)) continue;
             float mx = mm_cx + static_cast<float>(c.q) * scaleX;
             float my = mm_cy + (static_cast<float>(c.r) + static_cast<float>(c.q) * 0.5f) * scaleY;
             dl->AddRectFilled({mx-1.f, my-1.f}, {mx+1.f, my+1.f},
-                              terrainColor(t->terrain, t->visible));
+                              terrainColor(t->terrain, m_fogDisabled || t->visible));
         }
 
         // Towns: 4×4 colored square with white outline
@@ -4708,7 +4708,7 @@ void Game::renderWorldOverlay()
             : 0u;
         for (const auto& town : m_towns) {
             const HexTile* tt = m_map.getTile(town.pos);
-            if (!tt || !tt->explored) continue;
+            if (!tt || (!m_fogDisabled && !tt->explored)) continue;
             float mx = mm_cx + static_cast<float>(town.pos.q) * scaleX;
             float my = mm_cy + (static_cast<float>(town.pos.r) + static_cast<float>(town.pos.q) * 0.5f) * scaleY;
             ImU32 col;
@@ -4727,7 +4727,7 @@ void Game::renderWorldOverlay()
         // Resource mines
         for (const auto& r : m_resources) {
             const HexTile* rt = m_map.getTile(r.pos);
-            if (!rt || !rt->explored) continue;
+            if (!rt || (!m_fogDisabled && !rt->explored)) continue;
             float mx = mm_cx + static_cast<float>(r.pos.q) * scaleX;
             float my = mm_cy + (static_cast<float>(r.pos.r) + static_cast<float>(r.pos.q) * 0.5f) * scaleY;
             ImU32 col;
@@ -4742,10 +4742,10 @@ void Game::renderWorldOverlay()
             dl->AddCircleFilled({mx, my}, 1.5f, col);
         }
 
-        // Enemy heroes (only when tile is visible)
+        // Enemy heroes (only when tile is visible, unless fog is off)
         for (const auto& hero : m_enemyHeroes) {
             const HexTile* ht2 = m_map.getTile(hero.pos);
-            if (!ht2 || !ht2->visible) continue;
+            if (!ht2 || (!m_fogDisabled && !ht2->visible)) continue;
             float mx = mm_cx + static_cast<float>(hero.pos.q) * scaleX;
             float my = mm_cy + (static_cast<float>(hero.pos.r) + static_cast<float>(hero.pos.q) * 0.5f) * scaleY;
             dl->AddCircleFilled({mx, my}, 2.5f, IM_COL32(255, 60, 60, 255));

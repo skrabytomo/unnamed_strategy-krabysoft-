@@ -322,7 +322,11 @@ void Game::renderMainMenu()
 
         ImGui::Text("Audio");
         ImGui::Separator();
-        if (ImGui::SliderFloat("Music Volume", &m_settingsMasVol, 0.0f, 1.0f, "%.2f"))
+        // Music applies on slider RELEASE: setMusicVolume re-queues the current
+        // track (pre-mixed at the old volume), so applying per-drag-tick would
+        // restart it dozens of times while dragging.
+        ImGui::SliderFloat("Music Volume", &m_settingsMasVol, 0.0f, 1.0f, "%.2f");
+        if (ImGui::IsItemDeactivatedAfterEdit())
             m_audio.setMusicVolume(m_settingsMasVol);
         if (ImGui::SliderFloat("SFX Volume",   &m_settingsSfxVol, 0.0f, 1.0f, "%.2f"))
             m_audio.setSfxVolume(m_settingsSfxVol);

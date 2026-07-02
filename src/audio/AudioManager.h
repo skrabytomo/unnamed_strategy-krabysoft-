@@ -11,7 +11,10 @@ public:
     void playSound(const char* name);           // plays SFX once
     void playMusic(const char* name);           // loops background music
     void stopMusic();
-    void setMusicVolume(float v) { m_musVol = v; }
+    // Music is pre-mixed into the device queue when a track starts, so a volume
+    // change must re-mix and re-queue the current track to be audible before the
+    // track next loops (can be minutes). Defined in .cpp; restarts current track.
+    void setMusicVolume(float v);
     void setSfxVolume(float v)   { m_sfxVol = v; }
     bool loadWav(const char* name, const char* path);
     void update();   // call each frame to restart music loop when done

@@ -124,6 +124,18 @@ void AudioManager::stopMusic()
     m_currentMusic.clear();
 }
 
+void AudioManager::setMusicVolume(float v)
+{
+    if (v == m_musVol) return;
+    m_musVol = v;
+    // The already-queued track was mixed at the old volume — re-queue it at the
+    // new one so the slider takes effect immediately instead of on the next loop.
+    if (!m_currentMusic.empty()) {
+        std::string cur = m_currentMusic;
+        playMusic(cur.c_str());
+    }
+}
+
 void AudioManager::update()
 {
     if (!m_musDev || m_currentMusic.empty()) return;
