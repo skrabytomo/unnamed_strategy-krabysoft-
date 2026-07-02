@@ -31,6 +31,7 @@ private:
     void rebuildRecruitButtons();
     void drawBuildingTree(UIRenderer& rdr);
     void drawPanorama(UIRenderer& rdr);
+    void drawLiveTown(UIRenderer& rdr);
     void drawRecruitPanel(UIRenderer& rdr);
     void drawIncomePanel(UIRenderer& rdr);
 
@@ -88,13 +89,24 @@ private:
     // Recruit destination toggle
     bool m_recruitToGarrison = false;
 
-    // Building view mode: true = panorama grid, false = list
+    // Building view mode: true = panorama grid, false = list.
+    // Takes a back seat to m_liveTownMode when that's enabled.
     bool m_panoramaMode = true;
+
+    // Live Town: whole town rendered on one shared background, buildings appear
+    // in place once built, clicked in-place instead of via a card grid.
+    // Layout is computed at draw time straight from m_registry->buildings() —
+    // no per-faction position data needed, so it works for every faction
+    // immediately (falls back to the category icon atlas where no per-building
+    // art has been wired yet).
+    bool        m_liveTownMode = false;
+    ImTextureID m_liveTownBg   = nullptr;
 
 public:
     void setTownBannerTex(ImTextureID t)    { m_townBannerTex    = t; }
     void setBuildingIconTex(ImTextureID t)  { m_buildingIconTex  = t; }
     void setBuildingArt(int bid, ImTextureID t) { if (t) m_buildingArt[bid] = t; }
+    void setLiveTownBg(ImTextureID t)       { m_liveTownBg       = t; }
     void setUnitTex(int tierIdx, ImTextureID t) {
         if (tierIdx >= 0 && tierIdx < MAX_TIERS) m_unitTex[tierIdx] = t;
     }

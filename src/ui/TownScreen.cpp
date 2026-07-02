@@ -244,8 +244,9 @@ void TownScreen::draw(UIRenderer& rdr)
     }
 
     m_mainPanel.draw(rdr);
-    if (m_panoramaMode) drawPanorama(rdr);
-    else                drawBuildingTree(rdr);
+    if      (m_liveTownMode) drawLiveTown(rdr);
+    else if (m_panoramaMode) drawPanorama(rdr);
+    else                     drawBuildingTree(rdr);
     drawRecruitPanel(rdr);
     drawIncomePanel(rdr);
     m_closeBtn.draw(rdr);
@@ -307,6 +308,8 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
 
     // View toggle
     if (ImGui::Button("Panorama View")) { m_panoramaMode = true; }
+    ImGui::SameLine();
+    if (ImGui::Button("Live Town View")) { m_liveTownMode = true; }
     ImGui::SameLine();
     ImGui::TextDisabled("— click to build");
 
@@ -473,6 +476,8 @@ void TownScreen::drawPanorama(UIRenderer& rdr)
 
     if (ImGui::Button("List View")) m_panoramaMode = false;
     ImGui::SameLine();
+    if (ImGui::Button("Live Town View")) { m_liveTownMode = true; }
+    ImGui::SameLine();
     ImGui::TextDisabled("— click a building to construct");
 
     auto costStr = [](const Resources& cost) -> std::string {
@@ -622,6 +627,178 @@ void TownScreen::drawPanorama(UIRenderer& rdr)
 
     ImGui::End();
     ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(2);
+
+    if (needRebuild) rebuildRecruitButtons();
+}
+
+// ── Live Town: whole town on one background, buildings clickable in place ──────
+// Layout is computed purely from m_registry->buildings() at draw time (grouped
+// by category/tier), so it works for every faction with zero hand-authored
+// coordinates. Falls back to the category icon atlas for buildings that don't
+// have per-building art wired yet (see m_buildingArt, populated by Game_Town.cpp).
+void TownScreen::drawLiveTown(UIRenderer& rdr)
+{
+    m_buildPanel.draw(rdr);
+    if (!m_town || !m_registry || !m_playerRes) return;
+
+    ImGui::SetNextWindowPos({m_buildPanel.bounds.x, m_buildPanel.bounds.y});
+    ImGui::SetNextWindowSize({m_buildPanel.bounds.w, m_buildPanel.bounds.h});
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0,0,0,0));
+    ImGui::PushStyleColor(ImGuiCol_Border,   ImVec4(0,0,0,0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6, 28));
+    ImGui::Begin("##live_town", nullptr,
+        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+
+    if (ImGui::Button("List View")) m_liveTownMode = false, m_panoramaMode = false;
+    ImGui::SameLine();
+    if (ImGui::Button("Panorama View")) m_liveTownMode = false;
+    ImGui::SameLine();
+    ImGui::TextDisabled("— click a building on the map to construct it");
+
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 bgMin = {m_buildPanel.bounds.x + 4, m_buildPanel.bounds.y + 26};
+    ImVec2 bgMax = {m_buildPanel.bounds.x + m_buildPanel.bounds.w - 4,
+                     m_buildPanel.bounds.y + m_buildPanel.bounds.h - 4};
+
+    if (m_liveTownBg) {
+        dl->AddImage(m_liveTownBg, bgMin, bgMax);
+    } else {
+        // Placeholder backdrop until a real per-faction background is authored
+        dl->AddRectFilledMultiColor(bgMin, bgMax,
+            IM_COL32(32, 28, 20, 255), IM_COL32(32, 28, 20, 255),
+            IM_COL32(14, 12, 10, 255), IM_COL32(14, 12, 10, 255));
+    }
+    dl->AddRect(bgMin, bgMax, IM_COL32(90, 75, 40, 180), 4.0f);
+
+    // ── Group buildings: civic row (fort/economy/support/mage guild) + one
+    // slot per dwelling tier (base/PathA/PathB share a slot — same physical site) ──
+    std::vector<const BuildingDef*> civic;
+    std::vector<const BuildingDef*> tierSlots[6];
+    for (const auto& def : m_registry->buildings()) {
+        if (def.faction != FactionId::None && def.faction != m_town->faction) continue;
+        if (def.category == BuildingCategory::UnitDwelling && def.tier >= 1 && def.tier <= 6)
+            tierSlots[def.tier - 1].push_back(&def);
+        else
+            civic.push_back(&def);
+    }
+
+    auto iconUv = [](BuildingCategory cat, ImVec2& uv0, ImVec2& uv1) {
+        static constexpr float kW = 1.0f / 6.0f;
+        float u0 = kW * static_cast<int>(cat);
+        uv0 = {u0, 0.0f}; uv1 = {u0 + kW, 1.0f};
+    };
+
+    bool needRebuild = false;
+    float costMult = (m_hero && m_hero->efficientSpecialty) ? 0.8f : 1.0f;
+
+    // Renders one slot (a single BuildingDef, always directly buildable) at rect.
+    auto drawSlot = [&](const BuildingDef* def, ImVec2 rMin, ImVec2 rMax) {
+        bool built      = m_town->hasBuilding(def->id);
+        bool limitReach = m_town->builtToday >= 1;
+        bool prereqMet  = m_town->canBuild(def->id, m_registry->buildings(),
+                                            m_currentWeek, m_blueprintDiscount);
+        bool affordable = m_playerRes->canAfford(def->cost);
+        bool canBuildHere = prereqMet && affordable && !built && !limitReach;
+
+        auto artIt = m_buildingArt.find(def->id);
+        ImTextureID artTex = (artIt != m_buildingArt.end()) ? artIt->second : nullptr;
+        int alpha = built ? 255 : (prereqMet ? 130 : 45);
+
+        if (artTex) {
+            dl->AddImage(artTex, rMin, rMax, {0,0}, {1,1}, IM_COL32(255,255,255,alpha));
+        } else if (m_buildingIconTex) {
+            ImVec2 uv0, uv1; iconUv(def->category, uv0, uv1);
+            ImVec2 c = {(rMin.x+rMax.x)*0.5f, (rMin.y+rMax.y)*0.5f};
+            float half = std::min(rMax.x-rMin.x, rMax.y-rMin.y) * 0.35f;
+            dl->AddImage(m_buildingIconTex, {c.x-half,c.y-half}, {c.x+half,c.y+half},
+                        uv0, uv1, IM_COL32(255,255,255,alpha));
+        }
+        dl->AddRect(rMin, rMax, built ? IM_COL32(120,255,120,160)
+                              : canBuildHere ? IM_COL32(220,190,60,160)
+                              : IM_COL32(120,120,120,90), 3.0f);
+
+        ImGui::SetCursorScreenPos(rMin);
+        std::string btnId = "##slot" + std::to_string(def->id);
+        ImGui::InvisibleButton(btnId.c_str(), {rMax.x-rMin.x, rMax.y-rMin.y});
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("%s", def->name.c_str());
+            if (!def->description.empty()) ImGui::TextDisabled("%s", def->description.c_str());
+            if (built) ImGui::TextColored({0.4f,0.8f,0.4f,1.f}, "Already built");
+            else {
+                std::string cs;
+                if (def->cost.get(ResourceType::Gold) > 0)
+                    cs += std::to_string(def->cost.get(ResourceType::Gold)) + "g";
+                ImGui::Text("Cost: %s", cs.c_str());
+                if (!prereqMet)       ImGui::TextColored({0.6f,0.4f,0.4f,1.f}, "Prerequisites not met");
+                else if (limitReach)  ImGui::TextColored({0.6f,0.6f,0.2f,1.f}, "Already built today");
+                else if (!affordable) ImGui::TextColored({0.8f,0.3f,0.3f,1.f}, "Cannot afford");
+                else                  ImGui::TextColored({0.4f,0.9f,0.4f,1.f}, "Click to build");
+            }
+            ImGui::EndTooltip();
+        }
+        if (ImGui::IsItemClicked() && canBuildHere) {
+            m_town->build(def->id, m_registry->buildings(), *m_playerRes, costMult);
+            needRebuild = true;
+        }
+    };
+
+    // Civic row along the top of the backdrop
+    float availW = bgMax.x - bgMin.x, availH = bgMax.y - bgMin.y;
+    if (!civic.empty()) {
+        float cw = availW / static_cast<float>(civic.size());
+        float ch = availH * 0.22f;
+        for (size_t i = 0; i < civic.size(); ++i) {
+            ImVec2 rMin = {bgMin.x + cw * i + 3, bgMin.y + 3};
+            ImVec2 rMax = {rMin.x + cw - 6, bgMin.y + ch - 3};
+            drawSlot(civic[i], rMin, rMax);
+        }
+    }
+
+    // Dwelling tiers fill the rest — 3 columns × 2 rows
+    float dwTop = bgMin.y + availH * 0.24f;
+    float dwH   = availH * 0.76f;
+    float cellW = availW / 3.0f, cellH = dwH / 2.0f;
+    for (int t = 0; t < 6; ++t) {
+        if (tierSlots[t].empty()) continue;
+        const BuildingDef* base = nullptr, *pA = nullptr, *pB = nullptr;
+        for (auto* d : tierSlots[t]) {
+            if      (d->path == UpgradePath::None)  base = d;
+            else if (d->path == UpgradePath::PathA) pA = d;
+            else if (d->path == UpgradePath::PathB) pB = d;
+        }
+        if (!base) continue;
+        bool aBuilt = pA && m_town->hasBuilding(pA->id);
+        bool bBuilt = pB && m_town->hasBuilding(pB->id);
+        const BuildingDef* shown = aBuilt ? pA : bBuilt ? pB : base;
+
+        int col = t % 3, row = t / 3;
+        ImVec2 rMin = {bgMin.x + cellW * col + 4, dwTop + cellH * row + 4};
+        ImVec2 rMax = {rMin.x + cellW - 8, rMin.y + cellH - 8};
+
+        bool baseBuilt = m_town->hasBuilding(base->id);
+        if (baseBuilt && !aBuilt && !bBuilt && (pA || pB)) {
+            // Base is up — offer the path choice on click instead of a direct build
+            drawSlot(shown, rMin, rMax); // draws base art/state, click below overrides behavior
+            if (ImGui::IsItemClicked() && onUpgradePathChoice && pA && pB) {
+                onUpgradePathChoice(pA->id, pB->id);
+            } else if (ImGui::IsItemClicked() && (pA || pB)) {
+                const BuildingDef* only = pA ? pA : pB;
+                if (m_town->canBuild(only->id, m_registry->buildings(), m_currentWeek, m_blueprintDiscount)
+                    && m_playerRes->canAfford(only->cost) && m_town->builtToday < 1) {
+                    m_town->build(only->id, m_registry->buildings(), *m_playerRes, costMult);
+                    needRebuild = true;
+                }
+            }
+        } else {
+            drawSlot(shown, rMin, rMax);
+        }
+    }
+
+    ImGui::End();
+    ImGui::PopStyleVar();
     ImGui::PopStyleColor(2);
 
     if (needRebuild) rebuildRecruitButtons();
