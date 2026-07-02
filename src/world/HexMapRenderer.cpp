@@ -331,7 +331,11 @@ void HexMapRenderer::render(const HexMap& map, const Camera2D& camera,
         }
 
         m_shader.setInt("uTerrain", ti);
-        drawHex(cx, cy, r, g, b, a, 1.005f); // slight overlap eliminates sub-pixel gaps
+        // Water (index 9) is a smooth, uniformly-colored texture, so the standard
+        // 0.5% overlap isn't enough to hide sub-pixel seams at hex vertices —
+        // they show as small dark notches. Noisy land textures mask the same gap.
+        float hexScale = isWater ? 1.02f : 1.005f;
+        drawHex(cx, cy, r, g, b, a, hexScale); // slight overlap eliminates sub-pixel gaps
     }
 
     glBindVertexArray(0);

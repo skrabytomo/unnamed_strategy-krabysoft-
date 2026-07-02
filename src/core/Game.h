@@ -604,6 +604,7 @@ private:
     int   m_watchAIFaction1 = 0;
     int   m_watchAIFaction2 = 1;
     void  watchAiMovePlayerHero();     // runs player hero through same AI logic as enemies
+    void  watchAiMoveSupportHero(Hero& hero, bool isCourier); // scouts/courier: no combat
 
     // ── Hot-seat 2-player mode ─────────────────────────────────────────────────
     bool      m_hotSeatMode      = false;  // two humans share one screen

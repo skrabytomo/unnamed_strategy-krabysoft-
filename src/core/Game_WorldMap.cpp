@@ -458,6 +458,126 @@ void Game::watchAiMovePlayerHero()
     }
 }
 
+// Drives a Watch AI support hero (Scout Rider/Vanguard or Supply Courier).
+// Support heroes never engage enemies — they explore/claim loot or shuttle
+// freshly recruited troops from town to the main hero's army.
+void Game::watchAiMoveSupportHero(Hero& hero, bool isCourier)
+{
+    const auto& udefs = m_registry.units();
+    hero.movePool = hero.maxMove;
+
+    auto isEnemyTile = [&](HexCoord c) -> bool {
+        for (const auto& eh : m_enemyHeroes) if (eh.pos == c) return true;
+        return false;
+    };
+    auto costFn = [&](HexCoord c) -> int {
+        const HexTile* t = m_map.getTile(c);
+        if (!t || !hero.canEnter(t->terrain) || t->blocked || isEnemyTile(c)) return 999;
+        int base = hero.moveCost(t->terrain);
+        if (m_roadHexes.count(c)) base = std::max(1, base / 2);
+        return base;
+    };
+    auto stepToward = [&](HexCoord goal) {
+        while (hero.movePool > 0) {
+            auto path = Pathfinder::find(m_map, hero.pos, goal, costFn);
+            if (path.empty()) break;
+            HexCoord next = path[0];
+            const HexTile* nt = m_map.getTile(next);
+            if (!nt) break;
+            int cost = hero.moveCost(nt->terrain);
+            if (hero.movePool < cost) break;
+            if (HexTile* old = m_map.getTile(hero.pos)) old->heroId = 0;
+            hero.pos = next;
+            hero.movePool -= cost;
+            if (HexTile* nh = m_map.getTile(hero.pos)) nh->heroId = hero.id;
+            if (hero.pos == goal) break;
+        }
+    };
+
+    if (isCourier) {
+        // Standing on our own town: pick up any freshly available recruits.
+        for (auto& t : m_towns) {
+            if (t.ownerId != 1 || t.pos != hero.pos) continue;
+            for (auto& dw : t.dwellings) {
+                if (dw.available <= 0) continue;
+                for (const auto& ud : udefs) {
+                    if (ud.faction == t.faction && ud.tier == dw.tier && ud.path == dw.path) {
+                        int recruited = dw.available;
+                        dw.available = 0;
+                        bool merged = false;
+                        for (auto& s : hero.army)
+                            if (s.defId == ud.id) { s.count += recruited; merged = true; break; }
+                        if (!merged && hero.army.size() < 7)
+                            hero.army.push_back({ud.id, recruited});
+                        break;
+                    }
+                }
+            }
+            break;
+        }
+
+        if (m_heroes.empty()) return;
+        Hero& mainHero = m_heroes[0];
+        if (&mainHero == &hero) return;
+
+        if (!hero.army.empty()) {
+            if (hero.pos == mainHero.pos) {
+                // Transfer the whole delivery into the main hero's army.
+                for (auto& s : hero.army) {
+                    bool merged = false;
+                    for (auto& ms : mainHero.army)
+                        if (ms.defId == s.defId) { ms.count += s.count; merged = true; break; }
+                    if (!merged && mainHero.army.size() < 7) mainHero.army.push_back(s);
+                }
+                hero.army.clear();
+                gLog("Supply Courier delivered troops to %s (week %d)\n",
+                     mainHero.name.c_str(), m_turns.week());
+            } else {
+                stepToward(mainHero.pos);
+            }
+        } else {
+            // Nothing to carry — head home and wait for the next recruit cycle.
+            for (auto& t : m_towns) {
+                if (t.ownerId != 1) continue;
+                if (t.pos != hero.pos) stepToward(t.pos);
+                break;
+            }
+        }
+        return;
+    }
+
+    // ── Scout role: explore, claim loot/resources/neutral towns, never fight ──
+    struct Cand { HexCoord pos; float score; };
+    std::vector<Cand> cands;
+    auto add = [&](HexCoord pos, float val) {
+        if (pos == hero.pos || isEnemyTile(pos)) return;
+        int d = std::max(1, HexGrid::distance(hero.pos, pos));
+        cands.push_back({pos, val / d});
+    };
+    for (const auto& r : m_resources) if (r.ownedBy != 1) add(r.pos, 100.f);
+    for (const auto& obj : m_worldObjects) if (!obj.collected) add(obj.pos, 90.f);
+    for (const auto& t : m_towns) if (t.ownerId == 0) add(t.pos, 70.f);
+    if (cands.empty()) return;
+    std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b){ return a.score > b.score; });
+
+    while (hero.movePool > 0) {
+        HexCoord before = hero.pos;
+        stepToward(cands[0].pos);
+
+        const HexTile* nt = m_map.getTile(hero.pos);
+        if (nt) {
+            if (nt->resourceId != 0)
+                for (auto& r : m_resources) if (r.id == nt->resourceId) { r.ownedBy = 1; break; }
+            for (auto& obj : m_worldObjects)
+                if (!obj.collected && obj.pos == hero.pos) obj.collected = true;
+            if (nt->townId != 0)
+                for (auto& t : m_towns)
+                    if (t.id == nt->townId && t.ownerId == 0) t.ownerId = 1;
+        }
+        if (hero.pos == before || hero.pos == cands[0].pos) break;
+    }
+}
+
 void Game::updateWorldMap(float dt)
 {
     m_mapTime += dt;
@@ -553,6 +673,14 @@ void Game::updateWorldMap(float dt)
             m_watchAITimer = 1.0f / m_watchAISpeed;
             if (!m_showCombatResult && !m_showLevelUpModal) {
                 watchAiMovePlayerHero();
+                // Drive support heroes (scouts/courier) too — only while still on the
+                // world map, since watchAiMovePlayerHero() may have entered combat.
+                if (m_state == GameState::WorldMap) {
+                    for (size_t hi = 1; hi < m_heroes.size(); ++hi) {
+                        bool isCourier = (m_heroes[hi].name == "Supply Courier");
+                        watchAiMoveSupportHero(m_heroes[hi], isCourier);
+                    }
+                }
                 // If watchAiMovePlayerHero triggered combat, skip doEndTurn this tick
                 if (m_state == GameState::WorldMap)
                     doEndTurn();
@@ -1822,14 +1950,29 @@ void Game::doEndTurn()
                 }
             }
 
-            // ── Watch AI: player-side hero recruitment (mirrors enemy logic) ───
-            if (m_watchingAI && static_cast<int>(m_heroes.size()) < 6) {
+            // ── Watch AI: player-side support hero recruitment (mirrors enemy logic) ──
+            // Support hero count scales with map size (main hero + up to 3 extras on
+            // XLarge, down to main-hero-only on Small) instead of a flat count that's
+            // overkill on a small map and undermanned on a huge one. Courier is kept
+            // first since it's the most valuable role even on a cramped map.
+            // watchAiMoveSupportHero() actually drives each of these every tick.
+            if (m_watchingAI) {
                 constexpr int WATCH_HIRE_COST = 2500;
-                static const char* kWatchNames[] = {
-                    "Allied Vanguard","Field Marshal","War Envoy",
-                    "Sworn Guard","Kingdom Champion","Border Warden"
+                static const char* kWatchRoleNames[] = {
+                    "Supply Courier", "Scout Rider", "Scout Vanguard"
                 };
-                if (m_playerResources.get(ResourceType::Gold) >= WATCH_HIRE_COST) {
+                static const int kMaxSupportBySize[] = { 0, 1, 2, 3 }; // Small..XLarge
+                int maxSupport = kMaxSupportBySize[std::clamp(static_cast<int>(m_mapSize), 0, 3)];
+
+                bool haveRole[3] = {false, false, false};
+                for (const auto& h : m_heroes)
+                    for (int ri = 0; ri < 3; ++ri)
+                        if (h.name == kWatchRoleNames[ri]) haveRole[ri] = true;
+                int nextRole = -1;
+                for (int ri = 0; ri < maxSupport; ++ri) if (!haveRole[ri]) { nextRole = ri; break; }
+
+                if (nextRole >= 0 && static_cast<int>(m_heroes.size()) < 1 + maxSupport
+                    && m_playerResources.get(ResourceType::Gold) >= WATCH_HIRE_COST) {
                     for (auto& recruitTown : m_towns) {
                         if (recruitTown.ownerId != 1) continue;
                         bool occupied = false;
@@ -1839,12 +1982,10 @@ void Game::doEndTurn()
 
                         uint32_t newId = 100u;
                         for (const auto& h : m_heroes) newId = std::max(newId, h.id + 1u);
-                        uint32_t nameSeed = (m_turns.week() * 6271u)
-                                          ^ static_cast<uint32_t>(recruitTown.pos.q * 431u + recruitTown.pos.r);
                         Hero newHero;
                         newHero.id       = newId;
                         newHero.faction  = recruitTown.faction;
-                        newHero.name     = kWatchNames[nameSeed % 6];
+                        newHero.name     = kWatchRoleNames[nextRole];
                         newHero.movePool = newHero.maxMove;
 
                         int t1count = 6 + m_turns.week() * 2;
@@ -1866,8 +2007,8 @@ void Game::doEndTurn()
                         if (HexTile* ht = m_map.getTile(spawnPos)) ht->heroId = newHero.id;
                         m_playerResources.add(ResourceType::Gold, -WATCH_HIRE_COST);
                         m_heroes.push_back(std::move(newHero));
-                        gLog("Watch AI recruited player hero at %s (week %d)\n",
-                             recruitTown.name.c_str(), m_turns.week());
+                        gLog("Watch AI recruited %s at %s (week %d)\n",
+                             kWatchRoleNames[nextRole], recruitTown.name.c_str(), m_turns.week());
                         break;
                     }
                 }

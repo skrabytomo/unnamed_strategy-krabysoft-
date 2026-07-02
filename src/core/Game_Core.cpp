@@ -722,8 +722,9 @@ void Game::startNewGame()
     // Reset campaign state so leftover campaign data doesn't affect skirmish
     m_campaign.reset();
 
-    // Multiplayer reset
-    m_numHumanPlayers      = m_newGameNumPlayers;
+    // Multiplayer reset — resolve hot-seat here (before m_players is sized) so
+    // world gen, m_players.assign(), and AI start-index math all see the final count.
+    m_numHumanPlayers      = m_newGameHotSeat ? 2 : m_newGameNumPlayers;
     m_currentPlayerIdx     = 0;
     m_players.assign(m_numHumanPlayers, PlayerState{});
     m_playerNotifs.assign(m_numHumanPlayers, PlayerNotifs{});
@@ -1337,8 +1338,8 @@ void Game::startNewGame()
     FogOfWar::updateVision(m_map, m_heroes[0]);
 
     // ── Hot-seat: configure P2 hero from menu choices ─────────────────────────
+    // m_numHumanPlayers was already finalized above (before m_players.assign()/world gen).
     m_hotSeatMode   = m_newGameHotSeat;
-    if (m_hotSeatMode) m_numHumanPlayers = 2;
     m_worldHUD.setNumHumanPlayers(m_numHumanPlayers);
     m_hotSeatP2Turn = false;
     m_hotSeatHandoff = false;
