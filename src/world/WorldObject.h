@@ -39,6 +39,7 @@ enum class WorldObjectType : uint8_t
     ArtifactMerchant,   // traveling merchant; value=rng seed; stocks 3 Special artifacts for sale; revisitable
     Arena,              // fight for +1 ATK or +1 DEF (choice popup); questState=visiting hero id (visited once per hero)
     ExperienceWell,     // free XP boost; collected once; value=0 (xp scales with week at visit time)
+    PandoraBox,         // guarded gamble: fight week-scaled guardians, roll a big reward; value=rng seed
 };
 
 struct WorldObject

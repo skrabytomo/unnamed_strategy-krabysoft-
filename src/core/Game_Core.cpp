@@ -606,6 +606,7 @@ bool Game::loadGameApply(GameSaveData& data)
     m_pendingTownCaptureId   = 0;
     m_lastBanditCampId       = 0;
     m_pendingCryptId         = 0;
+    m_pendingPandoraId       = 0;
     m_pendingUtopiaId        = 0;
     m_lastCombatEnemyId      = 0;
 
@@ -1324,6 +1325,17 @@ void Game::startNewGame()
             wo.pos     = p;
             wo.faction = static_cast<uint8_t>(lcg() % 9);
             wo.value   = 1; // T1 dwellings
+            m_worldObjects.push_back(wo);
+        }
+
+        // Pandora's Boxes — guarded gamble (late-game content), away from start
+        for (int pb = 0; pb < 2 + scale; ++pb) {
+            HexCoord p = pickTile(10, 999);
+            WorldObject wo;
+            wo.id    = m_nextObjId++;
+            wo.type  = WorldObjectType::PandoraBox;
+            wo.pos   = p;
+            wo.value = static_cast<int>(lcg() & 0x7FFFFFFF);  // reward seed
             m_worldObjects.push_back(wo);
         }
     }

@@ -1053,6 +1053,7 @@ void Game::doEndTurn()
         m_levelUpOffers.clear();
         m_showCryptPopup         = false;
         m_pendingCryptId         = 0;
+        m_pendingPandoraId       = 0;
         m_showUtopiaPopup        = false;
         m_pendingUtopiaId        = 0;
         m_showDwellingPopup      = false;
@@ -1161,6 +1162,7 @@ void Game::doEndTurn()
         m_levelUpOffers.clear();
         m_showCryptPopup         = false;
         m_pendingCryptId         = 0;
+        m_pendingPandoraId       = 0;
         m_showUtopiaPopup        = false;
         m_pendingUtopiaId        = 0;
         m_showDwellingPopup      = false;
@@ -1498,9 +1500,11 @@ void Game::doEndTurn()
                             // can plausibly beat the guardians (checked on arrival).
                             else if (obj.type == WorldObjectType::Crypt      ||
                                      obj.type == WorldObjectType::Utopia     ||
+                                     obj.type == WorldObjectType::PandoraBox ||
                                      obj.type == WorldObjectType::BanditCamp) {
                                 int siteStr = 400 + m_turns.week() * 150;
-                                if (obj.type == WorldObjectType::Utopia) siteStr *= 2;
+                                if (obj.type == WorldObjectType::Utopia)     siteStr *= 2;
+                                if (obj.type == WorldObjectType::PandoraBox) siteStr = siteStr * 3 / 2;
                                 if (eiStr >= siteStr * 14 / 10) val = 110.f;
                             }
                             if (val > 0.f) add(obj.pos, val);
@@ -1578,10 +1582,13 @@ void Game::doEndTurn()
                         // it (previous behavior collected EVERYTHING unconditionally).
                         if (obj.type == WorldObjectType::Crypt      ||
                             obj.type == WorldObjectType::Utopia     ||
+                            obj.type == WorldObjectType::PandoraBox ||
                             obj.type == WorldObjectType::BanditCamp) {
                             int siteStr = 400 + m_turns.week() * 150;
-                            bool utopia = (obj.type == WorldObjectType::Utopia);
-                            if (utopia) siteStr *= 2;
+                            bool utopia  = (obj.type == WorldObjectType::Utopia);
+                            bool pandora = (obj.type == WorldObjectType::PandoraBox);
+                            if (utopia)  siteStr *= 2;
+                            if (pandora) siteStr = siteStr * 3 / 2;
                             if (eiStr < siteStr * 14 / 10) continue;  // too risky — leave it
                             obj.collected = true;
                             // Casualties: ~15% off the largest stack (harder than a mine guard)
@@ -1596,8 +1603,22 @@ void Game::doEndTurn()
                             aiHeroAwardXp(eHero, siteStr / 4);
                             if (utopia && obj.value > 0)
                                 aiEquipOrStashArtifact(eHero, obj.value);
+                            if (pandora) {
+                                // Same reward table as the player, seed-rolled
+                                uint32_t seed = static_cast<uint32_t>(obj.value);
+                                if (seed % 4 == 1) {
+                                    const auto& arts = m_artifactRegistry.artifacts();
+                                    if (!arts.empty())
+                                        aiEquipOrStashArtifact(eHero, arts[seed % arts.size()].id);
+                                } else if (seed % 4 == 2) {
+                                    eHero.attack += 2; eHero.defense += 2;
+                                }
+                                // gold/resource rolls are meaningless to the AI (infinite
+                                // build budget) — XP above covers the value instead
+                            }
                             gLog("Enemy %s cleared %s (week %d)\n", eHero.name.c_str(),
-                                 utopia ? "Utopia" :
+                                 utopia  ? "Utopia" :
+                                 pandora ? "Pandora's Box" :
                                  (obj.type == WorldObjectType::Crypt ? "Crypt" : "Bandit Camp"),
                                  m_turns.week());
                             continue;
@@ -3474,6 +3495,55 @@ void Game::checkTileEvents()
             }
             break;
 
+        case WorldObjectType::PandoraBox:
+            if (!obj.collected) {
+                Hero boxHero;
+                boxHero.id      = 0;
+                boxHero.name    = "Box Guardians";
+                boxHero.faction = FactionId::Voidkin;
+                // Scales harder than a Crypt and uncapped — this is late-game content
+                float wm = 1.0f + (m_turns.week() - 1) * 0.18f;
+                static const char* kBoxNames[] = {
+                    "Chaos Spawn","Rift Horror","Warp Fiend","Abyss Watcher"
+                };
+                std::vector<CombatUnit> boxUnits;
+                for (int si = 0; si < 4; ++si) {
+                    CombatUnit cu;
+                    cu.name    = kBoxNames[si];
+                    cu.count   = static_cast<int>(std::round((6 + si * 3) * wm));
+                    cu.maxHp   = cu.hp = 25 + si * 8;
+                    cu.attack  = 10 + si * 3;
+                    cu.defense = 8 + si * 2;
+                    cu.speed   = 5 + si;
+                    if (si == 1) { cu.range = 4; cu.shots = cu.shotsLeft = 4; }
+                    cu.isPlayer = false;
+                    boxUnits.push_back(cu);
+                }
+                uint32_t objId = obj.id;
+                m_encounterTitle        = "Pandora's Box";
+                m_pendingEncounterHero  = boxHero;
+                m_pendingEncounterUnits = boxUnits;
+                m_encounterOnAccept = [this, objId]() {
+                    m_pendingPandoraId     = objId;
+                    m_pendingCryptId       = 0;
+                    m_pendingUtopiaId      = 0;
+                    m_lastCombatEnemyId    = 0;
+                    m_pendingTownCaptureId = 0;
+                    m_lastBanditCampId     = 0;
+                    if (!m_heroes.empty()) {
+                        Hero& h = m_heroes[m_activeHeroIdx];
+                        auto pUnits = makeHeroUnits(h, m_registry.units(), true);
+                        enterCombat(h, pUnits, m_pendingEncounterHero, m_pendingEncounterUnits);
+                    }
+                };
+                m_encounterOnDecline = [this]() {
+                    if (!m_heroes.empty()) { auto& h = m_heroes[m_activeHeroIdx]; h.path.clear(); h.pathStep = 0; }
+                };
+                m_showEncounterPrompt = true;
+                return;
+            }
+            break;
+
         case WorldObjectType::Utopia:
             if (!obj.collected) {
                 Hero utopiaHero;
@@ -4232,6 +4302,7 @@ void Game::renderWorldOverlay()
         case WorldObjectType::ArtifactMerchant: ico = ICO_MERCHANT;    break;
         case WorldObjectType::Arena:            ico = ICO_ARENA;       break;
         case WorldObjectType::ExperienceWell:   ico = ICO_XP_WELL;     break;
+        case WorldObjectType::PandoraBox:       ico = 44;              break; // row5 col4
         default:                                ico = 15;          break;
         }
         // Idle glow pulse
@@ -4607,6 +4678,7 @@ void Game::renderWorldOverlay()
         case WorldObjectType::ArtifactMerchant: return "Traveling Merchant";
         case WorldObjectType::Arena:            return "Arena";
         case WorldObjectType::ExperienceWell:   return "Experience Well";
+        case WorldObjectType::PandoraBox:       return "Pandora's Box";
         default:                                return nullptr;
         }
     };

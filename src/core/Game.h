@@ -422,6 +422,8 @@ private:
     // On victory the defeated hero is removed from m_players[idx].heroes instead
     // of m_enemyHeroes.
     int         m_lastCombatHumanIdx   = -1;
+    // Pandora's Box being fought over (0 = none); reward rolls on victory.
+    uint32_t    m_pendingPandoraId     = 0;
 
     // ── Town-lost notification (enemy captured player town) ───────────────────
     bool        m_showTownLostPopup   = false;

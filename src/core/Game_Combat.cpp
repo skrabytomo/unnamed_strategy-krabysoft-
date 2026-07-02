@@ -1534,6 +1534,53 @@ void Game::exitCombat(bool playerWon)
             m_lastBanditCampId = 0;
         }
 
+        // Pandora's Box reward — rolled from the box's seed, applied immediately
+        // (no popup): big gold, an artifact, permanent hero stats, or resources.
+        if (m_pendingPandoraId != 0) {
+            for (auto& o : m_worldObjects) {
+                if (o.id != m_pendingPandoraId || o.collected) continue;
+                o.collected = true;
+                int week = m_turns.week();
+                uint32_t seed = static_cast<uint32_t>(o.value);
+                char fx[64] = {};
+                switch (seed % 4) {
+                    case 0: {
+                        int g = 2000 + week * 100;
+                        m_playerResources.add(ResourceType::Gold, g);
+                        std::snprintf(fx, sizeof(fx), "Pandora: +%d Gold!", g);
+                        break;
+                    }
+                    case 1: {
+                        const auto& arts = m_artifactRegistry.artifacts();
+                        if (!arts.empty() && !m_heroes.empty()) {
+                            int aid = arts[seed % arts.size()].id;
+                            m_heroes[m_activeHeroIdx].artifactInventory.push_back(aid);
+                            std::snprintf(fx, sizeof(fx), "Pandora: artifact found!");
+                        }
+                        break;
+                    }
+                    case 2: {
+                        if (!m_heroes.empty()) {
+                            m_heroes[m_activeHeroIdx].attack  += 2;
+                            m_heroes[m_activeHeroIdx].defense += 2;
+                            std::snprintf(fx, sizeof(fx), "Pandora: +2 ATK / +2 DEF!");
+                        }
+                        break;
+                    }
+                    case 3: {
+                        for (int rt = 1; rt < RESOURCE_COUNT; ++rt)
+                            m_playerResources.add(static_cast<ResourceType>(rt), 8);
+                        std::snprintf(fx, sizeof(fx), "Pandora: +8 of every resource!");
+                        break;
+                    }
+                }
+                if (fx[0]) pushPickupEffect(o.pos, fx, IM_COL32(255, 120, 255, 255));
+                gLog("Pandora's Box opened: %s\n", fx);
+                break;
+            }
+            m_pendingPandoraId = 0;
+        }
+
         // Crypt reward popup — do NOT zero m_pendingCryptId here; the popup render
         // function needs it to find the WorldObject. It is cleared on popup close.
         if (m_pendingCryptId != 0) {
@@ -1862,6 +1909,7 @@ void Game::exitCombat(bool playerWon)
         m_lastBanditCampId          = 0;
         m_pendingCryptId            = 0;
         m_pendingUtopiaId           = 0;
+        m_pendingPandoraId          = 0;
         m_pendingMineId             = 0;
         m_pendingNeutralOutpostId   = 0;
         m_triggers.fire(TriggerType::BattleLost, ctx);
