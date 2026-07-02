@@ -1273,15 +1273,48 @@ void Game::doEndTurn()
             ResourceType denialRes = (plFidx >= 0 && plFidx < 9)
                                    ? kFactionResource[plFidx] : ResourceType::Gold;
 
+            // ── Gather ALL human-controlled heroes (not just the active one) so
+            //    the AI hunts whichever human hero is nearest, across all players. ─
+            struct HumanHero { HexCoord pos; int str; };
+            std::vector<HumanHero> humanHeroes;
+            for (const auto& h : m_heroes)
+                humanHeroes.push_back({h.pos, heroStrength(h, unitDefs)});
+            for (int pi = 0; pi < m_numHumanPlayers; ++pi) {
+                if (pi == m_currentPlayerIdx) continue;  // that roster is live in m_heroes
+                for (const auto& h : m_players[pi].heroes)
+                    humanHeroes.push_back({h.pos, heroStrength(h, unitDefs)});
+            }
+            auto nearestHuman = [&](HexCoord from, int& outStr) -> const HumanHero* {
+                const HumanHero* best = nullptr; int bestD = INT32_MAX;
+                for (const auto& hh : humanHeroes) {
+                    int d = HexGrid::distance(from, hh.pos);
+                    if (d < bestD) { bestD = d; best = &hh; }
+                }
+                if (best) outStr = best->str;
+                return best;
+            };
+
+            // ── Strength-based weekly roles: strongest AI hero raids, 2nd grabs the
+            //    map economy, the rest defend. (Was index-based, so the strongest
+            //    hero could end up a passive defender while a weakling raided.) ─────
+            std::vector<int> byStrength(m_enemyHeroes.size());
+            for (size_t i = 0; i < byStrength.size(); ++i) byStrength[i] = (int)i;
+            std::sort(byStrength.begin(), byStrength.end(), [&](int a, int b){
+                return heroStrength(m_enemyHeroes[a], unitDefs)
+                     > heroStrength(m_enemyHeroes[b], unitDefs);
+            });
+            std::vector<int> heroRank(m_enemyHeroes.size(), 0);  // 0=raider,1=economic,2+=defender
+            for (size_t r = 0; r < byStrength.size(); ++r) heroRank[byStrength[r]] = (int)r;
+
             for (int ehi = 0; ehi < static_cast<int>(m_enemyHeroes.size()); ++ehi) {
                 // NOTE: combat no longer aborts the roster — once one hero enters
                 // combat, the rest still take their turn; they just can't start a
                 // second fight (the player-tile is blocked and untargeted below).
                 auto& eHero = m_enemyHeroes[ehi];
 
-                // ── Hero roles: raider hunts player, economic grabs map, defender guards towns
-                bool isRaider   = (ehi == 0);
-                bool isDefender = (ehi >= 2);
+                // ── Strength-based role (see byStrength above) ────────────────────
+                bool isRaider   = (heroRank[ehi] == 0);
+                bool isDefender = (heroRank[ehi] >= 2);
 
                 // Recruit from any owned town within 1 tile (free for AI)
                 for (auto& t : m_towns) {
@@ -1323,18 +1356,29 @@ void Game::doEndTurn()
                 }
 
                 int eiStr = heroStrength(eHero, unitDefs);
-                // Raider: attack if ≥50% strength OR player is wounded; Economic: only if 1.5×; Defender: never
+
+                // Strength gauge vs the NEAREST human hero to this AI hero (was
+                // always the single active player hero — in hot-seat that ignored
+                // closer opponents entirely).
+                int nearHumanStr = plStr;
+                const HumanHero* target = nearestHuman(eHero.pos, nearHumanStr);
+                HexCoord targetPos = target ? target->pos : playerHero.pos;
+                if (nearHumanStr <= 0) nearHumanStr = plStr;
+
+                // Raider: attack if ≥50% strength OR opponent is wounded; Economic: only if 1.5×; Defender: never
                 bool aggressive = isDefender ? false
-                                : isRaider   ? (playerIsWeak || eiStr * 10 >= plStr * 5)
-                                :              (eiStr * 10 >= plStr * 15);
+                                : isRaider   ? (playerIsWeak || eiStr * 10 >= nearHumanStr * 5)
+                                :              (eiStr * 10 >= nearHumanStr * 15);
                 // Retreat when very weak regardless of role
-                bool veryWeak   = (eiStr * 10 <  plStr * 4);
+                bool veryWeak   = (eiStr * 10 <  nearHumanStr * 4);
 
                 // Graduated retreat thresholds
-                float strRatio = plStr > 0 ? (float)eiStr / plStr : 99.f;
+                float strRatio = nearHumanStr > 0 ? (float)eiStr / nearHumanStr : 99.f;
                 bool softRetreat = strRatio < 0.6f;
                 bool dominant    = strRatio >= 1.2f;
-                bool playerGhostWalk = playerHero.ghostWalkSpecialty;
+                // GhostWalk is now a soft penalty (halved target score) rather than
+                // a hard exemption that made a GhostWalk player un-huntable forever.
+                float ghostMult = playerHero.ghostWalkSpecialty ? 0.5f : 1.0f;
 
                 // Pinned by siege camp: enemy hero can't leave their besieged town
                 bool pinnedBySiege = false;
@@ -1379,6 +1423,15 @@ void Game::doEndTurn()
                             if (r.ownedBy != eHero.id) add(r.pos, 60.f);
                         for (const auto& t : m_towns)
                             if (t.ownerId == eHero.id) add(t.pos, 80.f);
+                        // Defenders actively intercept any human hero threatening an
+                        // owned town (previously defenders just wandered for resources
+                        // and never protected anything).
+                        for (const auto& t : m_towns) {
+                            if (t.ownerId != eHero.id) continue;
+                            for (const auto& hh : humanHeroes)
+                                if (HexGrid::distance(hh.pos, t.pos) <= 6)
+                                    add(hh.pos, 250.f * ghostMult);
+                        }
                     } else {
                         // Own town to recruit
                         for (const auto& t : m_towns) {
@@ -1387,10 +1440,13 @@ void Game::doEndTurn()
                             for (const auto& dw : t.dwellings) if (dw.available > 0) { hasU = true; break; }
                             if (hasU && (int)eHero.army.size() < 7) add(t.pos, 250.f);
                         }
-                        // Towns
+                        // Towns — any human-owned town is a capture target (ownerId
+                        // 1..numHumanPlayers), neutral towns a lesser one.
                         for (const auto& t : m_towns) {
                             if (t.ownerId == 0)  add(t.pos, 150.f);
-                            else if (t.ownerId == 1) add(t.pos, 200.f);
+                            else if (t.ownerId >= 1
+                                     && t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers))
+                                add(t.pos, 200.f);
                         }
                         // Resources — deny player's key resource and favour own faction's
                         {
@@ -1418,11 +1474,12 @@ void Game::doEndTurn()
                                      obj.type == WorldObjectType::SwampAltar)  val = 50.f;
                             if (val > 0.f) add(obj.pos, val);
                         }
-                        // Player hero — untargetable once a combat is already queued
-                        if (!softRetreat && !playerGhostWalk && !combatTriggered) {
-                            int dist = HexGrid::distance(eHero.pos, playerHero.pos);
+                        // Nearest human hero — untargetable once a combat is queued.
+                        // GhostWalk now just halves the score instead of exempting.
+                        if (!softRetreat && !combatTriggered) {
+                            int dist = HexGrid::distance(eHero.pos, targetPos);
                             if (dominant || dist <= 8 || isRaider)
-                                add(playerHero.pos, 300.f);
+                                add(targetPos, 300.f * ghostMult);
                         }
                     }
 
@@ -1512,14 +1569,32 @@ void Game::doEndTurn()
                         }
                     }
 
-                    // Claim resource node (mine control) — guard must be beaten first
+                    // Claim resource node (mine control). If a guard is present, the
+                    // AI now fights it off-screen when comfortably stronger (was
+                    // guardBeaten-only, so guarded mines were unclaimable by the AI).
                     if (nextTile->resourceId != 0) {
                         for (auto& r : m_resources) {
-                            if (r.id == nextTile->resourceId) {
-                                if (r.guardBeaten)
-                                    r.ownedBy = eHero.id;
-                                break;
+                            if (r.id != nextTile->resourceId) break;
+                            if (!r.guardBeaten && r.guardId != 0) {
+                                // Guard strength scales with the week; take it if the
+                                // hero has a healthy margin, and lose some troops.
+                                int guardStr = 300 + m_turns.week() * 120;
+                                if (eiStr >= guardStr * 13 / 10) {
+                                    r.guardBeaten = true;
+                                    // Casualties: shave ~8% off the hero's largest stack.
+                                    int bigIdx = 0;
+                                    for (int i = 1; i < (int)eHero.army.size(); ++i)
+                                        if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
+                                    if (!eHero.army.empty())
+                                        eHero.army[bigIdx].count =
+                                            std::max(1, eHero.army[bigIdx].count -
+                                                     eHero.army[bigIdx].count / 12);
+                                    gLog("Enemy %s beat mine guard (week %d)\n",
+                                         eHero.name.c_str(), m_turns.week());
+                                }
                             }
+                            if (r.guardBeaten) r.ownedBy = eHero.id;
+                            break;
                         }
                     }
 
