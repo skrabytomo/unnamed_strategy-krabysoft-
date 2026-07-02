@@ -524,13 +524,30 @@ std::vector<HexCoord> WorldGen::pickSpawnPositions(const HexMap& map,
     std::vector<HexCoord> candidates, result;
     int radius = map.radius();
 
-    for (auto c : map.coords()) {
-        const HexTile* tile = map.getTile(c);
-        if (!tile || !isLand(tile->terrain)) continue;
-        int d = HexGrid::distance(c, {0, 0});
-        if (d < radius / 4 || d > radius * 3 / 4) continue;
-        candidates.push_back(c);
-    }
+    auto collectCandidates = [&](int minLandNeighbors) {
+        candidates.clear();
+        for (auto c : map.coords()) {
+            const HexTile* tile = map.getTile(c);
+            if (!tile || !isLand(tile->terrain)) continue;
+            int d = HexGrid::distance(c, {0, 0});
+            if (d < radius / 4 || d > radius * 3 / 4) continue;
+            int landNeighbors = 0;
+            for (auto& nb : HexGrid::neighbors(c)) {
+                const HexTile* nt = map.getTile(nb);
+                if (nt && isLand(nt->terrain)) ++landNeighbors;
+            }
+            if (landNeighbors < minLandNeighbors) continue;
+            candidates.push_back(c);
+        }
+    };
+
+    // Require a solid land neighborhood — the exact tile being land isn't enough;
+    // a candidate on a thin peninsula/tiny island would strand the player there.
+    // Relax the requirement in stages if a watery map can't supply enough candidates,
+    // rather than falling straight through to the unchecked angle-based fallback.
+    collectCandidates(5); // at most 1 water-facing edge (coastal is fine)
+    if (static_cast<int>(candidates.size()) < count) collectCandidates(3);
+    if (static_cast<int>(candidates.size()) < count) collectCandidates(0);
 
     if (candidates.empty()) {
         for (int i = 0; i < count; ++i) {
