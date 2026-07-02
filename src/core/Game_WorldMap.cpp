@@ -1358,6 +1358,16 @@ void Game::doEndTurn()
                     if (veryWeak) {
                         for (const auto& t : m_towns)
                             if (t.ownerId == eHero.id) add(t.pos, 500.f);
+                        // A weak hero that's already home has no retreat target left
+                        // (add() rejects a candidate equal to its own position), so
+                        // it would otherwise freeze in place indefinitely every turn
+                        // until it happens to out-level the player. Give it safe,
+                        // nearby (within 4 hexes) unclaimed resources so it keeps
+                        // doing something productive instead of statue-standing.
+                        for (const auto& r : m_resources) {
+                            if (r.ownedBy == eHero.id) continue;
+                            if (HexGrid::distance(eHero.pos, r.pos) <= 4) add(r.pos, 40.f);
+                        }
                     } else if (isDefender) {
                         for (const auto& r : m_resources)
                             if (r.ownedBy != eHero.id) add(r.pos, 60.f);
