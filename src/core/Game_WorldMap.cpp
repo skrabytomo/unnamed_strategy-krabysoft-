@@ -372,7 +372,6 @@ void Game::watchAiMovePlayerHero()
         if (cands.empty()) break;
         std::sort(cands.begin(), cands.end(),
                   [](const Cand& a, const Cand& b){ return a.score > b.score; });
-        HexCoord goal = cands[0].pos;
 
         auto costFn = [&](HexCoord c) -> int {
             const HexTile* t = m_map.getTile(c);
@@ -381,7 +380,13 @@ void Game::watchAiMovePlayerHero()
             if (m_roadHexes.count(c)) base = std::max(1, base / 2);
             return base;
         };
-        auto path = Pathfinder::find(m_map, hero.pos, goal, costFn);
+        // Fall through to lower-scored candidates when the best one is
+        // unreachable — otherwise the hero freezes for the rest of the game.
+        std::vector<HexCoord> path;
+        for (size_t ci = 0; ci < cands.size() && ci < 6; ++ci) {
+            path = Pathfinder::find(m_map, hero.pos, cands[ci].pos, costFn);
+            if (!path.empty()) break;
+        }
         if (path.empty()) break;
 
         HexCoord next = path[0];
@@ -571,9 +576,19 @@ void Game::watchAiMoveSupportHero(Hero& hero, bool isCourier)
     if (cands.empty()) return;
     std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b){ return a.score > b.score; });
 
+    // Pick the best-scored candidate that is actually reachable; an island
+    // resource at the top of the list would otherwise pin the scout in place.
+    HexCoord goal = cands[0].pos;
+    for (size_t ci = 0; ci < cands.size() && ci < 8; ++ci) {
+        if (!Pathfinder::find(m_map, hero.pos, cands[ci].pos, costFn).empty()) {
+            goal = cands[ci].pos;
+            break;
+        }
+    }
+
     while (hero.movePool > 0) {
         HexCoord before = hero.pos;
-        stepToward(cands[0].pos);
+        stepToward(goal);
 
         const HexTile* nt = m_map.getTile(hero.pos);
         if (nt) {
@@ -585,7 +600,7 @@ void Game::watchAiMoveSupportHero(Hero& hero, bool isCourier)
                 for (auto& t : m_towns)
                     if (t.id == nt->townId && t.ownerId == 0) t.ownerId = 1;
         }
-        if (hero.pos == before || hero.pos == cands[0].pos) break;
+        if (hero.pos == before || hero.pos == goal) break;
     }
 }
 
@@ -1527,7 +1542,6 @@ void Game::doEndTurn()
                     if (cands.empty()) break;
                     std::sort(cands.begin(), cands.end(),
                               [](const Cand& a, const Cand& b){ return a.score > b.score; });
-                    HexCoord goal = cands[0].pos;
 
                     auto costFn = [this, &eHero, aggressive, combatTriggered,
                                    &playerHero](HexCoord c) -> int {
@@ -1544,7 +1558,14 @@ void Game::doEndTurn()
                         if (m_roadHexes.count(c)) base = std::max(1, base / 2);
                         return base;
                     };
-                    auto path = Pathfinder::find(m_map, eHero.pos, goal, costFn);
+                    // Try candidates in score order until one is actually
+                    // reachable — an unreachable top target (e.g. across
+                    // water) used to freeze the hero for the whole game.
+                    std::vector<HexCoord> path;
+                    for (size_t ci = 0; ci < cands.size() && ci < 6; ++ci) {
+                        path = Pathfinder::find(m_map, eHero.pos, cands[ci].pos, costFn);
+                        if (!path.empty()) break;
+                    }
                     if (path.empty()) break;
 
                     HexCoord next = path[0];
@@ -1935,6 +1956,28 @@ void Game::doEndTurn()
                 static const float kReinforceMult[3] = { 0.75f, 1.0f, 1.5f };
                 float diffMult = kReinforceMult[std::clamp(m_newGameDifficulty, 0, 2)];
                 int reinforceCount = static_cast<int>((2 + std::min(week, 40)) * diffMult);
+
+                // Reassign towns whose AI owner died: without this they keep
+                // the dead hero's id forever, so living heroes reinforce at the
+                // "0 towns" rate while the orphan towns build for nobody.
+                if (!m_enemyHeroes.empty()) {
+                    const Hero* strongest = &m_enemyHeroes[0];
+                    for (const auto& eh : m_enemyHeroes)
+                        if (heroStrength(eh, unitDefs) > heroStrength(*strongest, unitDefs))
+                            strongest = &eh;
+                    for (auto& t : m_towns) {
+                        if (t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) continue;
+                        bool alive = false;
+                        for (const auto& eh : m_enemyHeroes)
+                            if (eh.id == t.ownerId) { alive = true; break; }
+                        if (!alive) {
+                            gLog("AI town %s inherited by %s (owner %u died)\n",
+                                 t.name.c_str(), strongest->name.c_str(), t.ownerId);
+                            t.ownerId = strongest->id;
+                        }
+                    }
+                }
+
                 for (auto& eHero : m_enemyHeroes) {
                     // Count towns owned by this enemy hero
                     int ownedTowns = 0;
@@ -2179,6 +2222,95 @@ void Game::doEndTurn()
                 };
                 static const int kMaxSupportBySize[] = { 0, 1, 2, 3 }; // Small..XLarge
                 int maxSupport = kMaxSupportBySize[std::clamp(static_cast<int>(m_mapSize), 0, 3)];
+                const auto& unitDefs = m_registry.units();
+
+                auto isSupportName = [&](const std::string& n) {
+                    for (int ri = 0; ri < 3; ++ri)
+                        if (n == kWatchRoleNames[ri]) return true;
+                    return false;
+                };
+                // A town is a death trap if a far stronger enemy camps nearby —
+                // recruiting there just hands it a free kill every week.
+                auto isCamped = [&](const Town& t, int freshStr) {
+                    for (const auto& eh : m_enemyHeroes)
+                        if (HexGrid::distance(eh.pos, t.pos) <= 4
+                            && heroStrength(eh, unitDefs) > freshStr * 2) return true;
+                    return false;
+                };
+                auto spawnNear = [&](const Town& t) {
+                    HexCoord spawnPos = t.pos;
+                    for (auto& nb : HexGrid::neighbors(t.pos)) {
+                        const HexTile* nt = m_map.getTile(nb);
+                        if (nt && nt->terrain != Terrain::Water && nt->heroId == 0) {
+                            spawnPos = nb; break;
+                        }
+                    }
+                    return spawnPos;
+                };
+
+                bool haveMain = false;
+                for (const auto& h : m_heroes)
+                    if (!isSupportName(h.name)) { haveMain = true; break; }
+
+                if (!haveMain
+                    && m_playerResources.get(ResourceType::Gold) >= WATCH_HIRE_COST) {
+                    // Main hero died: recruit a REAL replacement that absorbs the
+                    // town's entire recruit pool, instead of the old behavior of
+                    // feeding a fresh Supply Courier to the killer every week.
+                    for (auto& recruitTown : m_towns) {
+                        if (recruitTown.ownerId != 1) continue;
+
+                        uint32_t newId = 100u;
+                        for (const auto& h : m_heroes) newId = std::max(newId, h.id + 1u);
+                        Hero newHero;
+                        newHero.id       = newId;
+                        newHero.faction  = recruitTown.faction;
+                        newHero.name     = "Champion of " + recruitTown.name;
+                        newHero.movePool = newHero.maxMove;
+
+                        int t1count = 6 + m_turns.week() * 2;
+                        for (const auto& ud : unitDefs) {
+                            if (ud.faction == newHero.faction && ud.tier == 1
+                                && ud.path == UpgradePath::None) {
+                                newHero.army.push_back({ud.id, t1count});
+                                break;
+                            }
+                        }
+                        // Absorb everything the town's dwellings have ready
+                        for (auto& dw : recruitTown.dwellings) {
+                            if (dw.available <= 0) continue;
+                            for (const auto& ud : unitDefs) {
+                                if (ud.faction == recruitTown.faction && ud.tier == dw.tier
+                                    && ud.path == dw.path) {
+                                    bool merged = false;
+                                    for (auto& s : newHero.army)
+                                        if (s.defId == ud.id) { s.count += dw.available; merged = true; break; }
+                                    if (!merged && newHero.army.size() < 7)
+                                        newHero.army.push_back({ud.id, dw.available});
+                                    dw.available = 0;
+                                    break;
+                                }
+                            }
+                        }
+                        // Catch it up in levels so it isn't a total pushover
+                        aiHeroAwardXp(newHero, m_turns.week() * 60);
+
+                        if (isCamped(recruitTown, heroStrength(newHero, unitDefs))) {
+                            // Refund the recruits into the town pool is pointless
+                            // (dwellings regrow weekly) — just try another town.
+                            continue;
+                        }
+                        newHero.pos = spawnNear(recruitTown);
+                        if (HexTile* ht = m_map.getTile(newHero.pos)) ht->heroId = newHero.id;
+                        m_playerResources.add(ResourceType::Gold, -WATCH_HIRE_COST);
+                        gLog("Watch AI recruited main hero %s at %s (week %d)\n",
+                             newHero.name.c_str(), recruitTown.name.c_str(), m_turns.week());
+                        // Main hero must sit where the driver looks for it
+                        m_heroes.insert(m_heroes.begin(), std::move(newHero));
+                        m_activeHeroIdx = 0;
+                        break;
+                    }
+                }
 
                 bool haveRole[3] = {false, false, false};
                 for (const auto& h : m_heroes)
@@ -2187,7 +2319,10 @@ void Game::doEndTurn()
                 int nextRole = -1;
                 for (int ri = 0; ri < maxSupport; ++ri) if (!haveRole[ri]) { nextRole = ri; break; }
 
-                if (nextRole >= 0 && static_cast<int>(m_heroes.size()) < 1 + maxSupport
+                // Support hires only make sense while a main hero exists to
+                // deliver to / screen for.
+                if (haveMain && nextRole >= 0
+                    && static_cast<int>(m_heroes.size()) < 1 + maxSupport
                     && m_playerResources.get(ResourceType::Gold) >= WATCH_HIRE_COST) {
                     for (auto& recruitTown : m_towns) {
                         if (recruitTown.ownerId != 1) continue;
@@ -2205,22 +2340,17 @@ void Game::doEndTurn()
                         newHero.movePool = newHero.maxMove;
 
                         int t1count = 6 + m_turns.week() * 2;
-                        for (const auto& ud : m_registry.units()) {
+                        for (const auto& ud : unitDefs) {
                             if (ud.faction == newHero.faction && ud.tier == 1
                                 && ud.path == UpgradePath::None) {
                                 newHero.army.push_back({ud.id, t1count});
                                 break;
                             }
                         }
-                        HexCoord spawnPos = recruitTown.pos;
-                        for (auto& nb : HexGrid::neighbors(recruitTown.pos)) {
-                            const HexTile* nt = m_map.getTile(nb);
-                            if (nt && nt->terrain != Terrain::Water && nt->heroId == 0) {
-                                spawnPos = nb; break;
-                            }
-                        }
-                        newHero.pos = spawnPos;
-                        if (HexTile* ht = m_map.getTile(spawnPos)) ht->heroId = newHero.id;
+                        if (isCamped(recruitTown, heroStrength(newHero, unitDefs)))
+                            continue;
+                        newHero.pos = spawnNear(recruitTown);
+                        if (HexTile* ht = m_map.getTile(newHero.pos)) ht->heroId = newHero.id;
                         m_playerResources.add(ResourceType::Gold, -WATCH_HIRE_COST);
                         m_heroes.push_back(std::move(newHero));
                         gLog("Watch AI recruited %s at %s (week %d)\n",
