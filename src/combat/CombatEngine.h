@@ -164,6 +164,10 @@ private:
     void aiActPassive(CombatUnit& unit);
     void aiActStandard(CombatUnit& unit);
     void aiActTactical(CombatUnit& unit);
+    // Score an enemy unit as a target for `attacker`: prioritises stacks the
+    // attacker can wipe this turn (removing retaliation), then most dangerous,
+    // then lowest HP. Higher = better. onlyInRange restricts to ranged reach.
+    float aiTargetScore(const CombatUnit& attacker, const CombatUnit& defender) const;
     void tryEnemyHeroSpell();
     void spawnWildGrowthGhosts();
     // Fire all on-death specialty effects (LastRites, VoidLink, BloodWeb, SoulHarvest,

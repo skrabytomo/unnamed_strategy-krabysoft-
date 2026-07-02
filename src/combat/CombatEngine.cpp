@@ -1143,6 +1143,11 @@ void CombatEngine::processOneAIAction()
 {
     CombatUnit* unit = activeUnit();
     if (!unit) return;
+    // Enemy hero casts once per round even in watch mode / auto-resolve, which
+    // drive combat through this single-step path (processAITurn is bypassed there,
+    // so previously the enemy hero never cast a spell in those modes).
+    if (!unit->isPlayer && m_phase == CombatPhase::EnemyTurn)
+        tryEnemyHeroSpell();
     aiActUnit(*unit);
 }
 
@@ -1315,6 +1320,31 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
 }
 
 // ── Tactical: focus weakest stack, ranged units kite back ─────────────────────
+// Target desirability for a tactical attacker. Bundles the three things a
+// good HoMM player weighs: (1) can I destroy the whole stack this turn — that
+// removes its retaliation and future damage entirely; (2) how dangerous is it
+// (a big shooter or high-attack stack hurts most); (3) all else equal, chip the
+// lowest-HP stack. Side-effect-free (uses DamageCalc::estimate).
+float CombatEngine::aiTargetScore(const CombatUnit& attacker, const CombatUnit& defender) const
+{
+    auto est = DamageCalc::estimate(attacker, defender, m_grid);
+    float score = 0.0f;
+
+    // Danger: attack rating × surviving count, plus a big bonus for shooters.
+    float danger = static_cast<float>(defender.attack) * std::max(1, defender.count);
+    if (defender.range > 0 && defender.shotsLeft > 0) danger *= 1.8f;
+
+    // Kill bonus: wiping the stack this turn is worth far more than chip damage.
+    bool canWipe = est.minKills >= defender.count;
+    if (canWipe)      score += 1000.0f + danger;      // finish it — removes retaliation
+    else              score += danger * 0.5f
+                             + static_cast<float>(est.maxKills) * 20.0f;
+
+    // Tie-break toward lower-HP stacks (faster to remove over subsequent turns).
+    score += 200.0f / static_cast<float>(std::max(1, defender.totalHp()));
+    return score;
+}
+
 void CombatEngine::aiActTactical(CombatUnit& unit)
 {
     // Ranged units: move away from melee threats, shoot lowest-HP enemy in range
@@ -1346,13 +1376,15 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
             }
         }
 
-        // Shoot enemy with lowest total HP that is within range
+        // Shoot the best-scoring enemy in range (prefers a kill / a shooter,
+        // then chip damage) instead of blindly the lowest-HP stack.
         CombatUnit* shtTarget = nullptr;
-        int lowestHp = INT32_MAX;
+        float bestShotScore = -1.0f;
         for (auto& u : m_grid.units()) {
             if (!u.alive || u.isPlayer == unit.isPlayer) continue;
             if (HexGrid::distance(unit.pos, u.pos) > unit.range) continue;
-            if (u.totalHp() < lowestHp) { lowestHp = u.totalHp(); shtTarget = &u; }
+            float s = aiTargetScore(unit, u);
+            if (s > bestShotScore) { bestShotScore = s; shtTarget = &u; }
         }
         if (shtTarget) {
             unit.shotsLeft--;
@@ -1369,17 +1401,19 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
         }
     }
 
-    // Melee: focus weakest enemy stack by total HP
+    // Melee: pick the best-scoring enemy (kill > danger > low HP). An adjacent
+    // target we can wipe now beats walking to a marginally weaker far one, since
+    // finishing a stack removes its retaliation and its whole future output.
     CombatUnit* target = nullptr;
-    int lowestHp = INT32_MAX;
+    float bestScore = -1.0f;
     int bestDist = 9999;
     for (auto& u : m_grid.units()) {
         if (!u.alive || u.isPlayer == unit.isPlayer) continue;
-        int hp = u.totalHp();
-        int d  = HexGrid::distance(unit.pos, u.pos);
-        // Prefer adjacent weak targets; if none adjacent, pick weakest reachable
-        if (d == 1 && hp < lowestHp) { lowestHp = hp; bestDist = d; target = &u; }
-        else if (bestDist > 1 && hp < lowestHp) { lowestHp = hp; bestDist = d; target = &u; }
+        int d = HexGrid::distance(unit.pos, u.pos);
+        // Adjacency is worth a small nudge (no travel cost) but doesn't override a
+        // clearly better target elsewhere.
+        float s = aiTargetScore(unit, u) + (d == 1 ? 15.0f : 0.0f);
+        if (s > bestScore) { bestScore = s; target = &u; bestDist = d; }
     }
     if (!target) { skipUnit(); return; }
 

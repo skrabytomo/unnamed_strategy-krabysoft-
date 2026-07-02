@@ -1256,15 +1256,18 @@ void Game::enterCombat(Hero& playerHero,
         m_combat.applyTerrainObstacles(obstCount);
     }
 
-    // Scale enemy AI difficulty with game difficulty and enemy hero level
+    // Scale enemy AI difficulty with game difficulty and enemy hero level.
+    // Easy=Passive; Normal and Hard both use the smart Tactical evaluator now
+    // (kill/retaliation-aware targeting) — the goal is an AI that reliably wins,
+    // so only Easy stays deliberately dumb. Watch AI vs AI also uses Tactical.
     {
-        AIDifficulty aiDiff = AIDifficulty::Standard;
-        if (m_newGameDifficulty == 0) {
-            aiDiff = AIDifficulty::Passive;
-        } else if (m_newGameDifficulty >= 2 || enemyHero.level >= 5) {
-            aiDiff = AIDifficulty::Tactical;
-        }
+        AIDifficulty aiDiff = (m_newGameDifficulty == 0)
+                            ? AIDifficulty::Passive
+                            : AIDifficulty::Tactical;
         m_combat.setEnemyAI(aiDiff);
+        // In Watch AI, the "player" side is also AI — make it play smart too so
+        // the spectated battles are competent on both sides.
+        if (m_watchingAI) m_combat.setPlayerAI(AIDifficulty::Tactical);
     }
 
     // Apply equipped artifact bonuses to the engine's internal hero/unit copies
