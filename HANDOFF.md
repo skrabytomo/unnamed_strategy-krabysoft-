@@ -30,10 +30,12 @@ See GAME_PROJECT.md for full design document.
 | Combat simulator | src/sim/Simulator.cpp, ArmyBuilder.cpp (standalone sim_test binary) | ✅ |
 | Turn manager | src/core/TurnManager.cpp — 7-day week, income, end turn | ✅ |
 | Skill archetype system | src/combat/CombatEngine.cpp (`applyArchetype` in `initCombat`) | ✅ |
-| World-map AI (combat) | src/combat/CombatEngine.cpp — Passive / Standard / Tactical | ✅ |
-| World-map AI (movement) | src/core/Game_WorldMap.cpp — strength-aware pathing, mine/object capture | ✅ |
-| World-map AI (town builds) | src/core/Game_WorldMap.cpp — faction-priority build orders + PathA upgrades | ✅ |
-| **2-Player Hot-Seat** | Game.h (m_hotSeatMode/P2Turn/m_player2Resources), Game_WorldMap.cpp doEndTurn + input, Game_Core.cpp startNewGame, Game_MainMenu.cpp; m_numHumanPlayers=2 + setCurrentPlayerId at handoff so P2 hero/town/HUD panels are correct | ✅ |
+| World-map AI (combat) | src/combat/CombatEngine.cpp — Passive (Easy) / Tactical (Normal+Hard); aiTargetScore() kill/danger-aware focus-fire targeting; enemy hero casts one spell per round incl. watch/auto mode (processOneAIAction) | ✅ |
+| World-map AI (movement) | src/core/Game_WorldMap.cpp — strength-based roles (strongest=raider, 2nd=economic, rest=defenders that intercept threats to owned towns); hunts NEAREST human hero across all players; GhostWalk = half target score (not exempt); beats mine guards off-screen at ≥1.3x strength; runs after last human's turn in hot-seat | ✅ |
+| World-map AI (growth) | Field-upgrades base→built path at towns; tiered weekly reinforcements from best town's dwellings (difficulty-scaled 0.75x/1x/1.5x); wiped armies restart with fresh T1 stack; aiHeroAwardXp() = XP+levels+skills from combat wins; aiEquipOrStashArtifact() auto-equips pickups | ✅ |
+| World-map AI (town builds) | src/core/Game_WorldMap.cpp — faction-priority build orders + PathA upgrades, infinite richRes budget | ✅ |
+| AI difficulty scaling | Easy/Normal/Hard: reinforcement 0.75/1/1.5x, raider aggression at 60/50/40% strength ratio, retreat below 50/40/30%, hero cap 5/6/8, combat Passive/Tactical/Tactical | ✅ |
+| **2-Player Hot-Seat** | Runs entirely on the N-player system (m_players/m_currentPlayerIdx; doEndTurn handoff swaps m_heroes/m_playerResources). P2 = m_players[1] hero id=2 (menu faction/class overlaid in startNewGame). m_enemyHeroes is PURE AI in all modes. Legacy m_hotSeatP2Turn/m_selectedEnemyHero/m_player2Resources system deleted. Walking onto another human's hero = combat (m_lastCombatHumanIdx routes victory removal to m_players[idx].heroes). m_hotSeatMode is only the menu flag + handoff privacy screen; re-derived on load from numHumanPlayers>=2 | ✅ |
 | **Siege Camp mechanic** | Hero::isSiegeCamping/siegeTargetTownId, Town::underSiege/siegeFortified/fortifyBonuses, Game_WorldMap.cpp renderSiegeCampPrompt/renderSiegeIndicator/triggerSiegeCombat | ✅ |
 | **Fortify button** | Town screen service bar (Game_Town.cpp), one use per siege turn, +4 DEF/+2 wall HP/+3 tower dmg | ✅ |
 | **March ability** | Hero::marchCooldownWeek/marchBonusActive, renderMarchButton() in Game_WorldMap.cpp — costs 25% move, gives +10% next week, 1-week CD | ✅ |
@@ -90,6 +92,14 @@ Game (core loop — Game.cpp)
 - ImGui popups: only one `BeginPopupModal` per frame — chain with `else if`
 - Camera clamp: `limX = max(0, mapExtX - screenW/(2*zoom))` — viewport-compensated
 - Default ImGui font has no Unicode — use ASCII only in all strings
+- `m_heroes`/`m_playerResources` always belong to the CURRENT player (the N-player
+  handoff in doEndTurn swaps them through m_players[]); never special-case "whose
+  turn" — use `currentPlayerId()`. `m_enemyHeroes` is pure AI in every mode.
+- Mode-entry buttons that call startNewGame() must reset `m_newGameHotSeat` first
+  (Watch AI and Campaign do) or a stale menu toggle forces numHumanPlayers=2 and
+  gates the AI block off.
+- The enemy AI block in doEndTurn runs only when `m_numHumanPlayers <= 1 ||
+  lastPlayerEndedTurn` — i.e. once per full round.
 
 ## Editor (F2)
 - Terrain painting, Town/Resource/HeroStart/Trigger/Erase tools
