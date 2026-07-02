@@ -656,9 +656,15 @@ void TownScreen::drawLiveTown(UIRenderer& rdr)
     if (ImGui::Button("Panorama View")) m_liveTownMode = false;
     ImGui::SameLine();
     ImGui::TextDisabled("— click a building on the map to construct it");
+    ImGui::Spacing();
+
+    // Anchor the backdrop to wherever the toggle row actually ended, instead of a
+    // hardcoded offset — a hardcoded offset let the building slots' invisible
+    // buttons overlap and swallow clicks meant for the toggle row above them.
+    float contentTop = ImGui::GetCursorScreenPos().y;
 
     ImDrawList* dl = ImGui::GetWindowDrawList();
-    ImVec2 bgMin = {m_buildPanel.bounds.x + 4, m_buildPanel.bounds.y + 26};
+    ImVec2 bgMin = {m_buildPanel.bounds.x + 4, contentTop};
     ImVec2 bgMax = {m_buildPanel.bounds.x + m_buildPanel.bounds.w - 4,
                      m_buildPanel.bounds.y + m_buildPanel.bounds.h - 4};
 

@@ -425,7 +425,11 @@ private:
 
     // ── Unit exchange between player heroes ────────────────────────────────────
     bool        m_showUnitExchange  = false;
-    int         m_exchangeHeroIdx   = -1;   // index of the OTHER hero
+    int         m_exchangeHeroIdx   = -1;   // index of the OTHER hero (in m_heroes)
+    // Hot-seat's Player 2 hero lives in m_enemyHeroes[0] (repurposed), not m_heroes,
+    // so it can't be addressed by m_exchangeHeroIdx alone — this flag redirects
+    // renderUnitExchange()'s "hero B" to m_enemyHeroes[0] when set.
+    bool        m_exchangeIsHotSeatP2 = false;
     int         m_exchangeSelSlotA  = -1;   // selected slot in hero A's army
     int         m_exchangeSelSlotB  = -1;   // selected slot in hero B's army
 

@@ -3799,12 +3799,23 @@ void Game::checkTileEvents()
         for (int i = 0; i < static_cast<int>(m_heroes.size()); ++i) {
             if (i == m_activeHeroIdx) continue;
             if (m_heroes[i].pos == hero.pos) {
-                m_showUnitExchange = true;
-                m_exchangeHeroIdx  = i;
-                m_exchangeSelSlotA = -1;
-                m_exchangeSelSlotB = -1;
+                m_showUnitExchange    = true;
+                m_exchangeHeroIdx     = i;
+                m_exchangeIsHotSeatP2 = false;
+                m_exchangeSelSlotA    = -1;
+                m_exchangeSelSlotB    = -1;
                 return;
             }
+        }
+        // Hot-seat: Player 2's hero is m_enemyHeroes[0] (repurposed) — an ally,
+        // not a real enemy, so redirect into the same unit exchange used for
+        // allied heroes above instead of falling into combat against it.
+        if (m_hotSeatMode && !m_enemyHeroes.empty() && m_enemyHeroes[0].pos == hero.pos) {
+            m_showUnitExchange   = true;
+            m_exchangeIsHotSeatP2 = true;
+            m_exchangeSelSlotA   = -1;
+            m_exchangeSelSlotB   = -1;
+            return;
         }
         // Enemy hero (by position)
         Hero* enemyPtr = nullptr;
@@ -5421,14 +5432,21 @@ void Game::renderDefeatModal()
 void Game::renderUnitExchange()
 {
     if (!m_showUnitExchange) return;
-    if (m_heroes.empty() || m_exchangeHeroIdx < 0
-        || m_exchangeHeroIdx >= static_cast<int>(m_heroes.size())
-        || m_exchangeHeroIdx == m_activeHeroIdx) {
-        m_showUnitExchange = false;
-        return;
+    if (m_heroes.empty()) { m_showUnitExchange = false; return; }
+
+    // Hot-seat's P2 hero lives in m_enemyHeroes[0] instead of m_heroes; everything
+    // else about the exchange UI is identical between the two cases.
+    Hero* heroBPtr = nullptr;
+    if (m_exchangeIsHotSeatP2) {
+        if (m_hotSeatMode && !m_enemyHeroes.empty()) heroBPtr = &m_enemyHeroes[0];
+    } else if (m_exchangeHeroIdx >= 0 && m_exchangeHeroIdx < static_cast<int>(m_heroes.size())
+               && m_exchangeHeroIdx != m_activeHeroIdx) {
+        heroBPtr = &m_heroes[m_exchangeHeroIdx];
     }
+    if (!heroBPtr) { m_showUnitExchange = false; return; }
+
     Hero& heroA = m_heroes[m_activeHeroIdx];
-    Hero& heroB = m_heroes[m_exchangeHeroIdx];
+    Hero& heroB = *heroBPtr;
     const auto& unitDefs = m_registry.units();
 
     auto unitName = [&](int defId) -> std::string {
