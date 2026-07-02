@@ -639,17 +639,26 @@ std::vector<ResourceNode> WorldGen::placeResources(HexMap& map,
 ResourceType WorldGen::terrainResource(Terrain t, uint32_t rng)
 {
     switch (t) {
-        case Terrain::Sacred:
-        case Terrain::Plains:       return ResourceType::FaithStones;
+        // Sacred only — Plains (the terrain default, covering most of the map)
+        // was also granting FaithStones, wildly overrepresenting a resource
+        // that's supposed to be unique to 2 factions (HolyOrder/CrimsonWardens).
+        case Terrain::Sacred:       return ResourceType::FaithStones;
         case Terrain::Corrupted:
         case Terrain::Toxic:        return ResourceType::BloodEssence;
         case Terrain::Forest:
         case Terrain::CorruptedForest: return ResourceType::VerdantSap;
+        // Iron is the "universal raw" resource every faction refines for
+        // upgrades (see GAME_PROJECT.md), so it needs common terrain coverage,
+        // not just the 2 niche types it had before.
         case Terrain::Industrial:
-        case Terrain::Rocky:        return ResourceType::Iron;
+        case Terrain::Rocky:
+        case Terrain::Barren:
+        case Terrain::Wasteland:
+        case Terrain::Highland:     return ResourceType::Iron;
         case Terrain::Swamp:        return ResourceType::Mercury;
-        case Terrain::Highland:     return (rng & 1) ? ResourceType::Iron
-                                                     : ResourceType::Gold;
+        // Plains is the terrain default/fallback covering most of the map —
+        // Gold is the other universal resource, an appropriate match.
+        case Terrain::Plains:
         default:                    return ResourceType::Gold;
     }
 }
