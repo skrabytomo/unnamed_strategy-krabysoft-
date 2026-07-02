@@ -1850,6 +1850,9 @@ void Game::exitCombat(bool playerWon)
                     if (s.defId == cu.defId) { s.count += cu.count; merged = true; break; }
                 if (!merged) eh.army.push_back({cu.defId, cu.count});
             }
+            // Award the winning AI hero XP so it levels from victories (it never
+            // did before — XP was player-only), same amount the player would earn.
+            aiHeroAwardXp(eh, m_combat.xpEarned());
             break;
         }
         m_pendingTownCaptureId      = 0;

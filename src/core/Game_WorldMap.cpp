@@ -942,6 +942,96 @@ void Game::updateWorldMap(float dt)
 }
 
 // ── End Turn — full turn logic (SPACE key + HUD button) ───────────────────────
+// ── AI hero XP + auto level-up (stats and class skills, no UI) ───────────────
+// Used by shrine pickups during the AI turn and by exitCombat when an AI hero
+// wins a battle (AI heroes previously gained zero XP from victories and never
+// levelled outside the two map shrines).
+void Game::aiHeroAwardXp(Hero& hero, int xp)
+{
+    if (xp <= 0) return;
+
+    auto applySkillBonus = [](Hero& h, const SkillDef* def, int v) {
+        if (!def) return;
+        if (def->effectType == SkillEffectType::MovementBonus) {
+            h.maxMove += v;
+            h.movePool = std::max(h.movePool, h.maxMove);
+        } else if (def->effectType == SkillEffectType::VisionBonus) {
+            h.visionRange += v;
+        } else if (def->effectType == SkillEffectType::MagicSchoolBonus) {
+            if      (def->statName == "lightPower")  h.lightPower  += v;
+            else if (def->statName == "bloodPower")  h.bloodPower  += v;
+            else if (def->statName == "deathPower")  h.deathPower  += v;
+            else if (def->statName == "naturePower") h.naturePower += v;
+            else if (def->statName == "forgePower")  h.forgePower  += v;
+            else if (def->statName == "fleshPower")  h.fleshPower  += v;
+        }
+    };
+    // Prioritise upgrading an existing skill, else learn the next pool skill.
+    auto learnNextSkill = [&](Hero& h) {
+        const HeroClassDef* cls = m_classRegistry.getClass(h.classId);
+        if (!cls || cls->skillPool.empty()) return;
+        for (int sid : cls->skillPool) {
+            if (SkillInstance* s = h.skills.getSkill(sid)) {
+                if (s->canUpgrade()) {
+                    int prevTierIdx = static_cast<int>(s->tier);
+                    s->upgrade();
+                    if (const SkillDef* def = findSkillDef(sid)) {
+                        int delta = def->values[prevTierIdx + 1] - def->values[prevTierIdx];
+                        applySkillBonus(h, def, delta);
+                    }
+                    return;
+                }
+            }
+        }
+        for (int sid : cls->skillPool) {
+            if (!h.skills.hasSkill(sid) && h.skills.canLearn(sid)) {
+                h.skills.learn(sid);
+                if (const SkillDef* def = findSkillDef(sid))
+                    applySkillBonus(h, def, def->values[0]);
+                return;
+            }
+        }
+    };
+
+    int prevLevel = hero.level;
+    if (hero.addXp(xp) && hero.level > prevLevel) {
+        int gained = hero.level - prevLevel;
+        hero.attack  += (gained + 1) / 2;   // mirror player level gains, alternating
+        hero.defense += gained / 2;
+        for (int g = 0; g < gained; ++g) learnNextSkill(hero);
+        gLog("AI hero %s reached level %d\n", hero.name.c_str(), hero.level);
+    }
+}
+
+// ── AI artifact auto-equip ───────────────────────────────────────────────────
+// AI heroes used to hoard picked-up artifacts in artifactInventory forever
+// (combat only reads the equipped set), so they got zero benefit. Equip into a
+// free slot, or swap if the new piece's raw stat sum beats what's in its slot.
+void Game::aiEquipOrStashArtifact(Hero& hero, int artifactId)
+{
+    const ArtifactDef* def = m_artifactRegistry.getDef(artifactId);
+    if (!def) { hero.artifactInventory.push_back(artifactId); return; }
+
+    auto statSum = [](const ArtifactBonus& b) {
+        return b.attack + b.defense + b.lightPower + b.bloodPower + b.deathPower
+             + b.naturePower + b.forgePower + b.fleshPower
+             + b.moveBonus + b.visionBonus + b.manaBonus + b.hpBonus;
+    };
+
+    int cur = hero.artifacts.getEquipped(def->slot);
+    if (cur == 0) {
+        hero.artifacts.equip(artifactId, def->slot);
+        return;
+    }
+    const ArtifactDef* curDef = m_artifactRegistry.getDef(cur);
+    if (curDef && statSum(def->bonus) > statSum(curDef->bonus)) {
+        hero.artifacts.equip(artifactId, def->slot);      // upgrade
+        hero.artifactInventory.push_back(cur);            // stash the old one
+    } else {
+        hero.artifactInventory.push_back(artifactId);     // keep current, stash new
+    }
+}
+
 void Game::doEndTurn()
 {
     // ── Hotseat: non-last player ends turn → switch to next player ───────────────
@@ -1173,54 +1263,6 @@ void Game::doEndTurn()
             const auto& unitDefs = m_registry.units();
             bool combatTriggered = false;
 
-            // ── Helper: apply a skill's world-map stat effects ────────────────
-            auto aiApplySkillBonus = [](Hero& hero, const SkillDef* def, int v) {
-                if (!def) return;
-                if (def->effectType == SkillEffectType::MovementBonus) {
-                    hero.maxMove += v;
-                    hero.movePool = std::max(hero.movePool, hero.maxMove);
-                } else if (def->effectType == SkillEffectType::VisionBonus) {
-                    hero.visionRange += v;
-                } else if (def->effectType == SkillEffectType::MagicSchoolBonus) {
-                    if      (def->statName == "lightPower")  hero.lightPower  += v;
-                    else if (def->statName == "bloodPower")  hero.bloodPower  += v;
-                    else if (def->statName == "deathPower")  hero.deathPower  += v;
-                    else if (def->statName == "naturePower") hero.naturePower += v;
-                    else if (def->statName == "forgePower")  hero.forgePower  += v;
-                    else if (def->statName == "fleshPower")  hero.fleshPower  += v;
-                }
-            };
-
-            // ── Helper: advance one skill for an AI hero on level-up ─────────
-            // Prioritises upgrading existing skills, then learns next pool skill.
-            auto aiLearnNextSkill = [this, &aiApplySkillBonus](Hero& hero) {
-                const HeroClassDef* cls = m_classRegistry.getClass(hero.classId);
-                if (!cls || cls->skillPool.empty()) return;
-                // First: upgrade any upgradeable skill already learned (most efficient)
-                for (int sid : cls->skillPool) {
-                    if (SkillInstance* s = hero.skills.getSkill(sid)) {
-                        if (s->canUpgrade()) {
-                            int prevTierIdx = static_cast<int>(s->tier);
-                            s->upgrade();
-                            if (const SkillDef* def = findSkillDef(sid)) {
-                                int delta = def->values[prevTierIdx + 1] - def->values[prevTierIdx];
-                                aiApplySkillBonus(hero, def, delta);
-                            }
-                            return;
-                        }
-                    }
-                }
-                // Then: learn next unlearned skill from pool
-                for (int sid : cls->skillPool) {
-                    if (!hero.skills.hasSkill(sid) && hero.skills.canLearn(sid)) {
-                        hero.skills.learn(sid);
-                        if (const SkillDef* def = findSkillDef(sid))
-                            aiApplySkillBonus(hero, def, def->values[0]);
-                        return;
-                    }
-                }
-            };
-
             // ── Omniscient threat state ───────────────────────────────────────
             int plStr = heroStrength(playerHero, unitDefs);
             // Weak player = just fought a battle (army below expected for this week)
@@ -1260,6 +1302,23 @@ void Game::doEndTurn()
                                 break;
                             }
                         }
+                    }
+                    // Field-upgrade base-tier stacks to whichever upgrade path the
+                    // town has built (previously only the watch-mode player did this,
+                    // so enemy armies stayed base-tier forever).
+                    for (const auto& dw : t.dwellings) {
+                        if (dw.path == UpgradePath::None) continue;
+                        const UnitDef* pathDef = nullptr;
+                        const UnitDef* baseDef = nullptr;
+                        for (const auto& ud : unitDefs) {
+                            if (ud.faction == t.faction && ud.tier == dw.tier) {
+                                if (ud.path == dw.path)                 pathDef = &ud;
+                                else if (ud.path == UpgradePath::None)  baseDef = &ud;
+                            }
+                        }
+                        if (!pathDef || !baseDef) continue;
+                        for (auto& s : eHero.army)
+                            if (s.defId == baseDef->id) s.defId = pathDef->id;
                     }
                 }
 
@@ -1422,13 +1481,7 @@ void Game::doEndTurn()
                         if (obj.collected || obj.pos != eHero.pos) continue;
                         obj.collected = true;
                         if (obj.type == WorldObjectType::XPShrine) {
-                            int prevLevel = eHero.level;
-                            if (eHero.addXp(obj.value) && eHero.level > prevLevel) {
-                                int gained = eHero.level - prevLevel;
-                                eHero.attack  += (gained + 1) / 2;
-                                eHero.defense += gained / 2;
-                                for (int g = 0; g < gained; ++g) aiLearnNextSkill(eHero);
-                            }
+                            aiHeroAwardXp(eHero, obj.value);
                             gLog("Enemy %s gained %d XP from shrine\n",
                                    eHero.name.c_str(), obj.value);
                         } else if (obj.type == WorldObjectType::SpellScroll) {
@@ -1441,15 +1494,9 @@ void Game::doEndTurn()
                             if (eHero.attack <= eHero.defense) eHero.attack++;
                             else eHero.defense++;
                         } else if (obj.type == WorldObjectType::ArtifactChest) {
-                            eHero.artifactInventory.push_back(obj.value);
+                            aiEquipOrStashArtifact(eHero, obj.value);
                         } else if (obj.type == WorldObjectType::ForestShrine) {
-                            int prevLevel = eHero.level;
-                            if (eHero.addXp(obj.value) && eHero.level > prevLevel) {
-                                int gained = eHero.level - prevLevel;
-                                eHero.attack  += (gained + 1) / 2;
-                                eHero.defense += gained / 2;
-                                for (int g = 0; g < gained; ++g) aiLearnNextSkill(eHero);
-                            }
+                            aiHeroAwardXp(eHero, obj.value);
                             gLog("Enemy %s gained %d XP from forest shrine\n",
                                    eHero.name.c_str(), obj.value);
                         } else if (obj.type == WorldObjectType::SwampAltar) {
@@ -1718,14 +1765,19 @@ void Game::doEndTurn()
 
             // Enemy hero weekly reinforcements — scale with week number so they stay relevant
             {
+                const auto& unitDefs = m_registry.units();
                 int week = m_turns.week();
                 int reinforceCount = 2 + std::min(week, 40);  // grows week 1-40, then plateaus
                 for (auto& eHero : m_enemyHeroes) {
-                    if (eHero.army.empty()) continue;
                     // Count towns owned by this enemy hero
                     int ownedTowns = 0;
-                    for (const auto& t : m_towns)
-                        if (t.ownerId == eHero.id) ownedTowns++;
+                    const Town* bestTown = nullptr;  // most-developed owned town (dwelling source)
+                    for (const auto& t : m_towns) {
+                        if (t.ownerId != eHero.id) continue;
+                        ownedTowns++;
+                        if (!bestTown || t.dwellings.size() > bestTown->dwellings.size())
+                            bestTown = &t;
+                    }
                     int total = 0;
                     if (ownedTowns > 0) {
                         // Town-owning heroes: reinforce per owned town
@@ -1735,14 +1787,55 @@ void Game::doEndTurn()
                         total = reinforceCount / 2 + 1;
                     }
                     if (total <= 0) continue;
-                    // Add units to the smallest stack
-                    int smallestIdx = 0;
-                    for (int i = 1; i < (int)eHero.army.size(); ++i)
-                        if (eHero.army[i].count < eHero.army[smallestIdx].count)
-                            smallestIdx = i;
-                    eHero.army[smallestIdx].count += total;
+
+                    // Wiped army: restart with a fresh T1 stack instead of skipping
+                    // forever (an empty army previously never regrew — zombie hero).
+                    if (eHero.army.empty()) {
+                        for (const auto& ud : unitDefs) {
+                            if (ud.faction == eHero.faction && ud.tier == 1
+                                && ud.path == UpgradePath::None) {
+                                eHero.army.push_back({ud.id, total});
+                                break;
+                            }
+                        }
+                        continue;
+                    }
+
+                    // Distribute across the tiers the hero's best town has dwellings
+                    // for, weighted toward higher tiers as weeks grow — instead of
+                    // dumping everything on the smallest stack (one giant T1 blob).
+                    int distributed = 0;
+                    if (bestTown && !bestTown->dwellings.empty()) {
+                        for (const auto& dw : bestTown->dwellings) {
+                            // Higher tiers get proportionally fewer bodies but grow
+                            // with the week; T1 stays the bulk early on.
+                            int share = std::max(1, total / (dw.tier + 1));
+                            const UnitDef* pick = nullptr;
+                            for (const auto& ud : unitDefs)
+                                if (ud.faction == bestTown->faction && ud.tier == dw.tier
+                                    && ud.path == dw.path) { pick = &ud; break; }
+                            if (!pick) continue;
+                            bool merged = false;
+                            for (auto& s : eHero.army)
+                                if (s.defId == pick->id) { s.count += share; merged = true; break; }
+                            if (!merged && eHero.army.size() < 7)
+                                eHero.army.push_back({pick->id, share});
+                            else if (!merged)
+                                continue;  // army full and unit not present — skip tier
+                            distributed += share;
+                        }
+                    }
+                    if (distributed == 0) {
+                        // No town dwellings (or nothing matched): pad the smallest stack
+                        int smallestIdx = 0;
+                        for (int i = 1; i < (int)eHero.army.size(); ++i)
+                            if (eHero.army[i].count < eHero.army[smallestIdx].count)
+                                smallestIdx = i;
+                        eHero.army[smallestIdx].count += total;
+                    }
                     gLog("Enemy %s reinforced +%d units (week %d, %d towns)\n",
-                           eHero.name.c_str(), total, week, ownedTowns);
+                           eHero.name.c_str(), distributed > 0 ? distributed : total,
+                           week, ownedTowns);
                 }
             }
 

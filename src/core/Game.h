@@ -614,6 +614,10 @@ private:
     int   m_watchAIFaction2 = 1;
     void  watchAiMovePlayerHero();     // runs player hero through same AI logic as enemies
     void  watchAiMoveSupportHero(Hero& hero, bool isCourier); // scouts/courier: no combat
+    // Award XP to an AI hero and auto-apply level-ups (stats + class skills, no UI).
+    void  aiHeroAwardXp(Hero& hero, int xp);
+    // Equip a picked-up artifact into a free slot (or better-stat swap), else stash it.
+    void  aiEquipOrStashArtifact(Hero& hero, int artifactId);
 
     // ── Hot-seat 2-player mode ─────────────────────────────────────────────────
     // Hot-seat runs entirely on the N-player system (m_players / m_currentPlayerIdx);
