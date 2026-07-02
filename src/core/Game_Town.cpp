@@ -1344,6 +1344,23 @@ void Game::enterTown(Town* town)
                         m_cwDwellingTex[t][v].ok()
                             ? (ImTextureID)(uintptr_t)m_cwDwellingTex[t][v].id() : nullptr);
         }
+
+        // EternalEmpire dwelling art (base + A/B variants per tier)
+        if (town->faction == FactionId::EternalEmpire) {
+            static const int kEEBIDs[EE_DWELLING_TIERS][EE_DWELLING_VARIANTS] = {
+                { BID::EE_T1, BID::EE_T1_A, BID::EE_T1_B },
+                { BID::EE_T2, BID::EE_T2_A, BID::EE_T2_B },
+                { BID::EE_T3, BID::EE_T3_A, BID::EE_T3_B },
+                { BID::EE_T4, BID::EE_T4_A, BID::EE_T4_B },
+                { BID::EE_T5, BID::EE_T5_A, BID::EE_T5_B },
+                { BID::EE_T6, BID::EE_T6_A, BID::EE_T6_B },
+            };
+            for (int t = 0; t < EE_DWELLING_TIERS; ++t)
+                for (int v = 0; v < EE_DWELLING_VARIANTS; ++v)
+                    m_townScreen.setBuildingArt(kEEBIDs[t][v],
+                        m_eeDwellingTex[t][v].ok()
+                            ? (ImTextureID)(uintptr_t)m_eeDwellingTex[t][v].id() : nullptr);
+        }
     }
     // Play faction-specific theme; fall back to generic town_music
     int fid = static_cast<int>(town->faction);

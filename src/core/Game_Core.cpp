@@ -217,6 +217,25 @@ bool Game::init(const std::string& title, int width, int height)
         }
     }
 
+    // EternalEmpire dwelling art (base + A "Eternal Command" + B "Necromantic")
+    static const struct { const char* base; const char* varA; const char* varB; } kEEDwellings[6] = {
+        { "Conscript",     "Eternal Conscript", "Shade"         },
+        { "Revenant",      "Eternal Revenant",  "Wraith"        },
+        { "Shade Archer",  "Eternal Archer",    "Soul Archer"   },
+        { "Steel Guardian","Eternal Guardian",  "Bone Knight"   },
+        { "Phantom Knight","Eternal Knight",    "Void Knight"   },
+        { "Immortal",      "True Immortal",     "Undying Avatar"},
+    };
+    for (int t = 0; t < EE_DWELLING_TIERS; ++t) {
+        const char* names[3] = { kEEDwellings[t].base, kEEDwellings[t].varA, kEEDwellings[t].varB };
+        for (int v = 0; v < EE_DWELLING_VARIANTS; ++v) {
+            if (!names[v]) continue;
+            char buf[256];
+            std::snprintf(buf, sizeof(buf), "assets/units/eternal_empire/%s.png", names[v]);
+            m_eeDwellingTex[t][v].load(m_basePath + buf, false, false);
+        }
+    }
+
     // Load combat board terrain backgrounds (assets/terrain/combat/NAME.png)
     static const char* kTerrainBgName[NUM_TERRAIN_TYPES] = {
         "plains", "forest", "highland", "corrupted", "toxic",
