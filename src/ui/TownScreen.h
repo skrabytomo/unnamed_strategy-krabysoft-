@@ -91,7 +91,7 @@ private:
 
     // Building view mode: true = panorama grid, false = list.
     // Takes a back seat to m_liveTownMode when that's enabled.
-    bool m_panoramaMode = true;
+    bool m_panoramaMode = false;
 
     // Live Town: whole town rendered on one shared background, buildings appear
     // in place once built, clicked in-place instead of via a card grid.

@@ -5511,12 +5511,17 @@ void Game::renderUnitExchange()
     // Transfer arrow buttons in the middle
     ImGui::BeginGroup();
     ImGui::Dummy({50, 60});
+    // A hero can never be left with an empty army — block a full-stack transfer
+    // when it's the source hero's last remaining stack. Half-transfers (below)
+    // never fully empty a stack, so they don't need this guard.
     bool canAtoB = m_exchangeSelSlotA >= 0
         && m_exchangeSelSlotA < static_cast<int>(heroA.army.size())
-        && heroA.army[m_exchangeSelSlotA].count > 0;
+        && heroA.army[m_exchangeSelSlotA].count > 0
+        && heroA.army.size() > 1;
     bool canBtoA = m_exchangeSelSlotB >= 0
         && m_exchangeSelSlotB < static_cast<int>(heroB.army.size())
-        && heroB.army[m_exchangeSelSlotB].count > 0;
+        && heroB.army[m_exchangeSelSlotB].count > 0
+        && heroB.army.size() > 1;
 
     if (!canAtoB) ImGui::BeginDisabled();
     if (ImGui::Button("A>>B", {50, 26})) {
@@ -5531,6 +5536,9 @@ void Game::renderUnitExchange()
         m_exchangeSelSlotA = -1;
     }
     if (!canAtoB) ImGui::EndDisabled();
+    if (m_exchangeSelSlotA >= 0 && m_exchangeSelSlotA < static_cast<int>(heroA.army.size())
+        && heroA.army.size() == 1 && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip("Can't leave Hero A with an empty army");
 
     ImGui::Spacing();
 
@@ -5547,6 +5555,9 @@ void Game::renderUnitExchange()
         m_exchangeSelSlotB = -1;
     }
     if (!canBtoA) ImGui::EndDisabled();
+    if (m_exchangeSelSlotB >= 0 && m_exchangeSelSlotB < static_cast<int>(heroB.army.size())
+        && heroB.army.size() == 1 && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip("Can't leave Hero B with an empty army");
 
     ImGui::Spacing();
 
