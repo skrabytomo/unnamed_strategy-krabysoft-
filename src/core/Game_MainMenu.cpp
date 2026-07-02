@@ -529,6 +529,9 @@ void Game::renderMainMenu()
             m_newGameMapSize = 1;  // Medium map
             m_newGameDifficulty = 1;
             m_newGameClassId = 0;
+            // A stale hot-seat toggle from the New Game menu would set
+            // m_numHumanPlayers=2 in startNewGame and freeze all AI here.
+            m_newGameHotSeat = false;
             startNewGame();
             // Override enemy faction to m_watchAIFaction2
             if (!m_enemyHeroes.empty())

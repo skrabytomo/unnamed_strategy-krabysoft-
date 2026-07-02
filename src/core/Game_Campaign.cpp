@@ -171,6 +171,9 @@ void Game::enterCampaign()
     m_newGameFaction  = 0;   // HolyOrder
     m_newGameMapSize  = 1;   // Medium
     m_newGameClassId  = 0;   // auto-assign first class for faction
+    // A stale hot-seat toggle from the New Game menu would set m_numHumanPlayers=2
+    // in startNewGame and freeze all AI in the campaign.
+    m_newGameHotSeat  = false;
     startNewGame();
     m_state = GameState::Campaign;
 

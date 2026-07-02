@@ -110,7 +110,7 @@ void Game::renderTown()
                 }
             };
             ResourceType primRes = factionPrimary(mutableTown->faction);
-            Resources& res = (m_hotSeatMode && m_hotSeatP2Turn) ? m_player2Resources : m_playerResources;
+            Resources& res = m_playerResources;  // always the current player's (N-player swap)
             bool canAfford = res.get(ResourceType::Gold) >= 500 &&
                              res.get(primRes) >= 5;
 
@@ -1192,10 +1192,12 @@ void Game::renderHotSeatHandoff()
 
     if (ImGui::BeginPopupModal("##hotseat_handoff", nullptr,
             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize)) {
-        // Dim the title bar text via centering
-        const char* title = m_hotSeatP2Turn ? "PLAYER 2's TURN" : "PLAYER 1's TURN";
-        ImVec4 col = m_hotSeatP2Turn ? ImVec4(0.4f, 0.7f, 1.0f, 1.0f)
-                                      : ImVec4(1.0f, 0.85f, 0.2f, 1.0f);
+        // m_heroes/m_playerResources already belong to the player about to act
+        // (the N-player handoff swapped them before this screen appears).
+        char title[32];
+        std::snprintf(title, sizeof(title), "PLAYER %d's TURN", currentPlayerId());
+        ImVec4 col = (currentPlayerId() == 2) ? ImVec4(0.4f, 0.7f, 1.0f, 1.0f)
+                                              : ImVec4(1.0f, 0.85f, 0.2f, 1.0f);
         float tw = ImGui::CalcTextSize(title).x;
         ImGui::SetCursorPosX((ImGui::GetWindowWidth() - tw) * 0.5f);
         ImGui::TextColored(col, "%s", title);
@@ -1203,15 +1205,15 @@ void Game::renderHotSeatHandoff()
         ImGui::Spacing();
 
         // Show whose resources
-        const Resources& res = m_hotSeatP2Turn ? m_player2Resources : m_playerResources;
+        const Resources& res = m_playerResources;
         ImGui::TextColored(ImVec4(0.7f,0.7f,0.7f,1.f), "Resources:");
         ImGui::Text("  Gold: %d   Iron: %d",
             res.get(ResourceType::Gold), res.get(ResourceType::Iron));
         ImGui::Spacing();
 
-        const char* hint = m_hotSeatP2Turn
-            ? "Pass the device to Player 2, then click Continue."
-            : "Pass the device to Player 1, then click Continue.";
+        char hint[80];
+        std::snprintf(hint, sizeof(hint),
+            "Pass the device to Player %d, then click Continue.", currentPlayerId());
         ImGui::TextWrapped("%s", hint);
         ImGui::Spacing();
         ImGui::Separator();
@@ -1222,11 +1224,9 @@ void Game::renderHotSeatHandoff()
             m_hotSeatHandoff = false;
             ImGui::CloseCurrentPopup();
             // Snap camera to the active player's hero
-            const std::vector<Hero>* activeHeroes = m_hotSeatP2Turn
-                ? &m_enemyHeroes : &(const std::vector<Hero>&)m_heroes;
-            if (!activeHeroes->empty()) {
+            if (!m_heroes.empty()) {
                 float cx, cy;
-                m_hexRenderer.grid().hexToWorld((*activeHeroes)[0].pos, cx, cy);
+                m_hexRenderer.grid().hexToWorld(m_heroes[0].pos, cx, cy);
                 m_camera.setPosition(cx, cy);
             }
         }
@@ -1243,21 +1243,14 @@ void Game::enterTown(Town* town)
     // Only treat the hero as "in town" if they are physically on or adjacent to the town tile.
     // Remote access (via HUD panel) still opens the screen but routes recruits to the garrison.
     Hero* hero = nullptr;
-    if (m_hotSeatMode && m_hotSeatP2Turn && !m_enemyHeroes.empty()) {
-        // P2's turn: look in enemyHeroes
-        int sel = (m_selectedEnemyHero >= 0 && m_selectedEnemyHero < (int)m_enemyHeroes.size())
-                  ? m_selectedEnemyHero : 0;
-        Hero& h = m_enemyHeroes[sel];
-        if (h.pos == town->pos || HexGrid::distance(h.pos, town->pos) <= 1)
-            hero = &h;
-    } else if (!m_heroes.empty()) {
+    if (!m_heroes.empty()) {
         Hero& h = m_heroes[m_activeHeroIdx];
         if (h.pos == town->pos || HexGrid::distance(h.pos, town->pos) <= 1)
             hero = &h;
     }
     // Entering an owned town restores hero HP fully
-    int currentPlayerId = (m_hotSeatMode && m_hotSeatP2Turn) ? 2 : 1;
-    if (hero && town->ownerId == currentPlayerId && hero->heroHp < hero->heroMaxHp) {
+    int currentPlayerId = this->currentPlayerId();
+    if (hero && town->ownerId == static_cast<uint32_t>(currentPlayerId) && hero->heroHp < hero->heroMaxHp) {
         hero->heroHp = hero->heroMaxHp;
         pushPickupEffect(town->pos, "Hero healed!", IM_COL32(180, 255, 180, 255));
     }

@@ -534,12 +534,7 @@ void Game::saveGame(const std::string& customName)
 
 Hero* Game::currentActiveHero()
 {
-    if (m_hotSeatMode && m_hotSeatP2Turn) {
-        if (m_enemyHeroes.empty()) return nullptr;
-        int sel = (m_selectedEnemyHero >= 0 && m_selectedEnemyHero < (int)m_enemyHeroes.size())
-                  ? m_selectedEnemyHero : 0;
-        return &m_enemyHeroes[sel];
-    }
+    // m_heroes always holds the current player's roster (N-player handoff swaps it).
     if (m_heroes.empty()) return nullptr;
     return &m_heroes[m_activeHeroIdx];
 }
@@ -623,6 +618,9 @@ bool Game::loadGameApply(GameSaveData& data)
     // N-player hotseat — restore all player states
     m_numHumanPlayers  = data.numHumanPlayers;
     m_currentPlayerIdx = data.currentPlayerIdx;
+    // Hot-seat isn't stored explicitly in saves; any 2+ human game IS hot-seat.
+    m_hotSeatMode      = (m_numHumanPlayers >= 2);
+    m_hotSeatHandoff   = false;
     m_players.assign(m_numHumanPlayers, PlayerState{});
     m_playerNotifs.assign(m_numHumanPlayers, PlayerNotifs{});
 
@@ -1357,25 +1355,16 @@ void Game::startNewGame()
     FogOfWar::updateVision(m_map, m_heroes[0]);
 
     // ── Hot-seat: configure P2 hero from menu choices ─────────────────────────
-    // m_numHumanPlayers was already finalized above (before m_players.assign()/world gen).
-    m_hotSeatMode   = m_newGameHotSeat;
+    // Hot-seat runs on the N-player system: P2 is m_players[1] (hero id=2), created
+    // in the multiplayer loop above. Here we just overlay P2's menu picks (faction,
+    // class) onto that hero and their starting town. m_enemyHeroes stays pure AI.
+    m_hotSeatMode    = m_newGameHotSeat;
     m_worldHUD.setNumHumanPlayers(m_numHumanPlayers);
-    m_hotSeatP2Turn = false;
     m_hotSeatHandoff = false;
-    m_selectedEnemyHero = -1;
-    m_player2Resources = Resources{};
-    m_player2Resources.set(ResourceType::Gold, 5000);
-    m_player2Resources.set(ResourceType::Iron, 20);
 
-    if (m_hotSeatMode && !m_enemyHeroes.empty()) {
-        // Override first enemy hero to use P2's chosen faction/class
-        static constexpr FactionId kFacs[] = {
-            FactionId::HolyOrder, FactionId::CrimsonWardens, FactionId::Thornkin,
-            FactionId::EternalEmpire, FactionId::Bloodsworn, FactionId::Voidkin,
-            FactionId::IronAssembly, FactionId::Amalgamate, FactionId::Convergence
-        };
-        Hero& p2Hero = m_enemyHeroes[0];
-        FactionId p2f = kFacs[std::clamp(m_p2Faction, 0, 8)];
+    if (m_hotSeatMode && m_numHumanPlayers >= 2 && !m_players[1].heroes.empty()) {
+        Hero& p2Hero = m_players[1].heroes[0];
+        FactionId p2f = kFactions[std::clamp(m_p2Faction, 0, 8)];
         p2Hero.faction = p2f;
         p2Hero.name    = "Player 2";
         p2Hero.army.clear();
@@ -1393,9 +1382,9 @@ void Game::startNewGame()
             p2Hero.blightAuraSpecialty  = (p2cls->specialty == SpecialtyType::BlightAura);
             p2Hero.infestationSpecialty = (p2cls->specialty == SpecialtyType::Infestation);
         }
-        // Fix P2's starting town faction to match
+        // Fix P2's starting town faction to match (P2's towns have ownerId == 2)
         for (auto& t : m_towns) {
-            if (t.ownerId == p2Hero.id) {
+            if (t.ownerId == 2u) {
                 t.faction = p2f;
                 break;
             }

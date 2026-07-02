@@ -304,6 +304,12 @@ void Game::watchAiMovePlayerHero()
             // Retreat to own town
             for (const auto& t : m_towns)
                 if (t.ownerId == 1) add(t.pos, 500.f);
+            // Already home → the town candidate is rejected (own position) and the
+            // hero would freeze forever; keep grabbing safe nearby resources instead.
+            for (const auto& r : m_resources) {
+                if (r.ownedBy == 1) continue;
+                if (HexGrid::distance(hero.pos, r.pos) <= 4) add(r.pos, 40.f);
+            }
         } else {
             // Own town to recruit
             for (const auto& t : m_towns) {
@@ -756,42 +762,10 @@ void Game::updateWorldMap(float dt)
         if (!uiHandled) {
             bool heroClickHandled = false;
 
-            // Hot-seat P2 turn: clicks select/move enemy heroes instead of player heroes
-            if (m_hotSeatMode && m_hotSeatP2Turn) {
-                // Click on an enemy hero sprite → select it
-                for (int ehi = 0; ehi < (int)m_enemyHeroes.size(); ++ehi) {
-                    const Hero& eh = m_enemyHeroes[ehi];
-                    float wx, wy; m_hexRenderer.grid().hexToWorld(eh.pos, wx, wy);
-                    float sx, sy; m_camera.worldToScreen(wx, wy, sx, sy);
-                    float dx = static_cast<float>(mouse.x) - sx;
-                    float dy = static_cast<float>(mouse.y) - sy;
-                    if (dx * dx + dy * dy < 20.0f * 20.0f) {
-                        m_selectedEnemyHero = ehi;
-                        heroClickHandled = true;
-                        uiHandled = true;
-                        break;
-                    }
-                }
-                // No hero clicked → move selected enemy hero to hovered tile
-                if (!heroClickHandled && m_selectedEnemyHero >= 0
-                    && m_selectedEnemyHero < (int)m_enemyHeroes.size()
-                    && m_map.inBounds(m_hovered)) {
-                    Hero& eh = m_enemyHeroes[m_selectedEnemyHero];
-                    auto moveCost = [&](HexCoord to) -> int {
-                        const HexTile* t = m_map.getTile(to);
-                        if (!t || t->terrain == Terrain::Water) return 9999;
-                        return BASE_MOVE_COST[static_cast<int>(t->terrain)];
-                    };
-                    auto p2path = Pathfinder::find(m_map, eh.pos, m_hovered, moveCost);
-                    if (!p2path.empty()) {
-                        eh.path     = p2path;
-                        eh.pathStep = 0;
-                    }
-                    heroClickHandled = true;
-                    uiHandled = true;
-                }
-            } else {
-                // Normal P1 turn hero selection
+            // All human players (incl. hot-seat P2 after handoff swap) control
+            // m_heroes through the same path — no per-player special casing.
+            {
+                // Normal hero selection
                 for (int hi = 0; hi < static_cast<int>(m_heroes.size()); ++hi) {
                     const Hero& h = m_heroes[hi];
                     float wx, wy;
@@ -1048,6 +1022,7 @@ void Game::doEndTurn()
         m_currentPlayerIdx     = nextIdx;
         m_showPlayerTurnBanner = true;
         m_playerTurnBannerT    = 2.5f;
+        if (m_hotSeatMode) m_hotSeatHandoff = true;  // pass-the-device privacy screen
         m_reachable.clear();
         m_selected = {-999, -999};
         m_worldHUD.setCurrentPlayerId(currentPlayerId());
@@ -1146,6 +1121,7 @@ void Game::doEndTurn()
         }
 
         lastPlayerEndedTurn = true;
+        if (m_hotSeatMode) m_hotSeatHandoff = true;  // device passes back to Player 1
 
         m_cachedWeeklyIncome = m_turns.calculateWeeklyIncome(m_towns, 1);
         for (const auto& r : m_resources)
@@ -1163,42 +1139,8 @@ void Game::doEndTurn()
     // Reset per-day build limit for all towns
     for (auto& t : m_towns) t.builtToday = 0;
 
-    // ── Hot-seat: alternate between Player 1 and Player 2 ────────────────────
-    if (m_hotSeatMode) {
-        // Restore movement for whichever side is about to play
-        for (auto& h : m_heroes)      h.movePool = h.maxMove;
-        for (auto& h : m_enemyHeroes) {
-            h.movePool = h.maxMove;
-            int mr = std::max(2, 2 + h.maxMana / 10);
-            h.mana = std::min(h.maxMana, h.mana + mr);
-        }
-
-        if (!m_hotSeatP2Turn) {
-            // P1 ended their day → hand off to P2
-            m_hotSeatP2Turn     = true;
-            m_hotSeatHandoff    = true;
-            m_selectedEnemyHero = m_enemyHeroes.empty() ? -1 : 0;
-            m_worldHUD.setCurrentPlayerId(2);
-            // Rebuild fog from P2 hero positions
-            if (!m_fogDisabled) {
-                FogOfWar::hideAll(m_map);
-                for (auto& h : m_enemyHeroes) FogOfWar::updateVision(m_map, h);
-            }
-            return;   // don't run AI or week processing until P2 also ends
-        } else {
-            // P2 ended their day → hand off back to P1
-            m_hotSeatP2Turn     = false;
-            m_hotSeatHandoff    = true;
-            m_selectedEnemyHero = -1;
-            m_worldHUD.setCurrentPlayerId(1);
-            // Rebuild fog from P1 hero positions
-            if (!m_fogDisabled) {
-                FogOfWar::hideAll(m_map);
-                for (auto& h : m_heroes) FogOfWar::updateVision(m_map, h);
-            }
-            // FALL THROUGH — process week/income as normal
-        }
-    }
+    // (Hot-seat alternation is handled entirely by the N-player handoff above;
+    //  the legacy m_hotSeatP2Turn system was removed.)
 
     // FishingHouse daily income (+150 gold per player-owned house)
     for (const auto& wo : m_worldObjects) {
@@ -1211,8 +1153,10 @@ void Game::doEndTurn()
         }
     }
 
-    // Restore hero movement pools and daily mana regen for enemy heroes
-    if (!m_hotSeatMode) {
+    // Restore hero movement pools and daily mana regen for enemy heroes.
+    // In hot-seat this runs after the LAST player's handoff, so m_heroes is P1's
+    // fresh-day roster; other humans' heroes were reset during their own handoff.
+    {
         for (auto& h : m_heroes)      h.movePool = h.maxMove;
         for (auto& h : m_enemyHeroes) {
             h.movePool = h.maxMove;
@@ -1221,9 +1165,10 @@ void Game::doEndTurn()
         }
     }
 
-        // Enemy hero AI — omniscient (full map visibility, no fog), faction-optimal
-        // Skipped in hot-seat mode: P2 controls their own heroes manually.
-        if (!m_hotSeatMode && !m_heroes.empty()) {
+        // Enemy hero AI — omniscient (full map visibility, no fog), faction-optimal.
+        // Runs once per full round: immediately in single-player, or after the last
+        // human ends their turn in hot-seat (m_enemyHeroes is pure AI in all modes).
+        if ((m_numHumanPlayers <= 1 || lastPlayerEndedTurn) && !m_heroes.empty()) {
             Hero& playerHero = m_heroes[m_activeHeroIdx];
             const auto& unitDefs = m_registry.units();
             bool combatTriggered = false;
@@ -1287,7 +1232,9 @@ void Game::doEndTurn()
                                    ? kFactionResource[plFidx] : ResourceType::Gold;
 
             for (int ehi = 0; ehi < static_cast<int>(m_enemyHeroes.size()); ++ehi) {
-                if (combatTriggered) break;
+                // NOTE: combat no longer aborts the roster — once one hero enters
+                // combat, the rest still take their turn; they just can't start a
+                // second fight (the player-tile is blocked and untargeted below).
                 auto& eHero = m_enemyHeroes[ehi];
 
                 // ── Hero roles: raider hunts player, economic grabs map, defender guards towns
@@ -1412,8 +1359,8 @@ void Game::doEndTurn()
                                      obj.type == WorldObjectType::SwampAltar)  val = 50.f;
                             if (val > 0.f) add(obj.pos, val);
                         }
-                        // Player hero
-                        if (!softRetreat && !playerGhostWalk) {
+                        // Player hero — untargetable once a combat is already queued
+                        if (!softRetreat && !playerGhostWalk && !combatTriggered) {
                             int dist = HexGrid::distance(eHero.pos, playerHero.pos);
                             if (dominant || dist <= 8 || isRaider)
                                 add(playerHero.pos, 300.f);
@@ -1425,9 +1372,12 @@ void Game::doEndTurn()
                               [](const Cand& a, const Cand& b){ return a.score > b.score; });
                     HexCoord goal = cands[0].pos;
 
-                    auto costFn = [this, &eHero, aggressive](HexCoord c) -> int {
+                    auto costFn = [this, &eHero, aggressive, combatTriggered,
+                                   &playerHero](HexCoord c) -> int {
                         const HexTile* t = m_map.getTile(c);
                         if (!t || !eHero.canEnter(t->terrain) || t->blocked) return 999;
+                        // One combat per day: block the player's tile once a fight is queued
+                        if (combatTriggered && c == playerHero.pos) return 999;
                         // Only block passage through player towns, not destination
                         if (!aggressive && t->townId != 0) {
                             for (const auto& town : m_towns)
@@ -1452,8 +1402,8 @@ void Game::doEndTurn()
                     eHero.movePool -= cost;
                     if (HexTile* nT = m_map.getTile(eHero.pos)) nT->heroId = eHero.id;
 
-                    // Combat with player?
-                    if (eHero.pos == playerHero.pos) {
+                    // Combat with player? (only the first collision per day fights)
+                    if (eHero.pos == playerHero.pos && !combatTriggered) {
                         m_lastCombatEnemyId = eHero.id;
                         auto pUnits = makeHeroUnits(playerHero, unitDefs, true);
                         auto eUnits = makeHeroUnits(eHero, unitDefs, false);
@@ -1739,14 +1689,8 @@ void Game::doEndTurn()
             for (const auto& r : m_resources)
                 if (r.ownedBy == static_cast<uint32_t>(currentPlayerId())) m_playerResources.add(r.type, r.amount);
 
-            // Hot-seat: apply income for P2 towns and mines
-            if (m_hotSeatMode) {
-                Resources p2income = m_turns.calculateWeeklyIncome(m_towns, 2);
-                m_player2Resources.addAll(p2income);
-                for (const auto& r : m_resources)
-                    if (!m_enemyHeroes.empty() && r.ownedBy == m_enemyHeroes[0].id)
-                        m_player2Resources.add(r.type, r.amount);
-            }
+            // (Other human players' weekly income is applied in the
+            //  lastPlayerEndedTurn block below via m_players[pi].resources.)
 
             // Garrison upkeep — 350 gold/week per garrisoned player hero
             {
@@ -2635,15 +2579,10 @@ void Game::renderWorldMapImGui()
 {
     m_ui.beginFrame();
     {
-        const std::vector<Hero>& hudHeroes = (m_hotSeatMode && m_hotSeatP2Turn)
-                                             ? m_enemyHeroes : m_heroes;
-        int hudHeroIdx = (m_hotSeatMode && m_hotSeatP2Turn)
-                         ? (m_selectedEnemyHero < 0 ? 0 : m_selectedEnemyHero)
-                         : m_activeHeroIdx;
-        m_worldHUD.draw(m_ui,
-                        (m_hotSeatMode && m_hotSeatP2Turn) ? m_player2Resources : m_playerResources,
-                        m_cachedWeeklyIncome,
-                        m_turns, hudHeroes, hudHeroIdx, m_towns);
+        // m_heroes/m_playerResources always belong to the current player
+        // (N-player handoff swaps them), so the HUD needs no special casing.
+        m_worldHUD.draw(m_ui, m_playerResources, m_cachedWeeklyIncome,
+                        m_turns, m_heroes, m_activeHeroIdx, m_towns);
     }
     m_ui.endFrame();
     m_ui.flushText(ImGui::GetBackgroundDrawList());
@@ -2769,24 +2708,7 @@ void Game::onTileClicked(HexCoord h)
     const HexTile* tile = m_map.getTile(h);
     if (!tile) return;
 
-    // Hot-seat P2 turn: delegate clicks to enemy hero control
-    if (m_hotSeatMode && m_hotSeatP2Turn) {
-        if (tile->townId != 0 && m_selectedEnemyHero >= 0
-            && m_selectedEnemyHero < (int)m_enemyHeroes.size()) {
-            Hero& p2Hero = m_enemyHeroes[m_selectedEnemyHero];
-            for (auto& t : m_towns) {
-                if (t.id != tile->townId || t.ownerId != 2) continue;
-                if (p2Hero.pos == h || HexGrid::distance(p2Hero.pos, h) <= 1) {
-                    enterTown(&t);
-                    return;
-                }
-                break;
-            }
-        }
-        // P2 movement is handled in the hot-seat click block above (lines ~518+)
-        return;
-    }
-
+    // (Hot-seat P2 uses the same path as everyone — m_heroes is swapped per player.)
     if (m_heroes.empty()) return;
 
     // Left-click on a player-owned town: open if hero is on/adjacent, else path there
@@ -2877,39 +2799,7 @@ void Game::updateHeroMovement(float dt)
         }
     }
 
-    // ── Hot-seat P2: animate selected enemy hero movement ─────────────────────
-    if (m_hotSeatMode && m_hotSeatP2Turn
-        && m_selectedEnemyHero >= 0
-        && m_selectedEnemyHero < (int)m_enemyHeroes.size()) {
-        Hero& eh = m_enemyHeroes[m_selectedEnemyHero];
-        if (!eh.path.empty() && eh.pathStep < (int)eh.path.size()) {
-            HexCoord next = eh.path[eh.pathStep];
-            const HexTile* tile = m_map.getTile(next);
-            int cost = tile ? eh.moveCost(tile->terrain) : 999;
-            if (eh.movePool < cost) {
-                eh.path.clear(); eh.pathStep = 0;
-            } else {
-                if (HexTile* oldT = m_map.getTile(eh.pos)) oldT->heroId = 0;
-                eh.pos = next;
-                eh.movePool -= cost;
-                eh.pathStep++;
-                if (HexTile* newT = m_map.getTile(eh.pos)) newT->heroId = eh.id;
-                if (!m_fogDisabled) FogOfWar::updateVision(m_map, eh);
-                // Collect nearby resources/objects (simplified)
-                for (auto& r : m_resources) {
-                    if (r.pos == eh.pos && r.ownedBy == 0) {
-                        r.ownedBy = eh.id;
-                        m_player2Resources.add(r.type, r.amount);
-                        char buf[32]; std::snprintf(buf, sizeof(buf), "+%d", r.amount);
-                        pushPickupEffect(eh.pos, buf, IM_COL32(100, 200, 255, 255));
-                    }
-                }
-                if (eh.pathStep >= (int)eh.path.size()) {
-                    eh.path.clear(); eh.pathStep = 0;
-                }
-            }
-        }
-    }
+    // (Hot-seat P2 movement animates through the normal m_heroes path above.)
 }
 
 // ── Tile events ───────────────────────────────────────────────────────────────
@@ -3805,29 +3695,40 @@ void Game::checkTileEvents()
     // NOTE: tile->heroId is already overwritten with the player's own id at this point,
     // so we check by position rather than by heroId.
     {
-        // Check allied heroes (by position)
+        // Check own heroes (by position) → unit exchange between your own armies
         for (int i = 0; i < static_cast<int>(m_heroes.size()); ++i) {
             if (i == m_activeHeroIdx) continue;
             if (m_heroes[i].pos == hero.pos) {
                 m_showUnitExchange    = true;
                 m_exchangeHeroIdx     = i;
-                m_exchangeIsHotSeatP2 = false;
                 m_exchangeSelSlotA    = -1;
                 m_exchangeSelSlotB    = -1;
                 return;
             }
         }
-        // Hot-seat: Player 2's hero is m_enemyHeroes[0] (repurposed) — an ally,
-        // not a real enemy, so redirect into the same unit exchange used for
-        // allied heroes above instead of falling into combat against it.
-        if (m_hotSeatMode && !m_enemyHeroes.empty() && m_enemyHeroes[0].pos == hero.pos) {
-            m_showUnitExchange   = true;
-            m_exchangeIsHotSeatP2 = true;
-            m_exchangeSelSlotA   = -1;
-            m_exchangeSelSlotB   = -1;
-            return;
+        // Another human player's hero (hot-seat) → combat, they're an opponent
+        if (m_numHumanPlayers >= 2) {
+            for (int pi = 0; pi < m_numHumanPlayers; ++pi) {
+                if (pi == m_currentPlayerIdx) continue;
+                for (auto& oh : m_players[pi].heroes) {
+                    if (oh.pos != hero.pos) continue;
+                    if (HexTile* et = m_map.getTile(oh.pos)) et->heroId = 0;
+                    m_pendingCryptId          = 0;
+                    m_pendingUtopiaId         = 0;
+                    m_pendingMineId           = 0;
+                    m_pendingNeutralOutpostId = 0;
+                    m_lastBanditCampId        = 0;
+                    m_pendingTownCaptureId    = 0;
+                    m_lastCombatEnemyId  = oh.id;
+                    m_lastCombatHumanIdx = pi;
+                    auto pUnits = makeHeroUnits(hero, m_registry.units(), true);
+                    auto eUnits = makeHeroUnits(oh, m_registry.units(), false);
+                    enterCombat(hero, pUnits, oh, eUnits);
+                    return;
+                }
+            }
         }
-        // Enemy hero (by position)
+        // Enemy AI hero (by position)
         Hero* enemyPtr = nullptr;
         for (auto& e : m_enemyHeroes)
             if (e.pos == hero.pos) { enemyPtr = &e; break; }
@@ -3841,7 +3742,8 @@ void Game::checkTileEvents()
             m_pendingNeutralOutpostId = 0;
             m_lastBanditCampId        = 0;
             m_pendingTownCaptureId    = 0;
-            m_lastCombatEnemyId = enemyPtr->id;
+            m_lastCombatEnemyId  = enemyPtr->id;
+            m_lastCombatHumanIdx = -1;
             auto pUnits = makeHeroUnits(hero, m_registry.units(), true);
             auto eUnits = makeHeroUnits(*enemyPtr, m_registry.units(), false);
             enterCombat(hero, pUnits, *enemyPtr, eUnits);
@@ -5444,19 +5346,14 @@ void Game::renderUnitExchange()
     if (!m_showUnitExchange) return;
     if (m_heroes.empty()) { m_showUnitExchange = false; return; }
 
-    // Hot-seat's P2 hero lives in m_enemyHeroes[0] instead of m_heroes; everything
-    // else about the exchange UI is identical between the two cases.
-    Hero* heroBPtr = nullptr;
-    if (m_exchangeIsHotSeatP2) {
-        if (m_hotSeatMode && !m_enemyHeroes.empty()) heroBPtr = &m_enemyHeroes[0];
-    } else if (m_exchangeHeroIdx >= 0 && m_exchangeHeroIdx < static_cast<int>(m_heroes.size())
-               && m_exchangeHeroIdx != m_activeHeroIdx) {
-        heroBPtr = &m_heroes[m_exchangeHeroIdx];
+    if (m_exchangeHeroIdx < 0 || m_exchangeHeroIdx >= static_cast<int>(m_heroes.size())
+        || m_exchangeHeroIdx == m_activeHeroIdx) {
+        m_showUnitExchange = false;
+        return;
     }
-    if (!heroBPtr) { m_showUnitExchange = false; return; }
 
     Hero& heroA = m_heroes[m_activeHeroIdx];
-    Hero& heroB = *heroBPtr;
+    Hero& heroB = m_heroes[m_exchangeHeroIdx];
     const auto& unitDefs = m_registry.units();
 
     auto unitName = [&](int defId) -> std::string {
@@ -6998,7 +6895,6 @@ void Game::triggerSiegeCombat(uint32_t townId)
 void Game::renderMarchButton()
 {
     // Only show when player controls active hero and game is in world map
-    if (m_hotSeatP2Turn) return;
     if (m_heroes.empty() || m_activeHeroIdx < 0 ||
         m_activeHeroIdx >= static_cast<int>(m_heroes.size())) return;
 

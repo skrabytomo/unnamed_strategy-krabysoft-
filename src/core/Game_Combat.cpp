@@ -1611,18 +1611,27 @@ void Game::exitCombat(bool playerWon)
             for (auto& r : m_resources)
                 if (r.ownedBy == m_lastCombatEnemyId) r.ownedBy = 0;
             uint32_t defeatedId = m_lastCombatEnemyId;
-            m_enemyHeroes.erase(
-                std::remove_if(m_enemyHeroes.begin(), m_enemyHeroes.end(),
-                    [&](const Hero& e){ return e.id == defeatedId; }),
-                m_enemyHeroes.end());
+            if (m_lastCombatHumanIdx >= 0
+                && m_lastCombatHumanIdx < static_cast<int>(m_players.size())) {
+                // Defeated hero belonged to another HUMAN player (hot-seat)
+                auto& phs = m_players[m_lastCombatHumanIdx].heroes;
+                phs.erase(std::remove_if(phs.begin(), phs.end(),
+                    [&](const Hero& e){ return e.id == defeatedId; }), phs.end());
+            } else {
+                m_enemyHeroes.erase(
+                    std::remove_if(m_enemyHeroes.begin(), m_enemyHeroes.end(),
+                        [&](const Hero& e){ return e.id == defeatedId; }),
+                    m_enemyHeroes.end());
+            }
             m_map.forEach([&](HexTile& t){
                 if (t.heroId == defeatedId) t.heroId = 0;
             });
             m_campaign.onHeroDefeated(defeatedId);
-            m_lastCombatEnemyId = 0;
+            m_lastCombatEnemyId  = 0;
+            m_lastCombatHumanIdx = -1;
 
             // AI emergency replacement: spawn immediately so AI isn't inert until next weekly phase
-            if (!m_hotSeatMode && m_enemyHeroes.empty()) {
+            if (m_enemyHeroes.empty()) {
                 static const char* kEmergNames[] = {
                     "Emergency Marshal","Relief Commander","Last Defender","Surge Marshal"
                 };

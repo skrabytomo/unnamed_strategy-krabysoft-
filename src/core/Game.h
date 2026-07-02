@@ -121,10 +121,10 @@ private:
     bool loadGameApply(GameSaveData& data);
 
     // Returns the resource pool for the currently active player.
-    Resources& currentResources() {
-        return (m_hotSeatMode && m_hotSeatP2Turn) ? m_player2Resources : m_playerResources;
-    }
-    // Returns the active hero for the current player (P1 from m_heroes, P2 from m_enemyHeroes).
+    // The N-player handoff swaps m_playerResources in/out of m_players[], so this
+    // is always the current player's pool — no hot-seat special case needed.
+    Resources& currentResources() { return m_playerResources; }
+    // Returns the active hero for the current player (m_heroes is swapped per player).
     Hero* currentActiveHero();
     const Hero* currentActiveHero() const;
 
@@ -418,6 +418,10 @@ private:
 
     // ── Pending town capture after garrison combat ────────────────────────────
     uint32_t    m_pendingTownCaptureId = 0;
+    // >=0: the current combat is vs ANOTHER HUMAN's hero — index into m_players.
+    // On victory the defeated hero is removed from m_players[idx].heroes instead
+    // of m_enemyHeroes.
+    int         m_lastCombatHumanIdx   = -1;
 
     // ── Town-lost notification (enemy captured player town) ───────────────────
     bool        m_showTownLostPopup   = false;
@@ -426,10 +430,6 @@ private:
     // ── Unit exchange between player heroes ────────────────────────────────────
     bool        m_showUnitExchange  = false;
     int         m_exchangeHeroIdx   = -1;   // index of the OTHER hero (in m_heroes)
-    // Hot-seat's Player 2 hero lives in m_enemyHeroes[0] (repurposed), not m_heroes,
-    // so it can't be addressed by m_exchangeHeroIdx alone — this flag redirects
-    // renderUnitExchange()'s "hero B" to m_enemyHeroes[0] when set.
-    bool        m_exchangeIsHotSeatP2 = false;
     int         m_exchangeSelSlotA  = -1;   // selected slot in hero A's army
     int         m_exchangeSelSlotB  = -1;   // selected slot in hero B's army
 
@@ -616,14 +616,13 @@ private:
     void  watchAiMoveSupportHero(Hero& hero, bool isCourier); // scouts/courier: no combat
 
     // ── Hot-seat 2-player mode ─────────────────────────────────────────────────
+    // Hot-seat runs entirely on the N-player system (m_players / m_currentPlayerIdx);
+    // these are just the menu flag and the pass-the-device privacy screen.
     bool      m_hotSeatMode      = false;  // two humans share one screen
-    bool      m_hotSeatP2Turn    = false;  // true = it is player 2's turn
     bool      m_hotSeatHandoff   = false;  // show handoff screen
-    Resources m_player2Resources;          // P2's resource pool
-    int       m_selectedEnemyHero= -1;     // index into m_enemyHeroes (P2 active hero)
     bool      m_newGameHotSeat   = false;  // set in new game menu
     void      renderHotSeatHandoff();
-    int       m_p2Faction        = 1;      // enemy faction index chosen by P2 in menu
+    int       m_p2Faction        = 1;      // faction index chosen by P2 in menu
     int       m_p2ClassId        = 0;
 
     // ── Persisted display / audio settings ───────────────────────────────────
