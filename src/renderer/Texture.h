@@ -8,7 +8,11 @@ public:
     Texture() = default;
     ~Texture();
 
-    bool load(const std::string& path, bool pixelArt = true, bool flipV = true, bool repeat = false);
+    // wrapMirror: use GL_MIRRORED_REPEAT instead of GL_REPEAT/GL_CLAMP_TO_EDGE —
+    // reflects at each tile boundary so continuously-scrolled UVs never show a
+    // seam, regardless of whether the source image tiles edge-to-edge cleanly.
+    bool load(const std::string& path, bool pixelArt = true, bool flipV = true,
+              bool repeat = false, bool wrapMirror = false);
     void bind(int slot = 0) const;
     void unbind() const;
 

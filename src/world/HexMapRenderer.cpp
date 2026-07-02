@@ -128,13 +128,17 @@ void main() {
     if (uUseTexture != 0) {
         vec2 uv = vTexCoord;
         if (uTerrain == 9) {
-            // Per-hex UV + scroll offset — same UV basis every other terrain uses.
-            // The previous world-space projection left a visible diamond-shaped gap
-            // where adjacent hexes meet; per-hex UV can't produce that seam since
-            // it's identical to how gap-free terrain types already sample.
-            float warpX = sin(vWorldPos.y * 0.008 + uTime * 0.7) * 0.02;
-            float warpY = sin(vWorldPos.x * 0.006 - uTime * 0.5) * 0.02;
-            uv = vTexCoord + vec2(uTime * 0.05 + warpX, uTime * 0.03 + warpY);
+            // World-space UV: continuous across hex boundaries, gives each hex a
+            // spatially-unique crop of the water image (not an identical repeated
+            // stamp) and drifts slowly over time for a moving-water look.
+            // Sampler uses GL_MIRRORED_REPEAT, so no matter how far this scrolls,
+            // it reflects at each tile edge instead of wrapping — no seam is
+            // possible even though the underlying image is much larger than one hex.
+            float warpX = sin(vWorldPos.y * 0.008 + uTime * 0.7) * 0.018;
+            float warpY = sin(vWorldPos.x * 0.006 - uTime * 0.5) * 0.012;
+            uv = vWorldPos * 0.012;
+            uv.x += uTime * 0.022 + warpX;
+            uv.y += uTime * 0.010 + warpY;
         }
 
         vec3 tex = texture(uTerrainTex, uv).rgb;
@@ -212,14 +216,17 @@ bool HexMapRenderer::init(float hexSize, const std::string& basePath)
     // fall back to TYPE.png if no variants exist.
     int loaded = 0;
     for (int i = 0; i < NUM_TERRAIN; ++i) {
-        // Water (index 9) uses GL_REPEAT so UV scroll tiles seamlessly
-        bool rep = (i == 9);
+        // Water (index 9) scrolls continuously in world space, so it uses
+        // GL_MIRRORED_REPEAT: reflects at each tile boundary instead of repeating,
+        // which guarantees no seam ever appears regardless of scroll position —
+        // even if the source image doesn't tile edge-to-edge cleanly.
+        bool mirror = (i == 9);
         m_variantCount[i] = 0;
         for (int v = 0; v < MAX_VARIANTS; ++v) {
             std::string rel = std::string(s_terrainBase[i]) + "_" + std::to_string(v) + ".png";
             std::string full = basePath + rel;
-            if (m_terrainTex[i][v].load(full, false, false, rep) ||
-                (!basePath.empty() && m_terrainTex[i][v].load(rel, false, false, rep))) {
+            if (m_terrainTex[i][v].load(full, false, false, false, mirror) ||
+                (!basePath.empty() && m_terrainTex[i][v].load(rel, false, false, false, mirror))) {
                 m_variantCount[i]++;
             } else {
                 break; // stop at first missing variant
@@ -229,8 +236,8 @@ bool HexMapRenderer::init(float hexSize, const std::string& basePath)
         if (m_variantCount[i] == 0) {
             std::string rel  = std::string(s_terrainBase[i]) + ".png";
             std::string full = basePath + rel;
-            if (m_terrainTex[i][0].load(full, false, false, rep) ||
-                (!basePath.empty() && m_terrainTex[i][0].load(rel, false, false, rep)))
+            if (m_terrainTex[i][0].load(full, false, false, false, mirror) ||
+                (!basePath.empty() && m_terrainTex[i][0].load(rel, false, false, false, mirror)))
                 m_variantCount[i] = 1;
         }
         if (m_variantCount[i] > 0) loaded++;
