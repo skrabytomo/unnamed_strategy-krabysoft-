@@ -189,58 +189,66 @@ void Game::renderMainMenu()
         }
         ImGui::Spacing();
 
-        // Hot-Seat toggle
-        ImGui::Text("Mode:");
-        {
-            bool sel1 = !m_newGameHotSeat;
-            bool sel2 =  m_newGameHotSeat;
-            if (sel1) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.2f, 1.f));
-            if (ImGui::Button("vs AI##hs0", ImVec2((bw - 4) / 2.f, 26))) m_newGameHotSeat = false;
-            if (sel1) ImGui::PopStyleColor();
-            ImGui::SameLine(0, 4);
-            if (sel2) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.3f, 0.6f, 1.f));
-            if (ImGui::Button("2-Player Hot-Seat##hs1", ImVec2((bw - 4) / 2.f, 26))) m_newGameHotSeat = true;
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Two human players take turns on the same screen.");
-            if (sel2) ImGui::PopStyleColor();
+        // ── Player slots (HoMM-style lobby) ─────────────────────────────────
+        ImGui::Text("Players:");
+        for (int pc = 2; pc <= 4; ++pc) {
+            if (pc > 2) ImGui::SameLine(0, 4);
+            bool sel = (m_setupPlayerCount == pc);
+            if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.2f, 1.f));
+            char pcl[16]; std::snprintf(pcl, sizeof(pcl), "%d##pcnt%d", pc, pc);
+            if (ImGui::Button(pcl, ImVec2((bw - 8) / 3.f, 26))) m_setupPlayerCount = pc;
+            if (sel) ImGui::PopStyleColor();
         }
-
-        if (m_newGameHotSeat) {
-            ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.f, 1.f), "Player 2 Faction:");
-            static const char* kFacNames2[] = {
+        ImGui::Spacing();
+        {
+            static const char* kSlotFacNames[] = {
                 "Holy Order","Crimson Wardens","Thornkin","Eternal Empire",
-                "Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"
+                "Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence",
+                "Random"
             };
-            for (int i = 0; i < 9; ++i) {
-                if (i % 3 != 0) ImGui::SameLine();
-                bool sel = (m_p2Faction == i);
-                if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.3f, 0.6f, 1.f));
-                char f2Lbl[40]; std::snprintf(f2Lbl, sizeof(f2Lbl), "%s##p2f%d", kFacNames2[i], i);
-                if (ImGui::Button(f2Lbl, ImVec2((bw - 4) / 3.f, 26))) {
-                    m_p2Faction  = i;
-                    m_p2ClassId  = 0;
+            static const char* kBonusNames[] = {
+                "Artifact", "+5 Resource", "+1500 Gold"
+            };
+            m_slotType[0]    = 0;                    // slot 0 is always you
+            m_slotFaction[0] = m_newGameFaction;     // driven by the picker above
+            float thirdW = (bw - 8) / 3.f;
+            for (int s = 0; s < m_setupPlayerCount; ++s) {
+                ImGui::PushID(s);
+                // Human / Bot toggle (slot 0 fixed)
+                if (s == 0) {
+                    ImGui::Button("You", ImVec2(thirdW, 26));
+                } else {
+                    bool isHuman = (m_slotType[s] == 0);
+                    ImGui::PushStyleColor(ImGuiCol_Button,
+                        isHuman ? ImVec4(0.1f, 0.3f, 0.6f, 1.f) : ImVec4(0.45f, 0.2f, 0.1f, 1.f));
+                    if (ImGui::Button(isHuman ? "Human" : "Bot", ImVec2(thirdW, 26)))
+                        m_slotType[s] = isHuman ? 1 : 0;
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Click to switch. Humans play hot-seat on this screen.");
+                    ImGui::PopStyleColor();
                 }
-                if (sel) ImGui::PopStyleColor();
-            }
-            ImGui::Spacing();
-            FactionId p2f = static_cast<FactionId>(m_p2Faction);
-            auto p2classes = m_classRegistry.getClassesForFaction(p2f);
-            if (!p2classes.empty()) {
-                ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.f, 1.f), "Player 2 Class:");
-                bool p2Valid = false;
-                for (auto* c : p2classes) if (c->id == m_p2ClassId) { p2Valid = true; break; }
-                if (!p2Valid) m_p2ClassId = p2classes[0]->id;
-                for (int ci = 0; ci < (int)p2classes.size(); ++ci) {
-                    const HeroClassDef* cls = p2classes[ci];
-                    if (ci % 2 != 0) ImGui::SameLine();
-                    bool sel = (m_p2ClassId == cls->id);
-                    if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.3f, 0.6f, 1.f));
-                    char clbl[48]; std::snprintf(clbl, sizeof(clbl), "%s##p2cl%d", cls->name.c_str(), cls->id);
-                    if (ImGui::Button(clbl, ImVec2((bw - 4) / 2.f, 26))) m_p2ClassId = cls->id;
-                    if (ImGui::IsItemHovered() && !cls->specialtyDesc.empty())
-                        ImGui::SetTooltip("Specialty: %s", cls->specialtyDesc.c_str());
-                    if (sel) ImGui::PopStyleColor();
+                // Faction cycle (slot 0 shown read-only — set by the picker above)
+                ImGui::SameLine(0, 4);
+                if (s == 0) {
+                    char flbl[40];
+                    std::snprintf(flbl, sizeof(flbl), "%s##fac0", kSlotFacNames[std::clamp(m_newGameFaction, 0, 8)]);
+                    ImGui::Button(flbl, ImVec2(thirdW, 26));
+                } else {
+                    char flbl[40];
+                    std::snprintf(flbl, sizeof(flbl), "%s##fac", kSlotFacNames[std::clamp(m_slotFaction[s], 0, 9)]);
+                    if (ImGui::Button(flbl, ImVec2(thirdW, 26)))
+                        m_slotFaction[s] = (m_slotFaction[s] + 1) % 10;
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Click to cycle faction (Random rolls at start).");
                 }
+                // Starting bonus cycle
+                ImGui::SameLine(0, 4);
+                char blbl[32];
+                std::snprintf(blbl, sizeof(blbl), "%s##bon", kBonusNames[std::clamp(m_slotBonus[s], 0, 2)]);
+                if (ImGui::Button(blbl, ImVec2(thirdW, 26)))
+                    m_slotBonus[s] = (m_slotBonus[s] + 1) % 3;
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Starting bonus: random artifact, +5 of the faction's key resource, or +1500 gold.");
+                ImGui::PopID();
             }
         }
 
@@ -550,6 +558,14 @@ void Game::renderMainMenu()
             // A stale hot-seat toggle from the New Game menu would set
             // m_numHumanPlayers=2 in startNewGame and freeze all AI here.
             m_newGameHotSeat = false;
+            // Watch = exactly two players: the watched side and ONE bot.
+            m_setupPlayerCount = 2;
+            m_slotType[0]    = 0;
+            m_slotType[1]    = 1;
+            m_slotFaction[0] = m_watchAIFaction1;
+            m_slotFaction[1] = m_watchAIFaction2;
+            m_slotBonus[0]   = 2;
+            m_slotBonus[1]   = 2;
             startNewGame();
             // Override enemy faction to m_watchAIFaction2
             if (!m_enemyHeroes.empty())

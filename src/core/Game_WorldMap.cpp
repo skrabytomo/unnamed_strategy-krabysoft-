@@ -485,6 +485,14 @@ void Game::watchAiMovePlayerHero()
     bool veryWeak    = strRatio < 0.4f;
     bool softRetreat = strRatio < 0.6f;
     bool dominant    = strRatio >= 1.2f;
+    // Same proximity rule as the enemy AI: only cower when a threat is near
+    {
+        int nearestEnemyDist = 999;
+        for (const auto& eh : m_enemyHeroes)
+            nearestEnemyDist = std::min(nearestEnemyDist,
+                                        HexGrid::distance(hero.pos, eh.pos));
+        if (nearestEnemyDist > 10) { veryWeak = false; softRetreat = false; }
+    }
 
     while (hero.movePool > 0) {
         struct Cand { HexCoord pos; float score; };
@@ -1642,6 +1650,13 @@ void Game::doEndTurn()
                 float strRatio = nearHumanStr > 0 ? (float)eiStr / nearHumanStr : 99.f;
                 bool softRetreat = strRatio < 0.6f;
                 bool dominant    = strRatio >= 1.2f;
+                // A strong opponent on the other side of the map is no reason
+                // to hide at home — cowering locked every AI hero in its
+                // castle all game (deposit + movePool=0 daily) whenever one
+                // human hero snowballed. Retreat instincts only apply when
+                // the threat can plausibly reach us.
+                int threatDist = target ? HexGrid::distance(eHero.pos, target->pos) : 999;
+                if (threatDist > 10) { veryWeak = false; softRetreat = false; }
                 // GhostWalk is now a soft penalty (halved target score) rather than
                 // a hard exemption that made a GhostWalk player un-huntable forever.
                 float ghostMult = playerHero.ghostWalkSpecialty ? 0.5f : 1.0f;

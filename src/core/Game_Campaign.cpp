@@ -174,6 +174,12 @@ void Game::enterCampaign()
     // A stale hot-seat toggle from the New Game menu would set m_numHumanPlayers=2
     // in startNewGame and freeze all AI in the campaign.
     m_newGameHotSeat  = false;
+    // Campaign uses the classic 4-zone map: you + 3 bots (random factions).
+    m_setupPlayerCount = 4;
+    m_slotType[0] = 0; m_slotType[1] = 1; m_slotType[2] = 1; m_slotType[3] = 1;
+    m_slotFaction[0] = 0;
+    m_slotFaction[1] = m_slotFaction[2] = m_slotFaction[3] = 9;
+    m_slotBonus[0] = m_slotBonus[1] = m_slotBonus[2] = m_slotBonus[3] = 2;
     startNewGame();
     m_state = GameState::Campaign;
 

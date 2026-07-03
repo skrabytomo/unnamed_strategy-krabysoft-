@@ -756,9 +756,43 @@ void Game::startNewGame()
     // Reset campaign state so leftover campaign data doesn't affect skirmish
     m_campaign.reset();
 
-    // Multiplayer reset — resolve hot-seat here (before m_players is sized) so
-    // world gen, m_players.assign(), and AI start-index math all see the final count.
-    m_numHumanPlayers      = m_newGameHotSeat ? 2 : m_newGameNumPlayers;
+    // ── Resolve the setup slots (HoMM-style lobby) ────────────────────────────
+    // Slot 0 = you. Humans are packed first (owner ids 1..N), bots follow —
+    // downstream code (towns, AI start index) relies on that ordering.
+    int  slotCount = std::clamp(m_setupPlayerCount, 2, 4);
+    int  sortedFaction[4], sortedBonus[4];
+    int  numHumansResolved = 0;
+    {
+        m_slotType[0] = 0;  // slot 0 is always you
+        uint32_t frng = static_cast<uint32_t>(SDL_GetTicks()) ^ 0xC0FFEE11u;
+        auto resolveFac = [&](int f) {
+            if (f >= 0 && f <= 8) return f;
+            frng = frng * 1664525u + 1013904223u;
+            return static_cast<int>(frng % 9);
+        };
+        int idx = 0;
+        for (int s = 0; s < slotCount; ++s)         // humans first
+            if (m_slotType[s] == 0) {
+                sortedFaction[idx] = resolveFac(m_slotFaction[s]);
+                sortedBonus[idx]   = m_slotBonus[s];
+                ++idx;
+            }
+        numHumansResolved = idx;
+        for (int s = 0; s < slotCount; ++s)         // bots after
+            if (m_slotType[s] != 0) {
+                sortedFaction[idx] = resolveFac(m_slotFaction[s]);
+                sortedBonus[idx]   = m_slotBonus[s];
+                ++idx;
+            }
+        // Keep the legacy fields coherent with the slots
+        m_newGameFaction = sortedFaction[0];
+        m_newGameHotSeat = (numHumansResolved >= 2);
+        if (numHumansResolved >= 2) m_p2Faction = sortedFaction[1];
+    }
+
+    // Multiplayer reset — resolved here (before m_players is sized) so world
+    // gen, m_players.assign(), and AI start-index math all see the final count.
+    m_numHumanPlayers      = numHumansResolved;
     m_currentPlayerIdx     = 0;
     m_players.assign(m_numHumanPlayers, PlayerState{});
     m_playerNotifs.assign(m_numHumanPlayers, PlayerNotifs{});
@@ -775,9 +809,15 @@ void Game::startNewGame()
     WorldGenParams wgp;
     wgp.seed        = static_cast<uint32_t>(SDL_GetTicks()) ^ 0x5A5A5A5Au;
     wgp.size        = m_mapSize;
-    wgp.playerCount = 4;
+    wgp.playerCount = slotCount;   // exactly as many zones/towns as setup slots
     wgp.waterRatio  = 0.18f;
     auto wgResult   = WorldGen::generate(m_map, wgp);
+
+    // Every player zone's town takes its slot's faction — enemy heroes, hall
+    // pre-builds, terrain painting, and faction mines all read town.faction.
+    for (int ti = 0; ti < (int)wgResult.towns.size() && ti < slotCount; ++ti)
+        wgResult.towns[ti].faction =
+            static_cast<FactionId>(std::clamp(sortedFaction[ti], 0, 8));
 
     m_resources = std::move(wgResult.resources);
     m_nextObjId = static_cast<uint32_t>(m_resources.size()) + 1;
@@ -943,7 +983,7 @@ void Game::startNewGame()
     };
     // Player 2+ setup (hotseat): use startPositions[pi] and a different faction each
     for (int pi = 1; pi < m_numHumanPlayers && pi < (int)wgResult.startPositions.size(); ++pi) {
-        int pfi = (fi + pi) % 9;
+        int pfi = std::clamp(sortedFaction[pi], 0, 8);
         {
             static const int kStartPct[3] = {100, 90, 80};
             int sp = kStartPct[std::clamp(m_newGameDifficulty, 0, 2)];
@@ -1078,10 +1118,8 @@ void Game::startNewGame()
                 if (def) wt.weeklyIncome.addAll(def->weeklyIncome);
             }
         } else if (i >= 1 && i < m_numHumanPlayers) {
-            // Human player i's starting town
-            int pfi = (fi + i) % 9;
+            // Human player i's starting town — faction already set from slots
             wt.ownerId = static_cast<uint32_t>(i + 1);
-            wt.faction = kFactions[pfi];
             int hallId = (static_cast<int>(wt.faction) + 1) * 100;
             wt.builtBuildings.push_back(BID::MAGE_GUILD);
             wt.builtBuildings.push_back(hallId);
@@ -1182,6 +1220,63 @@ void Game::startNewGame()
             if (closest) {
                 closest->type   = want;
                 closest->amount = 2 + (closest->amount % 4);
+            }
+        }
+    }
+
+    // ── Starting bonuses (per setup slot): artifact, +5 faction resource, or
+    // +1500 gold. Humans and bots alike — same rules for everyone.
+    {
+        auto facRes = [](FactionId f) -> ResourceType {
+            switch (f) {
+            case FactionId::HolyOrder:
+            case FactionId::CrimsonWardens: return ResourceType::FaithStones;
+            case FactionId::Thornkin:
+            case FactionId::Voidkin:        return ResourceType::VerdantSap;
+            case FactionId::EternalEmpire:
+            case FactionId::Convergence:    return ResourceType::Mercury;
+            case FactionId::Bloodsworn:
+            case FactionId::Amalgamate:     return ResourceType::BloodEssence;
+            default:                        return ResourceType::Iron;
+            }
+        };
+        uint32_t brng = wgp.seed ^ 0xB07705E5u;
+        auto randomArtifactId = [&]() -> int {
+            const auto& arts = m_artifactRegistry.artifacts();
+            if (arts.empty()) return 0;
+            brng = brng * 1664525u + 1013904223u;
+            return arts[brng % arts.size()].id;
+        };
+        for (int si = 0; si < slotCount; ++si) {
+            int bonus = std::clamp(sortedBonus[si], 0, 2);
+            FactionId sfac = static_cast<FactionId>(std::clamp(sortedFaction[si], 0, 8));
+            bool isHumanSlot = (si < m_numHumanPlayers);
+            Resources* pool = nullptr;
+            Hero*      bhero = nullptr;
+            if (si == 0) {
+                pool = &m_playerResources;
+                bhero = m_heroes.empty() ? nullptr : &m_heroes[0];
+            } else if (isHumanSlot) {
+                pool = &m_players[si].resources;
+                bhero = m_players[si].heroes.empty() ? nullptr : &m_players[si].heroes[0];
+            } else {
+                pool = &m_enemyResources;
+                uint32_t aiId = 99u + static_cast<uint32_t>(si);
+                for (auto& eh : m_enemyHeroes) if (eh.id == aiId) { bhero = &eh; break; }
+            }
+            switch (bonus) {
+            case 0:  // Artifact
+                if (bhero) {
+                    int aid = randomArtifactId();
+                    if (aid > 0) bhero->artifactInventory.push_back(aid);
+                }
+                break;
+            case 1:  // +5 of the slot faction's key resource
+                if (pool) pool->add(facRes(sfac), 5);
+                break;
+            default: // +1500 gold
+                if (pool) pool->add(ResourceType::Gold, 1500);
+                break;
             }
         }
     }

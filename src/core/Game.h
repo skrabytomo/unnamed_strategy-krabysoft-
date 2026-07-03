@@ -591,6 +591,14 @@ private:
     int  m_newGameDifficulty = 1;   // 0=Easy, 1=Normal, 2=Hard
     int  m_newGameClassId    = 0;   // classId of chosen hero class (0=auto)
 
+    // ── HoMM-style game setup slots ───────────────────────────────────────────
+    // Slot 0 is always you. Each additional slot is Human (hot-seat) or Bot,
+    // with its own faction (9 = Random) and starting bonus.
+    int m_setupPlayerCount = 2;                 // total players, 2..4 (map zones)
+    int m_slotType[4]      = {0, 1, 1, 1};      // 0=Human, 1=Bot
+    int m_slotFaction[4]   = {0, 9, 9, 9};      // 0..8 faction, 9=Random
+    int m_slotBonus[4]     = {2, 2, 2, 2};      // 0=Artifact, 1=+5 faction resource, 2=+1500 gold
+
     // ── Hotseat multiplayer state ─────────────────────────────────────────────
     int  m_numHumanPlayers      = 1;   // 1=singleplayer, N=N-player hotseat
     int  m_currentPlayerIdx     = 0;   // 0-based
