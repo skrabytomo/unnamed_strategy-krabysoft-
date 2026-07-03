@@ -262,6 +262,14 @@ DamageResult DamageCalc::attack(CombatUnit& attacker, CombatUnit& defender,
         }
     }
 
+    // Siege defense preparations on the defender:
+    // shield fortifications reduce ranged damage; metal plating shaves a flat
+    // amount off every hit. Both floor at 1 so no unit is ever untouchable.
+    if (isRanged && defender.rangedDamageTakenPct != 100)
+        finalDmg = std::max(1, finalDmg * defender.rangedDamageTakenPct / 100);
+    if (defender.flatDamageReduction > 0)
+        finalDmg = std::max(1, finalDmg - defender.flatDamageReduction);
+
     result.damage = finalDmg;
     result.killed = defender.applyDamage(finalDmg);
 

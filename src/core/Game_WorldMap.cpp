@@ -318,19 +318,27 @@ static int dwellingPaidRecruit(WorldObject& obj, std::vector<UnitStack>& into,
 // Returns true if `outPath` was filled (caller keeps moving); buying returns
 // false so the caller re-scores candidates with water now traversable.
 static bool aiTryBoat(const HexMap& map, std::vector<WorldObject>& objs,
+                      const std::vector<HexCoord>& townDocks,
                       Hero& hero, Resources& payer,
                       const Pathfinder::CostFn& costFn,
                       std::vector<HexCoord>& outPath)
 {
     if (hero.onBoat) return false;
-    WorldObject* bestYard = nullptr;
+    // Nearest boat source: a coastal Shipyard object OR an owned town that
+    // built the Shipyard structure.
+    HexCoord dockPos{0, 0};
+    bool found = false;
     int bestD = INT_MAX;
     for (auto& obj : objs) {
         if (obj.type != WorldObjectType::Shipyard) continue;
         int d = HexGrid::distance(hero.pos, obj.pos);
-        if (d < bestD) { bestD = d; bestYard = &obj; }
+        if (d < bestD) { bestD = d; dockPos = obj.pos; found = true; }
     }
-    if (!bestYard) return false;
+    for (const auto& dp : townDocks) {
+        int d = HexGrid::distance(hero.pos, dp);
+        if (d < bestD) { bestD = d; dockPos = dp; found = true; }
+    }
+    if (!found) return false;
 
     if (bestD == 0) {
         int goldCost = 2000 + hero.boatCount * 1000;
@@ -342,7 +350,7 @@ static bool aiTryBoat(const HexMap& map, std::vector<WorldObject>& objs,
         }
         return false;  // re-score: water is open now (or we can't afford it yet)
     }
-    outPath = Pathfinder::find(map, hero.pos, bestYard->pos, costFn);
+    outPath = Pathfinder::find(map, hero.pos, dockPos, costFn);
     return !outPath.empty();
 }
 
@@ -582,10 +590,15 @@ void Game::watchAiMovePlayerHero()
             if (!path.empty()) break;
         }
         // Everything unreachable by land: buy passage across the water
-        if (path.empty()
-            && !aiTryBoat(m_map, m_worldObjects, hero, m_playerResources,
-                          costFn, path))
-            break;
+        if (path.empty()) {
+            std::vector<HexCoord> docks;
+            for (const auto& t : m_towns)
+                if (t.ownerId == 1 && t.hasBuilding(BID::TOWN_SHIPYARD))
+                    docks.push_back(t.pos);
+            if (!aiTryBoat(m_map, m_worldObjects, docks, hero,
+                           m_playerResources, costFn, path))
+                break;
+        }
         if (path.empty()) break;
 
         HexCoord next = path[0];
@@ -1785,10 +1798,15 @@ void Game::doEndTurn()
                         if (!path.empty()) break;
                     }
                     // Everything unreachable by land: buy passage across the water
-                    if (path.empty()
-                        && !aiTryBoat(m_map, m_worldObjects, eHero, m_enemyResources,
-                                      costFn, path))
-                        break;
+                    if (path.empty()) {
+                        std::vector<HexCoord> docks;
+                        for (const auto& t : m_towns)
+                            if (isAiOwner(t.ownerId) && t.hasBuilding(BID::TOWN_SHIPYARD))
+                                docks.push_back(t.pos);
+                        if (!aiTryBoat(m_map, m_worldObjects, docks, eHero,
+                                       m_enemyResources, costFn, path))
+                            break;
+                    }
                     if (path.empty()) break;
 
                     HexCoord next = path[0];
@@ -1973,7 +1991,25 @@ void Game::doEndTurn()
                                 t.ownerId = eHero.id;
                                 gLog("Enemy %s captured %s\n", eHero.name.c_str(), t.name.c_str());
                             } else if (t.ownerId > 0 && t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) {
+                                // Assault on the CURRENT human's town: fight it
+                                // for real — the player defends the walls with
+                                // their garrison and chosen preparations.
+                                if (!m_watchingAI && !combatTriggered
+                                    && t.ownerId == static_cast<uint32_t>(currentPlayerId())
+                                    && !t.garrison.empty()) {
+                                    m_pendingTownDefenseId = t.id;
+                                    m_defenseAttackerId    = eHero.id;
+                                    eHero.movePool = 0;
+                                    combatTriggered = true;
+                                    if (t.hasBuilding(BID::BASTION)) {
+                                        m_showDefensePrepPopup = true;  // battle starts on choice
+                                    } else {
+                                        startTownDefenseBattle(-1);
+                                    }
+                                    break;
+                                }
                                 // Off-screen siege: compare attacker vs garrison strength
+                                // (watch mode, other hot-seat players, or ungarrisoned towns)
                                 Hero garHero;
                                 garHero.faction = t.faction;
                                 garHero.army    = t.garrison;
@@ -1991,7 +2027,8 @@ void Game::doEndTurn()
                                 }
                                 int atkStr = heroStrength(eHero, unitDefs);
                                 int defStr = heroStrength(garHero, unitDefs);
-                                if (t.hasBuilding(BID::FORT)) defStr = defStr * 3 / 2;
+                                if (t.hasBuilding(BID::FORT))    defStr = defStr * 3 / 2;
+                                if (t.hasBuilding(BID::BASTION)) defStr = defStr * 5 / 4;
                                 if (atkStr > defStr) {
                                     uint32_t capturedFromPlayer = t.ownerId;
                                     t.ownerId = eHero.id;
@@ -3167,6 +3204,7 @@ void Game::renderWorldMapImGui()
     if (m_showWeekSummary)        renderWeekSummary();
     if (m_hotSeatHandoff)         renderHotSeatHandoff();
     if (m_showSiegeCampPrompt)    renderSiegeCampPrompt();
+    if (m_showDefensePrepPopup)   renderDefensePrepPopup();
     renderSiegeIndicator();
     renderMarchButton();
     if (m_showPauseMenu)          renderPauseMenu();
@@ -7497,6 +7535,71 @@ void Game::triggerSiegeCombat(uint32_t townId)
     town->fortifyTowerBonus= 0;
 
     enterCombat(lead, pUnits, garrisonHero, gUnits);
+}
+
+// ── Town defense: AI assaults a human town → real playable siege battle ──────
+void Game::startTownDefenseBattle(int prepChoice)
+{
+    Town* town = nullptr;
+    for (auto& t : m_towns) if (t.id == m_pendingTownDefenseId) { town = &t; break; }
+    Hero* attacker = nullptr;
+    for (auto& eh : m_enemyHeroes) if (eh.id == m_defenseAttackerId) { attacker = &eh; break; }
+    if (!town || !attacker || town->garrison.empty()) {
+        m_pendingTownDefenseId = 0;
+        m_defenseAttackerId    = 0;
+        return;
+    }
+    m_siegePrepChoice = prepChoice;
+
+    Hero defHero;
+    defHero.id      = 0;
+    defHero.name    = town->name + " Garrison";
+    defHero.faction = town->faction;
+    defHero.army    = town->garrison;
+
+    m_lastCombatEnemyId = attacker->id;
+    auto dUnits = makeHeroUnits(defHero, m_registry.units(), true);
+    auto aUnits = makeHeroUnits(*attacker, m_registry.units(), false);
+    if (m_watchingAI) {
+        m_fromBattleSim  = true;
+        m_simAutoPlay    = true;
+        m_simAutoPlayTimer = 0.f;
+    }
+    enterCombat(defHero, dUnits, *attacker, aUnits);
+}
+
+void Game::renderDefensePrepPopup()
+{
+    if (!m_showDefensePrepPopup) return;
+    Town* town = nullptr;
+    for (auto& t : m_towns) if (t.id == m_pendingTownDefenseId) { town = &t; break; }
+    if (!town) { m_showDefensePrepPopup = false; return; }
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
+                            ImGuiCond_Always, {0.5f, 0.5f});
+    ImGui::SetNextWindowSize({430, 0}, ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.94f);
+    ImGuiWindowFlags wf = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
+                        | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar;
+    if (!ImGui::Begin("##defenseprep", nullptr, wf)) { ImGui::End(); return; }
+
+    ImGui::TextColored({1.0f, 0.6f, 0.2f, 1.0f}, "%s is under siege!", town->name.c_str());
+    ImGui::TextWrapped("The Bastion crews stand ready. Choose your defensive preparation:");
+    ImGui::Spacing();
+
+    auto pick = [&](int choice) {
+        m_showDefensePrepPopup = false;
+        startTownDefenseBattle(choice);
+    };
+    if (ImGui::Button("Spikes — fast attackers take 20% losses", {410, 30})) pick(0);
+    if (ImGui::Button("Nets — enemy flyers are grounded",         {410, 30})) pick(1);
+    if (ImGui::Button("Shield Wall — 30% less ranged damage",     {410, 30})) pick(2);
+    if (ImGui::Button("Plating — every hit deals 12 less damage", {410, 30})) pick(3);
+    ImGui::Spacing();
+    if (ImGui::Button("No preparation", {410, 26})) pick(-1);
+
+    ImGui::End();
 }
 
 // ── March button — sits in the HUD bottom bar, left of End Turn ──────────────

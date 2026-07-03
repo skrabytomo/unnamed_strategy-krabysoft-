@@ -118,6 +118,11 @@ struct CombatUnit
     bool isSiegeEngine   = false;
     int  wallDamage      = 0;     // damage dealt to wall tiles per attack
     bool gateOnly        = false; // Battering Ram: can only attack gate hex
+
+    // Siege defense preparations (set at battle start on the defending side)
+    int  rangedDamageTakenPct = 100; // shield fortifications: ranged damage taken %
+    int  flatDamageReduction  = 0;   // metal plating: flat damage shaved per hit
+    bool isTower              = false; // defensive tower emplacement (not a troop)
     bool wallBypass      = false; // Siege Drill: placed behind the wall automatically
     bool transportMode   = false; // Siege Tower: allies standing adjacent can cross walls
 

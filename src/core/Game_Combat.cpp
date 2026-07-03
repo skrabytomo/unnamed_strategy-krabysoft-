@@ -1130,10 +1130,11 @@ void Game::enterCombat(Hero& playerHero,
     if (playerHero.recyclerBonus > 0)
         for (auto& u : pUnitsGarr) u.attack += playerHero.recyclerBonus;
 
-    // Siege mode: triggered when attacking a garrisoned town
-    bool isSiege = (m_pendingTownCaptureId != 0);
-    if (isSiege) {
-        auto makeSiegeEngines = [&](const Hero& hero) {
+    // Siege mode: triggered when attacking a garrisoned town (player assault)
+    // or when the AI assaults a human town (player defense).
+    bool defenseSiege = (m_pendingTownDefenseId != 0);
+    bool isSiege = (m_pendingTownCaptureId != 0) || defenseSiege;
+    auto makeSiegeEngines = [&](const Hero& hero) {
             // Helper to build a siege engine CombatUnit
             auto mkEng = [&](const char* nm, int atk, int def, int hp, int spd,
                              int rng, int shots, int wallDmg, bool gateOnly) -> CombatUnit {
@@ -1228,22 +1229,55 @@ void Game::enterCombat(Hero& playerHero,
             return engines;
         };
 
+    // Engines go to whichever side is ATTACKING the town
+    if (isSiege && !defenseSiege) {
         for (auto& eng : makeSiegeEngines(playerHero)) {
             eng.stackSlot = static_cast<int>(pUnitsGarr.size());
             pUnitsGarr.push_back(eng);
         }
     }
 
-    // Siege defense: the town fights back with two Arrow Towers — immobile
-    // long-range emplacements behind the walls that must be silenced too.
     std::vector<CombatUnit> eUnitsFinal = enemyUnits;
+    int  wallHP = 40, gateHP = 20;
     if (isSiege) {
+        // The besieged town: faction decides fortification flavor
+        Town* siegeTown = nullptr;
+        uint32_t stId = defenseSiege ? m_pendingTownDefenseId : m_pendingTownCaptureId;
+        for (auto& t : m_towns) if (t.id == stId) { siegeTown = &t; break; }
+
+        // Per-faction fortifications: wall/gate HP and tower design differ
+        static const int kWallHP[9] = {45, 40, 50, 38, 42, 35, 55, 48, 44};
+        static const int kGateHP[9] = {22, 20, 25, 19, 21, 18, 28, 24, 22};
+        struct TowerDef { const char* name; int hp, atk; };
+        static const TowerDef kFactionTower[9] = {
+            {"Seraphic Spire",    60, 12},  // HolyOrder
+            {"Bone Watchtower",   70, 11},  // CrimsonWardens
+            {"Bramble Tower",     80, 10},  // Thornkin
+            {"Wraith Turret",     55, 13},  // EternalEmpire
+            {"Blood Altar Tower", 65, 12},  // Bloodsworn
+            {"Void Lens",         50, 14},  // Voidkin
+            {"Iron Flak Tower",   90, 12},  // IronAssembly
+            {"Flesh Spitter",     75, 11},  // Amalgamate
+            {"Prism Array",       60, 13},  // Convergence
+        };
+        FactionId townFac = siegeTown ? siegeTown->faction
+                                      : (defenseSiege ? playerHero.faction : enemyHero.faction);
+        int tfIdx = std::clamp(static_cast<int>(townFac), 0, 8);
+        wallHP = kWallHP[tfIdx];
+        gateHP = kGateHP[tfIdx];
+        // Bastion strengthens the fortifications by 25%
+        bool hasBastion = siegeTown && siegeTown->hasBuilding(BID::BASTION);
+        if (hasBastion) { wallHP = wallHP * 5 / 4; gateHP = gateHP * 5 / 4; }
+
+        // Two faction towers on the DEFENDING side
+        auto& defUnits = defenseSiege ? pUnitsGarr : eUnitsFinal;
         for (int ti = 0; ti < 2; ++ti) {
+            const TowerDef& td = kFactionTower[tfIdx];
             CombatUnit tower;
-            tower.name         = "Arrow Tower";
-            tower.attack       = 12;
+            tower.name         = td.name;
+            tower.attack       = td.atk;
             tower.defense      = 10;
-            tower.hp           = tower.maxHp = 60;
+            tower.hp           = tower.maxHp = td.hp;
             tower.count        = 1;
             tower.speed        = 1;
             tower.range        = 12;             // covers the whole board
@@ -1251,13 +1285,64 @@ void Game::enterCombat(Hero& playerHero,
             tower.shotsLeft    = 99;
             tower.alive        = true;
             tower.moraleImmune = true;
-            tower.isPlayer     = false;
-            tower.stackSlot    = static_cast<int>(eUnitsFinal.size());
-            eUnitsFinal.push_back(tower);
+            tower.isTower      = true;
+            tower.isPlayer     = defenseSiege;
+            tower.stackSlot    = static_cast<int>(defUnits.size());
+            defUnits.push_back(tower);
         }
+        // Defense siege: the ATTACKING enemy hero brings its faction engines
+        if (defenseSiege) {
+            for (auto& eng : makeSiegeEngines(enemyHero)) {
+                eng.isPlayer  = false;
+                eng.stackSlot = static_cast<int>(eUnitsFinal.size());
+                eUnitsFinal.push_back(eng);
+            }
+        }
+
+        // Defense preparations (require the Bastion; chosen by the defender).
+        // 0 spikes: fast ground attackers take 20% losses at the palisades
+        // 1 nets: attacker flyers are grounded
+        // 2 shield wall: defenders take 30% less ranged damage
+        // 3 plating: defenders shave 12 damage off every hit taken
+        // Player-assault sieges: the AI defender auto-picks the counter to
+        // the attacker's composition (nets vs flyers, spikes vs cavalry,
+        // shield wall vs shooters, plating otherwise).
+        if (hasBastion && !defenseSiege && m_siegePrepChoice < 0) {
+            int flyers = 0, fast = 0, shooters = 0, total = 0;
+            for (const auto& u : pUnitsGarr) {
+                if (u.isSiegeEngine) continue;
+                total += u.count;
+                if (u.flying) flyers += u.count;
+                else if (u.speed >= 6) fast += u.count;
+                if (u.range > 0) shooters += u.count;
+            }
+            if (total > 0) {
+                if (flyers * 3 >= total)        m_siegePrepChoice = 1;
+                else if (fast * 3 >= total)     m_siegePrepChoice = 0;
+                else if (shooters * 3 >= total) m_siegePrepChoice = 2;
+                else                            m_siegePrepChoice = 3;
+            }
+        }
+        int prep = (hasBastion) ? m_siegePrepChoice : -1;
+        auto& atkUnits2 = defenseSiege ? eUnitsFinal : pUnitsGarr;
+        auto& defUnits2 = defenseSiege ? pUnitsGarr  : eUnitsFinal;
+        if (prep == 0) {
+            for (auto& u : atkUnits2)
+                if (!u.flying && u.speed >= 6 && !u.isSiegeEngine)
+                    u.count = std::max(1, u.count - std::max(1, u.count / 5));
+        } else if (prep == 1) {
+            for (auto& u : atkUnits2)
+                if (u.flying) { u.flying = false; u.speed = std::max(1, u.speed - 1); }
+        } else if (prep == 2) {
+            for (auto& u : defUnits2) u.rangedDamageTakenPct = 70;
+        } else if (prep == 3) {
+            for (auto& u : defUnits2) u.flatDamageReduction = 12;
+        }
+        m_siegePrepChoice = -1;
     }
 
-    m_combat.startBattle(playerHero, pUnitsGarr, enemyHero, eUnitsFinal, isSiege, m_combatTerrain);
+    m_combat.startBattle(playerHero, pUnitsGarr, enemyHero, eUnitsFinal, isSiege,
+                         m_combatTerrain, wallHP, gateHP, !defenseSiege);
 
     // Terrain-driven obstacle tiles (non-siege only; siege already has walls)
     if (!isSiege) {
@@ -1411,6 +1496,64 @@ void Game::enterCombat(Hero& playerHero,
 void Game::exitCombat(bool playerWon)
 {
     gLog("Combat ended — %s\n", playerWon ? "Victory" : "Defeat/Retreat");
+
+    // ── Town DEFENSE siege: the garrison fought, not a hero — handle the
+    // outcome here and skip all hero-centric processing below.
+    if (m_pendingTownDefenseId != 0) {
+        Town* dt = nullptr;
+        for (auto& t : m_towns) if (t.id == m_pendingTownDefenseId) { dt = &t; break; }
+        if (playerWon) {
+            if (dt) {
+                dt->garrison.clear();
+                for (const auto& cu : m_combat.grid().units()) {
+                    if (!cu.alive || !cu.isPlayer || cu.count <= 0 || cu.isTower) continue;
+                    bool merged = false;
+                    for (auto& s : dt->garrison)
+                        if (s.defId == cu.defId) { s.count += cu.count; merged = true; break; }
+                    if (!merged) dt->garrison.push_back({cu.defId, cu.count});
+                }
+                gLog("Town %s held the siege!\n", dt->name.c_str());
+            }
+            // The failed attacker is destroyed
+            for (size_t i = 0; i < m_enemyHeroes.size(); ++i) {
+                if (m_enemyHeroes[i].id != m_defenseAttackerId) continue;
+                uint32_t deadId = m_defenseAttackerId;
+                m_map.forEach([&](HexTile& ht){ if (ht.heroId == deadId) ht.heroId = 0; });
+                m_enemyHeroes.erase(m_enemyHeroes.begin() + i);
+                break;
+            }
+            m_combatResultWon   = true;
+            m_combatResultXp    = 0;
+            m_combatResultKills = m_combat.enemyStartCount() - m_combat.enemiesAlive();
+            m_combatResultLost  = 0;
+            m_combatResultGold  = 0;
+            m_showCombatResult  = true;
+            m_audio.playSound("victory");
+        } else {
+            if (dt) {
+                dt->ownerId = m_defenseAttackerId;
+                dt->garrison.clear();
+                m_lostTownName      = dt->name;
+                m_showTownLostPopup = true;
+                gLog("Town %s fell to the siege\n", dt->name.c_str());
+            }
+            // Mirror the off-screen capture's final-defeat check
+            bool anyUnit = false;
+            for (const auto& h : m_heroes) if (!h.army.empty()) { anyUnit = true; break; }
+            bool anyTown = false;
+            for (const auto& t : m_towns)
+                if (t.ownerId == static_cast<uint32_t>(currentPlayerId())) { anyTown = true; break; }
+            if (!anyUnit && !anyTown) { m_finalDefeat = true; m_showDefeat = true; }
+            m_audio.playSound("hit");
+        }
+        m_pendingTownDefenseId = 0;
+        m_defenseAttackerId    = 0;
+        m_audio.playMusic("worldmap_music");
+        if (m_prevState == GameState::Campaign) m_state = GameState::Campaign;
+        else enterWorldMap();
+        return;
+    }
+
     ScriptContext ctx; ctx.heroId = m_heroes.empty() ? 0 : (int)m_heroes[m_activeHeroIdx].id;
 
     // Sync surviving units back to their hero armies

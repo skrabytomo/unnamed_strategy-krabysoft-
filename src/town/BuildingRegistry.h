@@ -33,6 +33,8 @@ namespace BID {
     constexpr int IA_MEGAFORGE  = 19; // Iron Assembly: Grand Megaforge
     constexpr int AM_FLESHPIT   = 20; // Amalgamate: Grand Fleshpit
     constexpr int CV_NEXUS      = 21; // Convergence: Synthesis Nexus
+    constexpr int TOWN_SHIPYARD = 22; // heroes can buy boats at this town
+    constexpr int BASTION       = 23; // unlocks siege defense preparations
 
     // Holy Order
     constexpr int HO_HALL         = 100; // Town Hall (base income)

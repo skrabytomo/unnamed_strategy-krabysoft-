@@ -45,11 +45,16 @@ public:
 
     CombatEngine() = default;
 
-    // Setup a battle — populates grid with units from both sides
+    // Setup a battle — populates grid with units from both sides.
+    // Siege: wallHP/gateHP are per-faction fortification strength;
+    // siegeAttackerIsPlayer=false = the PLAYER defends their town (units swap
+    // sides of the wall and the enemy AI does the breaching).
     void startBattle(const Hero& playerHero, const std::vector<CombatUnit>& playerUnits,
                      const Hero& enemyHero,  const std::vector<CombatUnit>& enemyUnits,
                      bool isSiege = false,
-                     Terrain terrain = Terrain::Plains);
+                     Terrain terrain = Terrain::Plains,
+                     int wallHP = 40, int gateHP = 20,
+                     bool siegeAttackerIsPlayer = true);
 
     // Apply equipped-artifact bonuses to stored hero copies and their units
     // (call once after startBattle, before first turn)
@@ -182,6 +187,7 @@ private:
     CombatGrid  m_grid;
     CombatPhase m_phase     = CombatPhase::Setup;
     bool        m_isSiege   = false;
+    bool        m_siegeAttackerIsPlayer = true; // false: player defends their town
     int         m_round     = 1;
     int         m_turnIndex = 0;
     int         m_maxRounds = 60;

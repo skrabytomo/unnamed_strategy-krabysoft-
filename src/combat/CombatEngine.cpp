@@ -58,7 +58,8 @@ void CombatEngine::logMoraleSurge(const CombatUnit& u)
 void CombatEngine::startBattle(
     const Hero& playerHero, const std::vector<CombatUnit>& playerUnits,
     const Hero& enemyHero,  const std::vector<CombatUnit>& enemyUnits,
-    bool isSiege, Terrain terrain)
+    bool isSiege, Terrain terrain, int wallHP, int gateHP,
+    bool siegeAttackerIsPlayer)
 {
     m_playerHero    = playerHero;
     m_enemyHero     = enemyHero;
@@ -71,15 +72,21 @@ void CombatEngine::startBattle(
     m_waitQueue.clear();
 
     m_isSiege = isSiege;
+    m_siegeAttackerIsPlayer = siegeAttackerIsPlayer;
     m_grid.init(48.0f);
     if (!isSiege) {
         m_grid.placeRandomSpecialTiles(4, s_turnRng());
     } else {
-        // Siege: walls at column 5; fort building adds +50% wall HP
-        m_grid.placeSiegeWalls(40, 20);
+        // Siege: walls at column 5; HP is faction/building-dependent
+        m_grid.placeSiegeWalls(wallHP, gateHP);
     }
 
-    // Place player units on left side (columns 0-1 normally, or 0-3 for siege engines)
+    // Attacker assaults from the left (cols 0-1), defender holds the right
+    // (cols 7-10 behind the wall). Which side is which depends on who owns
+    // the besieged town.
+    bool playerAttacks = !isSiege || siegeAttackerIsPlayer;
+
+    // Place player units
     for (auto& u : playerUnits) {
         CombatUnit copy = u;
         copy.isPlayer  = true;
@@ -89,11 +96,17 @@ void CombatEngine::startBattle(
         uint32_t id = m_grid.addUnit(copy);
         CombatUnit* placed = m_grid.getUnit(id);
         if (placed) {
-            // Siege drill: place behind the wall (columns 6-7)
-            int startQ = 0;
-            if (isSiege && placed->wallBypass) startQ = 6;
+            int startQ;
+            if (playerAttacks) {
+                startQ = 0 + (placed->stackSlot % 2);
+                // Siege drill: place behind the wall (columns 6-7)
+                if (isSiege && placed->wallBypass) startQ = 6 + (placed->stackSlot % 2);
+            } else {
+                // Player defends: behind the wall
+                startQ = CombatGrid::COLS - 4 + (placed->stackSlot % 4);
+            }
             for (int row = 0; row < CombatGrid::ROWS; ++row) {
-                int q = startQ + (placed->stackSlot % 2);
+                int q = startQ;
                 int r = row - (q - (q & 1)) / 2;
                 HexCoord h{q, r};
                 if (m_grid.inBounds(h) && !m_grid.getTile(h)->occupied
@@ -105,16 +118,23 @@ void CombatEngine::startBattle(
         }
     }
 
-    // Place enemy units: normal combat right (cols 9-10), siege defenders (cols 7-10)
+    // Place enemy units
     for (auto& u : enemyUnits) {
         CombatUnit copy = u;
         copy.isPlayer  = false;
         copy.shotsLeft = u.shots;
+        if (isSiege && copy.isSiegeEngine && !copy.wallBypass) copy.hasActed = true;
         uint32_t id = m_grid.addUnit(copy);
         CombatUnit* placed = m_grid.getUnit(id);
         if (placed) {
-            int startQ = isSiege ? (CombatGrid::COLS - 4 + (placed->stackSlot % 4))
+            int startQ;
+            if (playerAttacks) {
+                startQ = isSiege ? (CombatGrid::COLS - 4 + (placed->stackSlot % 4))
                                  : (CombatGrid::COLS - 1 - (placed->stackSlot % 2));
+            } else {
+                // Enemy attacks: assault columns on the left
+                startQ = 0 + (placed->stackSlot % 2);
+            }
             for (int row = 0; row < CombatGrid::ROWS; ++row) {
                 int q = startQ;
                 int r = row - (q - (q & 1)) / 2;
@@ -1192,14 +1212,15 @@ void CombatEngine::aiActUnit(CombatUnit& unit)
     // Siege garrison discipline: while any wall stands, defender melee holds
     // position behind the fortifications (Defend) instead of sallying out —
     // ranged defenders and anyone already engaged fight normally.
-    if (m_isSiege && !unit.isPlayer && !(unit.range > 0 && unit.shotsLeft > 0)) {
+    if (m_isSiege && unit.isPlayer != m_siegeAttackerIsPlayer
+        && !(unit.range > 0 && unit.shotsLeft > 0)) {
         bool wallsStand = false;
         for (const auto& h : m_grid.allCoords())
             if (m_grid.isWallTile(h)) { wallsStand = true; break; }
         if (wallsStand) {
             bool attackerAdjacent = false;
             for (const auto& u : m_grid.units()) {
-                if (!u.alive || !u.isPlayer) continue;
+                if (!u.alive || u.isPlayer != m_siegeAttackerIsPlayer) continue;
                 if (HexGrid::distance(unit.pos, u.pos) == 1) { attackerAdjacent = true; break; }
             }
             if (!attackerAdjacent) {
@@ -1230,7 +1251,7 @@ void CombatEngine::aiActUnit(CombatUnit& unit)
 // acted (its turn was ended); false lets the caller end the turn normally.
 bool CombatEngine::aiTrySiegeWallAction(CombatUnit& unit)
 {
-    if (!m_isSiege || !unit.isPlayer) return false;
+    if (!m_isSiege || unit.isPlayer != m_siegeAttackerIsPlayer) return false;
 
     // Intact wall tiles left?
     std::vector<HexCoord> walls;
@@ -2616,11 +2637,11 @@ void CombatEngine::checkVictory()
 // ── Siege: attack a wall tile ──────────────────────────────────────────────────
 bool CombatEngine::attackWall(HexCoord wallHex)
 {
-    // Walls always shield the defender (enemy side); only attacker-side units
-    // may hit them. No phase gate — the auto-play AI drives the attacker too.
+    // Walls always shield the defender; only attacker-side units may hit
+    // them. No phase gate — the auto-play AI drives the attacker too.
     if (!m_isSiege) return false;
     CombatUnit* unit = activeUnit();
-    if (!unit || !unit->isPlayer) return false;
+    if (!unit || unit->isPlayer != m_siegeAttackerIsPlayer) return false;
 
     CombatTile* tile = m_grid.getTile(wallHex);
     if (!tile || tile->type != CombatTileType::Wall || tile->wallHP <= 0) return false;

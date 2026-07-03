@@ -37,6 +37,23 @@ void BuildingRegistry::init()
     }
     {
         BuildingDef b;
+        b.id = BID::TOWN_SHIPYARD; b.name = "Shipyard";
+        b.description = "Heroes can buy boats here - a way off island starts";
+        b.category = BuildingCategory::Support;
+        b.cost = goldAndRes(1500, ResourceType::Iron, 6);
+        m_buildings.push_back(b);
+    }
+    {
+        BuildingDef b;
+        b.id = BID::BASTION; b.name = "Bastion";
+        b.description = "Unlocks siege defense preparations: spikes, nets, shield walls, plating";
+        b.category = BuildingCategory::Fort;
+        b.cost = goldAndRes(1800, ResourceType::Iron, 8);
+        b.prerequisites = {BID::FORT};
+        m_buildings.push_back(b);
+    }
+    {
+        BuildingDef b;
         b.id = BID::WAREHOUSE; b.name = "Warehouse";
         b.description = "Resource storage - +2 Iron weekly";
         b.category = BuildingCategory::Economy;

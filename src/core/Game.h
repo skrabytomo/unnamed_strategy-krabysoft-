@@ -426,6 +426,14 @@ private:
 
     // ── Pending town capture after garrison combat ────────────────────────────
     uint32_t    m_pendingTownCaptureId = 0;
+
+    // ── Town DEFENSE siege: AI attacks a human town → real playable battle ────
+    uint32_t    m_pendingTownDefenseId = 0;   // town being defended (player side = garrison)
+    uint32_t    m_defenseAttackerId    = 0;   // enemy hero assaulting it
+    bool        m_showDefensePrepPopup = false;
+    int         m_siegePrepChoice      = -1;  // -1 none, 0 spikes, 1 nets, 2 shield wall, 3 plating
+    void        startTownDefenseBattle(int prepChoice);
+    void        renderDefensePrepPopup();
     // >=0: the current combat is vs ANOTHER HUMAN's hero — index into m_players.
     // On victory the defeated hero is removed from m_players[idx].heroes instead
     // of m_enemyHeroes.

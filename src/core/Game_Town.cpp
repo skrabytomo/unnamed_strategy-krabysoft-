@@ -89,6 +89,29 @@ void Game::renderTown()
                 m_showArtifactForgePanel = !m_showArtifactForgePanel;
             ImGui::SameLine();
         }
+        // Shipyard: buy a boat for the visiting hero
+        if (town && town->ownerId == currentPlayerId()
+            && town->hasBuilding(BID::TOWN_SHIPYARD)
+            && !m_heroes.empty()) {
+            Hero& sh = m_heroes[m_activeHeroIdx];
+            if (!sh.onBoat && sh.pos == town->pos) {
+                int boatCost = 2000 + sh.boatCount * 1000;
+                char boatLbl[48];
+                std::snprintf(boatLbl, sizeof(boatLbl), "Buy Boat (%dg)", boatCost);
+                bool canAffordBoat = currentResources().get(ResourceType::Gold) >= boatCost;
+                if (!canAffordBoat) ImGui::BeginDisabled();
+                if (ImGui::Button(boatLbl)) {
+                    currentResources().add(ResourceType::Gold, -boatCost);
+                    sh.onBoat = true;
+                    sh.boatCount += 1;
+                    m_audio.playSound("buy");
+                    gLog("%s bought a boat at %s (-%dg)\n",
+                         sh.name.c_str(), town->name.c_str(), boatCost);
+                }
+                if (!canAffordBoat) ImGui::EndDisabled();
+                ImGui::SameLine();
+            }
+        }
         // Fortify — only when this town is under siege and not yet fortified this turn
         // Resolve mutable pointer so we can set fortify flags
         Town* mutableTown = nullptr;
