@@ -517,30 +517,67 @@ void Game::renderMainMenu()
 
         static const char* kFacNames[] = {
             "Holy Order","Crimson Wardens","Thornkin","Eternal Empire",
-            "Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"
+            "Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence",
+            "Random"
         };
+        static const char* kBonusNames[] = { "Artifact", "+5 Resource", "+1500 Gold" };
 
-        ImGui::TextColored({0.4f, 0.8f, 1.0f, 1.0f}, "Faction 1 (Blue):");
-        for (int i = 0; i < 9; ++i) {
+        // Both sides use the SAME picking system as a normal game: faction
+        // (incl. Random), starting bonus, map size and difficulty. Watch is a
+        // full fair game with every slot a bot.
+        ImGui::TextColored({0.4f, 0.8f, 1.0f, 1.0f}, "Side 1 (Blue):");
+        for (int i = 0; i < 10; ++i) {
             if (i % 3 != 0) ImGui::SameLine();
             bool sel = (m_watchAIFaction1 == i);
             if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.4f, 0.6f, 1.f));
             char lbl[40]; std::snprintf(lbl, sizeof(lbl), "%s##w1f%d", kFacNames[i], i);
-            if (ImGui::Button(lbl, ImVec2((bw - 4) / 3.f, 26))) m_watchAIFaction1 = i;
+            if (ImGui::Button(lbl, ImVec2((bw - 8) / 3.f, 24))) m_watchAIFaction1 = i;
             if (sel) ImGui::PopStyleColor();
+        }
+        {
+            char bl[24]; std::snprintf(bl, sizeof(bl), "Bonus: %s##w1b", kBonusNames[std::clamp(m_slotBonus[0],0,2)]);
+            if (ImGui::Button(bl, ImVec2(bw, 22))) m_slotBonus[0] = (m_slotBonus[0] + 1) % 3;
         }
         ImGui::Spacing();
 
-        ImGui::TextColored({1.0f, 0.5f, 0.3f, 1.0f}, "Faction 2 (Red):");
-        for (int i = 0; i < 9; ++i) {
+        ImGui::TextColored({1.0f, 0.5f, 0.3f, 1.0f}, "Side 2 (Red):");
+        for (int i = 0; i < 10; ++i) {
             if (i % 3 != 0) ImGui::SameLine();
             bool sel = (m_watchAIFaction2 == i);
             if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.2f, 0.1f, 1.f));
             char lbl[40]; std::snprintf(lbl, sizeof(lbl), "%s##w2f%d", kFacNames[i], i);
-            if (ImGui::Button(lbl, ImVec2((bw - 4) / 3.f, 26))) m_watchAIFaction2 = i;
+            if (ImGui::Button(lbl, ImVec2((bw - 8) / 3.f, 24))) m_watchAIFaction2 = i;
             if (sel) ImGui::PopStyleColor();
         }
+        {
+            char bl[24]; std::snprintf(bl, sizeof(bl), "Bonus: %s##w2b", kBonusNames[std::clamp(m_slotBonus[1],0,2)]);
+            if (ImGui::Button(bl, ImVec2(bw, 22))) m_slotBonus[1] = (m_slotBonus[1] + 1) % 3;
+        }
         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+        // Map size
+        ImGui::Text("Map size:");
+        static const char* kSizeNames[] = { "Small", "Medium", "Large", "XLarge" };
+        for (int i = 0; i < 4; ++i) {
+            if (i > 0) ImGui::SameLine();
+            bool sel = (m_newGameMapSize == i);
+            if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.3f, 0.15f, 1.f));
+            char lbl[24]; std::snprintf(lbl, sizeof(lbl), "%s##wsz%d", kSizeNames[i], i);
+            if (ImGui::Button(lbl, ImVec2((bw - 12) / 4.f, 24))) m_newGameMapSize = i;
+            if (sel) ImGui::PopStyleColor();
+        }
+        // Difficulty (controls AI hero cap + aggression on BOTH sides)
+        ImGui::Text("Difficulty:");
+        static const char* kDiffN[] = { "Easy", "Normal", "Hard" };
+        for (int i = 0; i < 3; ++i) {
+            if (i > 0) ImGui::SameLine();
+            bool sel = (m_newGameDifficulty == i);
+            if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.2f, 0.1f, 1.f));
+            char lbl[24]; std::snprintf(lbl, sizeof(lbl), "%s##wdf%d", kDiffN[i], i);
+            if (ImGui::Button(lbl, ImVec2((bw - 8) / 3.f, 24))) m_newGameDifficulty = i;
+            if (sel) ImGui::PopStyleColor();
+        }
+        ImGui::Spacing();
 
         ImGui::Text("Auto-advance speed:");
         ImGui::SetNextItemWidth(bw);
@@ -551,28 +588,20 @@ void Game::renderMainMenu()
 
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.45f, 0.15f, 1.0f));
         if (ImGui::Button("Start Watching", ImVec2(bw, 42))) {
-            m_newGameFaction = m_watchAIFaction1;
-            m_newGameMapSize = 1;  // Medium map
-            m_newGameDifficulty = 1;
             m_newGameClassId = 0;
             // A stale hot-seat toggle from the New Game menu would set
             // m_numHumanPlayers=2 in startNewGame and freeze all AI here.
             m_newGameHotSeat = false;
-            // Watch = exactly two players: the watched side and ONE bot.
+            // Watch = a normal 2-player game with BOTH slots as bots.
             m_setupPlayerCount = 2;
-            m_slotType[0]    = 0;
-            m_slotType[1]    = 1;
-            m_slotFaction[0] = m_watchAIFaction1;
+            m_slotType[0]    = 0;   // watched side (spectated, AI-driven)
+            m_slotType[1]    = 1;   // bot
+            m_slotFaction[0] = m_watchAIFaction1;   // 9 = Random, resolved in startNewGame
             m_slotFaction[1] = m_watchAIFaction2;
-            m_slotBonus[0]   = 2;
-            m_slotBonus[1]   = 2;
+            m_newGameFaction = (m_watchAIFaction1 <= 8) ? m_watchAIFaction1 : 0;
             startNewGame();
-            // Override enemy faction to m_watchAIFaction2
-            if (!m_enemyHeroes.empty())
-                m_enemyHeroes[0].faction = static_cast<FactionId>(m_watchAIFaction2);
-            for (auto& t : m_towns)
-                if (t.ownerId > 1)
-                    t.faction = static_cast<FactionId>(m_watchAIFaction2);
+            // startNewGame already set both sides' factions from the slots
+            // (Random resolved) — no post-hoc override needed.
             m_watchingAI  = true;
             m_fogDisabled = true;
             m_watchAITimer= 1.0f / m_watchAISpeed;

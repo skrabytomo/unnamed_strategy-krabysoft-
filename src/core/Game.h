@@ -636,6 +636,9 @@ private:
 
     // ── Watch AI vs AI mode ────────────────────────────────────────────────────
     bool  m_watchingAI      = false;   // both sides controlled by AI
+    // Watched-side heroes that already took their move this game-day (by id) —
+    // survives combat interruption so no hero double-moves after a fight.
+    std::vector<uint32_t> m_watchMovedThisDay;
     float m_watchAITimer    = 0.f;     // countdown to next auto end-turn
     float m_watchAISpeed    = 1.0f;    // delay multiplier (slider: 0.25 – 4.0)
     int   m_watchAIFaction1 = 0;

@@ -620,6 +620,7 @@ bool Game::loadGameApply(GameSaveData& data)
     m_defenseAttackerId      = 0;
     m_showDefensePrepPopup   = false;
     m_siegePrepChoice        = -1;
+    m_watchMovedThisDay.clear();
     m_lastBanditCampId       = 0;
     m_pendingCryptId         = 0;
     m_pendingPandoraId       = 0;

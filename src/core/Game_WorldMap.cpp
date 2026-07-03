@@ -920,29 +920,27 @@ void Game::updateWorldMap(float dt)
         if (m_watchAITimer <= 0.f) {
             m_watchAITimer = 1.0f / m_watchAISpeed;
             if (!m_showCombatResult && !m_showLevelUpModal) {
-                // Keep the "main" slot pointed at a real (non-support) hero.
-                // After the main dies mid-week the active index can land on a
-                // courier, which would then hunt enemies as a pseudo-main AND
-                // be driven a second time as support below.
-                int mainIdx = -1;
-                for (size_t hi = 0; hi < m_heroes.size(); ++hi)
-                    if (!isWatchSupportName(m_heroes[hi].name)) { mainIdx = (int)hi; break; }
-                if (mainIdx >= 0) {
-                    m_activeHeroIdx = mainIdx;
+                // Drive EVERY watched-side hero once per game-day (a real
+                // roster, mirroring the enemy). A hero is marked moved before
+                // it acts, so if it enters combat it isn't re-driven when the
+                // fight returns control here next tick.
+                bool allMoved = true;
+                for (size_t hi = 0; hi < m_heroes.size(); ++hi) {
+                    uint32_t hid = m_heroes[hi].id;
+                    bool moved = false;
+                    for (uint32_t m : m_watchMovedThisDay) if (m == hid) { moved = true; break; }
+                    if (moved) continue;
+                    m_watchMovedThisDay.push_back(hid);
+                    m_activeHeroIdx = static_cast<int>(hi);
                     watchAiMovePlayerHero();
+                    if (m_state != GameState::WorldMap) { allMoved = false; break; }
                 }
-                // Drive support heroes (scouts/courier) too — only while still on the
-                // world map, since watchAiMovePlayerHero() may have entered combat.
-                if (m_state == GameState::WorldMap) {
-                    for (size_t hi = 0; hi < m_heroes.size(); ++hi) {
-                        if ((int)hi == mainIdx) continue;
-                        bool isCourier = (m_heroes[hi].name == "Supply Courier");
-                        watchAiMoveSupportHero(m_heroes[hi], isCourier);
-                    }
-                }
-                // If watchAiMovePlayerHero triggered combat, skip doEndTurn this tick
-                if (m_state == GameState::WorldMap)
+                // All watched heroes moved → end the day (runs enemy AI, income,
+                // weekly hiring) and start a fresh move cycle.
+                if (allMoved && m_state == GameState::WorldMap) {
+                    m_watchMovedThisDay.clear();
                     doEndTurn();
+                }
             }
         }
         return;
@@ -2487,23 +2485,17 @@ void Game::doEndTurn()
                 }
             }
 
-            // ── Watch AI: player-side support hero recruitment (mirrors enemy logic) ──
-            // Support hero count scales with map size (main hero + up to 3 extras on
-            // XLarge, down to main-hero-only on Small) instead of a flat count that's
-            // overkill on a small map and undermanned on a huge one. Courier is kept
-            // first since it's the most valuable role even on a cramped map.
-            // watchAiMoveSupportHero() actually drives each of these every tick.
+            // ── Watch AI: watched-side hero recruitment — a MIRROR of the enemy ──
+            // The watched side hires full combat heroes up to the same cap the
+            // enemy uses, all driven by the same routine. (The old main +
+            // courier/scout system was a crutch from when the AI fielded one
+            // hero; both sides now field a real roster and fight for the map.)
             if (m_watchingAI) {
                 constexpr int WATCH_HIRE_COST = 2500;
-                static const char* kWatchRoleNames[] = {
-                    "Supply Courier", "Scout Rider", "Scout Vanguard"
-                };
-                static const int kMaxSupportBySize[] = { 0, 1, 2, 3 }; // Small..XLarge
-                int maxSupport = kMaxSupportBySize[std::clamp(static_cast<int>(m_mapSize), 0, 3)];
+                static const int kHeroCap[3] = { 5, 6, 8 };
+                const int WATCH_HERO_CAP = kHeroCap[std::clamp(m_newGameDifficulty, 0, 2)];
                 const auto& unitDefs = m_registry.units();
 
-                // A town is a death trap if a far stronger enemy camps nearby —
-                // recruiting there just hands it a free kill every week.
                 auto isCamped = [&](const Town& t, int freshStr) {
                     for (const auto& eh : m_enemyHeroes)
                         if (HexGrid::distance(eh.pos, t.pos) <= 4
@@ -2521,89 +2513,49 @@ void Game::doEndTurn()
                     return spawnPos;
                 };
 
-                bool haveMain = false;
-                for (const auto& h : m_heroes)
-                    if (!isWatchSupportName(h.name)) { haveMain = true; break; }
-
-                if (!haveMain
-                    && m_playerResources.get(ResourceType::Gold) >= WATCH_HIRE_COST) {
-                    // Main hero died: recruit a REAL replacement that absorbs the
-                    // town's entire recruit pool, instead of the old behavior of
-                    // feeding a fresh Supply Courier to the killer every week.
-                    for (auto& recruitTown : m_towns) {
-                        if (recruitTown.ownerId != 1) continue;
-
-                        uint32_t newId = 100u;
-                        for (const auto& h : m_heroes) newId = std::max(newId, h.id + 1u);
-                        Hero newHero;
-                        newHero.id       = newId;
-                        newHero.faction  = recruitTown.faction;
-                        newHero.name     = "Champion of " + recruitTown.name;
-                        newHero.movePool = newHero.maxMove;
-
-                        // Tavern retinue included in the fee (same as human hires)
-                        giveTavernRetinue(newHero, m_registry.buildings(), unitDefs);
-                        // Catch it up in levels so it isn't a total pushover
-                        aiHeroAwardXp(newHero, m_turns.week() * 60);
-
-                        // Estimate strength as retinue + waiting garrison —
-                        // check BEFORE spending any gold on the hire.
-                        int fresh = heroStrength(newHero, unitDefs)
-                                  + stacksStrength(recruitTown.garrison, unitDefs);
-                        if (isCamped(recruitTown, fresh)) continue;
-
-                        m_playerResources.add(ResourceType::Gold, -WATCH_HIRE_COST);
-                        // Take the garrison and buy whatever else is affordable
-                        takeGarrison(recruitTown, newHero);
-                        aiPaidRecruit(recruitTown, newHero.army, m_playerResources, unitDefs);
-                        newHero.pos = spawnNear(recruitTown);
-                        if (HexTile* ht = m_map.getTile(newHero.pos)) ht->heroId = newHero.id;
-                        gLog("Watch AI recruited main hero %s at %s (week %d)\n",
-                             newHero.name.c_str(), recruitTown.name.c_str(), m_turns.week());
-                        // Main hero must sit where the driver looks for it
-                        m_heroes.insert(m_heroes.begin(), std::move(newHero));
-                        m_activeHeroIdx = 0;
-                        break;
-                    }
-                }
-
-                bool haveRole[3] = {false, false, false};
-                for (const auto& h : m_heroes)
-                    for (int ri = 0; ri < 3; ++ri)
-                        if (h.name == kWatchRoleNames[ri]) haveRole[ri] = true;
-                int nextRole = -1;
-                for (int ri = 0; ri < maxSupport; ++ri) if (!haveRole[ri]) { nextRole = ri; break; }
-
-                // Support hires only make sense while a main hero exists to
-                // deliver to / screen for.
-                if (haveMain && nextRole >= 0
-                    && static_cast<int>(m_heroes.size()) < 1 + maxSupport
+                static const char* kWatchNames[] = {
+                    "Vanguard","Marshal","Warden","Crusader","Templar",
+                    "Champion","Paladin","Sentinel","Reaver","Zealot"
+                };
+                // Empty roster is urgent (else the watched side is inert); one
+                // hire per week otherwise, just like the enemy.
+                bool rosterEmpty = m_heroes.empty();
+                if (static_cast<int>(m_heroes.size()) < WATCH_HERO_CAP
                     && m_playerResources.get(ResourceType::Gold) >= WATCH_HIRE_COST) {
                     for (auto& recruitTown : m_towns) {
                         if (recruitTown.ownerId != 1) continue;
                         bool occupied = false;
                         for (const auto& h : m_heroes)
                             if (h.pos == recruitTown.pos) { occupied = true; break; }
-                        if (occupied) continue;
+                        if (occupied && !rosterEmpty) continue;
 
                         uint32_t newId = 100u;
                         for (const auto& h : m_heroes) newId = std::max(newId, h.id + 1u);
+                        uint32_t nameSeed = (m_turns.week() * 6271u) ^ newId;
                         Hero newHero;
                         newHero.id       = newId;
                         newHero.faction  = recruitTown.faction;
-                        newHero.name     = kWatchRoleNames[nextRole];
+                        newHero.name     = kWatchNames[nameSeed % 10];
                         newHero.movePool = newHero.maxMove;
 
-                        // Tavern retinue included in the fee (same as human hires)
+                        // Fresh level-1 hire, same as the enemy's — no XP
+                        // catch-up, a true mirror. It levels through play.
                         giveTavernRetinue(newHero, m_registry.buildings(), unitDefs);
-                        if (isCamped(recruitTown, heroStrength(newHero, unitDefs)))
-                            continue;
+
+                        int fresh = heroStrength(newHero, unitDefs)
+                                  + stacksStrength(recruitTown.garrison, unitDefs);
+                        if (isCamped(recruitTown, fresh)) continue;
+
+                        m_playerResources.add(ResourceType::Gold, -WATCH_HIRE_COST);
+                        takeGarrison(recruitTown, newHero);
+                        aiPaidRecruit(recruitTown, newHero.army, m_playerResources, unitDefs);
                         newHero.pos = spawnNear(recruitTown);
                         if (HexTile* ht = m_map.getTile(newHero.pos)) ht->heroId = newHero.id;
-                        m_playerResources.add(ResourceType::Gold, -WATCH_HIRE_COST);
+                        gLog("Watch AI hired %s at %s (week %d)\n",
+                             newHero.name.c_str(), recruitTown.name.c_str(), m_turns.week());
                         m_heroes.push_back(std::move(newHero));
-                        gLog("Watch AI recruited %s at %s (week %d)\n",
-                             kWatchRoleNames[nextRole], recruitTown.name.c_str(), m_turns.week());
+                        if (m_activeHeroIdx >= static_cast<int>(m_heroes.size()))
+                            m_activeHeroIdx = 0;
                         break;
                     }
                 }
