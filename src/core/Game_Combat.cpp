@@ -504,7 +504,53 @@ void Game::renderCombatBoard()
                 drewSprite = true;
             }
         }
-        if (!drewSprite) {
+        if (!drewSprite && (u.isSiegeEngine || u.isTower)) {
+            // Distinct placeholder for siege structures (no unit sprite exists
+            // yet — see ART_SIEGE.md). Engines: a wheeled mechanical token;
+            // towers: a crenellated stone block. Both carry a full name label
+            // so they're unmistakable on the field.
+            ImU32 edgeCol = isActive ? IM_COL32(255,220,80,255)
+                          : u.isPlayer ? IM_COL32(120,190,255,230)
+                                       : IM_COL32(255,110,90,230);
+            float br = hexR * 0.85f;
+            if (u.isTower) {
+                // Stone tower: tall rectangle + crenellations
+                ImU32 stone = IM_COL32(120, 116, 108, 255);
+                ImVec2 a{sx - br*0.7f, sy - br}, b{sx + br*0.7f, sy + br*0.9f};
+                dl->AddRectFilled(a, b, stone, 2.0f);
+                dl->AddRect(a, b, edgeCol, 2.0f, 0, 2.0f);
+                for (int cwi = 0; cwi < 3; ++cwi) {
+                    float cx = a.x + (b.x - a.x) * (0.15f + 0.35f * cwi);
+                    dl->AddRectFilled({cx, a.y - br*0.22f}, {cx + br*0.28f, a.y}, stone);
+                }
+                // Arrow slit
+                dl->AddRectFilled({sx - br*0.1f, sy - br*0.4f}, {sx + br*0.1f, sy + br*0.3f},
+                                  IM_COL32(30, 28, 26, 255));
+            } else {
+                // Siege engine: dark body + two wheels + throwing arm
+                ImU32 wood = IM_COL32(96, 70, 42, 255);
+                dl->AddRectFilled({sx - br*0.85f, sy - br*0.15f}, {sx + br*0.85f, sy + br*0.45f},
+                                  wood, 2.0f);
+                dl->AddRect({sx - br*0.85f, sy - br*0.15f}, {sx + br*0.85f, sy + br*0.45f},
+                            edgeCol, 2.0f, 0, 2.0f);
+                dl->AddCircleFilled({sx - br*0.5f, sy + br*0.55f}, br*0.28f, IM_COL32(40,36,32,255));
+                dl->AddCircleFilled({sx + br*0.5f, sy + br*0.55f}, br*0.28f, IM_COL32(40,36,32,255));
+                // Throwing arm (up-left)
+                dl->AddLine({sx + br*0.4f, sy + br*0.1f}, {sx - br*0.6f, sy - br*0.7f},
+                            IM_COL32(60, 44, 26, 255), 3.0f);
+                dl->AddCircleFilled({sx - br*0.6f, sy - br*0.7f}, br*0.16f, IM_COL32(150,150,150,255));
+            }
+            // Full name label above the token
+            ImVec2 nts = ImGui::CalcTextSize(u.name.c_str());
+            float nlx = sx - nts.x * 0.5f, nly = sy - br - nts.y - 4.0f;
+            dl->AddRectFilled({nlx - 3, nly - 1}, {nlx + nts.x + 3, nly + nts.y + 1},
+                              IM_COL32(15, 15, 20, 190), 3.0f);
+            dl->AddText({nlx, nly}, IM_COL32(235, 225, 200, 255), u.name.c_str());
+
+            sprW = br * 1.0f;
+            sprH = br * 1.2f;
+        }
+        else if (!drewSprite) {
             int facIdx = (it != m_combatAnimators.end())
                          ? std::max(0, std::min(8, it->second.faction))
                          : (u.isPlayer ? 0 : 1);
@@ -634,14 +680,17 @@ void Game::renderCombatBoard()
                                    IM_COL32(180, 220, 255, 200));
         }
 
-        // Stack count label (bottom-center of token)
-        char buf[12];
-        std::snprintf(buf, sizeof(buf), "%d", u.count);
-        ImVec2 ts = ImGui::CalcTextSize(buf);
-        float lx = sx - ts.x * 0.5f;
-        float ly = sy + sprH * 0.02f;
-        dl->AddText({lx + 1, ly + 1}, IM_COL32(0, 0, 0, 200), buf);
-        dl->AddText({lx, ly}, IM_COL32(255, 255, 255, 255), buf);
+        // Stack count label (bottom-center of token) — skip for the
+        // single-unit siege structures, "1" is just noise there.
+        if (!u.isSiegeEngine && !u.isTower) {
+            char buf[12];
+            std::snprintf(buf, sizeof(buf), "%d", u.count);
+            ImVec2 ts = ImGui::CalcTextSize(buf);
+            float lx = sx - ts.x * 0.5f;
+            float ly = sy + sprH * 0.02f;
+            dl->AddText({lx + 1, ly + 1}, IM_COL32(0, 0, 0, 200), buf);
+            dl->AddText({lx, ly}, IM_COL32(255, 255, 255, 255), buf);
+        }
 
         // Shots remaining indicator for ranged units (small cyan badge top-right)
         if (u.range > 0 && u.shots > 0) {
