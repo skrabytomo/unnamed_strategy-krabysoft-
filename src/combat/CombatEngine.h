@@ -164,6 +164,9 @@ private:
     void aiActPassive(CombatUnit& unit);
     void aiActStandard(CombatUnit& unit);
     void aiActTactical(CombatUnit& unit);
+    // Siege fallback: when no defender is reachable, the attacker-side AI
+    // bombards / marches on / swings at the walls. True if the unit acted.
+    bool aiTrySiegeWallAction(CombatUnit& unit);
     // Score an enemy unit as a target for `attacker`: prioritises stacks the
     // attacker can wipe this turn (removing retaliation), then most dangerous,
     // then lowest HP. Higher = better. onlyInRange restricts to ranged reach.

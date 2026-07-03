@@ -692,6 +692,22 @@ void CombatEngine::advanceTurn()
         } else {
             // New round
             m_round++;
+            // Round cap: an unwinnable stalemate (e.g. a siege where nobody
+            // can breach) previously spun forever — resolve by attrition:
+            // whichever side has more total strength left wins.
+            if (m_round > m_maxRounds) {
+                long long pStr = 0, eStr = 0;
+                for (const auto& u : m_grid.units()) {
+                    if (!u.alive || u.count <= 0) continue;
+                    long long s = (long long)u.count * u.maxHp;
+                    if (u.isPlayer) pStr += s; else eStr += s;
+                }
+                addLog("Battle exceeds " + std::to_string(m_maxRounds) +
+                       " rounds — resolved by attrition");
+                m_phase = (pStr > eStr) ? CombatPhase::Victory : CombatPhase::Defeat;
+                addLog(m_phase == CombatPhase::Victory ? "VICTORY!" : "DEFEAT!");
+                return;
+            }
             // Mana regenerates 3 per round for both heroes
             m_playerHero.mana = std::min(m_playerHero.maxMana, m_playerHero.mana + 3);
             m_enemyHero.mana  = std::min(m_enemyHero.maxMana,  m_enemyHero.mana  + 3);
@@ -1103,7 +1119,13 @@ void CombatEngine::wait()
 {
     if (m_phase != CombatPhase::PlayerTurn) return;
     CombatUnit* unit = activeUnit();
-    if (!unit || unit->waitUsed) return;
+    if (!unit) return;
+    if (unit->waitUsed) {
+        // Can't wait twice in a round — end the unit's turn instead of
+        // silently doing nothing (which left the battle wedged on this unit).
+        skipUnit();
+        return;
+    }
     unit->waitUsed = true;
     addLog(unit->name + " waits");
     m_waitQueue.push_back(unit->id);
@@ -1175,6 +1197,63 @@ void CombatEngine::aiActUnit(CombatUnit& unit)
     }
 }
 
+// ── Siege: attacker AI breaches the walls ──────────────────────────────────────
+// Called from the AI fallbacks when no defender is reachable. Siege engines
+// bombard the wall, melee marches to it and swings. Returns true if the unit
+// acted (its turn was ended); false lets the caller end the turn normally.
+bool CombatEngine::aiTrySiegeWallAction(CombatUnit& unit)
+{
+    if (!m_isSiege || !unit.isPlayer) return false;
+
+    // Intact wall tiles left?
+    std::vector<HexCoord> walls;
+    for (const auto& h : m_grid.allCoords())
+        if (m_grid.isWallTile(h)) walls.push_back(h);
+    if (walls.empty()) return false;
+
+    // Breach point: the gate while it stands (lowest HP), else nearest wall
+    HexCoord target;
+    if (m_grid.isWallTile(m_grid.gateHex())) {
+        target = m_grid.gateHex();
+    } else {
+        target = walls[0];
+        int best = HexGrid::distance(unit.pos, target);
+        for (const auto& w : walls) {
+            int d = HexGrid::distance(unit.pos, w);
+            if (d < best) { best = d; target = w; }
+        }
+    }
+
+    // Ranged siege engines bombard from where they stand
+    if (unit.isSiegeEngine && unit.wallDamage > 0 && unit.range > 0) {
+        if (attackWall(unit.gateOnly ? m_grid.gateHex() : target)) return true;
+    }
+
+    // Adjacent to any intact wall tile? Swing at it.
+    for (const auto& w : walls)
+        if (HexGrid::distance(unit.pos, w) == 1 && attackWall(w)) return true;
+
+    // March toward the breach point
+    if (!unit.hasMoved) {
+        for (const auto& sp : m_grid.meleePositions(target)) {
+            auto path = m_grid.findPath(unit.pos, sp, unit.flying);
+            if (path.empty()) continue;
+            int steps = std::min(unit.speed, static_cast<int>(path.size()));
+            m_grid.moveUnit(unit.id, path[steps - 1]);
+            unit.hasMoved = true;
+            applyTileEffect(unit);
+            addLog(unit.name + " advances on the walls");
+            // In reach after moving? Swing.
+            for (const auto& w : walls)
+                if (HexGrid::distance(unit.pos, w) == 1 && attackWall(w)) return true;
+            unit.hasActed = true;
+            advanceTurn();
+            return true;
+        }
+    }
+    return false;
+}
+
 // ── Passive: attack a random visible enemy ─────────────────────────────────────
 void CombatEngine::aiActPassive(CombatUnit& unit)
 {
@@ -1240,6 +1319,7 @@ void CombatEngine::aiActPassive(CombatUnit& unit)
             }
         }
     }
+    if (aiTrySiegeWallAction(unit)) return;
     unit.hasActed = true; advanceTurn();
 }
 
@@ -1316,6 +1396,7 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
             }
         }
     }
+    if (aiTrySiegeWallAction(unit)) return;
     unit.hasActed = true; advanceTurn();
 }
 
@@ -1547,6 +1628,7 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
         }
     }
 
+    if (aiTrySiegeWallAction(unit)) return;
     unit.hasActed = true; advanceTurn();
 }
 
@@ -2501,7 +2583,9 @@ void CombatEngine::checkVictory()
 // ── Siege: attack a wall tile ──────────────────────────────────────────────────
 bool CombatEngine::attackWall(HexCoord wallHex)
 {
-    if (!m_isSiege || m_phase != CombatPhase::PlayerTurn) return false;
+    // Walls always shield the defender (enemy side); only attacker-side units
+    // may hit them. No phase gate — the auto-play AI drives the attacker too.
+    if (!m_isSiege) return false;
     CombatUnit* unit = activeUnit();
     if (!unit || !unit->isPlayer) return false;
 
