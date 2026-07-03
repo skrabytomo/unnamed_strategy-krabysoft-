@@ -351,6 +351,7 @@ void Game::renderCombatBoard()
                 case CombatTileType::SpeedPenalty: fill = IM_COL32(120, 80,  10,  120); break;
                 case CombatTileType::Obstacle:     fill = obstCol; break;
                 case CombatTileType::Wall:         fill = IM_COL32(90,  90,  90,  210); break;
+                case CombatTileType::Moat:         fill = IM_COL32(25,  70,  130, 150); break;
                 default: break;
             }
         }
@@ -738,6 +739,9 @@ void Game::renderCombatBoard()
                     tileTip = wallTipBuf;
                     break;
                 }
+                case CombatTileType::Moat:
+                    tileTip = "Moat\nCosts extra movement; -3 DEF while standing in it";
+                    break;
                 default: break;
                 }
             }
@@ -1230,7 +1234,30 @@ void Game::enterCombat(Hero& playerHero,
         }
     }
 
-    m_combat.startBattle(playerHero, pUnitsGarr, enemyHero, enemyUnits, isSiege, m_combatTerrain);
+    // Siege defense: the town fights back with two Arrow Towers — immobile
+    // long-range emplacements behind the walls that must be silenced too.
+    std::vector<CombatUnit> eUnitsFinal = enemyUnits;
+    if (isSiege) {
+        for (int ti = 0; ti < 2; ++ti) {
+            CombatUnit tower;
+            tower.name         = "Arrow Tower";
+            tower.attack       = 12;
+            tower.defense      = 10;
+            tower.hp           = tower.maxHp = 60;
+            tower.count        = 1;
+            tower.speed        = 1;
+            tower.range        = 12;             // covers the whole board
+            tower.shots        = 99;             // never runs dry in a real fight
+            tower.shotsLeft    = 99;
+            tower.alive        = true;
+            tower.moraleImmune = true;
+            tower.isPlayer     = false;
+            tower.stackSlot    = static_cast<int>(eUnitsFinal.size());
+            eUnitsFinal.push_back(tower);
+        }
+    }
+
+    m_combat.startBattle(playerHero, pUnitsGarr, enemyHero, eUnitsFinal, isSiege, m_combatTerrain);
 
     // Terrain-driven obstacle tiles (non-siege only; siege already has walls)
     if (!isSiege) {

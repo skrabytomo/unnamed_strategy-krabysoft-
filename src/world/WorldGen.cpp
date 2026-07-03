@@ -638,32 +638,19 @@ std::vector<ResourceNode> WorldGen::placeResources(HexMap& map,
 
 ResourceType WorldGen::terrainResource(Terrain t, uint32_t rng)
 {
-    switch (t) {
-        // Sacred only — Plains (the terrain default, covering most of the map)
-        // was also granting FaithStones, wildly overrepresenting a resource
-        // that's supposed to be unique to 2 factions (HolyOrder/CrimsonWardens).
-        case Terrain::Sacred:       return ResourceType::FaithStones;
-        case Terrain::Corrupted:
-        case Terrain::Toxic:        return ResourceType::BloodEssence;
-        case Terrain::Forest:
-        case Terrain::CorruptedForest: return ResourceType::VerdantSap;
-        // Iron is the "universal raw" resource every faction refines for
-        // upgrades (see GAME_PROJECT.md), so it needs common terrain coverage,
-        // not just the 2 niche types it had before.
-        case Terrain::Industrial:
-        case Terrain::Rocky:
-        case Terrain::Barren:
-        case Terrain::Wasteland:
-        case Terrain::Highland:     return ResourceType::Iron;
-        case Terrain::Swamp:        return ResourceType::Mercury;
-        // Plains is the terrain default/fallback covering most of the map.
-        // Split it 50/50 Gold/Iron: both are universal (every faction needs iron
-        // to refine for upgrades), and iron was still too scarce with only the
-        // rocky/industrial terrain family supplying it.
-        case Terrain::Plains:       return (rng & 1) ? ResourceType::Iron
-                                                     : ResourceType::Gold;
-        default:                    return ResourceType::Gold;
-    }
+    // Weighted distribution, terrain-independent:
+    //   Gold 35% (most common) > Iron 25% (universal upgrade raw) >
+    //   FaithStones / BloodEssence / VerdantSap / Mercury 10% each.
+    // Faction-specific mines are additionally force-spawned near every
+    // town in placePlayerZoneMines, so specials stay guaranteed locally.
+    (void)t;
+    uint32_t roll = rng % 100;
+    if (roll < 35) return ResourceType::Gold;
+    if (roll < 60) return ResourceType::Iron;
+    if (roll < 70) return ResourceType::FaithStones;
+    if (roll < 80) return ResourceType::BloodEssence;
+    if (roll < 90) return ResourceType::VerdantSap;
+    return ResourceType::Mercury;
 }
 
 // ── Faction resource per player index ─────────────────────────────────────────

@@ -1189,6 +1189,33 @@ void CombatEngine::aiActUnit(CombatUnit& unit)
         }
     }
 
+    // Siege garrison discipline: while any wall stands, defender melee holds
+    // position behind the fortifications (Defend) instead of sallying out —
+    // ranged defenders and anyone already engaged fight normally.
+    if (m_isSiege && !unit.isPlayer && !(unit.range > 0 && unit.shotsLeft > 0)) {
+        bool wallsStand = false;
+        for (const auto& h : m_grid.allCoords())
+            if (m_grid.isWallTile(h)) { wallsStand = true; break; }
+        if (wallsStand) {
+            bool attackerAdjacent = false;
+            for (const auto& u : m_grid.units()) {
+                if (!u.alive || !u.isPlayer) continue;
+                if (HexGrid::distance(unit.pos, u.pos) == 1) { attackerAdjacent = true; break; }
+            }
+            if (!attackerAdjacent) {
+                if (unit.defendRoundsLeft <= 0) {
+                    unit.defense           += 3;
+                    unit.defendDefenseBonus = 3;
+                }
+                unit.defendRoundsLeft = 3;
+                addLog(unit.name + " holds the fortifications");
+                unit.hasActed = true;
+                advanceTurn();
+                return;
+            }
+        }
+    }
+
     AIDifficulty diff = unit.isPlayer ? m_playerAI : m_enemyAI;
     switch (diff) {
     case AIDifficulty::Passive:  aiActPassive(unit);  break;
@@ -1691,6 +1718,12 @@ void CombatEngine::applyTileEffect(CombatUnit& unit)
     case CombatTileType::SpeedPenalty:
         if (!unit.moraleImmune)
             unit.morale = std::max(0, unit.morale - 5);
+        break;
+    case CombatTileType::Moat:
+        // Wading the moat: exposed — -3 DEF this round
+        unit.roundDefenseBonus -= 3;
+        unit.buffDefenseRounds  = std::max(unit.buffDefenseRounds, 1);
+        if (!m_silent) addLog(unit.name + " wades into the moat (-3 DEF)");
         break;
     default: break;
     }

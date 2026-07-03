@@ -258,6 +258,94 @@ static void takeGarrison(Town& town, Hero& hero)
     }
 }
 
+// Sites that persist on the map — never consumed by an AI walk-over collect.
+// (Blanket `collected = true` used to silently delete dwellings, shipyards,
+// quest givers, even the player's quest target.)
+static bool isPersistentSite(WorldObjectType t)
+{
+    switch (t) {
+    case WorldObjectType::UnitDwelling:
+    case WorldObjectType::Shipyard:
+    case WorldObjectType::FishingHouse:
+    case WorldObjectType::NeutralOutpost:
+    case WorldObjectType::WitchHut:
+    case WorldObjectType::Observatory:
+    case WorldObjectType::HolyFountain:
+    case WorldObjectType::Oasis:
+    case WorldObjectType::ArtifactMerchant:
+    case WorldObjectType::Arena:
+    case WorldObjectType::QuestGiver:
+    case WorldObjectType::QuestTarget:
+    case WorldObjectType::Barrier:
+    case WorldObjectType::ChokeGuard:
+    case WorldObjectType::CursedGround:
+    case WorldObjectType::Stables:
+    case WorldObjectType::TreeOfKnowledge:
+        return true;
+    default: return false;
+    }
+}
+
+// AI/watch heroes buy from external dwellings at the same 50g-per-tier rate
+// the human pays in the dwelling popup.
+static int dwellingPaidRecruit(WorldObject& obj, std::vector<UnitStack>& into,
+                               Resources& payer, const std::vector<UnitDef>& udefs)
+{
+    if (obj.type != WorldObjectType::UnitDwelling || obj.available <= 0) return 0;
+    int costPer = std::max(1, obj.value * 50);
+    int qty = std::min(payer.get(ResourceType::Gold) / costPer, obj.available);
+    if (qty <= 0) return 0;
+    for (const auto& ud : udefs) {
+        if (ud.faction == static_cast<FactionId>(obj.faction) && ud.tier == obj.value
+            && ud.path == UpgradePath::None) {
+            bool merged = false;
+            for (auto& s : into) if (s.defId == ud.id) { s.count += qty; merged = true; break; }
+            if (!merged) {
+                if (into.size() >= 7) return 0;
+                into.push_back({ud.id, qty});
+            }
+            payer.add(ResourceType::Gold, -qty * costPer);
+            obj.available -= qty;
+            return qty;
+        }
+    }
+    return 0;
+}
+
+// A landlocked AI hero heads for a shipyard and buys a boat with its side's
+// real gold — the only way off an island once every land target is exhausted.
+// On the shipyard tile: buy (if affordable). Otherwise: return a path to it.
+// Returns true if `outPath` was filled (caller keeps moving); buying returns
+// false so the caller re-scores candidates with water now traversable.
+static bool aiTryBoat(const HexMap& map, std::vector<WorldObject>& objs,
+                      Hero& hero, Resources& payer,
+                      const Pathfinder::CostFn& costFn,
+                      std::vector<HexCoord>& outPath)
+{
+    if (hero.onBoat) return false;
+    WorldObject* bestYard = nullptr;
+    int bestD = INT_MAX;
+    for (auto& obj : objs) {
+        if (obj.type != WorldObjectType::Shipyard) continue;
+        int d = HexGrid::distance(hero.pos, obj.pos);
+        if (d < bestD) { bestD = d; bestYard = &obj; }
+    }
+    if (!bestYard) return false;
+
+    if (bestD == 0) {
+        int goldCost = 2000 + hero.boatCount * 1000;
+        if (payer.get(ResourceType::Gold) >= goldCost) {
+            payer.add(ResourceType::Gold, -goldCost);
+            hero.onBoat = true;
+            hero.boatCount += 1;
+            gLog("%s bought a boat at shipyard (-%dg)\n", hero.name.c_str(), goldCost);
+        }
+        return false;  // re-score: water is open now (or we can't afford it yet)
+    }
+    outPath = Pathfinder::find(map, hero.pos, bestYard->pos, costFn);
+    return !outPath.empty();
+}
+
 // Starting retinue for a hired hero — same formula the human tavern uses
 // (T1 dwelling weeklyGrowth + T2 weeklyGrowth/3), included in the hire fee.
 static void giveTavernRetinue(Hero& h, const std::vector<BuildingDef>& buildings,
@@ -407,7 +495,7 @@ void Game::watchAiMovePlayerHero()
             // hero would freeze forever; keep grabbing safe nearby resources instead.
             for (const auto& r : m_resources) {
                 if (r.ownedBy == 1) continue;
-                if (HexGrid::distance(hero.pos, r.pos) <= 4) add(r.pos, 40.f);
+                if (HexGrid::distance(hero.pos, r.pos) <= 6) add(r.pos, 40.f);
             }
         } else {
             // Own town to recruit
@@ -443,7 +531,7 @@ void Game::watchAiMovePlayerHero()
                 }
                 for (const auto& r : m_resources) {
                     if (r.ownedBy == 1) continue;
-                    float val = (r.type == neededMineRes) ? 180.f : 60.f;
+                    float val = (r.type == neededMineRes) ? 180.f : 100.f;
                     add(r.pos, val);
                 }
             }
@@ -489,10 +577,15 @@ void Game::watchAiMovePlayerHero()
         // Fall through to lower-scored candidates when the best one is
         // unreachable — otherwise the hero freezes for the rest of the game.
         std::vector<HexCoord> path;
-        for (size_t ci = 0; ci < cands.size() && ci < 6; ++ci) {
+        for (size_t ci = 0; ci < cands.size() && ci < 10; ++ci) {
             path = Pathfinder::find(m_map, hero.pos, cands[ci].pos, costFn);
             if (!path.empty()) break;
         }
+        // Everything unreachable by land: buy passage across the water
+        if (path.empty()
+            && !aiTryBoat(m_map, m_worldObjects, hero, m_playerResources,
+                          costFn, path))
+            break;
         if (path.empty()) break;
 
         HexCoord next = path[0];
@@ -505,6 +598,8 @@ void Game::watchAiMovePlayerHero()
         hero.pos = next;
         hero.movePool -= cost;
         if (HexTile* nT = m_map.getTile(hero.pos)) nT->heroId = hero.id;
+        if (hero.onBoat && nt->terrain != Terrain::Water)
+            hero.onBoat = false;  // disembark
 
         // Claim resource
         if (nt->resourceId != 0) {
@@ -563,9 +658,16 @@ void Game::watchAiMovePlayerHero()
                 break;
             }
         }
-        // Collect world objects
+        // Collect world objects (persistent sites are used, not consumed)
         for (auto& obj : m_worldObjects) {
             if (obj.collected || obj.pos != hero.pos) continue;
+            if (isPersistentSite(obj.type)) {
+                if (obj.type == WorldObjectType::UnitDwelling) {
+                    obj.linkedId = 1;  // captured for the watched side
+                    dwellingPaidRecruit(obj, hero.army, m_playerResources, udefs);
+                }
+                continue;
+            }
             obj.collected = true;
         }
 
@@ -696,8 +798,15 @@ void Game::watchAiMoveSupportHero(Hero& hero, bool isCourier)
         if (nt) {
             if (nt->resourceId != 0)
                 for (auto& r : m_resources) if (r.id == nt->resourceId) { r.ownedBy = 1; break; }
-            for (auto& obj : m_worldObjects)
-                if (!obj.collected && obj.pos == hero.pos) obj.collected = true;
+            for (auto& obj : m_worldObjects) {
+                if (obj.collected || obj.pos != hero.pos) continue;
+                if (isPersistentSite(obj.type)) {
+                    // Scouts claim dwellings for the side but don't recruit
+                    if (obj.type == WorldObjectType::UnitDwelling) obj.linkedId = 1;
+                    continue;
+                }
+                obj.collected = true;
+            }
             if (nt->townId != 0)
                 for (auto& t : m_towns)
                     if (t.id == nt->townId && t.ownerId == 0 && t.garrison.empty())
@@ -729,26 +838,15 @@ void Game::updateWorldMap(float dt)
             m_showEncounterPrompt = false;
         }
         if (m_showDwellingPopup) {
-            // Auto-recruit all available units from standalone dwelling
+            // Auto-recruit from a standalone dwelling — paid at player rates,
+            // and the dwelling is claimed for the watched side (+1 town growth)
             if (!m_heroes.empty() && m_pendingObjId != 0) {
                 Hero& dh = m_heroes[m_activeHeroIdx];
                 for (auto& obj : m_worldObjects) {
                     if (obj.id != m_pendingObjId) continue;
-                    const auto& udefs2 = m_registry.units();
-                    FactionId dwFaction = static_cast<FactionId>(obj.faction);
-                    for (const auto& ud : udefs2) {
-                        if (ud.tier != obj.value) continue;
-                        if (ud.faction != dwFaction) continue;
-                        int can = obj.available;
-                        if (can <= 0) break;
-                        obj.available = 0;
-                        bool merged = false;
-                        for (auto& s : dh.army)
-                            if (s.defId == ud.id) { s.count += can; merged = true; break; }
-                        if (!merged && dh.army.size() < 7)
-                            dh.army.push_back({ud.id, can});
-                        break;
-                    }
+                    obj.linkedId = 1;
+                    dwellingPaidRecruit(obj, dh.army, m_playerResources,
+                                        m_registry.units());
                     break;
                 }
             }
@@ -1571,11 +1669,11 @@ void Game::doEndTurn()
                         // doing something productive instead of statue-standing.
                         for (const auto& r : m_resources) {
                             if (r.ownedBy == eHero.id) continue;
-                            if (HexGrid::distance(eHero.pos, r.pos) <= 4) add(r.pos, 40.f);
+                            if (HexGrid::distance(eHero.pos, r.pos) <= 6) add(r.pos, 40.f);
                         }
                     } else if (isDefender) {
                         for (const auto& r : m_resources)
-                            if (r.ownedBy != eHero.id) add(r.pos, 60.f);
+                            if (r.ownedBy != eHero.id) add(r.pos, 100.f);
                         for (const auto& t : m_towns)
                             if (t.ownerId == eHero.id) add(t.pos, 80.f);
                         // Defenders actively intercept any human hero threatening an
@@ -1610,9 +1708,11 @@ void Game::doEndTurn()
                                                      ? kFactionResource[eFidx] : ResourceType::Gold;
                             for (const auto& r : m_resources) {
                                 if (r.ownedBy == eHero.id) continue;
-                                float val = 60.f;
-                                if (r.type == denialRes)    val = std::max(val, 120.f);
-                                if (r.type == enemyKeyRes)  val = std::max(val, 100.f);
+                                // Unclaimed mines are always worth taking —
+                                // they're the whole income engine now.
+                                float val = 100.f;
+                                if (r.type == denialRes)    val = std::max(val, 130.f);
+                                if (r.type == enemyKeyRes)  val = std::max(val, 110.f);
                                 // Mine type blocking our own build queue wins
                                 if (r.type == aiNeededRes)  val = std::max(val, 180.f);
                                 add(r.pos, val);
@@ -1680,10 +1780,15 @@ void Game::doEndTurn()
                     // reachable — an unreachable top target (e.g. across
                     // water) used to freeze the hero for the whole game.
                     std::vector<HexCoord> path;
-                    for (size_t ci = 0; ci < cands.size() && ci < 6; ++ci) {
+                    for (size_t ci = 0; ci < cands.size() && ci < 10; ++ci) {
                         path = Pathfinder::find(m_map, eHero.pos, cands[ci].pos, costFn);
                         if (!path.empty()) break;
                     }
+                    // Everything unreachable by land: buy passage across the water
+                    if (path.empty()
+                        && !aiTryBoat(m_map, m_worldObjects, eHero, m_enemyResources,
+                                      costFn, path))
+                        break;
                     if (path.empty()) break;
 
                     HexCoord next = path[0];
@@ -1697,6 +1802,8 @@ void Game::doEndTurn()
                     eHero.pos = next;
                     eHero.movePool -= cost;
                     if (HexTile* nT = m_map.getTile(eHero.pos)) nT->heroId = eHero.id;
+                    if (eHero.onBoat && nextTile->terrain != Terrain::Water)
+                        eHero.onBoat = false;  // disembark
 
                     // Combat with player? (only the first collision per day fights)
                     if (eHero.pos == playerHero.pos && !combatTriggered) {
@@ -1760,6 +1867,18 @@ void Game::doEndTurn()
                                  pandora ? "Pandora's Box" :
                                  (obj.type == WorldObjectType::Crypt ? "Crypt" : "Bandit Camp"),
                                  m_turns.week());
+                            continue;
+                        }
+                        // Persistent sites are used, not consumed
+                        if (isPersistentSite(obj.type)) {
+                            if (obj.type == WorldObjectType::UnitDwelling) {
+                                // Capture: the AI side gains +1 weekly growth of
+                                // this tier in its matching towns, and buys out
+                                // the available pool at player rates.
+                                obj.linkedId = eHero.id;
+                                dwellingPaidRecruit(obj, eHero.army,
+                                                    m_enemyResources, unitDefs);
+                            }
                             continue;
                         }
                         obj.collected = true;
@@ -2843,6 +2962,19 @@ void Game::doEndTurn()
                 if (obj.type == WorldObjectType::UnitDwelling && !obj.collected) {
                     int tier = obj.value;
                     obj.available += 3 + tier;  // T1=4, T6=9 per week
+                    // Captured dwelling: +1 weekly growth of this tier in the
+                    // owner side's towns of the same faction
+                    if (obj.linkedId != 0) {
+                        for (auto& t : m_towns) {
+                            bool sameSide = isAiOwner(obj.linkedId)
+                                          ? isAiOwner(t.ownerId)
+                                          : (t.ownerId == obj.linkedId);
+                            if (!sameSide) continue;
+                            if (static_cast<uint8_t>(t.faction) != obj.faction) continue;
+                            for (auto& dw : t.dwellings)
+                                if (dw.tier == tier) { dw.available += 1; break; }
+                        }
+                    }
                 }
                 // Observatory resets (allow re-use each week)
                 if (obj.type == WorldObjectType::Observatory)
@@ -6051,6 +6183,9 @@ void Game::renderDwellingPopup()
             }
         }
         obj->available -= qty;
+        // Recruiting claims the dwelling: +1 weekly growth of this tier in
+        // your towns of the same faction from now on.
+        obj->linkedId = static_cast<uint32_t>(currentPlayerId());
         char pickBuf[40];
         std::snprintf(pickBuf, sizeof(pickBuf), "+%d %s", qty, unitName);
         pushPickupEffect(obj->pos, pickBuf, IM_COL32(120, 220, 120, 255));

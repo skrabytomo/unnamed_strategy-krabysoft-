@@ -146,7 +146,8 @@ std::vector<HexCoord> CombatGrid::reachable(HexCoord from, int movePoints,
 
             int stepCost = 1;
             if (!flying) {
-                if (tile->type == CombatTileType::SpeedPenalty) stepCost = 2;
+                if (tile->type == CombatTileType::SpeedPenalty ||
+                    tile->type == CombatTileType::Moat) stepCost = 2;
             }
 
             int newCost = cost + stepCost;
@@ -196,7 +197,7 @@ std::vector<HexCoord> CombatGrid::findPath(HexCoord from, HexCoord to,
                 if (tile->type == CombatTileType::Wall && tile->wallHP > 0) continue;
                 if (tile->occupied) continue;
             }
-            int tentG = gCur + 1;
+            int tentG = gCur + ((!flying && tile->type == CombatTileType::Moat) ? 2 : 1);
             int prevG = g.count(nb) ? g[nb] : 9999;
             if (tentG < prevG) {
                 cameFrom[nb] = cur;
@@ -233,6 +234,16 @@ void CombatGrid::placeSiegeWalls(int wallHP, int gateHP)
         if (!tile) continue;
         tile->type   = CombatTileType::Wall;
         tile->wallHP = (row == ROWS / 2) ? gateHP : wallHP;
+    }
+    // Moat in front of the walls (attacker side, column 4): slow to cross
+    // and -3 DEF while standing in it — assaulting the breach costs blood.
+    const int moatCol = wallCol - 1;
+    for (int row = 0; row < ROWS; ++row) {
+        int q = moatCol;
+        int r = row - (q - (q & 1)) / 2;
+        if (auto* tile = getTile({q, r}))
+            if (tile->type == CombatTileType::Normal)
+                tile->type = CombatTileType::Moat;
     }
 }
 

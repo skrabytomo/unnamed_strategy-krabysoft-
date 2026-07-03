@@ -1127,6 +1127,50 @@ void Game::startNewGame()
         }
     }
 
+    // Guarantee every town has a mine of its faction's key resource within
+    // 7 hexes. World gen placed faction mines by zone index, but chosen
+    // factions (and the weighted global mine roll) are only known now —
+    // retype the nearest mine if none matches.
+    {
+        auto factionResource = [](FactionId f) -> ResourceType {
+            switch (f) {
+            case FactionId::HolyOrder:
+            case FactionId::CrimsonWardens: return ResourceType::FaithStones;
+            case FactionId::Thornkin:
+            case FactionId::Voidkin:        return ResourceType::VerdantSap;
+            case FactionId::EternalEmpire:
+            case FactionId::Convergence:    return ResourceType::Mercury;
+            case FactionId::Bloodsworn:
+            case FactionId::Amalgamate:     return ResourceType::BloodEssence;
+            default:                        return ResourceType::Iron;
+            }
+        };
+        for (const auto& t : m_towns) {
+            ResourceType want = factionResource(t.faction);
+            bool has = false;
+            ResourceNode* closest = nullptr;
+            int closestD = 9999;
+            for (auto& r : m_resources) {
+                int d = HexGrid::distance(r.pos, t.pos);
+                if (d > 7) continue;
+                if (r.type == want) { has = true; break; }
+                // Prefer retyping a non-gold mine so gold stays the commonest
+                if (r.type != ResourceType::Gold && d < closestD) { closestD = d; closest = &r; }
+            }
+            if (has) continue;
+            if (!closest) {
+                for (auto& r : m_resources) {
+                    int d = HexGrid::distance(r.pos, t.pos);
+                    if (d <= 7 && d < closestD) { closestD = d; closest = &r; }
+                }
+            }
+            if (closest) {
+                closest->type   = want;
+                closest->amount = 2 + (closest->amount % 4);
+            }
+        }
+    }
+
     m_worldObjects.clear();
     {
         uint32_t rng = wgp.seed ^ 0xF00DBABE;

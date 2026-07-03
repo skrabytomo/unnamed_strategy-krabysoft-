@@ -14,6 +14,7 @@ enum class CombatTileType : uint8_t
     SpeedPenalty,   // movement penalty
     Obstacle,       // impassable
     Wall,           // siege wall — has HP
+    Moat,           // siege moat — slow to cross, -3 DEF while standing in it
 };
 
 struct CombatTile
