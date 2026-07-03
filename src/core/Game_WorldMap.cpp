@@ -185,6 +185,19 @@ static int heroStrength(const Hero& hero, const std::vector<UnitDef>& defs)
     return s;
 }
 
+// Combat strength of a bare stack list (town garrison) — no faction-template
+// fallback, an empty garrison is genuinely worth zero.
+static int stacksStrength(const std::vector<UnitStack>& stacks, const std::vector<UnitDef>& defs)
+{
+    int s = 0;
+    for (const auto& st : stacks) {
+        if (st.count <= 0) continue;
+        for (const auto& d : defs)
+            if (d.id == st.defId) { s += st.count * d.hp * d.attack; break; }
+    }
+    return s;
+}
+
 // Watch-mode support heroes are identified by their role name; everything
 // else in m_heroes counts as a "main" hero the watch driver can fight with.
 static bool isWatchSupportName(const std::string& n)
@@ -325,10 +338,14 @@ void Game::watchAiMovePlayerHero()
                 for (const auto& dw : t.dwellings) if (dw.available > 0) { hasU = true; break; }
                 if (hasU && (int)hero.army.size() < 7) add(t.pos, 250.f);
             }
-            // Towns
+            // Towns — a garrisoned castle is only a target when we can
+            // plausibly win the garrison fight (captures now go through
+            // combat instead of a free walk-in flip).
             for (const auto& t : m_towns) {
-                if (t.ownerId == 0)  add(t.pos, 150.f);
-                else if (t.ownerId != 1) add(t.pos, 200.f); // enemy town
+                if (t.ownerId == 1) continue;
+                int garStr = stacksStrength(t.garrison, udefs);
+                if (garStr > 0 && myStr < garStr * 13 / 10) continue;
+                add(t.pos, t.ownerId == 0 ? 150.f : 200.f);
             }
             // Resources — prioritise the mine type blocking our next build
             {
@@ -417,6 +434,25 @@ void Game::watchAiMovePlayerHero()
             for (auto& t : m_towns) {
                 if (t.id != nt->townId) continue;
                 if (t.ownerId != 1) {
+                    // Garrisoned castle: fight for it like everyone else —
+                    // previously the watch hero flipped ANY town by walking
+                    // in, making sieges pointless in watch mode.
+                    if (!t.garrison.empty()) {
+                        Hero garrisonHero;
+                        garrisonHero.id      = 0;
+                        garrisonHero.name    = t.name + " Garrison";
+                        garrisonHero.faction = t.faction;
+                        garrisonHero.army    = t.garrison;
+                        m_lastCombatEnemyId    = 0;
+                        m_pendingTownCaptureId = t.id;
+                        auto pUnits = makeHeroUnits(hero, udefs, true);
+                        auto gUnits = makeHeroUnits(garrisonHero, udefs, false);
+                        m_fromBattleSim    = true;
+                        m_simAutoPlay      = true;
+                        m_simAutoPlayTimer = 0.f;
+                        enterCombat(hero, pUnits, garrisonHero, gUnits);
+                        return;
+                    }
                     uint32_t prevOwner = t.ownerId;
                     t.ownerId = 1;
                     m_campaign.onTownCaptured(t.id, prevOwner);
@@ -581,7 +617,8 @@ void Game::watchAiMoveSupportHero(Hero& hero, bool isCourier)
     };
     for (const auto& r : m_resources) if (r.ownedBy != 1) add(r.pos, 100.f);
     for (const auto& obj : m_worldObjects) if (!obj.collected) add(obj.pos, 90.f);
-    for (const auto& t : m_towns) if (t.ownerId == 0) add(t.pos, 70.f);
+    for (const auto& t : m_towns)
+        if (t.ownerId == 0 && t.garrison.empty()) add(t.pos, 70.f);
     if (cands.empty()) return;
     std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b){ return a.score > b.score; });
 
@@ -607,7 +644,8 @@ void Game::watchAiMoveSupportHero(Hero& hero, bool isCourier)
                 if (!obj.collected && obj.pos == hero.pos) obj.collected = true;
             if (nt->townId != 0)
                 for (auto& t : m_towns)
-                    if (t.id == nt->townId && t.ownerId == 0) t.ownerId = 1;
+                    if (t.id == nt->townId && t.ownerId == 0 && t.garrison.empty())
+                        t.ownerId = 1;
         }
         if (hero.pos == before || hero.pos == goal) break;
     }
