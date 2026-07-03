@@ -1487,7 +1487,14 @@ void Game::enterCombat(Hero& playerHero,
         auto [fac, tier] = unitFactionTier(u, unitDefs);
         anim.faction  = fac;
         anim.tier     = std::max(1, std::min(6, tier));
-        anim.mirror   = !u.isPlayer;  // enemy faces left
+        // Face by battlefield side, not by ownership: the attacker assaults
+        // from the left facing right; the defender holds the right facing
+        // left. In a town-defense siege the PLAYER's units are the ones on
+        // the right — mirroring by isPlayer had them facing away from the
+        // enemy.
+        anim.mirror   = m_combat.isSiege()
+                      ? (u.isPlayer != m_combat.siegeAttackerIsPlayer())
+                      : !u.isPlayer;
         anim.numCols  = m_unitTexCols[fac][anim.tier - 1];
         m_combatAnimators[u.id] = anim;
     }
@@ -1861,13 +1868,26 @@ void Game::exitCombat(bool playerWon)
             m_lastCombatEnemyId  = 0;
             m_lastCombatHumanIdx = -1;
 
-            // AI emergency replacement: spawn immediately so AI isn't inert until next weekly phase
-            if (m_enemyHeroes.empty()) {
+            // AI emergency replacement: spawn immediately so AI isn't inert until next weekly phase.
+            // Costs real gold and NEVER fires while a human hero is camping the
+            // town — the old free version fed a kamikaze Marshal to the camper
+            // after every single fight, paying the player loot each time.
+            constexpr int EMERG_HIRE_COST = 2500;
+            if (m_enemyHeroes.empty()
+                && m_enemyResources.get(ResourceType::Gold) >= EMERG_HIRE_COST) {
                 static const char* kEmergNames[] = {
                     "Emergency Marshal","Relief Commander","Last Defender","Surge Marshal"
                 };
                 for (auto& recruitTown : m_towns) {
                     if (recruitTown.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) continue;
+                    // Camped by a hostile hero? Recruiting is a gold donation.
+                    bool camped = false;
+                    for (const auto& hh : m_heroes)
+                        if (HexGrid::distance(hh.pos, recruitTown.pos) <= 4) { camped = true; break; }
+                    for (int pi = 0; pi < m_numHumanPlayers && !camped; ++pi)
+                        for (const auto& hh : m_players[pi].heroes)
+                            if (HexGrid::distance(hh.pos, recruitTown.pos) <= 4) { camped = true; break; }
+                    if (camped) continue;
                     uint32_t newId = 500u;
                     for (const auto& h : m_heroes)      newId = std::max(newId, h.id + 1u);
                     for (const auto& h : m_enemyHeroes) newId = std::max(newId, h.id + 1u);
@@ -1876,13 +1896,38 @@ void Game::exitCombat(bool playerWon)
                     newHero.faction  = recruitTown.faction;
                     newHero.name     = kEmergNames[newId % 4];
                     newHero.movePool = newHero.maxMove;
-                    int t1count = 6 + m_turns.week() * 2;
-                    for (const auto& ud : m_registry.units()) {
-                        if (ud.faction == newHero.faction && ud.tier == 1
-                            && ud.path == UpgradePath::None) {
-                            newHero.army.push_back({ud.id, t1count});
-                            break;
+                    m_enemyResources.add(ResourceType::Gold, -EMERG_HIRE_COST);
+                    // Tavern retinue (T1 growth + T2 growth/3, included in fee)
+                    for (int tier : {1, 2}) {
+                        int growth = 0;
+                        for (const auto& bd : m_registry.buildings()) {
+                            if (bd.faction == newHero.faction && bd.tier == tier
+                                && bd.category == BuildingCategory::UnitDwelling
+                                && bd.path == UpgradePath::None) {
+                                growth = (tier == 1) ? bd.weeklyGrowth : bd.weeklyGrowth / 3;
+                                break;
+                            }
                         }
+                        if (growth <= 0) continue;
+                        for (const auto& ud : m_registry.units()) {
+                            if (ud.faction == newHero.faction && ud.tier == tier
+                                && ud.path == UpgradePath::None) {
+                                newHero.army.push_back({ud.id, growth});
+                                break;
+                            }
+                        }
+                    }
+                    // Take the town garrison along — that's the defense force
+                    for (auto it = recruitTown.garrison.begin();
+                         it != recruitTown.garrison.end();) {
+                        bool merged = false;
+                        for (auto& s : newHero.army)
+                            if (s.defId == it->defId) { s.count += it->count; merged = true; break; }
+                        if (!merged && newHero.army.size() < 7) {
+                            newHero.army.push_back(*it);
+                            merged = true;
+                        }
+                        it = merged ? recruitTown.garrison.erase(it) : ++it;
                     }
                     HexCoord spawnPos = recruitTown.pos;
                     for (auto& nb : HexGrid::neighbors(recruitTown.pos)) {

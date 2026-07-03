@@ -102,6 +102,7 @@ public:
     int            round()          const { return m_round; }
     bool           isPlayerTurn()   const { return m_phase == CombatPhase::PlayerTurn; }
     bool           isSiege()        const { return m_isSiege; }
+    bool           siegeAttackerIsPlayer() const { return m_siegeAttackerIsPlayer; }
 
     // Siege: attack a wall tile with the active unit
     bool attackWall(HexCoord wallHex);

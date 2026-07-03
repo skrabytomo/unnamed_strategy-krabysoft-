@@ -1955,7 +1955,9 @@ void Game::doEndTurn()
                     // guardBeaten-only, so guarded mines were unclaimable by the AI).
                     if (nextTile->resourceId != 0) {
                         for (auto& r : m_resources) {
-                            if (r.id != nextTile->resourceId) break;
+                            // (was `break` — bailed at the first non-matching
+                            // node, so the AI claimed 0 mines in every game)
+                            if (r.id != nextTile->resourceId) continue;
                             if (!r.guardBeaten && r.guardId != 0) {
                                 // Guard strength scales with the week; take it if the
                                 // hero has a healthy margin, and lose some troops.
@@ -1977,7 +1979,9 @@ void Game::doEndTurn()
                                          eHero.name.c_str(), m_turns.week());
                                 }
                             }
-                            if (r.guardBeaten) r.ownedBy = eHero.id;
+                            // Unguarded mines are claimable outright (guardBeaten
+                            // is only meaningful when a guard exists)
+                            if (r.guardId == 0 || r.guardBeaten) r.ownedBy = eHero.id;
                             break;
                         }
                     }
@@ -2275,16 +2279,28 @@ void Game::doEndTurn()
                     }
                 }
 
-                // Each AI town recruits into its garrison at real cost. A hero
-                // standing on/next to the town picks it up the same day via
-                // the adjacent-town pickup in the daily loop.
+                // Each AI town recruits into its garrison at real cost — but
+                // spends at most HALF the pool's gold on troops. Recruiting
+                // first used to drain everything and starve construction
+                // forever (Ironhold: 'cannot afford' weeks 6-50 while buying
+                // 13 T2 every week).
                 for (auto& t : m_towns) {
                     if (!isAiOwner(t.ownerId)) continue;
-                    int got = aiPaidRecruit(t, t.garrison, m_enemyResources, unitDefs);
-                    if (got > 0)
+                    Resources budget = m_enemyResources;
+                    budget.set(ResourceType::Gold,
+                               m_enemyResources.get(ResourceType::Gold) / 2);
+                    Resources before = budget;
+                    int got = aiPaidRecruit(t, t.garrison, budget, unitDefs);
+                    if (got > 0) {
+                        for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
+                            auto type = static_cast<ResourceType>(rt);
+                            int spent = before.get(type) - budget.get(type);
+                            if (spent > 0) m_enemyResources.add(type, -spent);
+                        }
                         gLog("AI %s recruited %d units into garrison (pool %dg)\n",
                              t.name.c_str(), got,
                              m_enemyResources.get(ResourceType::Gold));
+                    }
                 }
             }
 
@@ -2333,6 +2349,21 @@ void Game::doEndTurn()
                                 if (buildRes.canAfford(d2->cost)) break;  // builder handles it
                                 wantDef = d2;
                                 break;
+                            }
+                            // Priority list done or unblocked: also trade for the
+                            // common fallback buildings (Shipyard, Bastion, forts)
+                            // — they're not in kBuildOrder, so a gold-rich town
+                            // could sit 'cannot afford' on 6 iron forever.
+                            if (!wantDef) {
+                                for (const auto& d : allBuildings) {
+                                    if (d.faction != FactionId::None) continue;
+                                    if (d.category != BuildingCategory::Fort &&
+                                        d.category != BuildingCategory::Support) continue;
+                                    if (!town.canBuild(d.id, allBuildings, m_turns.week())) continue;
+                                    if (buildRes.canAfford(d.cost)) break;
+                                    wantDef = &d;
+                                    break;
+                                }
                             }
                         }
                         if (wantDef) {
