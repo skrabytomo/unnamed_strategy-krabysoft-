@@ -1748,7 +1748,10 @@ void Game::doEndTurn()
                                      obj.type == WorldObjectType::Utopia     ||
                                      obj.type == WorldObjectType::PandoraBox ||
                                      obj.type == WorldObjectType::BanditCamp) {
-                                int siteStr = 400 + m_turns.week() * 150;
+                                // Fair-economy tuning: paid armies grow far
+                                // slower than the old conjured ones, so site
+                                // guards scale gently and cap out.
+                                int siteStr = std::min(2200, 350 + m_turns.week() * 80);
                                 if (obj.type == WorldObjectType::Utopia)     siteStr *= 2;
                                 if (obj.type == WorldObjectType::PandoraBox) siteStr = siteStr * 3 / 2;
                                 if (eiStr >= siteStr * 14 / 10) val = 110.f;
@@ -1848,7 +1851,7 @@ void Game::doEndTurn()
                             obj.type == WorldObjectType::Utopia     ||
                             obj.type == WorldObjectType::PandoraBox ||
                             obj.type == WorldObjectType::BanditCamp) {
-                            int siteStr = 400 + m_turns.week() * 150;
+                            int siteStr = std::min(2200, 350 + m_turns.week() * 80);
                             bool utopia  = (obj.type == WorldObjectType::Utopia);
                             bool pandora = (obj.type == WorldObjectType::PandoraBox);
                             if (utopia)  siteStr *= 2;
@@ -1941,7 +1944,10 @@ void Game::doEndTurn()
                             if (!r.guardBeaten && r.guardId != 0) {
                                 // Guard strength scales with the week; take it if the
                                 // hero has a healthy margin, and lose some troops.
-                                int guardStr = 300 + m_turns.week() * 120;
+                                // Fair-economy tuning: mine guards cap out so
+                                // the AI can always eventually claim mines —
+                                // its income depends on them now.
+                                int guardStr = std::min(1400, 250 + m_turns.week() * 50);
                                 if (eiStr >= guardStr * 13 / 10) {
                                     r.guardBeaten = true;
                                     // Casualties: shave ~8% off the hero's largest stack.
@@ -2288,9 +2294,13 @@ void Game::doEndTurn()
                     Resources& buildRes = watchPlayerTown ? m_playerResources
                                                           : m_enemyResources;
 
-                    // Market trading: if this side's town is resource-blocked and
-                    // the side owns a Market anywhere, trade just enough surplus
-                    // (specialist first, gold last) at 4:1 to unblock the build.
+                    // Market trading: find the first building we could LEGALLY
+                    // build (prereqs/week satisfied) but can't pay for, and
+                    // fill its FULL deficit — every missing resource type —
+                    // selling surplus at 4:1 (non-gold first, then gold). The
+                    // old logic chased prereq-blocked buildings and only ever
+                    // filled one resource type, so towns sat on six-figure
+                    // gold piles "unable to afford" a 2-essence dwelling.
                     if (fIdx >= 0 && fIdx < 9) {
                         bool hasMarket = false;
                         for (const auto& t : m_towns) {
@@ -2298,36 +2308,41 @@ void Game::doEndTurn()
                                                             : isAiOwner(t.ownerId);
                             if (sameSide && t.hasBuilding(BID::MARKET)) { hasMarket = true; break; }
                         }
+                        const BuildingDef* wantDef = nullptr;
                         if (hasMarket) {
-                            auto neededType = aiBlockingResource(town, kBuildOrder[fIdx], allBuildings, buildRes);
-                            if (static_cast<int>(neededType) < RESOURCE_COUNT) {
-                                constexpr int SELL_RATE = 4;
-                                // Two passes: sell non-gold first, gold second
-                                for (int pass = 0; pass < 2 && static_cast<int>(neededType) < RESOURCE_COUNT; ++pass) {
-                                    for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
-                                        auto sellType = static_cast<ResourceType>(rt);
-                                        if (sellType == neededType) continue;
-                                        if (pass == 0 && sellType == ResourceType::Gold) continue;
-                                        // Recheck deficit
-                                        int deficit = 0;
-                                        for (int bid2 : kBuildOrder[fIdx]) {
-                                            if (town.hasBuilding(bid2)) continue;
-                                            const BuildingDef* def2 = nullptr;
-                                            for (const auto& d : allBuildings) if (d.id == bid2) { def2 = &d; break; }
-                                            if (!def2) continue;
-                                            deficit = std::max(0, def2->cost.get(neededType) - buildRes.get(neededType));
-                                            break;
-                                        }
-                                        if (deficit <= 0) break;
-                                        int toBuy = deficit;
-                                        int canBuy = buildRes.get(sellType) / SELL_RATE;
-                                        int trades = std::min(toBuy, canBuy);
-                                        if (trades > 0) {
-                                            buildRes.add(sellType, -(trades * SELL_RATE));
-                                            buildRes.add(neededType, trades);
-                                            gLog("%s traded %d→%d for build at %s\n",
+                            for (int bid : kBuildOrder[fIdx]) {
+                                if (!town.canBuild(bid, allBuildings, m_turns.week())) continue;
+                                const BuildingDef* d2 = nullptr;
+                                for (const auto& d : allBuildings) if (d.id == bid) { d2 = &d; break; }
+                                if (!d2) continue;
+                                if (buildRes.canAfford(d2->cost)) break;  // builder handles it
+                                wantDef = d2;
+                                break;
+                            }
+                        }
+                        if (wantDef) {
+                            constexpr int SELL_RATE = 4;
+                            for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
+                                auto need = static_cast<ResourceType>(rt);
+                                int deficit = wantDef->cost.get(need) - buildRes.get(need);
+                                if (deficit <= 0) continue;
+                                for (int pass = 0; pass < 2 && deficit > 0; ++pass) {
+                                    for (int st = 0; st < RESOURCE_COUNT && deficit > 0; ++st) {
+                                        auto sell = static_cast<ResourceType>(st);
+                                        if (sell == need) continue;
+                                        bool isGold = (sell == ResourceType::Gold);
+                                        if ((pass == 0) == isGold) continue;  // pass 0: specials, pass 1: gold
+                                        // never sell below what the building itself needs
+                                        int surplus = buildRes.get(sell) - wantDef->cost.get(sell);
+                                        int buy = std::min(deficit, surplus / SELL_RATE);
+                                        if (buy > 0) {
+                                            buildRes.add(sell, -(buy * SELL_RATE));
+                                            buildRes.add(need, buy);
+                                            deficit -= buy;
+                                            gLog("%s market: %d res%d -> %d res%d for %s at %s\n",
                                                  watchPlayerTown ? "Watch AI" : "AI",
-                                                 (int)sellType, (int)neededType, town.name.c_str());
+                                                 buy * SELL_RATE, st, buy, rt,
+                                                 wantDef->name.c_str(), town.name.c_str());
                                         }
                                     }
                                 }
