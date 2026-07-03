@@ -278,6 +278,11 @@ static json buildSaveJson(const GameSaveData& data)
         for (int v : data.resourceAmounts) resArr.push_back(v);
         j["resources"] = resArr;
 
+        // AI team resource pool (v5+)
+        json aiResArr = json::array();
+        for (int v : data.enemyResourceAmounts) aiResArr.push_back(v);
+        j["enemyResources"] = aiResArr;
+
         // Heroes
         json heroArr = json::array();
         for (auto& h : data.heroes) heroArr.push_back(heroToJson(h));
@@ -385,6 +390,15 @@ static bool parseJsonIntoSave(const json& j, GameSaveData& out)
             int i = 0;
             for (auto& v : j.at("resources")) {
                 if (i < RESOURCE_COUNT) out.resourceAmounts[i++] = v.get<int>();
+            }
+        }
+
+        // AI team pool (v5+; absent in v4 saves — Game seeds a default)
+        out.enemyResourceAmounts.fill(0);
+        if (j.contains("enemyResources")) {
+            int i = 0;
+            for (auto& v : j.at("enemyResources")) {
+                if (i < RESOURCE_COUNT) out.enemyResourceAmounts[i++] = v.get<int>();
             }
         }
 

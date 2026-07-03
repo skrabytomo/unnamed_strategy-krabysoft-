@@ -205,6 +205,85 @@ static bool isWatchSupportName(const std::string& n)
     return n == "Supply Courier" || n == "Scout Rider" || n == "Scout Vanguard";
 }
 
+// ── Fair-economy AI helpers ───────────────────────────────────────────────────
+// AI sides recruit through the same paid path as the human player
+// (Town::recruit — real unit costs, partial-affordable fallback).
+
+// Recruit everything `pool` can afford from a town's dwellings into `into`
+// (a hero army or the town garrison). Higher tiers first: better value per
+// gold and the 7-slot cap favors quality. Returns units recruited.
+static int aiPaidRecruit(Town& town, std::vector<UnitStack>& into,
+                         Resources& pool, const std::vector<UnitDef>& unitDefs)
+{
+    int total = 0;
+    for (int tier = 6; tier >= 1; --tier) {
+        const DwellingState* dw = nullptr;
+        for (const auto& d : town.dwellings) if (d.tier == tier) { dw = &d; break; }
+        if (!dw || dw->available <= 0) continue;
+        const UnitDef* udef = nullptr;
+        for (const auto& u : unitDefs)
+            if (u.faction == town.faction && u.tier == tier && u.path == dw->path) {
+                udef = &u; break;
+            }
+        if (!udef) continue;
+        // Respect the 7-slot cap before paying
+        bool canMerge = false;
+        for (const auto& s : into) if (s.defId == udef->id) { canMerge = true; break; }
+        if (!canMerge && into.size() >= 7) continue;
+        int got = town.recruit(tier, dw->available, pool, unitDefs);
+        if (got <= 0) continue;
+        if (canMerge) {
+            for (auto& s : into) if (s.defId == udef->id) { s.count += got; break; }
+        } else {
+            into.push_back({udef->id, got});
+        }
+        total += got;
+    }
+    return total;
+}
+
+// Move a town's garrison into a hero's army (merge; respect the 7-slot cap —
+// whatever doesn't fit stays behind as garrison).
+static void takeGarrison(Town& town, Hero& hero)
+{
+    for (auto it = town.garrison.begin(); it != town.garrison.end();) {
+        bool merged = false;
+        for (auto& s : hero.army)
+            if (s.defId == it->defId) { s.count += it->count; merged = true; break; }
+        if (!merged && hero.army.size() < 7) {
+            hero.army.push_back(*it);
+            merged = true;
+        }
+        it = merged ? town.garrison.erase(it) : ++it;
+    }
+}
+
+// Starting retinue for a hired hero — same formula the human tavern uses
+// (T1 dwelling weeklyGrowth + T2 weeklyGrowth/3), included in the hire fee.
+static void giveTavernRetinue(Hero& h, const std::vector<BuildingDef>& buildings,
+                              const std::vector<UnitDef>& unitDefs)
+{
+    for (int tier : {1, 2}) {
+        int growth = 0;
+        for (const auto& bd : buildings) {
+            if (bd.faction == h.faction && bd.tier == tier
+                && bd.category == BuildingCategory::UnitDwelling
+                && bd.path == UpgradePath::None) {
+                growth = (tier == 1) ? bd.weeklyGrowth : bd.weeklyGrowth / 3;
+                break;
+            }
+        }
+        if (growth <= 0) continue;
+        for (const auto& ud : unitDefs) {
+            if (ud.faction == h.faction && ud.tier == tier
+                && ud.path == UpgradePath::None) {
+                h.army.push_back({ud.id, growth});
+                break;
+            }
+        }
+    }
+}
+
 // ── File-scope AI constants ───────────────────────────────────────────────────
 
 // Per-faction key resource — used for mine denial (player) and mine focus (enemy)
@@ -460,25 +539,11 @@ void Game::watchAiMovePlayerHero()
                     t.ownerId = 1;
                     m_campaign.onTownCaptured(t.id, prevOwner);
                 }
-                // Recruit from now-owned town
+                // Recruit from now-owned town — paid from the watched side's
+                // real resources, same rules as a human player
                 if (t.ownerId == 1) {
-                    // Recruit all available units from player-owned town
-                    for (auto& dw : t.dwellings) {
-                        if (dw.available <= 0) continue;
-                        for (const auto& ud : udefs) {
-                            if (ud.faction == t.faction && ud.tier == dw.tier
-                                && ud.path == dw.path) {
-                                int recruited = dw.available;
-                                dw.available = 0;
-                                bool merged = false;
-                                for (auto& s : hero.army)
-                                    if (s.defId == ud.id) { s.count += recruited; merged = true; break; }
-                                if (!merged && hero.army.size() < 7)
-                                    hero.army.push_back({ud.id, recruited});
-                                break;
-                            }
-                        }
-                    }
+                    takeGarrison(t, hero);
+                    aiPaidRecruit(t, hero.army, m_playerResources, udefs);
                     // Upgrade base-tier stacks to PathA when PathA dwelling is built
                     for (const auto& dw : t.dwellings) {
                         if (dw.path != UpgradePath::PathA) continue;
@@ -557,24 +622,12 @@ void Game::watchAiMoveSupportHero(Hero& hero, bool isCourier)
     };
 
     if (isCourier) {
-        // Standing on our own town: pick up any freshly available recruits.
+        // Standing on our own town: pick up the garrison and buy any fresh
+        // recruits the side can afford (paid, same rules as a human player).
         for (auto& t : m_towns) {
             if (t.ownerId != 1 || t.pos != hero.pos) continue;
-            for (auto& dw : t.dwellings) {
-                if (dw.available <= 0) continue;
-                for (const auto& ud : udefs) {
-                    if (ud.faction == t.faction && ud.tier == dw.tier && ud.path == dw.path) {
-                        int recruited = dw.available;
-                        dw.available = 0;
-                        bool merged = false;
-                        for (auto& s : hero.army)
-                            if (s.defId == ud.id) { s.count += recruited; merged = true; break; }
-                        if (!merged && hero.army.size() < 7)
-                            hero.army.push_back({ud.id, recruited});
-                        break;
-                    }
-                }
-            }
+            takeGarrison(t, hero);
+            aiPaidRecruit(t, hero.army, m_playerResources, udefs);
             break;
         }
 
@@ -1356,6 +1409,20 @@ void Game::doEndTurn()
             ResourceType denialRes = (plFidx >= 0 && plFidx < 9)
                                    ? kFactionResource[plFidx] : ResourceType::Gold;
 
+            // Resource blocking the AI team's own build queue — its mines get
+            // top priority (same 180 weighting the watch hero uses).
+            ResourceType aiNeededRes = static_cast<ResourceType>(RESOURCE_COUNT);
+            {
+                const auto& allDefs = m_registry.buildings();
+                for (const auto& t : m_towns) {
+                    if (!isAiOwner(t.ownerId)) continue;
+                    int tfi = static_cast<int>(t.faction);
+                    if (tfi < 0 || tfi >= 9) continue;
+                    aiNeededRes = aiBlockingResource(t, kBuildOrder[tfi], allDefs, m_enemyResources);
+                    if (static_cast<int>(aiNeededRes) < RESOURCE_COUNT) break;
+                }
+            }
+
             // Difficulty tunes how boldly the AI commits. Hard attacks at a lower
             // strength ratio and retreats less readily; Easy is more timid.
             // aggrPct = raider will attack at eiStr*10 >= nearHumanStr*aggrPct;
@@ -1409,26 +1476,14 @@ void Game::doEndTurn()
                 bool isRaider   = (heroRank[ehi] == 0);
                 bool isDefender = (heroRank[ehi] >= 2);
 
-                // Recruit from any owned town within 1 tile (free for AI)
+                // Recruit from any AI-team town within 1 tile — paid from the
+                // team pool at real unit costs, plus pick up the garrison
+                // (which weekly recruitment fills).
                 for (auto& t : m_towns) {
-                    if (t.ownerId != eHero.id) continue;
+                    if (!isAiOwner(t.ownerId)) continue;
                     if (HexGrid::distance(eHero.pos, t.pos) > 1) continue;
-                    for (auto& dw : t.dwellings) {
-                        if (dw.available <= 0) continue;
-                        for (const auto& ud : unitDefs) {
-                            if (ud.faction == t.faction && ud.tier == dw.tier
-                                && ud.path == dw.path) {
-                                int recruited = dw.available;
-                                dw.available = 0;
-                                bool merged = false;
-                                for (auto& s : eHero.army)
-                                    if (s.defId == ud.id) { s.count += recruited; merged = true; break; }
-                                if (!merged && eHero.army.size() < 7)
-                                    eHero.army.push_back({ud.id, recruited});
-                                break;
-                            }
-                        }
-                    }
+                    takeGarrison(t, eHero);
+                    aiPaidRecruit(t, eHero.army, m_enemyResources, unitDefs);
                     // Field-upgrade base-tier stacks to whichever upgrade path the
                     // town has built (previously only the watch-mode player did this,
                     // so enemy armies stayed base-tier forever).
@@ -1556,8 +1611,10 @@ void Game::doEndTurn()
                             for (const auto& r : m_resources) {
                                 if (r.ownedBy == eHero.id) continue;
                                 float val = 60.f;
-                                if (r.type == denialRes)   val = std::max(val, 120.f);
-                                if (r.type == enemyKeyRes) val = std::max(val, 100.f);
+                                if (r.type == denialRes)    val = std::max(val, 120.f);
+                                if (r.type == enemyKeyRes)  val = std::max(val, 100.f);
+                                // Mine type blocking our own build queue wins
+                                if (r.type == aiNeededRes)  val = std::max(val, 180.f);
                                 add(r.pos, val);
                             }
                         }
@@ -1788,22 +1845,11 @@ void Game::doEndTurn()
                                         eHero.army.erase(eHero.army.begin() + weakIdx);
                                 }
                                 eHero.movePool = 0; // done retreating for this turn
-                            } else if (t.ownerId == eHero.id) {
-                                // Stepped into own town — recruit immediately and keep moving
-                                for (auto& dw : t.dwellings) {
-                                    if (dw.available <= 0) continue;
-                                    for (const auto& ud : unitDefs) {
-                                        if (ud.faction == t.faction && ud.tier == dw.tier && ud.path == dw.path) {
-                                            int n = dw.available; dw.available = 0;
-                                            bool merged = false;
-                                            for (auto& s : eHero.army)
-                                                if (s.defId == ud.id) { s.count += n; merged = true; break; }
-                                            if (!merged && eHero.army.size() < 7)
-                                                eHero.army.push_back({ud.id, n});
-                                            break;
-                                        }
-                                    }
-                                }
+                            } else if (isAiOwner(t.ownerId)) {
+                                // Stepped into an AI-team town — pick up the
+                                // garrison and recruit at cost, then keep moving
+                                takeGarrison(t, eHero);
+                                aiPaidRecruit(t, eHero.army, m_enemyResources, unitDefs);
                             } else if (t.ownerId == 0) {
                                 t.ownerId = eHero.id;
                                 gLog("Enemy %s captured %s\n", eHero.name.c_str(), t.name.c_str());
@@ -1983,6 +2029,22 @@ void Game::doEndTurn()
             // (Other human players' weekly income is applied in the
             //  lastPlayerEndedTurn block below via m_players[pi].resources.)
 
+            // AI team income: same rules as the player — towns pay their
+            // weeklyIncome, owned mines pay mineYield. This block runs exactly
+            // once per game-week (hot-seat early-outs before endTurn for all
+            // but the last player).
+            {
+                int aiTowns = 0, aiMines = 0;
+                for (const auto& t : m_towns)
+                    if (isAiOwner(t.ownerId)) { m_enemyResources.addAll(t.weeklyIncome); ++aiTowns; }
+                for (const auto& r : m_resources)
+                    if (isAiOwner(r.ownedBy)) { m_enemyResources.add(r.type, mineYield(r)); ++aiMines; }
+                gLog("AI economy: %d towns + %d mines -> pool %dg %di\n",
+                     aiTowns, aiMines,
+                     m_enemyResources.get(ResourceType::Gold),
+                     m_enemyResources.get(ResourceType::Iron));
+            }
+
             // Garrison upkeep — 350 gold/week per garrisoned player hero
             {
                 int garrisonCount = 0;
@@ -2007,20 +2069,15 @@ void Game::doEndTurn()
 
             gLog("New week %d - income applied\n", m_turns.week());
 
-            // Enemy hero weekly reinforcements — scale with week number so they stay relevant
+            // AI weekly recruitment — REAL economy, same rules as the player:
+            // each AI town recruits what the team pool affords from its own
+            // dwellings into the town garrison; heroes pick garrisons up when
+            // they visit. No conjured units, no difficulty multipliers.
             {
                 const auto& unitDefs = m_registry.units();
-                int week = m_turns.week();
-                // Difficulty scales the reinforcement rate: Easy 0.75x, Normal 1x,
-                // Hard 1.5x — the single biggest lever on how fast the AI out-grows
-                // the player (world-map AI was previously difficulty-invariant).
-                static const float kReinforceMult[3] = { 0.75f, 1.0f, 1.5f };
-                float diffMult = kReinforceMult[std::clamp(m_newGameDifficulty, 0, 2)];
-                int reinforceCount = static_cast<int>((2 + std::min(week, 40)) * diffMult);
 
                 // Reassign towns whose AI owner died: without this they keep
-                // the dead hero's id forever, so living heroes reinforce at the
-                // "0 towns" rate while the orphan towns build for nobody.
+                // the dead hero's id forever and their production is orphaned.
                 if (!m_enemyHeroes.empty()) {
                     const Hero* strongest = &m_enemyHeroes[0];
                     for (const auto& eh : m_enemyHeroes)
@@ -2039,74 +2096,16 @@ void Game::doEndTurn()
                     }
                 }
 
-                for (auto& eHero : m_enemyHeroes) {
-                    // Count towns owned by this enemy hero
-                    int ownedTowns = 0;
-                    const Town* bestTown = nullptr;  // most-developed owned town (dwelling source)
-                    for (const auto& t : m_towns) {
-                        if (t.ownerId != eHero.id) continue;
-                        ownedTowns++;
-                        if (!bestTown || t.dwellings.size() > bestTown->dwellings.size())
-                            bestTown = &t;
-                    }
-                    int total = 0;
-                    if (ownedTowns > 0) {
-                        // Town-owning heroes: reinforce per owned town
-                        total = reinforceCount * ownedTowns;
-                    } else if (eHero.id >= 500u) {
-                        // Recruited heroes (no towns): get a smaller but steady reinforcement
-                        total = reinforceCount / 2 + 1;
-                    }
-                    if (total <= 0) continue;
-
-                    // Wiped army: restart with a fresh T1 stack instead of skipping
-                    // forever (an empty army previously never regrew — zombie hero).
-                    if (eHero.army.empty()) {
-                        for (const auto& ud : unitDefs) {
-                            if (ud.faction == eHero.faction && ud.tier == 1
-                                && ud.path == UpgradePath::None) {
-                                eHero.army.push_back({ud.id, total});
-                                break;
-                            }
-                        }
-                        continue;
-                    }
-
-                    // Distribute across the tiers the hero's best town has dwellings
-                    // for, weighted toward higher tiers as weeks grow — instead of
-                    // dumping everything on the smallest stack (one giant T1 blob).
-                    int distributed = 0;
-                    if (bestTown && !bestTown->dwellings.empty()) {
-                        for (const auto& dw : bestTown->dwellings) {
-                            // Higher tiers get proportionally fewer bodies but grow
-                            // with the week; T1 stays the bulk early on.
-                            int share = std::max(1, total / (dw.tier + 1));
-                            const UnitDef* pick = nullptr;
-                            for (const auto& ud : unitDefs)
-                                if (ud.faction == bestTown->faction && ud.tier == dw.tier
-                                    && ud.path == dw.path) { pick = &ud; break; }
-                            if (!pick) continue;
-                            bool merged = false;
-                            for (auto& s : eHero.army)
-                                if (s.defId == pick->id) { s.count += share; merged = true; break; }
-                            if (!merged && eHero.army.size() < 7)
-                                eHero.army.push_back({pick->id, share});
-                            else if (!merged)
-                                continue;  // army full and unit not present — skip tier
-                            distributed += share;
-                        }
-                    }
-                    if (distributed == 0) {
-                        // No town dwellings (or nothing matched): pad the smallest stack
-                        int smallestIdx = 0;
-                        for (int i = 1; i < (int)eHero.army.size(); ++i)
-                            if (eHero.army[i].count < eHero.army[smallestIdx].count)
-                                smallestIdx = i;
-                        eHero.army[smallestIdx].count += total;
-                    }
-                    gLog("Enemy %s reinforced +%d units (week %d, %d towns)\n",
-                           eHero.name.c_str(), distributed > 0 ? distributed : total,
-                           week, ownedTowns);
+                // Each AI town recruits into its garrison at real cost. A hero
+                // standing on/next to the town picks it up the same day via
+                // the adjacent-town pickup in the daily loop.
+                for (auto& t : m_towns) {
+                    if (!isAiOwner(t.ownerId)) continue;
+                    int got = aiPaidRecruit(t, t.garrison, m_enemyResources, unitDefs);
+                    if (got > 0)
+                        gLog("AI %s recruited %d units into garrison (pool %dg)\n",
+                             t.name.c_str(), got,
+                             m_enemyResources.get(ResourceType::Gold));
                 }
             }
 
@@ -2114,34 +2113,33 @@ void Game::doEndTurn()
             if (m_settingsAutoSave) saveGame();
 
             // ── AI town building: faction-specific priority order ─────────────────
+            // Every side builds from its REAL pool: watch-mode player towns
+            // from m_playerResources, AI towns from m_enemyResources. Human
+            // towns (any player in hot-seat) are never auto-built.
             {
-                Resources richRes;
-                richRes.add(ResourceType::Gold,         999999);
-                richRes.add(ResourceType::Iron,            9999);
-                richRes.add(ResourceType::FaithStones,     9999);
-                richRes.add(ResourceType::BloodEssence,    9999);
-                richRes.add(ResourceType::VerdantSap,      9999);
-                richRes.add(ResourceType::Mercury,         9999);
-
                 const auto& allBuildings = m_registry.buildings();
 
                 for (auto& town : m_towns) {
-                    if (town.ownerId == 0) continue;
-                    // In Watch AI mode also build for player towns using actual resources
-                    if (town.ownerId == 1 && !m_watchingAI) continue;
+                    bool watchPlayerTown = (town.ownerId == 1 && m_watchingAI);
+                    bool aiTown          = isAiOwner(town.ownerId);
+                    if (!watchPlayerTown && !aiTown) continue;
                     town.builtToday = 0;
 
                     bool built = false;
                     int fIdx = static_cast<int>(town.faction);
-                    // Player towns spend real resources; enemy towns have infinite
-                    Resources& buildRes = (town.ownerId == 1) ? m_playerResources : richRes;
+                    Resources& buildRes = watchPlayerTown ? m_playerResources
+                                                          : m_enemyResources;
 
-                    // Watch AI trading: if a player town has a Market and is resource-blocked,
-                    // trade just enough surplus (specialist first, gold last) at 4:1 to unblock.
-                    if (town.ownerId == 1 && m_watchingAI && fIdx >= 0 && fIdx < 9) {
+                    // Market trading: if this side's town is resource-blocked and
+                    // the side owns a Market anywhere, trade just enough surplus
+                    // (specialist first, gold last) at 4:1 to unblock the build.
+                    if (fIdx >= 0 && fIdx < 9) {
                         bool hasMarket = false;
-                        for (const auto& t : m_towns)
-                            if (t.ownerId == 1 && t.hasBuilding(BID::MARKET)) { hasMarket = true; break; }
+                        for (const auto& t : m_towns) {
+                            bool sameSide = watchPlayerTown ? (t.ownerId == 1)
+                                                            : isAiOwner(t.ownerId);
+                            if (sameSide && t.hasBuilding(BID::MARKET)) { hasMarket = true; break; }
+                        }
                         if (hasMarket) {
                             auto neededType = aiBlockingResource(town, kBuildOrder[fIdx], allBuildings, buildRes);
                             if (static_cast<int>(neededType) < RESOURCE_COUNT) {
@@ -2169,7 +2167,9 @@ void Game::doEndTurn()
                                         if (trades > 0) {
                                             buildRes.add(sellType, -(trades * SELL_RATE));
                                             buildRes.add(neededType, trades);
-                                            gLog("Watch AI traded %d→%d for build\n", (int)sellType, (int)neededType);
+                                            gLog("%s traded %d→%d for build at %s\n",
+                                                 watchPlayerTown ? "Watch AI" : "AI",
+                                                 (int)sellType, (int)neededType, town.name.c_str());
                                         }
                                     }
                                 }
@@ -2218,9 +2218,12 @@ void Game::doEndTurn()
             // ── AI hero recruitment — one per week from owned tavern town ─────
             {
                 // Hard fields more heroes than Easy/Normal (more map pressure).
+                // The cap is behavioral: every hire costs real gold now.
                 static const int kHeroCap[3] = { 5, 6, 8 };
                 const int AI_HERO_CAP = kHeroCap[std::clamp(m_newGameDifficulty, 0, 2)];
-                if (static_cast<int>(m_enemyHeroes.size()) < AI_HERO_CAP) {
+                constexpr int AI_HIRE_COST = 2500;  // same as the human tavern
+                if (static_cast<int>(m_enemyHeroes.size()) < AI_HERO_CAP
+                    && m_enemyResources.get(ResourceType::Gold) >= AI_HIRE_COST) {
                     static const char* kAINames[] = {
                         "Drafted Sword","Hired Blade","Road Warden",
                         "Freelance Arm","Wandering Axe","Sellsword",
@@ -2245,14 +2248,9 @@ void Game::doEndTurn()
                         newHero.pos     = recruitTown.pos;
                         newHero.movePool = newHero.maxMove;
 
-                        int t1count = 6 + m_turns.week() * 2;
-                        for (const auto& ud : m_registry.units()) {
-                            if (ud.faction == newHero.faction && ud.tier == 1
-                                && ud.path == UpgradePath::None) {
-                                newHero.army.push_back({ud.id, t1count});
-                                break;
-                            }
-                        }
+                        // Tavern retinue included in the fee (same as human hires)
+                        giveTavernRetinue(newHero, m_registry.buildings(), m_registry.units());
+                        m_enemyResources.add(ResourceType::Gold, -AI_HIRE_COST);
                         HexCoord spawnPos = recruitTown.pos;
                         for (auto& nb : HexGrid::neighbors(recruitTown.pos)) {
                             const HexTile* nt = m_map.getTile(nb);
@@ -2324,41 +2322,23 @@ void Game::doEndTurn()
                         newHero.name     = "Champion of " + recruitTown.name;
                         newHero.movePool = newHero.maxMove;
 
-                        int t1count = 6 + m_turns.week() * 2;
-                        for (const auto& ud : unitDefs) {
-                            if (ud.faction == newHero.faction && ud.tier == 1
-                                && ud.path == UpgradePath::None) {
-                                newHero.army.push_back({ud.id, t1count});
-                                break;
-                            }
-                        }
-                        // Absorb everything the town's dwellings have ready
-                        for (auto& dw : recruitTown.dwellings) {
-                            if (dw.available <= 0) continue;
-                            for (const auto& ud : unitDefs) {
-                                if (ud.faction == recruitTown.faction && ud.tier == dw.tier
-                                    && ud.path == dw.path) {
-                                    bool merged = false;
-                                    for (auto& s : newHero.army)
-                                        if (s.defId == ud.id) { s.count += dw.available; merged = true; break; }
-                                    if (!merged && newHero.army.size() < 7)
-                                        newHero.army.push_back({ud.id, dw.available});
-                                    dw.available = 0;
-                                    break;
-                                }
-                            }
-                        }
+                        // Tavern retinue included in the fee (same as human hires)
+                        giveTavernRetinue(newHero, m_registry.buildings(), unitDefs);
                         // Catch it up in levels so it isn't a total pushover
                         aiHeroAwardXp(newHero, m_turns.week() * 60);
 
-                        if (isCamped(recruitTown, heroStrength(newHero, unitDefs))) {
-                            // Refund the recruits into the town pool is pointless
-                            // (dwellings regrow weekly) — just try another town.
-                            continue;
-                        }
+                        // Estimate strength as retinue + waiting garrison —
+                        // check BEFORE spending any gold on the hire.
+                        int fresh = heroStrength(newHero, unitDefs)
+                                  + stacksStrength(recruitTown.garrison, unitDefs);
+                        if (isCamped(recruitTown, fresh)) continue;
+
+                        m_playerResources.add(ResourceType::Gold, -WATCH_HIRE_COST);
+                        // Take the garrison and buy whatever else is affordable
+                        takeGarrison(recruitTown, newHero);
+                        aiPaidRecruit(recruitTown, newHero.army, m_playerResources, unitDefs);
                         newHero.pos = spawnNear(recruitTown);
                         if (HexTile* ht = m_map.getTile(newHero.pos)) ht->heroId = newHero.id;
-                        m_playerResources.add(ResourceType::Gold, -WATCH_HIRE_COST);
                         gLog("Watch AI recruited main hero %s at %s (week %d)\n",
                              newHero.name.c_str(), recruitTown.name.c_str(), m_turns.week());
                         // Main hero must sit where the driver looks for it
@@ -2395,14 +2375,8 @@ void Game::doEndTurn()
                         newHero.name     = kWatchRoleNames[nextRole];
                         newHero.movePool = newHero.maxMove;
 
-                        int t1count = 6 + m_turns.week() * 2;
-                        for (const auto& ud : unitDefs) {
-                            if (ud.faction == newHero.faction && ud.tier == 1
-                                && ud.path == UpgradePath::None) {
-                                newHero.army.push_back({ud.id, t1count});
-                                break;
-                            }
-                        }
+                        // Tavern retinue included in the fee (same as human hires)
+                        giveTavernRetinue(newHero, m_registry.buildings(), unitDefs);
                         if (isCamped(recruitTown, heroStrength(newHero, unitDefs)))
                             continue;
                         newHero.pos = spawnNear(recruitTown);

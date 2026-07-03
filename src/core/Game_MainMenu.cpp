@@ -171,9 +171,9 @@ void Game::renderMainMenu()
         ImGui::Text("Difficulty:");
         static const char* kDiffNames[]    = { "Easy", "Normal", "Hard" };
         static const char* kDiffTooltips[] = {
-            "Easy: Player heroes gain +2 ATK/DEF, enemies are weaker. Good for learning.",
-            "Normal: Balanced gameplay. Recommended for most players.",
-            "Hard: Enemy heroes are stronger and more aggressive. For veterans."
+            "Easy: Your hero gains +2 ATK/DEF and the AI plays timidly. Good for learning.",
+            "Normal: The AI plays by the same economy rules as you. Recommended.",
+            "Hard: The AI is more aggressive, retreats less, and fields more heroes. Same rules, no bonuses."
         };
         for (int i = 0; i < 3; ++i) {
             if (i > 0) ImGui::SameLine();

@@ -478,6 +478,7 @@ void Game::saveGame(const std::string& customName)
         m_turns.day(), m_turns.week(),
         m_mapSize,
         m_newGameDifficulty, m_activeHeroIdx);
+    data.enemyResourceAmounts = m_enemyResources.amounts;
     data.campaign = m_campaign.toSaveState();
 
     // N-player hotseat — pack all player states
@@ -558,6 +559,17 @@ bool Game::loadGameApply(GameSaveData& data)
             if (HexTile* t = m_map.getTile(wo.pos)) t->blocked = true;
 
     m_newGameDifficulty = data.difficulty;
+
+    // AI team pool (v5+). Older saves carry no pool — seed the new-game
+    // default so the fair-economy AI isn't broke on a legacy load.
+    m_enemyResources = Resources{};
+    m_enemyResources.amounts = data.enemyResourceAmounts;
+    if (data.version < 5) {
+        int aiStarts = std::max(1, (int)m_enemyHeroes.size());
+        m_enemyResources.set(ResourceType::Gold, 5000 * aiStarts);
+        m_enemyResources.set(ResourceType::Iron,   20 * aiStarts);
+    }
+
     m_activeHeroIdx = (!m_heroes.empty())
         ? std::min(data.activeHeroIdx, (int)m_heroes.size() - 1)
         : 0;
@@ -955,11 +967,8 @@ void Game::startNewGame()
         eHero.faction  = ef;
         eHero.pos      = wgResult.startPositions[i];
         eHero.movePool = eHero.maxMove;
-        // Stats scale with difficulty: Easy +0, Normal +1, Hard +2/+2
-        static const int kDiffAtkBonus[] = {0, 1, 2};
-        static const int kDiffDefBonus[] = {0, 1, 2};
-        eHero.attack  += kDiffAtkBonus[diff];
-        eHero.defense += kDiffDefBonus[diff];
+        // No difficulty stat bonuses: the AI plays by the same rules as the
+        // player; difficulty only changes behavior (aggression, combat AI).
         // Faction-specific spells and school power for the enemy hero
         // Two spells: one offensive/debuff + one DoT or heavy hitter
         static const int kEnemySpells[9][2] = {
@@ -1022,12 +1031,20 @@ void Game::startNewGame()
             case FactionId::Convergence:    eHero.lightPower  = 1; eHero.forgePower = 1; break;
             default: break;
         }
-        // Enemy army: Easy=smaller, Normal=base, Hard=larger
-        static const int kEnemyT1[] = {14, 20, 25};
-        static const int kEnemyT2[] = { 5,  8, 10};
-        giveStartingArmy(eHero, kEnemyT1[diff], kEnemyT2[diff]);
+        // Same starting army as the player at every difficulty — no unit
+        // bonuses, the AI's only advantage is information.
+        giveStartingArmy(eHero, 20, 8);
         m_enemyHeroes.push_back(eHero);
         if (HexTile* ht = m_map.getTile(eHero.pos)) ht->heroId = eHero.id;
+    }
+
+    // AI team economy pool: each AI "player" starts with the same resources
+    // a human gets (5000g + 20 iron); the team shares one pool.
+    m_enemyResources = Resources{};
+    {
+        int aiStarts = static_cast<int>(m_enemyHeroes.size());
+        m_enemyResources.set(ResourceType::Gold, 5000 * std::max(1, aiStarts));
+        m_enemyResources.set(ResourceType::Iron,   20 * std::max(1, aiStarts));
     }
 
     for (int i = 0; i < static_cast<int>(wgResult.towns.size()); ++i) {

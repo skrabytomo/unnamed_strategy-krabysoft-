@@ -156,7 +156,7 @@ struct PlayerStateSave
 // ── Full game save ─────────────────────────────────────────────────────────────
 struct GameSaveData
 {
-    int version = 4;
+    int version = 5;
 
     // Turn state
     int day  = 1;
@@ -172,6 +172,10 @@ struct GameSaveData
 
     // Player resources
     std::array<int, RESOURCE_COUNT> resourceAmounts = {};
+
+    // AI team resource pool (version 5+) — the fair-economy AI's earned pool.
+    // v4 saves load with all zeros; Game seeds a default on load instead.
+    std::array<int, RESOURCE_COUNT> enemyResourceAmounts = {};
 
     // Entities
     std::vector<HeroSave>        heroes;

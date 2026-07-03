@@ -234,7 +234,15 @@ private:
 
     // ── Economy / turn ────────────────────────────────────────────────────────
     Resources    m_playerResources;
+    // Shared AI-team pool: the AI plays the same economy as the player (earns
+    // income from its towns/mines, pays for units/buildings/heroes). Its only
+    // allowed advantage is information (no fog of war).
+    Resources    m_enemyResources;
     TurnManager  m_turns;
+
+    // AI-owned ids: towns/mines store enemy HERO ids, which are always above
+    // the human player id range (humans are 1..m_numHumanPlayers).
+    bool isAiOwner(uint32_t id) const { return id > static_cast<uint32_t>(m_numHumanPlayers); }
 
     // ── Combat ────────────────────────────────────────────────────────────────
     CombatEngine m_combat;
