@@ -338,13 +338,16 @@ void Game::watchAiMovePlayerHero()
                 for (const auto& dw : t.dwellings) if (dw.available > 0) { hasU = true; break; }
                 if (hasU && (int)hero.army.size() < 7) add(t.pos, 250.f);
             }
-            // Towns — a garrisoned castle is only a target when we can
-            // plausibly win the garrison fight (captures now go through
-            // combat instead of a free walk-in flip).
+            // Towns — a garrisoned castle is only a target when the garrison
+            // fight looks winnable. The required edge decays toward an even
+            // fight as weeks pass (135% → 100% by week 35), so a balanced
+            // game still ends in sieges instead of a stalemate where neither
+            // side ever feels strong enough to attack.
+            int reqPct = std::max(100, 135 - m_turns.week());
             for (const auto& t : m_towns) {
                 if (t.ownerId == 1) continue;
                 int garStr = stacksStrength(t.garrison, udefs);
-                if (garStr > 0 && myStr < garStr * 13 / 10) continue;
+                if (garStr > 0 && (int64_t)myStr * 100 < (int64_t)garStr * reqPct) continue;
                 add(t.pos, t.ownerId == 0 ? 150.f : 200.f);
             }
             // Resources — prioritise the mine type blocking our next build
