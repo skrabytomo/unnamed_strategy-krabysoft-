@@ -185,6 +185,13 @@ static int heroStrength(const Hero& hero, const std::vector<UnitDef>& defs)
     return s;
 }
 
+// Watch-mode support heroes are identified by their role name; everything
+// else in m_heroes counts as a "main" hero the watch driver can fight with.
+static bool isWatchSupportName(const std::string& n)
+{
+    return n == "Supply Courier" || n == "Scout Rider" || n == "Scout Vanguard";
+}
+
 // ── File-scope AI constants ───────────────────────────────────────────────────
 
 // Per-faction key resource — used for mine denial (player) and mine focus (enemy)
@@ -532,24 +539,26 @@ void Game::watchAiMoveSupportHero(Hero& hero, bool isCourier)
             break;
         }
 
-        if (m_heroes.empty()) return;
-        Hero& mainHero = m_heroes[0];
-        if (&mainHero == &hero) return;
+        // Deliver to the first REAL hero, not blindly to m_heroes[0] — after
+        // the main dies, slot 0 can be another support hero.
+        Hero* mainHero = nullptr;
+        for (auto& h : m_heroes)
+            if (!isWatchSupportName(h.name)) { mainHero = &h; break; }
 
-        if (!hero.army.empty()) {
-            if (hero.pos == mainHero.pos) {
+        if (mainHero && !hero.army.empty()) {
+            if (hero.pos == mainHero->pos) {
                 // Transfer the whole delivery into the main hero's army.
                 for (auto& s : hero.army) {
                     bool merged = false;
-                    for (auto& ms : mainHero.army)
+                    for (auto& ms : mainHero->army)
                         if (ms.defId == s.defId) { ms.count += s.count; merged = true; break; }
-                    if (!merged && mainHero.army.size() < 7) mainHero.army.push_back(s);
+                    if (!merged && mainHero->army.size() < 7) mainHero->army.push_back(s);
                 }
                 hero.army.clear();
                 gLog("Supply Courier delivered troops to %s (week %d)\n",
-                     mainHero.name.c_str(), m_turns.week());
+                     mainHero->name.c_str(), m_turns.week());
             } else {
-                stepToward(mainHero.pos);
+                stepToward(mainHero->pos);
             }
         } else {
             // Nothing to carry — head home and wait for the next recruit cycle.
@@ -698,11 +707,22 @@ void Game::updateWorldMap(float dt)
         if (m_watchAITimer <= 0.f) {
             m_watchAITimer = 1.0f / m_watchAISpeed;
             if (!m_showCombatResult && !m_showLevelUpModal) {
-                watchAiMovePlayerHero();
+                // Keep the "main" slot pointed at a real (non-support) hero.
+                // After the main dies mid-week the active index can land on a
+                // courier, which would then hunt enemies as a pseudo-main AND
+                // be driven a second time as support below.
+                int mainIdx = -1;
+                for (size_t hi = 0; hi < m_heroes.size(); ++hi)
+                    if (!isWatchSupportName(m_heroes[hi].name)) { mainIdx = (int)hi; break; }
+                if (mainIdx >= 0) {
+                    m_activeHeroIdx = mainIdx;
+                    watchAiMovePlayerHero();
+                }
                 // Drive support heroes (scouts/courier) too — only while still on the
                 // world map, since watchAiMovePlayerHero() may have entered combat.
                 if (m_state == GameState::WorldMap) {
-                    for (size_t hi = 1; hi < m_heroes.size(); ++hi) {
+                    for (size_t hi = 0; hi < m_heroes.size(); ++hi) {
+                        if ((int)hi == mainIdx) continue;
                         bool isCourier = (m_heroes[hi].name == "Supply Courier");
                         watchAiMoveSupportHero(m_heroes[hi], isCourier);
                     }
@@ -2224,11 +2244,6 @@ void Game::doEndTurn()
                 int maxSupport = kMaxSupportBySize[std::clamp(static_cast<int>(m_mapSize), 0, 3)];
                 const auto& unitDefs = m_registry.units();
 
-                auto isSupportName = [&](const std::string& n) {
-                    for (int ri = 0; ri < 3; ++ri)
-                        if (n == kWatchRoleNames[ri]) return true;
-                    return false;
-                };
                 // A town is a death trap if a far stronger enemy camps nearby —
                 // recruiting there just hands it a free kill every week.
                 auto isCamped = [&](const Town& t, int freshStr) {
@@ -2250,7 +2265,7 @@ void Game::doEndTurn()
 
                 bool haveMain = false;
                 for (const auto& h : m_heroes)
-                    if (!isSupportName(h.name)) { haveMain = true; break; }
+                    if (!isWatchSupportName(h.name)) { haveMain = true; break; }
 
                 if (!haveMain
                     && m_playerResources.get(ResourceType::Gold) >= WATCH_HIRE_COST) {
