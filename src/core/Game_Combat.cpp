@@ -1130,10 +1130,13 @@ void Game::enterCombat(Hero& playerHero,
     if (playerHero.recyclerBonus > 0)
         for (auto& u : pUnitsGarr) u.attack += playerHero.recyclerBonus;
 
-    // Siege mode: triggered when attacking a garrisoned town (player assault)
-    // or when the AI assaults a human town (player defense).
-    bool defenseSiege = (m_pendingTownDefenseId != 0);
-    bool isSiege = (m_pendingTownCaptureId != 0) || defenseSiege;
+    // Siege mode: triggered when attacking a garrisoned town (player assault),
+    // when the AI assaults a human town (player defense), or when the battle
+    // simulator is set to a town-defense scenario.
+    bool simSiege = (m_fromBattleSim && !m_watchingAI && m_simSiegeMode != 0);
+    bool defenseSiege = (m_pendingTownDefenseId != 0)
+                     || (simSiege && m_simSiegeMode == 2);
+    bool isSiege = (m_pendingTownCaptureId != 0) || defenseSiege || simSiege;
     auto makeSiegeEngines = [&](const Hero& hero) {
             // Helper to build a siege engine CombatUnit
             auto mkEng = [&](const char* nm, int atk, int def, int hp, int spd,
@@ -1266,7 +1269,8 @@ void Game::enterCombat(Hero& playerHero,
         wallHP = kWallHP[tfIdx];
         gateHP = kGateHP[tfIdx];
         // Bastion strengthens the fortifications by 25%
-        bool hasBastion = siegeTown && siegeTown->hasBuilding(BID::BASTION);
+        bool hasBastion = siegeTown ? siegeTown->hasBuilding(BID::BASTION)
+                                    : (simSiege && m_simBastion);
         if (hasBastion) { wallHP = wallHP * 5 / 4; gateHP = gateHP * 5 / 4; }
 
         // Two faction towers on the DEFENDING side
@@ -1304,13 +1308,16 @@ void Game::enterCombat(Hero& playerHero,
         // 1 nets: attacker flyers are grounded
         // 2 shield wall: defenders take 30% less ranged damage
         // 3 plating: defenders shave 12 damage off every hit taken
-        // Player-assault sieges: the AI defender auto-picks the counter to
-        // the attacker's composition (nets vs flyers, spikes vs cavalry,
-        // shield wall vs shooters, plating otherwise).
-        if (hasBastion && !defenseSiege && m_siegePrepChoice < 0) {
+        // AI-controlled defenders auto-pick the counter to the attacker's
+        // composition (nets vs flyers, spikes vs cavalry, shield wall vs
+        // shooters, plating otherwise). Applies to player-assault sieges,
+        // watch-mode defenses, and the battle simulator.
+        if (hasBastion && m_siegePrepChoice < 0
+            && (!defenseSiege || m_watchingAI || simSiege)) {
+            auto& atkList = defenseSiege ? eUnitsFinal : pUnitsGarr;
             int flyers = 0, fast = 0, shooters = 0, total = 0;
-            for (const auto& u : pUnitsGarr) {
-                if (u.isSiegeEngine) continue;
+            for (const auto& u : atkList) {
+                if (u.isSiegeEngine || u.isTower) continue;
                 total += u.count;
                 if (u.flying) flyers += u.count;
                 else if (u.speed >= 6) fast += u.count;
@@ -1548,6 +1555,10 @@ void Game::exitCombat(bool playerWon)
         }
         m_pendingTownDefenseId = 0;
         m_defenseAttackerId    = 0;
+        if (m_fromBattleSim && m_watchingAI) {
+            m_fromBattleSim = false;
+            m_simAutoPlay   = false;
+        }
         m_audio.playMusic("worldmap_music");
         if (m_prevState == GameState::Campaign) m_state = GameState::Campaign;
         else enterWorldMap();

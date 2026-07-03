@@ -623,6 +623,8 @@ private:
     int   m_simWeek           = 5;
     int   m_simFaction1       = 0;
     int   m_simFaction2       = 1;
+    int   m_simSiegeMode      = 0;     // 0 open field, 1 side 2 defends a town, 2 side 1 defends
+    bool  m_simBastion        = false; // defender has a Bastion (+25% walls, auto defense prep)
 
     // ── Watch AI vs AI mode ────────────────────────────────────────────────────
     bool  m_watchingAI      = false;   // both sides controlled by AI

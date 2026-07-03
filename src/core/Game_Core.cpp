@@ -782,8 +782,15 @@ void Game::startNewGame()
     m_resources = std::move(wgResult.resources);
     m_nextObjId = static_cast<uint32_t>(m_resources.size()) + 1;
 
-    m_playerResources.set(ResourceType::Gold, 5000);
-    m_playerResources.set(ResourceType::Iron, 20);
+    // Starting resources scale with difficulty: the AI always gets a full
+    // player share (5000g + 20 iron per AI hero); the human starts with
+    // 100% / 90% / 80% of that on Easy / Normal / Hard.
+    {
+        static const int kStartPct[3] = {100, 90, 80};
+        int sp = kStartPct[std::clamp(m_newGameDifficulty, 0, 2)];
+        m_playerResources.set(ResourceType::Gold, 5000 * sp / 100);
+        m_playerResources.set(ResourceType::Iron,   20 * sp / 100);
+    }
 
     static constexpr FactionId kFactions[] = {
         FactionId::HolyOrder, FactionId::CrimsonWardens, FactionId::Thornkin,
@@ -937,8 +944,12 @@ void Game::startNewGame()
     // Player 2+ setup (hotseat): use startPositions[pi] and a different faction each
     for (int pi = 1; pi < m_numHumanPlayers && pi < (int)wgResult.startPositions.size(); ++pi) {
         int pfi = (fi + pi) % 9;
-        m_players[pi].resources.set(ResourceType::Gold, 5000);
-        m_players[pi].resources.set(ResourceType::Iron, 20);
+        {
+            static const int kStartPct[3] = {100, 90, 80};
+            int sp = kStartPct[std::clamp(m_newGameDifficulty, 0, 2)];
+            m_players[pi].resources.set(ResourceType::Gold, 5000 * sp / 100);
+            m_players[pi].resources.set(ResourceType::Iron,   20 * sp / 100);
+        }
         m_players[pi].activeHeroIdx = 0;
 
         Hero phero;

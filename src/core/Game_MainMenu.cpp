@@ -171,9 +171,9 @@ void Game::renderMainMenu()
         ImGui::Text("Difficulty:");
         static const char* kDiffNames[]    = { "Easy", "Normal", "Hard" };
         static const char* kDiffTooltips[] = {
-            "Easy: Your hero gains +2 ATK/DEF and the AI plays timidly. Good for learning.",
-            "Normal: The AI plays by the same economy rules as you. Recommended.",
-            "Hard: The AI is more aggressive, retreats less, and fields more heroes. Same rules, no bonuses."
+            "Easy: +2 ATK/DEF hero, full starting resources, timid AI. Good for learning.",
+            "Normal: You start with 90% of the AI's resources. Same economy rules. Recommended.",
+            "Hard: You start with 80% of the AI's resources; the AI is more aggressive and fields more heroes."
         };
         for (int i = 0; i < 3; ++i) {
             if (i > 0) ImGui::SameLine();
@@ -459,6 +459,20 @@ void Game::renderMainMenu()
         }
 
         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+        // Siege setup — fight over a town instead of an open field
+        ImGui::Text("Battlefield:");
+        if (ImGui::RadioButton("Open field", m_simSiegeMode == 0)) m_simSiegeMode = 0;
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Side 2 defends a town", m_simSiegeMode == 1)) m_simSiegeMode = 1;
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Side 1 defends a town", m_simSiegeMode == 2)) m_simSiegeMode = 2;
+        if (m_simSiegeMode != 0) {
+            ImGui::Checkbox("Defender has a Bastion (+25% walls, auto defense prep)",
+                            &m_simBastion);
+            ImGui::TextDisabled("Walls, gate, moat, faction towers and siege engines included.");
+        }
+        ImGui::Spacing();
 
         // Info line
         ImGui::TextDisabled("Side 1: %s  vs  Side 2: %s  (week %d)",

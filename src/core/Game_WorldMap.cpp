@@ -1993,15 +1993,17 @@ void Game::doEndTurn()
                             } else if (t.ownerId > 0 && t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) {
                                 // Assault on the CURRENT human's town: fight it
                                 // for real — the player defends the walls with
-                                // their garrison and chosen preparations.
-                                if (!m_watchingAI && !combatTriggered
+                                // their garrison and chosen preparations. Watch
+                                // mode fights it on-screen too (auto-played,
+                                // prep auto-picked) — no off-screen combat.
+                                if (!combatTriggered
                                     && t.ownerId == static_cast<uint32_t>(currentPlayerId())
                                     && !t.garrison.empty()) {
                                     m_pendingTownDefenseId = t.id;
                                     m_defenseAttackerId    = eHero.id;
                                     eHero.movePool = 0;
                                     combatTriggered = true;
-                                    if (t.hasBuilding(BID::BASTION)) {
+                                    if (!m_watchingAI && t.hasBuilding(BID::BASTION)) {
                                         m_showDefensePrepPopup = true;  // battle starts on choice
                                     } else {
                                         startTownDefenseBattle(-1);
