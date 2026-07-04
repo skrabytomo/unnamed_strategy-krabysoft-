@@ -108,8 +108,8 @@ static Hero makeHero(FactionId faction, uint32_t heroId, HexCoord pos,
     h.id      = heroId;
     h.faction = faction;
     h.pos     = pos;
-    h.maxMove = 20;
-    h.movePool= 20;
+    h.maxMove = 16;
+    h.movePool= 16;
     h.attack  = 2;
     h.defense = 2;
     h.level   = 1;

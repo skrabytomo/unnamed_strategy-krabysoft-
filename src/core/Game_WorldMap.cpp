@@ -2065,13 +2065,16 @@ void Game::doEndTurn()
                                 t.ownerId = eHero.id;
                                 gLog("Enemy %s captured %s\n", eHero.name.c_str(), t.name.c_str());
                             } else if (t.ownerId > 0 && t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) {
-                                // Assault on the CURRENT human's town: fight it
-                                // for real — the player defends the walls with
-                                // their garrison and chosen preparations. Watch
-                                // mode fights it on-screen too (auto-played,
-                                // prep auto-picked) — no off-screen combat.
+                                // Assault on a human/watched player's town: ALWAYS
+                                // fight it for real on the battlefield. There is NO
+                                // off-screen strength comparison and NO walk-in
+                                // capture — the town only changes hands if the
+                                // attacker beats the garrison in an actual siege.
+                                // Watch mode plays it on-screen too (auto-played,
+                                // prep auto-picked).
                                 if (!combatTriggered
-                                    && t.ownerId == static_cast<uint32_t>(currentPlayerId())
+                                    && (t.ownerId == static_cast<uint32_t>(currentPlayerId())
+                                        || m_watchingAI)
                                     && !t.garrison.empty()) {
                                     m_pendingTownDefenseId = t.id;
                                     m_defenseAttackerId    = eHero.id;
@@ -2084,65 +2087,10 @@ void Game::doEndTurn()
                                     }
                                     break;
                                 }
-                                // Off-screen siege: compare attacker vs garrison strength
-                                // (watch mode, other hot-seat players, or ungarrisoned towns)
-                                Hero garHero;
-                                garHero.faction = t.faction;
-                                garHero.army    = t.garrison;
-                                // Include any hero garrisoned in the town (current + other players)
-                                for (const auto& ph : m_heroes)
-                                    if (ph.pos == t.pos)
-                                        for (const auto& s : ph.army)
-                                            if (s.count > 0) garHero.army.push_back(s);
-                                for (int pi = 0; pi < m_numHumanPlayers; ++pi) {
-                                    if (pi == m_currentPlayerIdx) continue;
-                                    for (const auto& ph : m_players[pi].heroes)
-                                        if (ph.pos == t.pos)
-                                            for (const auto& s : ph.army)
-                                                if (s.count > 0) garHero.army.push_back(s);
-                                }
-                                int atkStr = heroStrength(eHero, unitDefs);
-                                int defStr = heroStrength(garHero, unitDefs);
-                                if (t.hasBuilding(BID::FORT))    defStr = defStr * 3 / 2;
-                                if (t.hasBuilding(BID::BASTION)) defStr = defStr * 5 / 4;
-                                if (atkStr > defStr) {
-                                    uint32_t capturedFromPlayer = t.ownerId;
-                                    t.ownerId = eHero.id;
-                                    t.garrison.clear();
-                                    int capturedIdx = static_cast<int>(capturedFromPlayer) - 1;
-                                    if (capturedIdx == m_currentPlayerIdx) {
-                                        // Current player's town captured — show immediately
-                                        m_lostTownName      = t.name;
-                                        m_showTownLostPopup = true;
-                                        gLog("Enemy %s sieged and captured your town %s!\n",
-                                               eHero.name.c_str(), t.name.c_str());
-                                        bool anyUnit = false;
-                                        for (const auto& h : m_heroes)
-                                            if (!h.army.empty()) { anyUnit = true; break; }
-                                        bool anyTown = false;
-                                        for (const auto& tt : m_towns)
-                                            if (tt.ownerId == capturedFromPlayer) { anyTown = true; break; }
-                                        if (!anyUnit && !anyTown) { m_finalDefeat = true; m_showDefeat = true; }
-                                    } else if (capturedIdx >= 0 && capturedIdx < (int)m_playerNotifs.size()) {
-                                        // Another player's town — defer notification
-                                        m_playerNotifs[capturedIdx].townLost = true;
-                                        m_playerNotifs[capturedIdx].townName = t.name;
-                                        gLog("Enemy %s sieged P%d town %s (deferred notify)\n",
-                                               eHero.name.c_str(), capturedIdx + 1, t.name.c_str());
-                                        bool anyUnit = false;
-                                        for (const auto& h : m_players[capturedIdx].heroes)
-                                            if (!h.army.empty()) { anyUnit = true; break; }
-                                        bool anyTown = false;
-                                        for (const auto& tt : m_towns)
-                                            if (tt.ownerId == capturedFromPlayer) { anyTown = true; break; }
-                                        if (!anyUnit && !anyTown)
-                                            m_playerNotifs[capturedIdx].defeated = true;
-                                    }
-                                } else {
-                                    gLog("Enemy %s failed to siege %s\n",
-                                           eHero.name.c_str(), t.name.c_str());
-                                }
-                                eHero.movePool = 0; // siege exhausts movement
+                                // Empty garrison, or a battle already triggered this
+                                // turn: the enemy cannot take the town by walking in.
+                                // It simply stops here — no off-screen capture.
+                                eHero.movePool = 0;
                             }
                             break;
                         }

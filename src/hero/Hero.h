@@ -41,7 +41,8 @@ struct Hero
 
     HexCoord    pos      = {0, 0};
     int         movePool = 0;
-    int         maxMove  = 20;
+    int         maxMove  = 16;   // reduced from 20: a hero can no longer cross
+                                 // enough hexes to reach & take a town on day 1
 
     std::vector<HexCoord> path;
     int pathStep = 0;
