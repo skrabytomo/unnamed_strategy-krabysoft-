@@ -198,7 +198,8 @@ HexMapRenderer::~HexMapRenderer()
     if (m_vao) glDeleteVertexArrays(1, &m_vao);
 }
 
-bool HexMapRenderer::init(float hexSize, const std::string& basePath)
+bool HexMapRenderer::init(float hexSize, const std::string& basePath,
+                          const std::function<void(float)>& onProgress)
 {
     m_grid = HexGrid(hexSize);
 
@@ -241,6 +242,7 @@ bool HexMapRenderer::init(float hexSize, const std::string& basePath)
                 m_variantCount[i] = 1;
         }
         if (m_variantCount[i] > 0) loaded++;
+        if (onProgress) onProgress((float)(i + 1) / (float)NUM_TERRAIN);
     }
     gLog("HexMapRenderer: %d/%d terrain types loaded (hex size %.0fpx)\n",
            loaded, NUM_TERRAIN, hexSize);

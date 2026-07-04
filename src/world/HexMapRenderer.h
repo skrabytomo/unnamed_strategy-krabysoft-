@@ -2,6 +2,7 @@
 #include "../renderer/gl_includes.h"
 #include "../renderer/Texture.h"
 #include <string>
+#include <functional>
 #include "HexMap.h"
 #include "HexGrid.h"
 #include "../renderer/Camera2D.h"
@@ -13,7 +14,10 @@ public:
     HexMapRenderer() = default;
     ~HexMapRenderer();
 
-    bool init(float hexSize, const std::string& basePath = "");
+    // onProgress(fraction 0..1) is invoked after each terrain type loads so the
+    // caller can drive a loading bar (this loads hundreds of terrain textures).
+    bool init(float hexSize, const std::string& basePath = "",
+              const std::function<void(float)>& onProgress = {});
     void update(float dt) { m_time += dt; }
     void render(const HexMap& map, const Camera2D& camera,
                 HexCoord hovered, HexCoord selected,

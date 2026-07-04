@@ -77,17 +77,22 @@ bool Game::init(const std::string& title, int width, int height)
     m_camera.setViewport(width, height);
     m_camera.setPosition(0.0f, 0.0f);
 
+    // Bring ImGui + the menu backdrop up FIRST (they need only the GL context),
+    // so the ENTIRE asset load — including the hundreds of hex terrain sheets
+    // right below — runs under the progress bar instead of a black window.
     if (!m_batch.init())                          { fprintf(stderr, "SpriteBatch failed\n"); return false; }
-    if (!m_hexRenderer.init(40.0f, m_basePath))   { fprintf(stderr, "HexRenderer failed\n"); return false; }
-    if (!m_ui.init(width, height))                { fprintf(stderr, "UIRenderer failed\n"); return false; }
-
-    // Bring ImGui up first so the rest of asset loading can show a progress bar
-    // over the menu backdrop (heavy sprite/audio loading below takes a moment).
     initImGui();
     m_menuBgTex.load(m_basePath + "assets/ui/menu_bg.png", true, false);
-    renderLoadingScreen(0.02f, "Starting up");
+    renderLoadingScreen(0.01f, "Starting up");
 
-    // Audio first — bring music up early so it plays over the loading screen
+    // Hex terrain sheets (the biggest early load) — driven onto the bar per type.
+    if (!m_hexRenderer.init(40.0f, m_basePath,
+            [this](float f){ renderLoadingScreen(0.02f + 0.12f * f, "Loading terrain"); }))
+                                                  { fprintf(stderr, "HexRenderer failed\n"); return false; }
+    if (!m_ui.init(width, height))                { fprintf(stderr, "UIRenderer failed\n"); return false; }
+    renderLoadingScreen(0.15f, "Preparing renderer");
+
+    // Audio next — bring music up early so it plays over the loading screen
     // (background + progress bar) while the heavier sprite art streams in. The
     // world-map track + UI sounds load first and start playing immediately; the
     // larger tracks follow and drive the "Loading music" portion of the bar.
@@ -100,7 +105,7 @@ bool Game::init(const std::string& title, int width, int height)
         m_audio.loadWav("buy",     "assets/sounds/buy.wav");
         m_audio.loadWav("worldmap_music", "assets/sounds/worldmap_music.wav");
         m_audio.playMusic("worldmap_music");          // start ASAP, over the bar
-        renderLoadingScreen(0.08f, "Loading music");
+        renderLoadingScreen(0.16f, "Loading music");
         m_audio.loadWav("combat_music_1", "assets/sounds/combat_music.wav");
         m_audio.loadWav("combat_music_2", "assets/sounds/combat_music_2.wav");
         m_audio.loadWav("combat_music_3", "assets/sounds/combat_music_3.wav");
@@ -111,13 +116,13 @@ bool Game::init(const std::string& title, int width, int height)
             std::snprintf(key,  sizeof(key),  "faction_music_%d", fi);
             std::snprintf(path, sizeof(path), "assets/sounds/faction_music_%d.wav", fi);
             m_audio.loadWav(key, path);
-            renderLoadingScreen(0.10f + 0.22f * (fi + 1) / 9.0f, "Loading music");
+            renderLoadingScreen(0.18f + 0.26f * (fi + 1) / 9.0f, "Loading music");
         }
     }
 
     m_iconTex.load(m_basePath + "assets/icons.png", true, false);
     m_spellIconTex.load(m_basePath + "assets/icons_spells.png", true, false);
-    renderLoadingScreen(0.34f, "Loading interface");
+    renderLoadingScreen(0.46f, "Loading interface");
 
     // Per-unit sprite sheets (optional — falls back to circles if missing)
     // File: assets/sprites/faction_F_tT.png  (F=faction 0-8, T=tier 1-6)
