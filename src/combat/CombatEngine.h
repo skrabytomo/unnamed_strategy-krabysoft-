@@ -177,7 +177,10 @@ private:
     // attacker can wipe this turn (removing retaliation), then most dangerous,
     // then lowest HP. Higher = better. onlyInRange restricts to ranged reach.
     float aiTargetScore(const CombatUnit& attacker, const CombatUnit& defender) const;
-    void tryEnemyHeroSpell();
+    // AI hero spellcasting for one side. casterIsPlayer=false is the enemy hero
+    // (the original behaviour); true drives the player/watched hero, so auto-played
+    // battles (watch mode / battle-sim) cast for BOTH sides instead of only the enemy.
+    void castHeroSpellAI(bool casterIsPlayer);
     void spawnWildGrowthGhosts();
     // Fire all on-death specialty effects (LastRites, VoidLink, BloodWeb, SoulHarvest,
     // AdaptationMirror) when target is killed; also cleans up dead units.
@@ -196,7 +199,8 @@ private:
     std::vector<uint32_t>  m_turnOrder;   // unit IDs in speed order
     std::vector<uint32_t>  m_waitQueue;   // units that used Wait
     int                    m_enemyStartCount = 0; // total enemy units at battle start
-    bool                   m_enemyHeroSpellUsed = false; // one cast per round
+    bool                   m_enemyHeroSpellUsed  = false; // one cast per round
+    bool                   m_playerHeroSpellUsed = false; // one cast per round (auto-play)
 
     std::vector<CombatLog> m_log;
     LogCallback            m_logCb;

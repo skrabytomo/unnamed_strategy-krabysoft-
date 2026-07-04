@@ -646,7 +646,8 @@ void CombatEngine::applyPlayerTownBonus(int lightP, int bloodP, int deathP,
 // ── Turn order ─────────────────────────────────────────────────────────────────
 void CombatEngine::buildTurnOrder()
 {
-    m_enemyHeroSpellUsed = false;
+    m_enemyHeroSpellUsed  = false;
+    m_playerHeroSpellUsed = false;
     m_coordinatedStrikeTarget = 0;  // mark expires each round
     m_turnOrder.clear();
     for (auto& u : m_grid.units())
@@ -1163,7 +1164,7 @@ void CombatEngine::skipUnit()
 void CombatEngine::processAITurn()
 {
     // Hero casts one spell at the start of each AI phase (before units move)
-    tryEnemyHeroSpell();
+    castHeroSpellAI(false);
 
     while (m_phase == CombatPhase::EnemyTurn && m_round <= m_maxRounds) {
         CombatUnit* unit = activeUnit();
@@ -1174,6 +1175,8 @@ void CombatEngine::processAITurn()
 
 void CombatEngine::processPlayerAITurn()
 {
+    castHeroSpellAI(true);
+
     while (m_phase == CombatPhase::PlayerTurn && m_round <= m_maxRounds) {
         CombatUnit* unit = activeUnit();
         if (!unit || !unit->isPlayer) break;
@@ -1185,11 +1188,15 @@ void CombatEngine::processOneAIAction()
 {
     CombatUnit* unit = activeUnit();
     if (!unit) return;
-    // Enemy hero casts once per round even in watch mode / auto-resolve, which
-    // drive combat through this single-step path (processAITurn is bypassed there,
-    // so previously the enemy hero never cast a spell in those modes).
+    // Each hero casts once per round even in watch mode / auto-resolve, which
+    // drive combat through this single-step path (processAITurn is bypassed there).
+    // Previously ONLY the enemy hero cast here — the watched/player hero never did,
+    // so the watched side ate free hero-spell damage every round and lost every
+    // auto-played battle. Now BOTH sides cast on their own turn.
     if (!unit->isPlayer && m_phase == CombatPhase::EnemyTurn)
-        tryEnemyHeroSpell();
+        castHeroSpellAI(false);
+    else if (unit->isPlayer && m_phase == CombatPhase::PlayerTurn)
+        castHeroSpellAI(true);
     aiActUnit(*unit);
 }
 
@@ -2009,13 +2016,18 @@ void CombatEngine::processRoundStartEffects()
 }
 
 // ── Enemy hero AI spell casting (one spell per round) ─────────────────────────
-void CombatEngine::tryEnemyHeroSpell()
+void CombatEngine::castHeroSpellAI(bool casterIsPlayer)
 {
-    if (m_enemyHeroSpellUsed) return;
-    if (m_phase != CombatPhase::EnemyTurn) return;
+    bool& spellUsed = casterIsPlayer ? m_playerHeroSpellUsed : m_enemyHeroSpellUsed;
+    if (spellUsed) return;
+    if (m_phase != (casterIsPlayer ? CombatPhase::PlayerTurn : CombatPhase::EnemyTurn)) return;
 
-    Hero& hero = m_enemyHero;
+    Hero& hero = casterIsPlayer ? m_playerHero : m_enemyHero;
     if (hero.knownSpells.empty() || hero.mana <= 0) return;
+
+    // A foe is on the opposite side from the caster; an ally shares the caster's side.
+    auto isFoe  = [&](const CombatUnit& u){ return u.isPlayer != casterIsPlayer; };
+    auto isAlly = [&](const CombatUnit& u){ return u.isPlayer == casterIsPlayer; };
 
     const SpellDef* bestSpell    = nullptr;
     uint32_t        bestTargetId = 0;
@@ -2036,19 +2048,19 @@ void CombatEngine::tryEnemyHeroSpell()
         }
         int potency = spell->power + schoolPow;
 
-        // Score offensive spells against player units
+        // Score offensive spells against foe units, support spells on allies
         switch (spell->effect) {
             case SpellEffect::Damage: {
                 if (spell->target == SpellTarget::SingleEnemy) {
                     // Prefer the unit most killable for damage cost
                     for (auto& u : m_grid.units()) {
-                        if (!u.alive || !u.isPlayer) continue;
+                        if (!u.alive || !isFoe(u)) continue;
                         float s = (float)potency * 2.0f / std::max(1, u.totalHp());
                         if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = u.id; }
                     }
                 } else if (spell->target == SpellTarget::AllEnemies) {
                     int n = 0;
-                    for (auto& u : m_grid.units()) if (u.alive && u.isPlayer) ++n;
+                    for (auto& u : m_grid.units()) if (u.alive && isFoe(u)) ++n;
                     float s = (float)potency * n * 0.4f;
                     if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = 0; }
                 }
@@ -2057,13 +2069,13 @@ void CombatEngine::tryEnemyHeroSpell()
             case SpellEffect::Poison: {
                 if (spell->target == SpellTarget::SingleEnemy) {
                     for (auto& u : m_grid.units()) {
-                        if (!u.alive || !u.isPlayer || u.poisonRounds > 0) continue;
+                        if (!u.alive || !isFoe(u) || u.poisonRounds > 0) continue;
                         float s = (float)potency * 3.0f; // 3 rounds of value
                         if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = u.id; }
                     }
                 } else if (spell->target == SpellTarget::AllEnemies) {
                     int n = 0;
-                    for (auto& u : m_grid.units()) if (u.alive && u.isPlayer && u.poisonRounds == 0) ++n;
+                    for (auto& u : m_grid.units()) if (u.alive && isFoe(u) && u.poisonRounds == 0) ++n;
                     float s = (float)potency * n * 2.0f;
                     if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = 0; }
                 }
@@ -2072,13 +2084,13 @@ void CombatEngine::tryEnemyHeroSpell()
             case SpellEffect::Burn: {
                 if (spell->target == SpellTarget::SingleEnemy) {
                     for (auto& u : m_grid.units()) {
-                        if (!u.alive || !u.isPlayer || u.burnRounds > 0) continue;
+                        if (!u.alive || !isFoe(u) || u.burnRounds > 0) continue;
                         float s = (float)potency * 2.0f; // 2 rounds of value
                         if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = u.id; }
                     }
                 } else if (spell->target == SpellTarget::AllEnemies) {
                     int n = 0;
-                    for (auto& u : m_grid.units()) if (u.alive && u.isPlayer && u.burnRounds == 0) ++n;
+                    for (auto& u : m_grid.units()) if (u.alive && isFoe(u) && u.burnRounds == 0) ++n;
                     float s = (float)potency * n * 1.5f;
                     if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = 0; }
                 }
@@ -2087,16 +2099,16 @@ void CombatEngine::tryEnemyHeroSpell()
             case SpellEffect::AttackDebuff:
             case SpellEffect::DefenseDebuff: {
                 if (spell->target == SpellTarget::SingleEnemy) {
-                    // Debuff the strongest player unit (highest attack)
+                    // Debuff the strongest foe unit (highest attack)
                     for (auto& u : m_grid.units()) {
-                        if (!u.alive || !u.isPlayer) continue;
+                        if (!u.alive || !isFoe(u)) continue;
                         if (u.buffAttackRounds > 0 || u.buffDefenseRounds > 0) continue;
                         float s = (float)potency * 1.5f + u.attack * 0.5f;
                         if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = u.id; }
                     }
                 } else if (spell->target == SpellTarget::AllEnemies) {
                     int n = 0;
-                    for (auto& u : m_grid.units()) if (u.alive && u.isPlayer) ++n;
+                    for (auto& u : m_grid.units()) if (u.alive && isFoe(u)) ++n;
                     float s = (float)potency * n * 1.0f;
                     if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = 0; }
                 }
@@ -2104,7 +2116,7 @@ void CombatEngine::tryEnemyHeroSpell()
             }
             case SpellEffect::MoraleDrain: {
                 int n = 0;
-                for (auto& u : m_grid.units()) if (u.alive && u.isPlayer && !u.moraleImmune) ++n;
+                for (auto& u : m_grid.units()) if (u.alive && isFoe(u) && !u.moraleImmune) ++n;
                 float s = (float)potency * n * 0.6f;
                 if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = 0; }
                 break;
@@ -2113,13 +2125,13 @@ void CombatEngine::tryEnemyHeroSpell()
                 // Buff the allied unit with the most total HP (biggest investment)
                 if (spell->target == SpellTarget::SingleAlly) {
                     for (auto& u : m_grid.units()) {
-                        if (!u.alive || u.isPlayer) continue;
+                        if (!u.alive || !isAlly(u)) continue;
                         float s = (float)spell->power * 1.5f + u.totalHp() * 0.01f;
                         if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = u.id; }
                     }
                 } else if (spell->target == SpellTarget::AllAllies) {
                     int n = 0;
-                    for (auto& u : m_grid.units()) if (u.alive && !u.isPlayer) ++n;
+                    for (auto& u : m_grid.units()) if (u.alive && isAlly(u)) ++n;
                     float s = (float)spell->power * n * 1.2f;
                     if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = 0; }
                 }
@@ -2129,14 +2141,14 @@ void CombatEngine::tryEnemyHeroSpell()
                 if (spell->target == SpellTarget::SingleAlly) {
                     // Buff the most threatened (lowest HP ratio) allied unit
                     for (auto& u : m_grid.units()) {
-                        if (!u.alive || u.isPlayer) continue;
+                        if (!u.alive || !isAlly(u)) continue;
                         float ratio = u.maxHp > 0 ? (float)u.hp / u.maxHp : 1.0f;
                         float s = (float)spell->power * 1.2f * (1.5f - ratio);
                         if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = u.id; }
                     }
                 } else if (spell->target == SpellTarget::AllAllies) {
                     int n = 0;
-                    for (auto& u : m_grid.units()) if (u.alive && !u.isPlayer) ++n;
+                    for (auto& u : m_grid.units()) if (u.alive && isAlly(u)) ++n;
                     float s = (float)spell->power * n * 0.9f;
                     if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = 0; }
                 }
@@ -2146,7 +2158,7 @@ void CombatEngine::tryEnemyHeroSpell()
                 if (spell->target == SpellTarget::SingleAlly) {
                     // Heal the most damaged allied unit
                     for (auto& u : m_grid.units()) {
-                        if (!u.alive || u.isPlayer) continue;
+                        if (!u.alive || !isAlly(u)) continue;
                         int missing = u.maxHp - u.hp;
                         if (missing <= 0) continue;
                         float s = (float)std::min(potency, missing) * 1.8f;
@@ -2158,12 +2170,12 @@ void CombatEngine::tryEnemyHeroSpell()
             case SpellEffect::MoraleBoost: {
                 if (spell->target == SpellTarget::AllAllies) {
                     int n = 0;
-                    for (auto& u : m_grid.units()) if (u.alive && !u.isPlayer && !u.moraleImmune) ++n;
+                    for (auto& u : m_grid.units()) if (u.alive && isAlly(u) && !u.moraleImmune) ++n;
                     float s = (float)potency * n * 0.5f;
                     if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = 0; }
                 } else if (spell->target == SpellTarget::SingleAlly) {
                     for (auto& u : m_grid.units()) {
-                        if (!u.alive || u.isPlayer || u.moraleImmune) continue;
+                        if (!u.alive || !isAlly(u) || u.moraleImmune) continue;
                         float s = (float)potency * 0.6f;
                         if (s > bestScore) { bestScore = s; bestSpell = spell; bestTargetId = u.id; }
                     }
@@ -2176,6 +2188,9 @@ void CombatEngine::tryEnemyHeroSpell()
 
     if (!bestSpell || bestScore <= 0.0f) return;
 
+    // Player-side defensive reactions (Heresy Detection / Lightning Rod) only
+    // trigger against an ENEMY hero's cast — never when the player hero casts.
+    if (!casterIsPlayer) {
     // HeresyDetection: player's Inquisitor can negate the first enemy spell cast
     if (m_playerHero.heresyDetection && !m_playerHero.heresyDetectionUsed) {
         m_playerHero.heresyDetectionUsed = true;
@@ -2247,10 +2262,11 @@ void CombatEngine::tryEnemyHeroSpell()
         checkVictory();
         return;
     }
+    } // end player-side defensive reactions (enemy cast only)
 
     // Deduct mana and mark as used
     hero.mana -= bestSpell->manaCost;
-    m_enemyHeroSpellUsed = true;
+    spellUsed = true;
 
     int schoolPow = 0;
     switch (bestSpell->school) {
@@ -2268,28 +2284,29 @@ void CombatEngine::tryEnemyHeroSpell()
     switch (bestSpell->target) {
         case SpellTarget::SingleEnemy: {
             auto* t = m_grid.getUnit(bestTargetId);
-            if (t && t->alive && t->isPlayer) targets.push_back(t);
+            if (t && t->alive && isFoe(*t)) targets.push_back(t);
             break;
         }
         case SpellTarget::AllEnemies:
             for (auto& u : m_grid.units())
-                if (u.alive && u.isPlayer) targets.push_back(&u);
+                if (u.alive && isFoe(u)) targets.push_back(&u);
             break;
         case SpellTarget::SingleAlly: {
             auto* t = m_grid.getUnit(bestTargetId);
-            if (t && t->alive && !t->isPlayer) targets.push_back(t);
+            if (t && t->alive && isAlly(*t)) targets.push_back(t);
             break;
         }
         case SpellTarget::AllAllies:
             for (auto& u : m_grid.units())
-                if (u.alive && !u.isPlayer) targets.push_back(&u);
+                if (u.alive && isAlly(u)) targets.push_back(&u);
             break;
         default: break;
     }
     if (targets.empty()) return;
 
     std::ostringstream ss;
-    ss << "[Enemy Hero] casts " << bestSpell->name;
+    ss << (casterIsPlayer ? hero.name : std::string("[Enemy Hero]"))
+       << " casts " << bestSpell->name;
 
     for (CombatUnit* t : targets) {
         switch (bestSpell->effect) {
@@ -2337,7 +2354,7 @@ void CombatEngine::tryEnemyHeroSpell()
                 ss << " → " << t->name << " +" << bestSpell->power << " atk (" << atkRnds << " rounds)";
                 if (hero.covenantSpecialty) {
                     for (auto& adj : m_grid.units()) {
-                        if (!adj.alive || adj.isPlayer || adj.id == t->id) continue;
+                        if (!adj.alive || !isAlly(adj) || adj.id == t->id) continue;
                         if (HexGrid::distance(adj.pos, t->pos) > 1) continue;
                         adj.roundAttackBonus += std::max(1, bestSpell->power / 2);
                         adj.buffAttackRounds  = std::max(adj.buffAttackRounds, atkRnds);
@@ -2352,7 +2369,7 @@ void CombatEngine::tryEnemyHeroSpell()
                 ss << " → " << t->name << " +" << bestSpell->power << " def (" << defRnds << " rounds)";
                 if (hero.covenantSpecialty) {
                     for (auto& adj : m_grid.units()) {
-                        if (!adj.alive || adj.isPlayer || adj.id == t->id) continue;
+                        if (!adj.alive || !isAlly(adj) || adj.id == t->id) continue;
                         if (HexGrid::distance(adj.pos, t->pos) > 1) continue;
                         adj.roundDefenseBonus += std::max(1, bestSpell->power / 2);
                         adj.buffDefenseRounds  = std::max(adj.buffDefenseRounds, defRnds);
