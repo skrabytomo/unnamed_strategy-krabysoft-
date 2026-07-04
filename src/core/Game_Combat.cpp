@@ -453,12 +453,11 @@ void Game::renderCombatBoard()
         float sy = wy * scale + m_combatBoardOffY;
         auto it = m_combatAnimators.find(u.id);
         if (it != m_combatAnimators.end()) {
-            int fi   = it->second.faction;
-            int tidx = std::max(0, std::min(NUM_UNIT_TIERS - 1, it->second.tier - 1));
-            if (fi >= 0 && fi < NUM_FACTIONS && m_unitTex[fi][tidx].ok()) {
+            const Texture* tex = combatSpriteTexture(it->second);
+            if (tex && tex->ok()) {
                 float u0, v0, u1, v1;
                 it->second.getUV(u0, v0, u1, v1);
-                ImTextureID tid = (ImTextureID)(uintptr_t)m_unitTex[fi][tidx].id();
+                ImTextureID tid = (ImTextureID)(uintptr_t)tex->id();
                 dl->AddImage(tid,
                     {sx - sprW, sy - sprH * 0.85f},
                     {sx + sprW, sy + sprH * 0.15f},
@@ -490,12 +489,11 @@ void Game::renderCombatBoard()
         auto it = m_combatAnimators.find(u.id);
         bool drewSprite = false;
         if (it != m_combatAnimators.end()) {
-            int fi   = it->second.faction;
-            int tidx = std::max(0, std::min(NUM_UNIT_TIERS - 1, it->second.tier - 1));
-            if (fi >= 0 && fi < NUM_FACTIONS && m_unitTex[fi][tidx].ok()) {
+            const Texture* tex = combatSpriteTexture(it->second);
+            if (tex && tex->ok()) {
                 float u0, v0, u1, v1;
                 it->second.getUV(u0, v0, u1, v1);
-                ImTextureID tid = (ImTextureID)(uintptr_t)m_unitTex[fi][tidx].id();
+                ImTextureID tid = (ImTextureID)(uintptr_t)tex->id();
                 ImU32 tint = isGhost ? IM_COL32(200,230,255,110) : IM_COL32(255,255,255,255);
                 dl->AddImage(tid,
                     {sx - sprW, sy - sprH * 0.85f},
@@ -1545,6 +1543,12 @@ void Game::enterCombat(Hero& playerHero,
                       ? (u.isPlayer != m_combat.siegeAttackerIsPlayer())
                       : !u.isPlayer;
         anim.numCols  = m_unitTexCols[fac][anim.tier - 1];
+        // Summoned units (no faction sprite) use their own sheets.
+        if (u.defId == 2001 || u.name == "Skeleton") {
+            anim.kind = 1; anim.numCols = m_summonSkelCols;
+        } else if (u.name.rfind("Ghost", 0) == 0) {
+            anim.kind = 2; anim.numCols = m_summonGhostCols;
+        }
         m_combatAnimators[u.id] = anim;
     }
 

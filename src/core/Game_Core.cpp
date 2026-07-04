@@ -107,6 +107,24 @@ bool Game::init(const std::string& title, int width, int height)
             }
         }
 
+    // Summoned-unit sheets (skeletons, ghosts) + per-faction hero figures.
+    // Frame count auto-derived from dimensions, same as unit sheets.
+    auto colsOf = [](const Texture& t) {
+        if (t.ok() && t.height() > 0)
+            return std::max(1, (int)std::round((float)t.width() / (float)t.height()));
+        return 8;
+    };
+    if (m_summonSkelTex.load(m_basePath + "assets/sprites/summon_skeleton.png", false, false))
+        m_summonSkelCols = colsOf(m_summonSkelTex);
+    if (m_summonGhostTex.load(m_basePath + "assets/sprites/summon_ghost.png", false, false))
+        m_summonGhostCols = colsOf(m_summonGhostTex);
+    for (int i = 0; i < NUM_FACTIONS; ++i) {
+        char hp[80];
+        std::snprintf(hp, sizeof(hp), "assets/sprites/hero_%d.png", i);
+        if (m_heroTex[i].load(m_basePath + hp, false, false))
+            m_heroTexCols[i] = colsOf(m_heroTex[i]);
+    }
+
     // SDL cursors
     m_cursorArrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
     m_cursorFight = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR);

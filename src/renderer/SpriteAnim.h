@@ -23,6 +23,7 @@ struct SpriteAnimator
     int       tier     = 1;    // 1-6, selects which per-unit texture
     bool      mirror   = false; // enemy units face left
     int       numCols  = 8;    // actual frame count derived from texture dimensions
+    int       kind     = 0;    // 0=faction unit, 1=summon skeleton, 2=summon ghost
 
     // Column offsets — must match the source sprite sheet column layout
     static constexpr int COL_IDLE   = 0;  // cols 0-3

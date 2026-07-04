@@ -1,5 +1,14 @@
 # Missing-Art Manifest — placeholder renders to replace
 
+## STATUS — batch 1 delivered & wired (commit history)
+- ✅ §1 world-map object icons 32–44 + Crypt (29) → composited into `icons.png`.
+- ✅ §2 summon Skeleton + Ghost → `sprites/summon_skeleton.png` / `summon_ghost.png`,
+     wired via SpriteAnimator.kind (Skeleton/defId 2001, Ghost*).
+- ✅ §3 hero_0 (Holy Order) → `sprites/hero_0.png`, wired into the world-map hero
+     render (other factions still fall back to their tier-1 unit sprite).
+- ⏳ Remaining: hero_1..8 (other faction hero figures), siege art (ART_SIEGE.md).
+
+
 Everything currently drawn with a procedural placeholder instead of real art,
 with the exact file/slot the code reads and a Gemini prompt for each. Formats
 are copied from the existing assets so new art drops in without code changes.

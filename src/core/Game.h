@@ -272,6 +272,25 @@ private:
     int               m_unitTexCols[NUM_FACTIONS][NUM_UNIT_TIERS] = {};  // frame count per sheet
     Texture           m_portraitTex[NUM_FACTIONS];
 
+    // Summoned-unit sprite sheets (Necromancy skeletons, WildGrowth ghosts) —
+    // combat units with no faction/tier mapping. Same 8-frame row format.
+    Texture           m_summonSkelTex,  m_summonGhostTex;
+    int               m_summonSkelCols = 8, m_summonGhostCols = 8;
+    // Per-faction world-map hero figures (assets/sprites/hero_F.png). Where a
+    // faction has none yet, the map falls back to its tier-1 unit sprite.
+    Texture           m_heroTex[NUM_FACTIONS];
+    int               m_heroTexCols[NUM_FACTIONS] = {};
+
+    // Resolve which sheet a combat animator draws from (faction unit or summon).
+    const Texture* combatSpriteTexture(const SpriteAnimator& a) const {
+        if (a.kind == 1) return &m_summonSkelTex;
+        if (a.kind == 2) return &m_summonGhostTex;
+        int fi = a.faction;
+        int ti = std::max(0, std::min(NUM_UNIT_TIERS - 1, a.tier - 1));
+        if (fi >= 0 && fi < NUM_FACTIONS) return &m_unitTex[fi][ti];
+        return nullptr;
+    }
+
     // ── Combat board terrain backgrounds: one per Terrain enum value ──────────
     // File: assets/terrain/combat/TERRAIN_NAME.png
     static constexpr int NUM_TERRAIN_TYPES = 15;
