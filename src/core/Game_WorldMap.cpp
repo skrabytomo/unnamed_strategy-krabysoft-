@@ -920,25 +920,41 @@ void Game::updateWorldMap(float dt)
         if (m_watchAITimer <= 0.f) {
             m_watchAITimer = 1.0f / m_watchAISpeed;
 
-            // Watch game over: a side with no town AND no army left is out —
-            // otherwise the sim ran empty for a dozen+ weeks after one side
-            // was wiped, with the survivor just farming its own map.
+            // Watch game over: end when a side is eliminated (no town AND no
+            // army) OR one side is decisively dominant (>=6x total strength,
+            // more towns, past week 3) — otherwise the sim grinds for dozens
+            // of weeks after the outcome is already settled.
             {
                 const auto& udefs = m_registry.units();
-                auto sideAlive = [&](bool ai) {
+                auto sideTowns = [&](bool ai) {
+                    int n = 0;
                     for (const auto& t : m_towns)
-                        if (ai ? isAiOwner(t.ownerId) : (t.ownerId == 1u)) return true;
-                    const auto& roster = ai ? m_enemyHeroes : m_heroes;
-                    for (const auto& h : roster)
-                        if (heroStrength(h, udefs) > 0) return true;
-                    return false;
+                        if (ai ? isAiOwner(t.ownerId) : (t.ownerId == 1u)) ++n;
+                    return n;
                 };
-                bool blueAlive = sideAlive(false);
-                bool redAlive  = sideAlive(true);
-                if (!blueAlive || !redAlive) {
-                    gLog("=== WATCH GAME OVER (week %d) — %s wins ===\n",
-                         m_turns.week(),
-                         !blueAlive ? "RED (bot 2)" : "BLUE (watched)");
+                auto sideStrength = [&](bool ai) {
+                    long long s = 0;
+                    const auto& roster = ai ? m_enemyHeroes : m_heroes;
+                    for (const auto& h : roster) s += heroStrength(h, udefs);
+                    for (const auto& t : m_towns)
+                        if (ai ? isAiOwner(t.ownerId) : (t.ownerId == 1u))
+                            s += stacksStrength(t.garrison, udefs);
+                    return s;
+                };
+                int  blueTowns = sideTowns(false), redTowns = sideTowns(true);
+                long long blueStr = sideStrength(false), redStr = sideStrength(true);
+                bool blueOut = (blueTowns == 0 && blueStr == 0);
+                bool redOut  = (redTowns  == 0 && redStr  == 0);
+                bool blueDominant = (m_turns.week() > 3 && blueTowns >= redTowns
+                                     && blueStr > redStr * 6 && redStr > 0);
+                bool redDominant  = (m_turns.week() > 3 && redTowns >= blueTowns
+                                     && redStr > blueStr * 6 && blueStr > 0);
+                if (blueOut || redOut || blueDominant || redDominant) {
+                    bool blueWins = redOut || blueDominant;
+                    gLog("=== WATCH GAME OVER (week %d) — %s wins "
+                         "(Blue str %lld / %d towns, Red str %lld / %d towns) ===\n",
+                         m_turns.week(), blueWins ? "BLUE (watched)" : "RED (bot 2)",
+                         blueStr, blueTowns, redStr, redTowns);
                     m_watchingAI  = false;
                     m_fogDisabled = false;
                     m_state       = GameState::MainMenu;

@@ -1173,6 +1173,18 @@ void Game::startNewGame()
                 }
             }
         }
+        // Starting defensive garrison for every OWNED town (player, human,
+        // AI) so a hero wandering off doesn't hand the undefended town to an
+        // early raider on turn 1 — the fight now happens at the walls.
+        if (wt.ownerId != 0 && wt.garrison.empty()) {
+            for (const auto& ud : m_registry.units())
+                if (ud.faction == wt.faction && ud.tier == 1
+                    && ud.path == UpgradePath::None) { wt.garrison.push_back({ud.id, 20}); break; }
+            for (const auto& ud : m_registry.units())
+                if (ud.faction == wt.faction && ud.tier == 2
+                    && ud.path == UpgradePath::None) { wt.garrison.push_back({ud.id, 8}); break; }
+        }
+
         if (HexTile* ht = m_map.getTile(wt.pos)) ht->townId = wt.id;
         m_towns.push_back(wt);
 
@@ -1467,8 +1479,11 @@ void Game::startNewGame()
         }
         for (int x = 0; x < 3 * scale; ++x) {
             HexCoord p = pickTile();
+            // XP shrines: a boost, not a game-decider. 200-599 XP let a hero
+            // hit level 3 in week 1 and snowball the whole match; 60-180 is
+            // roughly half a level — meaningful but not swingy.
             m_worldObjects.push_back({m_nextObjId++, WorldObjectType::XPShrine, p,
-                200 + static_cast<int>(lcg() % 400), ResourceType::Gold, false});
+                60 + static_cast<int>(lcg() % 120), ResourceType::Gold, false});
         }
         for (int rc = 0; rc < 4 * scale; ++rc) {
             HexCoord p = pickTile();
