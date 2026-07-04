@@ -180,7 +180,7 @@ static void aiTownBuild(Town& town, Resources& res, const BuildingRegistry& reg,
     if (fIdx >= 0 && fIdx < 9) {
         for (int bid : kBuildOrder[fIdx]) {
             Resources tmp = richRes;
-            if (town.build(bid, allBuildings, tmp)) { built = true; break; }
+            if (town.build(bid, allBuildings, tmp, 1.0f, /*quiet*/true)) { built = true; break; }
         }
     }
     // Fallback: lowest tier dwelling
@@ -190,7 +190,7 @@ static void aiTownBuild(Town& town, Resources& res, const BuildingRegistry& reg,
             if (def.faction != town.faction) continue;
             if (def.tier != tier || def.path != UpgradePath::None) continue;
             Resources tmp = richRes;
-            if (town.build(def.id, allBuildings, tmp)) { built = true; break; }
+            if (town.build(def.id, allBuildings, tmp, 1.0f, /*quiet*/true)) { built = true; break; }
         }
     }
 }

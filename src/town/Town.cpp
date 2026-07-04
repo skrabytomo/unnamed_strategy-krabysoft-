@@ -50,7 +50,7 @@ int Town::weeklyGrowth(int tier) const
 }
 
 bool Town::build(int buildingId, const std::vector<BuildingDef>& defs, Resources& playerRes,
-                 float costMult)
+                 float costMult, bool quiet)
 {
     if (builtToday >= 1) return false;
     if (!canBuild(buildingId, defs)) return false;
@@ -66,7 +66,8 @@ bool Town::build(int buildingId, const std::vector<BuildingDef>& defs, Resources
     }
 
     if (!playerRes.canAfford(cost)) {
-        gLog("Town %s: cannot afford %s\n", name.c_str(), def->name.c_str());
+        if (!quiet)
+            gLog("Town %s: cannot afford %s\n", name.c_str(), def->name.c_str());
         return false;
     }
 

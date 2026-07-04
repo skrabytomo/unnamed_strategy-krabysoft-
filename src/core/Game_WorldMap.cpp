@@ -2396,7 +2396,7 @@ void Game::doEndTurn()
                     // Try faction priority list first
                     if (fIdx >= 0 && fIdx < 9) {
                         for (int bid : kBuildOrder[fIdx]) {
-                            if (town.build(bid, allBuildings, buildRes)) {
+                            if (town.build(bid, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
                                 gLog("AI %s built BID=%d (priority)\n", town.name.c_str(), bid);
                                 built = true; break;
                             }
@@ -2410,7 +2410,7 @@ void Game::doEndTurn()
                             if (def.faction != town.faction) continue;
                             if (def.tier != tier) continue;
                             if (def.path != UpgradePath::None) continue;
-                            if (town.build(def.id, allBuildings, buildRes)) {
+                            if (town.build(def.id, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
                                 gLog("AI %s built %s\n", town.name.c_str(), def.name.c_str());
                                 built = true; break;
                             }
@@ -2422,7 +2422,7 @@ void Game::doEndTurn()
                             if (def.faction != town.faction && def.faction != FactionId::None) continue;
                             if (def.category != BuildingCategory::Fort &&
                                 def.category != BuildingCategory::Support) continue;
-                            if (town.build(def.id, allBuildings, buildRes)) {
+                            if (town.build(def.id, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
                                 gLog("AI %s built %s\n", town.name.c_str(), def.name.c_str());
                                 break;
                             }

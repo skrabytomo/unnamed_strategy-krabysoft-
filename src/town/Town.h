@@ -66,8 +66,10 @@ public:
     // ── Actions ───────────────────────────────────────────────────────────────
     // Build a building — returns false if prerequisites not met or already built.
     // costMult: multiplier applied to build cost (e.g. 0.8 for 20% discount)
+    // quiet: suppress the "cannot afford" log line — set by AI batch-build passes
+    // that legitimately probe the whole priority list every week.
     bool build(int buildingId, const std::vector<BuildingDef>& defs, Resources& playerRes,
-               float costMult = 1.0f);
+               float costMult = 1.0f, bool quiet = false);
 
     // Called every week — add growth to available pools
     void onWeekStart(const std::vector<BuildingDef>& defs);
