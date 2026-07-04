@@ -75,6 +75,8 @@ private:
     void renderCampaign();
     void updateMainMenu(float dt);
     void renderMainMenu();
+    // Draw a full-screen loading frame (backdrop + progress bar) during init().
+    void renderLoadingScreen(float progress, const char* label);
     void enterCampaign();
     void exitCampaign();
 
@@ -262,6 +264,7 @@ private:
     // ── Icon texture atlas (256x96, 8x3 cells of 32x32) ──────────────────────
     Texture           m_iconTex;
     Texture           m_spellIconTex;  // 5×5 atlas, 32×32 cells — spell icons
+    Texture           m_menuBgTex;     // main-menu / loading-screen backdrop
 
     // ── Per-unit sprite textures: m_unitTex[faction][tier-1] ─────────────────
     // File: assets/sprites/faction_F_tT.png  (F=0-8, T=1-6)

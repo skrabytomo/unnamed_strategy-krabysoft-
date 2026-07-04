@@ -80,8 +80,16 @@ bool Game::init(const std::string& title, int width, int height)
     if (!m_batch.init())                          { fprintf(stderr, "SpriteBatch failed\n"); return false; }
     if (!m_hexRenderer.init(40.0f, m_basePath))   { fprintf(stderr, "HexRenderer failed\n"); return false; }
     if (!m_ui.init(width, height))                { fprintf(stderr, "UIRenderer failed\n"); return false; }
+
+    // Bring ImGui up first so the rest of asset loading can show a progress bar
+    // over the menu backdrop (heavy sprite/audio loading below takes a moment).
+    initImGui();
+    m_menuBgTex.load(m_basePath + "assets/ui/menu_bg.png", true, false);
+    renderLoadingScreen(0.02f, "Starting up");
+
     m_iconTex.load(m_basePath + "assets/icons.png", true, false);
     m_spellIconTex.load(m_basePath + "assets/icons_spells.png", true, false);
+    renderLoadingScreen(0.06f, "Loading interface");
 
     // Per-unit sprite sheets (optional — falls back to circles if missing)
     // File: assets/sprites/faction_F_tT.png  (F=faction 0-8, T=tier 1-6)
@@ -107,6 +115,8 @@ bool Game::init(const std::string& title, int width, int height)
             }
         }
 
+    renderLoadingScreen(0.28f, "Loading unit sprites");
+
     // Summoned-unit sheets (skeletons, ghosts) + per-faction hero figures.
     // Frame count auto-derived from dimensions, same as unit sheets.
     auto colsOf = [](const Texture& t) {
@@ -129,6 +139,8 @@ bool Game::init(const std::string& title, int width, int height)
     m_cursorArrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
     m_cursorFight = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR);
 
+    renderLoadingScreen(0.34f, "Loading heroes");
+
     // Building registry
     m_registry.init();
 
@@ -138,6 +150,7 @@ bool Game::init(const std::string& title, int width, int height)
     // Artifact registry
     m_artifactRegistry.init();
 
+    renderLoadingScreen(0.40f, "Generating world");
     startNewGame();
     m_state = GameState::MainMenu;
 
@@ -154,6 +167,8 @@ bool Game::init(const std::string& title, int width, int height)
         std::snprintf(rel, sizeof(rel), "assets/towns/faction_%d.png", i);
         m_townTex[i].load(m_basePath + rel, false, false);
     }
+
+    renderLoadingScreen(0.48f, "Loading towns");
 
     // Load building category icon atlas
     m_buildingIconTex.load(m_basePath + "assets/buildings/icons_buildings.png", true, false);
@@ -194,6 +209,8 @@ bool Game::init(const std::string& title, int width, int height)
                 "assets/buildings/warehouse/warehouse_f%d_t%d.png", f, t + 1);
             m_warehouseTex[f][t].load(m_basePath + buf, false, false);
         }
+
+    renderLoadingScreen(0.58f, "Loading structures");
 
     // Load HolyOrder dwelling art (base + A/B upgrade per tier)
     // Files: assets/units/holy_order/<DwellingName>[— Variant].png
@@ -253,6 +270,8 @@ bool Game::init(const std::string& title, int width, int height)
             m_eeDwellingTex[t][v].load(m_basePath + buf, false, false);
         }
     }
+
+    renderLoadingScreen(0.70f, "Loading creatures");
 
     // Load combat board terrain backgrounds (assets/terrain/combat/NAME.png)
     static const char* kTerrainBgName[NUM_TERRAIN_TYPES] = {
@@ -345,11 +364,13 @@ bool Game::init(const std::string& title, int width, int height)
         m_lua.execFile("scripts/autoload.lua");
     }
 
-    // ImGui (non-fatal if fails)
-    if (initImGui())
+    // Map editor (ImGui already initialized above, before asset loading)
+    if (m_imguiReady)
         m_editor.init(width, height);
 
-    // Audio
+    // Audio — the faction music sheets are large WAVs, so this is the slowest
+    // phase; step the bar per file so the user sees steady progress.
+    renderLoadingScreen(0.78f, "Loading audio");
     if (m_audio.init()) {
         m_audio.loadWav("click",          "assets/sounds/click.wav");
         m_audio.loadWav("pickup",         "assets/sounds/pickup.wav");
@@ -368,15 +389,77 @@ bool Game::init(const std::string& title, int width, int height)
             std::snprintf(key,  sizeof(key),  "faction_music_%d", fi);
             std::snprintf(path, sizeof(path), "assets/sounds/faction_music_%d.wav", fi);
             m_audio.loadWav(key, path);
+            renderLoadingScreen(0.80f + 0.18f * (fi + 1) / 9.0f, "Loading music");
         }
         m_audio.playMusic("worldmap_music");
     }
 
+    renderLoadingScreen(0.99f, "Finalizing");
     loadSettings();   // apply persisted volume / fullscreen settings
 
     m_running = true;
     gLog("Game initialized: %dx%d\n", width, height);
     return true;
+}
+
+// ── Loading screen ──────────────────────────────────────────────────────────
+// Draws one full-screen frame with the menu backdrop and a gold progress bar.
+// Called between asset-load phases in init() so startup isn't a black window.
+void Game::renderLoadingScreen(float progress, const char* label)
+{
+    if (!m_imguiReady) return;
+    progress = std::clamp(progress, 0.0f, 1.0f);
+
+    glViewport(0, 0, m_width, m_height);
+    glClearColor(0.04f, 0.03f, 0.06f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    beginImGuiFrame();
+    ImGuiIO& io = ImGui::GetIO();
+    const float W = io.DisplaySize.x, H = io.DisplaySize.y;
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+    ImFont* font = ImGui::GetFont();
+
+    // Backdrop (cover) — or a vertical gradient if the art is missing.
+    if (m_menuBgTex.ok())
+        dl->AddImage((ImTextureID)(uintptr_t)m_menuBgTex.id(), ImVec2(0, 0), ImVec2(W, H));
+    else
+        dl->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(W, H),
+            IM_COL32(20, 16, 34, 255), IM_COL32(20, 16, 34, 255),
+            IM_COL32(40, 20, 14, 255), IM_COL32(40, 20, 14, 255));
+    dl->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), IM_COL32(0, 0, 0, 90)); // scrim
+
+    // Title
+    const char* title = "UNNAMED STRATEGY";
+    const float ts = 34.0f;
+    ImVec2 tsz = font->CalcTextSizeA(ts, 1e9f, 0.0f, title);
+    dl->AddText(font, ts, ImVec2((W - tsz.x) * 0.5f, H * 0.5f - 92.0f),
+                IM_COL32(240, 210, 120, 255), title);
+
+    // Progress bar
+    const float barW = std::min(560.0f, W - 120.0f);
+    const float barH = 22.0f;
+    const float bx = (W - barW) * 0.5f;
+    const float by = H * 0.5f + 8.0f;
+    dl->AddRectFilled(ImVec2(bx - 2, by - 2), ImVec2(bx + barW + 2, by + barH + 2), IM_COL32(0, 0, 0, 180), 4.0f);
+    dl->AddRect(ImVec2(bx - 2, by - 2), ImVec2(bx + barW + 2, by + barH + 2), IM_COL32(120, 95, 40, 255), 4.0f, 0, 1.5f);
+    dl->AddRectFilled(ImVec2(bx, by), ImVec2(bx + barW, by + barH), IM_COL32(30, 26, 22, 255), 3.0f);
+    const float fw = barW * progress;
+    if (fw > 1.0f)
+        dl->AddRectFilledMultiColor(ImVec2(bx, by), ImVec2(bx + fw, by + barH),
+            IM_COL32(150, 110, 40, 255), IM_COL32(232, 182, 72, 255),
+            IM_COL32(232, 182, 72, 255), IM_COL32(150, 110, 40, 255));
+
+    char pct[16]; std::snprintf(pct, sizeof(pct), "%d%%", (int)std::round(progress * 100.0f));
+    ImVec2 psz = font->CalcTextSizeA(15.0f, 1e9f, 0.0f, pct);
+    dl->AddText(font, 15.0f, ImVec2((W - psz.x) * 0.5f, by + barH + 8.0f), IM_COL32(232, 222, 192, 255), pct);
+    if (label && *label) {
+        ImVec2 lsz = font->CalcTextSizeA(15.0f, 1e9f, 0.0f, label);
+        dl->AddText(font, 15.0f, ImVec2((W - lsz.x) * 0.5f, by - 26.0f), IM_COL32(200, 190, 160, 255), label);
+    }
+
+    endImGuiFrame();
+    SDL_GL_SwapWindow(m_window);
 }
 
 // ── Main loop ─────────────────────────────────────────────────────────────────

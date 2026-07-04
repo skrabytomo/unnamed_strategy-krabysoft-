@@ -110,24 +110,18 @@ void Game::updateCombat(float dt)
     }
 
     if (m_fromBattleSim && m_simAutoPlay) {
-        if (m_watchingAI) {
-            // Watch AI: resolve entire combat instantly (no per-action delay)
-            for (int guard = 0; guard < 2000; ++guard) {
-                auto ph = m_combat.phase();
-                if (ph == CombatPhase::Victory || ph == CombatPhase::Defeat) break;
-                if (ph == CombatPhase::PlayerTurn || ph == CombatPhase::EnemyTurn)
-                    m_combat.processOneAIAction();
-                else break;
-            }
-        } else {
-            // Battle-sim watch mode: fire one unit action per tick at a human-visible pace
-            m_simAutoPlayTimer -= dt;
-            if (m_simAutoPlayTimer <= 0.f) {
-                m_simAutoPlayTimer = 0.4f;
-                auto ph = m_combat.phase();
-                if (ph == CombatPhase::PlayerTurn || ph == CombatPhase::EnemyTurn)
-                    m_combat.processOneAIAction();
-            }
+        // Auto-play (watch AI + battle sim): step one unit action per tick at a
+        // human-visible pace so the fight can actually be WATCHED — it used to
+        // resolve the whole battle in a single frame in watch mode, so the user
+        // never saw it. Interval scales with the anim-speed setting; watch mode
+        // runs a touch brisker since it plays out many battles per game.
+        m_simAutoPlayTimer -= dt;
+        if (m_simAutoPlayTimer <= 0.f) {
+            float base = m_watchingAI ? 0.22f : 0.4f;
+            m_simAutoPlayTimer = base / std::max(0.25f, m_settingsAnimSpeed);
+            auto ph = m_combat.phase();
+            if (ph == CombatPhase::PlayerTurn || ph == CombatPhase::EnemyTurn)
+                m_combat.processOneAIAction();
         }
     } else {
         if (m_combat.phase() == CombatPhase::EnemyTurn)
