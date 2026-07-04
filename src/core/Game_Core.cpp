@@ -402,6 +402,28 @@ bool Game::init(const std::string& title, int width, int height)
     return true;
 }
 
+// ── Menu backdrop ────────────────────────────────────────────────────────────
+// Aspect-correct "cover": scale the art to fill W×H at ANY resolution without
+// stretching (overflow is cropped, clipped by the framebuffer). Falls back to a
+// vertical gradient if the art is missing. scrimAlpha darkens it for legibility.
+void Game::drawMenuBackdrop(float W, float H, int scrimAlpha)
+{
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+    if (m_menuBgTex.ok() && m_menuBgTex.width() > 0 && m_menuBgTex.height() > 0) {
+        float iw = (float)m_menuBgTex.width(), ih = (float)m_menuBgTex.height();
+        float scale = std::max(W / iw, H / ih);          // cover
+        float dw = iw * scale, dh = ih * scale;
+        float x = (W - dw) * 0.5f, y = (H - dh) * 0.5f;  // centre, crop overflow
+        dl->AddImage((ImTextureID)(uintptr_t)m_menuBgTex.id(), ImVec2(x, y), ImVec2(x + dw, y + dh));
+    } else {
+        dl->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(W, H),
+            IM_COL32(20, 16, 34, 255), IM_COL32(20, 16, 34, 255),
+            IM_COL32(40, 20, 14, 255), IM_COL32(40, 20, 14, 255));
+    }
+    if (scrimAlpha > 0)
+        dl->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), IM_COL32(0, 0, 0, scrimAlpha));
+}
+
 // ── Loading screen ──────────────────────────────────────────────────────────
 // Draws one full-screen frame with the menu backdrop and a gold progress bar.
 // Called between asset-load phases in init() so startup isn't a black window.
@@ -417,17 +439,9 @@ void Game::renderLoadingScreen(float progress, const char* label)
     beginImGuiFrame();
     ImGuiIO& io = ImGui::GetIO();
     const float W = io.DisplaySize.x, H = io.DisplaySize.y;
+    drawMenuBackdrop(W, H, 90);
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     ImFont* font = ImGui::GetFont();
-
-    // Backdrop (cover) — or a vertical gradient if the art is missing.
-    if (m_menuBgTex.ok())
-        dl->AddImage((ImTextureID)(uintptr_t)m_menuBgTex.id(), ImVec2(0, 0), ImVec2(W, H));
-    else
-        dl->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(W, H),
-            IM_COL32(20, 16, 34, 255), IM_COL32(20, 16, 34, 255),
-            IM_COL32(40, 20, 14, 255), IM_COL32(40, 20, 14, 255));
-    dl->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), IM_COL32(0, 0, 0, 90)); // scrim
 
     // Title
     const char* title = "UNNAMED STRATEGY";

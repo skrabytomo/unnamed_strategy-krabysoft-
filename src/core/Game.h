@@ -77,6 +77,9 @@ private:
     void renderMainMenu();
     // Draw a full-screen loading frame (backdrop + progress bar) during init().
     void renderLoadingScreen(float progress, const char* label);
+    // Draw the menu backdrop aspect-correct "cover" (fills any resolution without
+    // distortion, cropping overflow) onto the current ImGui background draw list.
+    void drawMenuBackdrop(float W, float H, int scrimAlpha);
     void enterCampaign();
     void exitCampaign();
 

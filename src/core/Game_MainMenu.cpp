@@ -64,20 +64,9 @@ void Game::renderMainMenu()
     float cx = io.DisplaySize.x * 0.5f;
     float cy = io.DisplaySize.y * 0.5f;
 
-    // Full-screen menu backdrop (behind the panel). Falls back silently to the
-    // dark theme background if the art is missing.
-    {
-        ImDrawList* bg = ImGui::GetBackgroundDrawList();
-        const float W = io.DisplaySize.x, H = io.DisplaySize.y;
-        if (m_menuBgTex.ok())
-            bg->AddImage((ImTextureID)(uintptr_t)m_menuBgTex.id(), ImVec2(0, 0), ImVec2(W, H));
-        else
-            bg->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(W, H),
-                IM_COL32(20, 16, 34, 255), IM_COL32(20, 16, 34, 255),
-                IM_COL32(40, 20, 14, 255), IM_COL32(40, 20, 14, 255));
-        // gentle scrim so the menu panel stays readable over bright art
-        bg->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), IM_COL32(0, 0, 0, 70));
-    }
+    // Full-screen menu backdrop (behind the panel) — aspect-correct cover at any
+    // resolution, with a gentle scrim so the panel stays readable over bright art.
+    drawMenuBackdrop(io.DisplaySize.x, io.DisplaySize.y, 70);
 
     ImGui::SetNextWindowPos(ImVec2(cx, cy), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(400, 0), ImGuiCond_Always);
