@@ -2467,6 +2467,13 @@ void Game::doEndTurn()
                         // Tavern retinue included in the fee (same as human hires)
                         giveTavernRetinue(newHero, m_registry.buildings(), m_registry.units());
                         m_enemyResources.add(ResourceType::Gold, -AI_HIRE_COST);
+                        // Consolidate: scoop the town garrison and buy more with the
+                        // AI pool — a TRUE mirror of the watched-side hire below.
+                        // Without this the enemy fielded fodder heroes while its
+                        // garrison + gold rotted in the town (223 mines / 185k gold
+                        // and still losing), so the enemy hire must match exactly.
+                        takeGarrison(recruitTown, newHero);
+                        aiPaidRecruit(recruitTown, newHero.army, m_enemyResources, m_registry.units());
                         HexCoord spawnPos = recruitTown.pos;
                         for (auto& nb : HexGrid::neighbors(recruitTown.pos)) {
                             const HexTile* nt = m_map.getTile(nb);
