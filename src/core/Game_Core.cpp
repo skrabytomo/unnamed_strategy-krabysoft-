@@ -432,7 +432,29 @@ void Game::renderLoadingScreen(float progress, const char* label)
     if (!m_imguiReady) return;
     progress = std::clamp(progress, 0.0f, 1.0f);
 
-    glViewport(0, 0, m_width, m_height);
+    // CRITICAL: pump the OS event queue. Asset loading is a long synchronous
+    // block; without servicing events the window goes "not responding", never
+    // gets shown/sized (so ImGui's DisplaySize can read 0 and mis-place the menu),
+    // and the window manager draws a draggable ghost. Draining + forwarding to
+    // ImGui keeps the window live and its size current between load phases.
+    SDL_Event ev;
+    while (SDL_PollEvent(&ev)) {
+        ImGui_ImplSDL2_ProcessEvent(&ev);
+        if (ev.type == SDL_WINDOWEVENT &&
+            ev.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+            m_width  = ev.window.data1;   // logical size, matching the main loop
+            m_height = ev.window.data2;
+        }
+    }
+
+    // GL viewport uses the drawable (pixel) size — kept in locals so the logical
+    // m_width/m_height members (used by the HUDs/camera) aren't clobbered on HiDPI.
+    int fbW = m_width, fbH = m_height;
+    SDL_GL_GetDrawableSize(m_window, &fbW, &fbH);
+    if (fbW <= 0) fbW = 1;
+    if (fbH <= 0) fbH = 1;
+
+    glViewport(0, 0, fbW, fbH);
     glClearColor(0.04f, 0.03f, 0.06f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
