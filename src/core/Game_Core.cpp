@@ -87,9 +87,37 @@ bool Game::init(const std::string& title, int width, int height)
     m_menuBgTex.load(m_basePath + "assets/ui/menu_bg.png", true, false);
     renderLoadingScreen(0.02f, "Starting up");
 
+    // Audio first — bring music up early so it plays over the loading screen
+    // (background + progress bar) while the heavier sprite art streams in. The
+    // world-map track + UI sounds load first and start playing immediately; the
+    // larger tracks follow and drive the "Loading music" portion of the bar.
+    if (m_audio.init()) {
+        m_audio.loadWav("click",   "assets/sounds/click.wav");
+        m_audio.loadWav("pickup",  "assets/sounds/pickup.wav");
+        m_audio.loadWav("levelup", "assets/sounds/levelup.wav");
+        m_audio.loadWav("hit",     "assets/sounds/hit.wav");
+        m_audio.loadWav("spell",   "assets/sounds/spell.wav");
+        m_audio.loadWav("buy",     "assets/sounds/buy.wav");
+        m_audio.loadWav("worldmap_music", "assets/sounds/worldmap_music.wav");
+        m_audio.playMusic("worldmap_music");          // start ASAP, over the bar
+        renderLoadingScreen(0.08f, "Loading music");
+        m_audio.loadWav("combat_music_1", "assets/sounds/combat_music.wav");
+        m_audio.loadWav("combat_music_2", "assets/sounds/combat_music_2.wav");
+        m_audio.loadWav("combat_music_3", "assets/sounds/combat_music_3.wav");
+        m_audio.loadWav("combat_music_4", "assets/sounds/combat_music_4.wav");
+        m_audio.loadWav("town_music",     "assets/sounds/town_music.wav");
+        for (int fi = 0; fi < 9; ++fi) {
+            char key[32], path[64];
+            std::snprintf(key,  sizeof(key),  "faction_music_%d", fi);
+            std::snprintf(path, sizeof(path), "assets/sounds/faction_music_%d.wav", fi);
+            m_audio.loadWav(key, path);
+            renderLoadingScreen(0.10f + 0.22f * (fi + 1) / 9.0f, "Loading music");
+        }
+    }
+
     m_iconTex.load(m_basePath + "assets/icons.png", true, false);
     m_spellIconTex.load(m_basePath + "assets/icons_spells.png", true, false);
-    renderLoadingScreen(0.06f, "Loading interface");
+    renderLoadingScreen(0.34f, "Loading interface");
 
     // Per-unit sprite sheets (optional — falls back to circles if missing)
     // File: assets/sprites/faction_F_tT.png  (F=faction 0-8, T=tier 1-6)
@@ -115,7 +143,7 @@ bool Game::init(const std::string& title, int width, int height)
             }
         }
 
-    renderLoadingScreen(0.28f, "Loading unit sprites");
+    renderLoadingScreen(0.48f, "Loading unit sprites");
 
     // Summoned-unit sheets (skeletons, ghosts) + per-faction hero figures.
     // Frame count auto-derived from dimensions, same as unit sheets.
@@ -139,7 +167,7 @@ bool Game::init(const std::string& title, int width, int height)
     m_cursorArrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
     m_cursorFight = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR);
 
-    renderLoadingScreen(0.34f, "Loading heroes");
+    renderLoadingScreen(0.56f, "Loading heroes");
 
     // Building registry
     m_registry.init();
@@ -150,7 +178,7 @@ bool Game::init(const std::string& title, int width, int height)
     // Artifact registry
     m_artifactRegistry.init();
 
-    renderLoadingScreen(0.40f, "Generating world");
+    renderLoadingScreen(0.62f, "Generating world");
     startNewGame();
     m_state = GameState::MainMenu;
 
@@ -168,7 +196,7 @@ bool Game::init(const std::string& title, int width, int height)
         m_townTex[i].load(m_basePath + rel, false, false);
     }
 
-    renderLoadingScreen(0.48f, "Loading towns");
+    renderLoadingScreen(0.70f, "Loading towns");
 
     // Load building category icon atlas
     m_buildingIconTex.load(m_basePath + "assets/buildings/icons_buildings.png", true, false);
@@ -210,7 +238,7 @@ bool Game::init(const std::string& title, int width, int height)
             m_warehouseTex[f][t].load(m_basePath + buf, false, false);
         }
 
-    renderLoadingScreen(0.58f, "Loading structures");
+    renderLoadingScreen(0.78f, "Loading structures");
 
     // Load HolyOrder dwelling art (base + A/B upgrade per tier)
     // Files: assets/units/holy_order/<DwellingName>[— Variant].png
@@ -271,7 +299,7 @@ bool Game::init(const std::string& title, int width, int height)
         }
     }
 
-    renderLoadingScreen(0.70f, "Loading creatures");
+    renderLoadingScreen(0.90f, "Loading creatures");
 
     // Load combat board terrain backgrounds (assets/terrain/combat/NAME.png)
     static const char* kTerrainBgName[NUM_TERRAIN_TYPES] = {
@@ -368,34 +396,8 @@ bool Game::init(const std::string& title, int width, int height)
     if (m_imguiReady)
         m_editor.init(width, height);
 
-    // Audio — the faction music sheets are large WAVs, so this is the slowest
-    // phase; step the bar per file so the user sees steady progress.
-    renderLoadingScreen(0.78f, "Loading audio");
-    if (m_audio.init()) {
-        m_audio.loadWav("click",          "assets/sounds/click.wav");
-        m_audio.loadWav("pickup",         "assets/sounds/pickup.wav");
-        m_audio.loadWav("levelup",        "assets/sounds/levelup.wav");
-        m_audio.loadWav("hit",            "assets/sounds/hit.wav");
-        m_audio.loadWav("spell",          "assets/sounds/spell.wav");
-        m_audio.loadWav("buy",            "assets/sounds/buy.wav");
-        m_audio.loadWav("worldmap_music",  "assets/sounds/worldmap_music.wav");
-        m_audio.loadWav("combat_music_1", "assets/sounds/combat_music.wav");
-        m_audio.loadWav("combat_music_2", "assets/sounds/combat_music_2.wav");
-        m_audio.loadWav("combat_music_3", "assets/sounds/combat_music_3.wav");
-        m_audio.loadWav("combat_music_4", "assets/sounds/combat_music_4.wav");
-        m_audio.loadWav("town_music",     "assets/sounds/town_music.wav");
-        for (int fi = 0; fi < 9; ++fi) {
-            char key[32], path[64];
-            std::snprintf(key,  sizeof(key),  "faction_music_%d", fi);
-            std::snprintf(path, sizeof(path), "assets/sounds/faction_music_%d.wav", fi);
-            m_audio.loadWav(key, path);
-            renderLoadingScreen(0.80f + 0.18f * (fi + 1) / 9.0f, "Loading music");
-        }
-        m_audio.playMusic("worldmap_music");
-    }
-
     renderLoadingScreen(0.99f, "Finalizing");
-    loadSettings();   // apply persisted volume / fullscreen settings
+    loadSettings();   // apply persisted volume / fullscreen settings (music already playing)
 
     m_running = true;
     gLog("Game initialized: %dx%d\n", width, height);
