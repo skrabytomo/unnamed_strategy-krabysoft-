@@ -919,6 +919,34 @@ void Game::updateWorldMap(float dt)
         m_watchAITimer -= dt;
         if (m_watchAITimer <= 0.f) {
             m_watchAITimer = 1.0f / m_watchAISpeed;
+
+            // Watch game over: a side with no town AND no army left is out —
+            // otherwise the sim ran empty for a dozen+ weeks after one side
+            // was wiped, with the survivor just farming its own map.
+            {
+                const auto& udefs = m_registry.units();
+                auto sideAlive = [&](bool ai) {
+                    for (const auto& t : m_towns)
+                        if (ai ? isAiOwner(t.ownerId) : (t.ownerId == 1u)) return true;
+                    const auto& roster = ai ? m_enemyHeroes : m_heroes;
+                    for (const auto& h : roster)
+                        if (heroStrength(h, udefs) > 0) return true;
+                    return false;
+                };
+                bool blueAlive = sideAlive(false);
+                bool redAlive  = sideAlive(true);
+                if (!blueAlive || !redAlive) {
+                    gLog("=== WATCH GAME OVER (week %d) — %s wins ===\n",
+                         m_turns.week(),
+                         !blueAlive ? "RED (bot 2)" : "BLUE (watched)");
+                    m_watchingAI  = false;
+                    m_fogDisabled = false;
+                    m_state       = GameState::MainMenu;
+                    m_menuMode    = 0;
+                    return;
+                }
+            }
+
             if (!m_showCombatResult && !m_showLevelUpModal) {
                 // Drive EVERY watched-side hero once per game-day (a real
                 // roster, mirroring the enemy). A hero is marked moved before
@@ -1697,12 +1725,12 @@ void Game::doEndTurn()
                         // nearby (within 4 hexes) unclaimed resources so it keeps
                         // doing something productive instead of statue-standing.
                         for (const auto& r : m_resources) {
-                            if (r.ownedBy == eHero.id) continue;
+                            if (isAiOwner(r.ownedBy)) continue;   // skip any team mine
                             if (HexGrid::distance(eHero.pos, r.pos) <= 6) add(r.pos, 40.f);
                         }
                     } else if (isDefender) {
                         for (const auto& r : m_resources)
-                            if (r.ownedBy != eHero.id) add(r.pos, 100.f);
+                            if (!isAiOwner(r.ownedBy)) add(r.pos, 100.f);
                         for (const auto& t : m_towns)
                             if (t.ownerId == eHero.id) add(t.pos, 80.f);
                         // Defenders actively intercept any human hero threatening an
@@ -1736,7 +1764,11 @@ void Game::doEndTurn()
                             ResourceType enemyKeyRes = (eFidx >= 0 && eFidx < 9)
                                                      ? kFactionResource[eFidx] : ResourceType::Gold;
                             for (const auto& r : m_resources) {
-                                if (r.ownedBy == eHero.id) continue;
+                                // Skip mines the TEAM already holds — bots were
+                                // wastefully re-grabbing each other's mines
+                                // (all AI share one pool, so it's pointless).
+                                // Enemy/unclaimed mines stay valid targets.
+                                if (isAiOwner(r.ownedBy)) continue;
                                 // Unclaimed mines are always worth taking —
                                 // they're the whole income engine now.
                                 float val = 100.f;
