@@ -4647,12 +4647,10 @@ void Game::renderWorldOverlay()
         case WorldObjectType::WitchHut:       ico = 41;              break; // row5 col1
         case WorldObjectType::Stables:        ico = 42;              break; // row5 col2
         case WorldObjectType::TreeOfKnowledge:ico = 43;              break; // row5 col3
-        case WorldObjectType::ChokeGuard:       ico = ICO_CHOKE_GUARD; break;
-        case WorldObjectType::Shipyard:         ico = ICO_SHIPYARD;    break;
-        case WorldObjectType::FishingHouse:     ico = ICO_FISH_HOUSE;  break;
-        case WorldObjectType::ArtifactMerchant: ico = ICO_MERCHANT;    break;
-        case WorldObjectType::Arena:            ico = ICO_ARENA;       break;
-        case WorldObjectType::ExperienceWell:   ico = ICO_XP_WELL;     break;
+        // NOTE: atlas slots 32-37 hold the RESOURCE-BAR icons (gold/iron/faith/
+        // blood/sap/mercury). These six objects previously reused those slots,
+        // which overwrote the resource icons — they now fall back to the default
+        // map marker (slot 15) so the resource bar renders correctly.
         case WorldObjectType::PandoraBox:       ico = 44;              break; // row5 col4
         default:                                ico = 15;          break;
         }
