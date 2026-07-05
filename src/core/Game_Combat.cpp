@@ -1536,12 +1536,21 @@ void Game::enterCombat(Hero& playerHero,
         anim.mirror   = m_combat.isSiege()
                       ? (u.isPlayer != m_combat.siegeAttackerIsPlayer())
                       : !u.isPlayer;
-        anim.numCols  = m_unitTexCols[fac][anim.tier - 1];
-        // Summoned units (no faction sprite) use their own sheets.
-        if (u.defId == 2001 || u.name == "Skeleton") {
+        // Prefer a unit's OWN faction sheet whenever it has one. The Crimson
+        // Wardens' Tier-1 unit is literally named "Skeleton" (defId 2001), so it
+        // must keep faction_1_t1 — the summon sheet is only a FALLBACK for
+        // skeletons/ghosts that have no faction sprite (neutral guards, battle-sim
+        // retinues, Necromancy raises in a foreign army with no sprite of their own).
+        bool hasFactionSprite = (fac >= 0 && fac < NUM_FACTIONS
+                                 && m_unitTex[fac][anim.tier - 1].ok());
+        if (hasFactionSprite) {
+            anim.numCols = m_unitTexCols[fac][anim.tier - 1];
+        } else if (u.defId == 2001 || u.name == "Skeleton") {
             anim.kind = 1; anim.numCols = m_summonSkelCols;
         } else if (u.name.rfind("Ghost", 0) == 0) {
             anim.kind = 2; anim.numCols = m_summonGhostCols;
+        } else {
+            anim.numCols = 8;  // unknown unit — safe default frame count
         }
         m_combatAnimators[u.id] = anim;
     }
