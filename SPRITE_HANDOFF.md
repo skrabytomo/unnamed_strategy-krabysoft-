@@ -52,7 +52,22 @@ STUCK — several blind attempts made it worse.
   change. User says Thornkin STILL "not filled", Iron Assembly STILL "faded". Outer outline
   alone is insufficient. **Consider reverting `0efba0b`** or keeping as a base under the real fix.
 
-## Recommended fix next session (per problem — NEVER erase colour)
+## DONE this session — renderer-side outline (the real fix, needs in-game tuning)
+- **Implemented a uniform dark silhouette outline in the combat renderer**
+  (`src/core/Game_Combat.cpp`, the alive-unit draw near the `dl->AddImage(tid, p0, p1, ...tint)`
+  call, ~line 492). Technique: draw the same frame 8× at small offsets with a dark tint
+  underneath the real sprite. Offset copies also darken lattice gaps so branchy bodies
+  (Thornkin) read filled. **Builds clean.** Touches NO art. Reversible.
+  - Tuning knobs: `const float o = sprW*0.022f + 1.0f;` (outline thickness ~2-3px) and
+    `IM_COL32(12,10,16,205)` (colour/alpha). Skipped for ghosts.
+- **Reverted the per-sprite outline** (`0efba0b`) via commit `6db1617` so Thornkin/Iron
+  Assembly aren't double-outlined — visibility is now handled uniformly by the renderer.
+- **NEXT SESSION:** user tests in-game. If outline too strong/weak → tune `o`/alpha. If the
+  dark tiers (Iron Assembly t1-4, EE, Bloodsworn dark) still read faint, add a brightness/
+  contrast lift to those sprites (reuse Bloodsworn t3/t4 gamma-lift). Consider adding the
+  same outline to the WORLD-MAP unit draw if stacks look faint there too.
+
+## Fallback fix if renderer outline is rejected (per problem — NEVER erase colour)
 1. **Thornkin (branchy + partial-alpha):** (a) solidify by BOOSTING alpha (alpha>~20 → 255,
    never erase); (b) morphological CLOSE / dilate body 1–2px (grow colour from nearest body
    pixel) to thicken thin branches and shrink gaps; (c) optionally flood-fill enclosed holes
