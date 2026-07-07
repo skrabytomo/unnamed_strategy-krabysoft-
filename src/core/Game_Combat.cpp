@@ -489,10 +489,23 @@ void Game::renderCombatBoard()
                 it->second.getUV(u0, v0, u1, v1);
                 ImTextureID tid = (ImTextureID)(uintptr_t)tex->id();
                 ImU32 tint = isGhost ? IM_COL32(200,230,255,110) : IM_COL32(255,255,255,255);
-                dl->AddImage(tid,
-                    {sx - sprW, sy - sprH * 0.85f},
-                    {sx + sprW, sy + sprH * 0.15f},
-                    {u0, v0}, {u1, v1}, tint);
+                ImVec2 p0{sx - sprW, sy - sprH * 0.85f};
+                ImVec2 p1{sx + sprW, sy + sprH * 0.15f};
+                // Silhouette outline: draw the frame several times, offset and darkened,
+                // beneath the real sprite so every unit reads as a solid shape against the
+                // terrain — fixes faint/thin/dark sprites (Thornkin, Iron Assembly, dark
+                // tiers) bleeding into the ground. Offset copies also darken the gaps in
+                // lattice-y bodies so they look filled. Skipped for translucent ghosts.
+                if (!isGhost) {
+                    const float o = sprW * 0.022f + 1.0f;   // ~2-3 px outline
+                    const ImVec2 offs[8] = {
+                        {-o,0}, {o,0}, {0,-o}, {0,o}, {-o,-o}, {o,-o}, {-o,o}, {o,o}};
+                    const ImU32 outlineCol = IM_COL32(12, 10, 16, 205);
+                    for (const auto& d : offs)
+                        dl->AddImage(tid, {p0.x + d.x, p0.y + d.y}, {p1.x + d.x, p1.y + d.y},
+                                     {u0, v0}, {u1, v1}, outlineCol);
+                }
+                dl->AddImage(tid, p0, p1, {u0, v0}, {u1, v1}, tint);
                 drewSprite = true;
             }
         }
