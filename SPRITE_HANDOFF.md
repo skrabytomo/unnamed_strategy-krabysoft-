@@ -76,9 +76,39 @@ STUCK — several blind attempts made it worse.
 - **6 Iron Assembly** — reframed. Visibility: t1–t4 (dark steel) "faded", t5/t6 (gold) solid.
   Outline commit `0efba0b` did NOT fix. NOTE minigun-barrel-leak fixed (`c5f5b35`) by
   cutting at TRUE occ≈0 gaps, not the thin-barrel valleys.
-- **7 Amalgamate** — NOT reframed (still original). Alpha-clean, looks OK. Earlier note: t5
-  has frame-drift to watch for.
-- **8 Convergence** — NOT reframed (still original). Alpha-clean, looks OK.
+- **7 Amalgamate** — REFRAMED this session (was never reframed before; source sheets are
+  really 7-11 loosely-packed poses on a 2928px canvas, not 8 clean cells — see method below).
+  Not yet visibility-tested by the user.
+- **8 Convergence** — REFRAMED this session, same method. **t2 and t6 have no real death
+  pose in the source art** (checked every blob — genuinely not there) — both currently reuse
+  a spare standing/crouching pose in the dead slot as a placeholder. Revisit if the user wants
+  a proper collapse animation for those two; would need new source art, not a repack. Not yet
+  visibility-tested by the user.
+
+### Reframe method used for Amalgamate/Convergence (scratchpad tool, ephemeral)
+The old ccpack4.py/scratchpad from previous sessions was gone (ephemeral, ~24h TTL). Wrote a
+fresh minimal tool this session — same idea, reimplemented:
+- **Blob detection**: scan columns for alpha>0 runs to find each pose's true x-range (these
+  source sheets pack poses back-to-back with no fixed grid). Auto-splits an oversized run at
+  its lowest-alpha-mass column (recursively) when two poses touch with no true zero-alpha gap
+  between them — this needed to be recursive; one pass missed sheets with 3+ merged poses.
+  Filters sub-15px noise slivers.
+- **Corner sparkle**: the "small white ✦" mentioned elsewhere in this file actually renders,
+  in every case checked this session, as a **gray checkerboard diamond** ~60-90px across, NOT
+  a tiny white star — don't grep for bright-white pixels only, look for the diamond shape.
+  Always fully opaque (alpha=255), always near the tail end of the sheet's last usable blob.
+  Erase by bounding box once located (varies per file, no shortcut — check each one).
+- **Critical bug hit and fixed**: pack_frames must clip/scale any blob wider than the 366px
+  cell (VFX-heavy attack poses routinely exceed it, up to ~490px) before pasting — otherwise
+  it silently bleeds into the neighbouring cell's UV range in the atlas (invisible in a quick
+  look, shows up as a stray fragment ghosting into the adjacent animation frame in-engine).
+  Scale down preserving aspect + bottom-align; don't just center-crop/truncate.
+  faction_7_t6 was written once with this bug and had to be restored via `git checkout --`
+  and redone — the ORIGINAL unreframed file only exists in git history now, there's no
+  separate `_orig.png` backup, so if a repack goes wrong `git checkout -- <path>` is the
+  recovery, not a manual undo.
+- Semantic cell assignment (idle x4 / attack x2 / hurt x1 / dead x1) is still a per-file
+  judgment call from looking at each pose — no shortcut found for that part.
 
 ## Visibility problem — measured facts (the crux)
 "See-through" is really THREE different problems; one treatment won't fix all:
