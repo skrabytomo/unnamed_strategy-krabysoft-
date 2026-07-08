@@ -42,6 +42,7 @@ public:
     using DamageCallback = std::function<void(uint32_t /*targetId*/, int /*damage*/, HexCoord /*pos*/)>;
     using HealCallback   = std::function<void(uint32_t /*targetId*/, int /*amount*/, HexCoord /*pos*/)>;
     using MoraleCallback = std::function<void(uint32_t /*unitId*/, HexCoord /*pos*/)>;
+    using AttackAnimCallback = std::function<void(uint32_t /*attackerId*/, uint32_t /*targetId*/)>;
 
     CombatEngine() = default;
 
@@ -117,6 +118,10 @@ public:
     void setDamageCallback(DamageCallback cb) { m_dmgCb    = cb; }
     void setHealCallback(HealCallback cb)     { m_healCb   = cb; }
     void setMoraleCallback(MoraleCallback cb) { m_moraleCb = cb; }
+    // Fired whenever a unit (player or AI, melee or ranged) actually lands a
+    // basic attack — drives the attacker's Attack pose / target's Hurt pose.
+    // Not fired for spell damage, DoT ticks, or Warden's Mark splash.
+    void setAttackAnimCallback(AttackAnimCallback cb) { m_atkAnimCb = cb; }
 
     // XP earned this battle (enemy unit-count × 5, awarded on victory)
     int xpEarned() const { return m_enemyStartCount * 5; }
@@ -207,6 +212,7 @@ private:
     DamageCallback         m_dmgCb;
     HealCallback           m_healCb;
     MoraleCallback         m_moraleCb;
+    AttackAnimCallback     m_atkAnimCb;
     bool                   m_silent  = false;
     AIDifficulty           m_playerAI = AIDifficulty::Standard;
     AIDifficulty           m_enemyAI  = AIDifficulty::Standard;

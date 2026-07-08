@@ -23,6 +23,34 @@ static std::pair<int,int> unitFactionTier(const CombatUnit& u,
     return { -1, 1 };  // truly unknown — no sprite lookup
 }
 
+// ── Helper: render-time readability pass for a unit sprite ──────────────────
+// Several faction sheets bake partial alpha / sparse silhouettes into the art
+// (see SPRITE_HANDOFF.md) which makes units blend into terrain. Rather than
+// editing 50+ PNGs, fix it at draw time: a dark outer ring + light inner rim
+// (readable against both light and dark terrain) drawn as offset copies of the
+// sprite's own silhouette, then two extra full-alpha passes that compound the
+// sprite's intrinsic per-pixel alpha (1-(1-a)^n) to solidify translucent art.
+// Caller still draws the real (tinted) sprite on top afterwards.
+static void drawUnitReadabilityPass(ImDrawList* dl, ImTextureID tid,
+                                     const ImVec2& pMin, const ImVec2& pMax,
+                                     const ImVec2& uv0, const ImVec2& uv1)
+{
+    static const float kOffX[8] = { 3.2f, -3.2f,  0.0f,  0.0f,  2.4f, -2.4f,  2.4f, -2.4f };
+    static const float kOffY[8] = { 0.0f,  0.0f,  3.2f, -3.2f,  2.4f,  2.4f, -2.4f, -2.4f };
+    const ImU32 kDarkOutline  = IM_COL32(8, 7, 10, 255);
+    for (int i = 0; i < 8; ++i)
+        dl->AddImage(tid, {pMin.x + kOffX[i], pMin.y + kOffY[i]},
+                          {pMax.x + kOffX[i], pMax.y + kOffY[i]}, uv0, uv1, kDarkOutline);
+
+    const ImU32 kLightRim = IM_COL32(240, 236, 224, 210);
+    for (int i = 0; i < 8; ++i)
+        dl->AddImage(tid, {pMin.x + kOffX[i] * 0.5f, pMin.y + kOffY[i] * 0.5f},
+                          {pMax.x + kOffX[i] * 0.5f, pMax.y + kOffY[i] * 0.5f}, uv0, uv1, kLightRim);
+
+    dl->AddImage(tid, pMin, pMax, uv0, uv1, IM_COL32(255, 255, 255, 255));
+    dl->AddImage(tid, pMin, pMax, uv0, uv1, IM_COL32(255, 255, 255, 255));
+}
+
 // ── Combat update ─────────────────────────────────────────────────────────────
 void Game::updateCombat(float dt)
 {
@@ -90,23 +118,17 @@ void Game::updateCombat(float dt)
 
     m_combatHUD.onMouseMove(mx, my);
 
-    // Advance sprite animators
-    {
-        const CombatUnit* active = m_combat.activeUnit();
-        for (const auto& u : m_combat.grid().units()) {
-            auto it = m_combatAnimators.find(u.id);
-            if (it == m_combatAnimators.end()) continue;
-            SpriteAnimator& anim = it->second;
-            if (!u.alive) {
-                anim.setState(AnimState::Dead);
-            } else if (active && u.id == active->id && u.isPlayer) {
-                // Active player unit shows attack pose
-                anim.setState(AnimState::Attack);
-            } else {
-                anim.setState(AnimState::Idle);
-            }
-            anim.update(dt * m_settingsAnimSpeed);
-        }
+    // Advance sprite animators. Attack/Hurt are one-shot states triggered by
+    // m_combat's attack-anim callback (see setAttackAnimCallback below) and
+    // auto-revert to Idle when their animation completes (SpriteAnimator::update);
+    // this loop must not force Idle/Attack every frame or it stomps that transition
+    // before it plays (that was the "attack pose while idling" bug).
+    for (const auto& u : m_combat.grid().units()) {
+        auto it = m_combatAnimators.find(u.id);
+        if (it == m_combatAnimators.end()) continue;
+        SpriteAnimator& anim = it->second;
+        if (!u.alive) anim.setState(AnimState::Dead);
+        anim.update(dt * m_settingsAnimSpeed);
     }
 
     if (m_fromBattleSim && m_simAutoPlay) {
@@ -452,10 +474,9 @@ void Game::renderCombatBoard()
                 float u0, v0, u1, v1;
                 it->second.getUV(u0, v0, u1, v1);
                 ImTextureID tid = (ImTextureID)(uintptr_t)tex->id();
-                dl->AddImage(tid,
-                    {sx - sprW, sy - sprH * 0.85f},
-                    {sx + sprW, sy + sprH * 0.15f},
-                    {u0, v0}, {u1, v1}, IM_COL32(255,255,255,90));
+                ImVec2 pMin{sx - sprW, sy - sprH * 0.85f};
+                ImVec2 pMax{sx + sprW, sy + sprH * 0.15f};
+                dl->AddImage(tid, pMin, pMax, {u0, v0}, {u1, v1}, IM_COL32(255,255,255,90));
             }
         }
     }
@@ -489,23 +510,12 @@ void Game::renderCombatBoard()
                 it->second.getUV(u0, v0, u1, v1);
                 ImTextureID tid = (ImTextureID)(uintptr_t)tex->id();
                 ImU32 tint = isGhost ? IM_COL32(200,230,255,110) : IM_COL32(255,255,255,255);
-                ImVec2 p0{sx - sprW, sy - sprH * 0.85f};
-                ImVec2 p1{sx + sprW, sy + sprH * 0.15f};
-                // Silhouette outline: draw the frame several times, offset and darkened,
-                // beneath the real sprite so every unit reads as a solid shape against the
-                // terrain — fixes faint/thin/dark sprites (Thornkin, Iron Assembly, dark
-                // tiers) bleeding into the ground. Offset copies also darken the gaps in
-                // lattice-y bodies so they look filled. Skipped for translucent ghosts.
-                if (!isGhost) {
-                    const float o = sprW * 0.022f + 1.0f;   // ~2-3 px outline
-                    const ImVec2 offs[8] = {
-                        {-o,0}, {o,0}, {0,-o}, {0,o}, {-o,-o}, {o,-o}, {-o,o}, {o,o}};
-                    const ImU32 outlineCol = IM_COL32(12, 10, 16, 205);
-                    for (const auto& d : offs)
-                        dl->AddImage(tid, {p0.x + d.x, p0.y + d.y}, {p1.x + d.x, p1.y + d.y},
-                                     {u0, v0}, {u1, v1}, outlineCol);
-                }
-                dl->AddImage(tid, p0, p1, {u0, v0}, {u1, v1}, tint);
+                ImVec2 pMin{sx - sprW, sy - sprH * 0.85f};
+                ImVec2 pMax{sx + sprW, sy + sprH * 0.15f};
+                ImVec2 uv0{u0, v0}, uv1{u1, v1};
+                if (!isGhost)
+                    drawUnitReadabilityPass(dl, tid, pMin, pMax, uv0, uv1);
+                dl->AddImage(tid, pMin, pMax, uv0, uv1, tint);
                 drewSprite = true;
             }
         }
@@ -1532,6 +1542,15 @@ void Game::enterCombat(Hero& playerHero,
         float sy = wy * m_combatBoardScale + m_combatBoardOffY;
         m_particles.emit(sx, sy, ParticlePreset::Morale, 10);
         (void)unitId;
+    });
+    m_combat.setAttackAnimCallback([this](uint32_t attackerId, uint32_t targetId) {
+        auto ai = m_combatAnimators.find(attackerId);
+        if (ai != m_combatAnimators.end()) ai->second.setState(AnimState::Attack);
+        auto ti = m_combatAnimators.find(targetId);
+        if (ti != m_combatAnimators.end()) {
+            const CombatUnit* t = m_combat.grid().getUnit(targetId);
+            if (t && t->alive) ti->second.setState(AnimState::Hurt);
+        }
     });
     // Build sprite animators for every unit
     m_combatAnimators.clear();

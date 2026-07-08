@@ -1,5 +1,52 @@
 # SPRITE HANDOFF — reframe + unit visibility (read this first next session)
 
+## Update (this session) — renderer-side readability fix landed
+Implemented option 3 from "Recommended fix next session" below instead of more
+per-sprite edits: `drawUnitReadabilityPass()` in `src/core/Game_Combat.cpp`
+(added just above `Game::updateCombat`, called from `renderCombatBoard()` for
+alive non-ghost units only). For each unit sprite it draws, before the real
+sprite:
+1. An 8-direction dark silhouette ring (offset ~3.2px, near-black, alpha 255).
+2. An 8-direction light rim ring (offset ~1.6px, near-white, alpha ~210) —
+   this is what actually fixes the "dark unit blends into dark terrain" case
+   (Iron Assembly t1-4, Bloodsworn dark tiers, Eternal Empire), since a dark
+   outline alone is invisible against dark rock/terrain.
+3. Two extra full-opacity passes of the sprite itself at zero offset, to
+   compound intrinsic per-pixel alpha (`1-(1-a)^3`) for faction art that bakes
+   in partial alpha (e.g. Thornkin ~53-90% solid) — solidifies it without
+   touching the PNGs.
+Ghosts (`isGhost`) and dead/corpse sprites are exempted (drawn as before) since
+their reduced-alpha look is intentional, not a bug.
+
+**Verified in-game**: launched the built exe, it auto-resumed into the Battle
+Simulator and ran a live Iron Assembly vs Bloodsworn battle on volcanic-rock
+terrain (the worst-case dark-on-dark terrain). Cropped/zoomed screenshots of
+both sides confirmed units now read as clean, distinct silhouettes instead of
+blending into the rock — big improvement over the committed `0efba0b` outline
+(which used sub-2px dark-only offsets, invisible against dark terrain).
+
+**First attempt at the offsets was too subtle** — initial version used
+1.2-1.6px dark-only offsets + a barely-there light rim (alpha 90); zoomed
+screenshot showed literally zero visible change. Second pass (offsets above)
+fixed it. If revisiting, don't go smaller than ~1.6px for the light rim on
+a ~60-70px-tall combat sprite, or it disappears under the body passes.
+
+**Not yet addressed by this fix**: Thornkin's *sparse/branchy* silhouette
+(problem 2 — thousands of small enclosed transparent holes in the thorn
+lattice) isn't fixed by this technique, since the offset copies are only ~3px
+and won't bridge larger gaps. If Thornkin still reads as "holey" in-game,
+revisit with a wider dilation radius or the flood-fill approach in the
+original plan below. Also still pending: Eternal Empire t1 re-export,
+Amalgamate/Convergence reframe (never started), unit design-match check.
+
+**Screenshot method note**: this environment can't reliably bring the game
+window to real OS foreground (SetForegroundWindow is blocked for background
+processes), so full-desktop screenshots risk capturing unrelated windows.
+Use `PrintWindow(hwnd, hdc, PW_RENDERFULLCONTENT)` targeted at the game's
+specific HWND instead — works without focus and only captures that window's
+own content.
+
+
 ## Context
 Ongoing task: reframe every animated unit sprite sheet (2928×352 = 8 frames of 366×352;
 engine frame layout cols 0-3 idle, 4-5 attack, 6 hurt, 7 dead) into 8 clean semantic
@@ -52,20 +99,13 @@ STUCK — several blind attempts made it worse.
   change. User says Thornkin STILL "not filled", Iron Assembly STILL "faded". Outer outline
   alone is insufficient. **Consider reverting `0efba0b`** or keeping as a base under the real fix.
 
-## DONE this session — renderer-side outline (the real fix, needs in-game tuning)
-- **Implemented a uniform dark silhouette outline in the combat renderer**
-  (`src/core/Game_Combat.cpp`, the alive-unit draw near the `dl->AddImage(tid, p0, p1, ...tint)`
-  call, ~line 492). Technique: draw the same frame 8× at small offsets with a dark tint
-  underneath the real sprite. Offset copies also darken lattice gaps so branchy bodies
-  (Thornkin) read filled. **Builds clean.** Touches NO art. Reversible.
-  - Tuning knobs: `const float o = sprW*0.022f + 1.0f;` (outline thickness ~2-3px) and
-    `IM_COL32(12,10,16,205)` (colour/alpha). Skipped for ghosts.
-- **Reverted the per-sprite outline** (`0efba0b`) via commit `6db1617` so Thornkin/Iron
-  Assembly aren't double-outlined — visibility is now handled uniformly by the renderer.
-- **NEXT SESSION:** user tests in-game. If outline too strong/weak → tune `o`/alpha. If the
-  dark tiers (Iron Assembly t1-4, EE, Bloodsworn dark) still read faint, add a brightness/
-  contrast lift to those sprites (reuse Bloodsworn t3/t4 gamma-lift). Consider adding the
-  same outline to the WORLD-MAP unit draw if stacks look faint there too.
+## Renderer-side outline — history (superseded, see "Update" section at top of file)
+A prior session first tried this same idea as a dark-only 8-offset silhouette
+(`349be98`) and reverted the old per-sprite outline commit `0efba0b` (`6db1617`)
+to make room for it. That dark-only version turned out to be exactly the "too
+subtle" first attempt described at the top of this file — it doesn't read
+against dark terrain. Superseded by `drawUnitReadabilityPass()` (dark ring +
+light rim + alpha-boost), which fixes that. Nothing further to do here.
 
 ## Fallback fix if renderer outline is rejected (per problem — NEVER erase colour)
 1. **Thornkin (branchy + partial-alpha):** (a) solidify by BOOSTING alpha (alpha>~20 → 255,

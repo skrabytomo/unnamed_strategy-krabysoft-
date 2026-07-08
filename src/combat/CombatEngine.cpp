@@ -877,6 +877,7 @@ bool CombatEngine::submitAction(const CombatAction& action)
 
         if (m_dmgCb && result.damage > 0)
             m_dmgCb(targetId, result.damage, targetPos);
+        if (m_atkAnimCb) m_atkAnimCb(unit->id, targetId);
 
         if (!target->alive) {
             addLog(target->name + " destroyed!");
@@ -946,6 +947,9 @@ bool CombatEngine::submitAction(const CombatAction& action)
            << " for " << result.damage << " damage";
         if (result.killed > 0) ss << " (" << result.killed << " killed)";
         addLog(ss.str());
+        if (m_dmgCb && result.damage > 0)
+            m_dmgCb(target->id, result.damage, target->pos);
+        if (m_atkAnimCb) m_atkAnimCb(unit->id, target->id);
 
         if (!target->alive) {
             addLog(target->name + " destroyed!");
@@ -1327,6 +1331,8 @@ void CombatEngine::aiActPassive(CombatUnit& unit)
         std::ostringstream ss;
         ss << unit.name << " shoots " << target->name << " for " << result.damage;
         addLog(ss.str());
+        if (m_dmgCb && result.damage > 0) m_dmgCb(target->id, result.damage, target->pos);
+        if (m_atkAnimCb) m_atkAnimCb(unit.id, target->id);
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
             logMoraleSurge(unit);
@@ -1342,6 +1348,8 @@ void CombatEngine::aiActPassive(CombatUnit& unit)
         ss << unit.name << " attacks " << target->name << " for " << result.damage;
         addLog(ss.str());
         applyWardenMarkSplash(unit, tpos, tid, result.damage);
+        if (m_dmgCb && result.damage > 0) m_dmgCb(tid, result.damage, tpos);
+        if (m_atkAnimCb) m_atkAnimCb(unit.id, tid);
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
             logMoraleSurge(unit);
@@ -1365,6 +1373,8 @@ void CombatEngine::aiActPassive(CombatUnit& unit)
                 ss << unit.name << " attacks " << target->name << " for " << result.damage;
                 addLog(ss.str());
                 applyWardenMarkSplash(unit, tpos, tid, result.damage);
+                if (m_dmgCb && result.damage > 0) m_dmgCb(tid, result.damage, tpos);
+                if (m_atkAnimCb) m_atkAnimCb(unit.id, tid);
                 if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
                 if (result.moraleTrigger) {
                     logMoraleSurge(unit);
@@ -1398,6 +1408,8 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
         ss << unit.name << " shoots " << target->name << " for " << result.damage << " dmg";
         if (result.killed) ss << " (" << result.killed << " killed)";
         addLog(ss.str());
+        if (m_dmgCb && result.damage > 0) m_dmgCb(target->id, result.damage, target->pos);
+        if (m_atkAnimCb) m_atkAnimCb(unit.id, target->id);
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
             logMoraleSurge(unit);
@@ -1414,6 +1426,8 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
         if (result.killed) ss << " (" << result.killed << " killed)";
         addLog(ss.str());
         applyWardenMarkSplash(unit, tpos, tid, result.damage);
+        if (m_dmgCb && result.damage > 0) m_dmgCb(tid, result.damage, tpos);
+        if (m_atkAnimCb) m_atkAnimCb(unit.id, tid);
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
             logMoraleSurge(unit);
@@ -1442,6 +1456,8 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
                 if (result.killed) ss << " (" << result.killed << " killed)";
                 addLog(ss.str());
                 applyWardenMarkSplash(unit, tpos, tid, result.damage);
+                if (m_dmgCb && result.damage > 0) m_dmgCb(tid, result.damage, tpos);
+                if (m_atkAnimCb) m_atkAnimCb(unit.id, tid);
                 if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
                 if (result.moraleTrigger) {
                     logMoraleSurge(unit);
@@ -1528,6 +1544,8 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
             std::ostringstream ss;
             ss << unit.name << " shoots " << shtTarget->name << " for " << result.damage;
             addLog(ss.str());
+            if (m_dmgCb && result.damage > 0) m_dmgCb(shtTarget->id, result.damage, shtTarget->pos);
+            if (m_atkAnimCb) m_atkAnimCb(unit.id, shtTarget->id);
             if (!shtTarget->alive) { addLog(shtTarget->name + " destroyed!"); processKillEvents(unit, *shtTarget, result); }
             if (result.moraleTrigger) {
                 logMoraleSurge(unit);
@@ -1561,6 +1579,8 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
         if (result.killed) ss << " (" << result.killed << " killed)";
         addLog(ss.str());
         applyWardenMarkSplash(unit, tpos, tid, result.damage);
+        if (m_dmgCb && result.damage > 0) m_dmgCb(tid, result.damage, tpos);
+        if (m_atkAnimCb) m_atkAnimCb(unit.id, tid);
         if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
         if (result.moraleTrigger) {
             logMoraleSurge(unit);
@@ -1607,6 +1627,8 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
                 std::ostringstream ss;
                 ss << unit.name << " moves+shoots " << target->name << " for " << result.damage;
                 addLog(ss.str());
+                if (m_dmgCb && result.damage > 0) m_dmgCb(target->id, result.damage, target->pos);
+                if (m_atkAnimCb) m_atkAnimCb(unit.id, target->id);
                 if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
                 if (result.moraleTrigger) {
                     logMoraleSurge(unit);
@@ -1622,6 +1644,8 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
                 if (result.killed) ss << " (" << result.killed << " killed)";
                 addLog(ss.str());
                 applyWardenMarkSplash(unit, tpos, tid, result.damage);
+                if (m_dmgCb && result.damage > 0) m_dmgCb(tid, result.damage, tpos);
+                if (m_atkAnimCb) m_atkAnimCb(unit.id, tid);
                 if (!target->alive) { addLog(target->name + " destroyed!"); processKillEvents(unit, *target, result); }
                 if (result.moraleTrigger) {
                     logMoraleSurge(unit);
@@ -1647,6 +1671,8 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
             if (result.killed) ss << " (" << result.killed << " killed)";
             addLog(ss.str());
             applyWardenMarkSplash(unit, tpos, tid, result.damage);
+            if (m_dmgCb && result.damage > 0) m_dmgCb(tid, result.damage, tpos);
+            if (m_atkAnimCb) m_atkAnimCb(unit.id, tid);
             if (!adj->alive) { addLog(adj->name + " destroyed!"); processKillEvents(unit, *adj, result); }
             if (result.moraleTrigger) {
                 logMoraleSurge(unit);
