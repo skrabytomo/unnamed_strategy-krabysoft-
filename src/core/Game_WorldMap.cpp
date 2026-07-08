@@ -1060,7 +1060,15 @@ void Game::updateWorldMap(float dt)
             // All human players (incl. hot-seat P2 after handoff swap) control
             // m_heroes through the same path — no per-player special casing.
             {
-                // Normal hero selection
+                // Normal hero selection — but ONLY for the already-active hero
+                // (click it again to inspect). Clicking a DIFFERENT own hero
+                // falls through to onTileClicked below so the active hero paths
+                // onto that tile instead of instantly switching control — the
+                // hero-click radius here is nearly a full hex at default zoom,
+                // so without this it swallowed every attempt to walk one hero
+                // onto another to trigger the trade/exchange screen, making
+                // hero-to-hero trading unreachable. Switching which hero you
+                // control is still done via the sidebar hero list.
                 for (int hi = 0; hi < static_cast<int>(m_heroes.size()); ++hi) {
                     const Hero& h = m_heroes[hi];
                     float wx, wy;
@@ -1070,12 +1078,12 @@ void Game::updateWorldMap(float dt)
                     float dx = static_cast<float>(mouse.x) - sx;
                     float dy = static_cast<float>(mouse.y) - sy;
                     if (dx * dx + dy * dy < 20.0f * 20.0f) {
+                        if (hi != m_activeHeroIdx) break;  // let it fall through to movement
                         if (m_heroClickTarget == hi) {
                             m_showHeroInspect = true;
                             m_heroClickTarget = -1;
                         } else {
                             m_heroClickTarget = hi;
-                            m_activeHeroIdx   = hi;
                         }
                         heroClickHandled = true;
                         uiHandled = true;
@@ -2282,21 +2290,28 @@ void Game::doEndTurn()
                 // forever (Ironhold: 'cannot afford' weeks 6-50 while buying
                 // 13 T2 every week).
                 for (auto& t : m_towns) {
-                    if (!isAiOwner(t.ownerId)) continue;
-                    Resources budget = m_enemyResources;
-                    budget.set(ResourceType::Gold,
-                               m_enemyResources.get(ResourceType::Gold) / 2);
+                    // Watch-AI's watched side (ownerId==1) is a "human" slot for
+                    // hot-seat purposes but is fully AI-driven — without this it
+                    // never got the weekly garrison auto-fill that real AI towns
+                    // get, only true isAiOwner() towns did, so its economy grew
+                    // while its hero army starved. Mirrors the build loop below.
+                    bool watchPlayerTown = (t.ownerId == 1 && m_watchingAI);
+                    bool aiTown          = isAiOwner(t.ownerId);
+                    if (!watchPlayerTown && !aiTown) continue;
+                    Resources& pool = watchPlayerTown ? m_playerResources : m_enemyResources;
+                    Resources budget = pool;
+                    budget.set(ResourceType::Gold, pool.get(ResourceType::Gold) / 2);
                     Resources before = budget;
                     int got = aiPaidRecruit(t, t.garrison, budget, unitDefs);
                     if (got > 0) {
                         for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
                             auto type = static_cast<ResourceType>(rt);
                             int spent = before.get(type) - budget.get(type);
-                            if (spent > 0) m_enemyResources.add(type, -spent);
+                            if (spent > 0) pool.add(type, -spent);
                         }
                         gLog("AI %s recruited %d units into garrison (pool %dg)\n",
                              t.name.c_str(), got,
-                             m_enemyResources.get(ResourceType::Gold));
+                             pool.get(ResourceType::Gold));
                     }
                 }
             }
