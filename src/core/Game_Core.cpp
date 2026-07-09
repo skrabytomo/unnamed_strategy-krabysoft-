@@ -168,6 +168,39 @@ bool Game::init(const std::string& title, int width, int height)
             m_heroTexCols[i] = colsOf(m_heroTex[i]);
     }
 
+    // Siege art: per-faction defensive towers + attacker engines (see ART_SIEGE.md).
+    // Falls back to the existing procedural placeholder (drawn in Game_Combat.cpp)
+    // whenever a sheet is missing, so this is safe even if assets are incomplete.
+    for (int i = 0; i < NUM_FACTIONS; ++i) {
+        char rel[80];
+        std::snprintf(rel, sizeof(rel), "assets/sprites/tower_%d.png", i);
+        if (m_towerTex[i].load(m_basePath + rel, false, false))
+            m_towerTexCols[i] = colsOf(m_towerTex[i]);
+    }
+    static const char* kEngineKeys[NUM_ENGINE_KEYS] = {
+        "catapult", "ram", "trebuchet", "tower",
+        "divine_trebuchet", "silver_trebuchet", "living_tower", "bone_crusher",
+        "blood_catapult", "void_caster", "iron_ram", "iron_catapult",
+        "iron_trebuchet", "flesh_drill",
+    };
+    for (int i = 0; i < NUM_ENGINE_KEYS; ++i) {
+        char rel[96];
+        std::snprintf(rel, sizeof(rel), "assets/sprites/engine_%s.png", kEngineKeys[i]);
+        if (m_engineTex[i].load(m_basePath + rel, false, false))
+            m_engineTexCols[i] = colsOf(m_engineTex[i]);
+    }
+    for (int i = 0; i < NUM_FACTIONS; ++i) {
+        char rel[80];
+        std::snprintf(rel, sizeof(rel), "assets/siege/wall_%d.png", i);
+        m_wallTex[i].load(m_basePath + rel, false, false);
+        std::snprintf(rel, sizeof(rel), "assets/siege/wall_%d_damaged.png", i);
+        m_wallDamagedTex[i].load(m_basePath + rel, false, false);
+        std::snprintf(rel, sizeof(rel), "assets/siege/gate_%d.png", i);
+        m_gateTex[i].load(m_basePath + rel, false, false);
+        std::snprintf(rel, sizeof(rel), "assets/siege/moat_%d.png", i);
+        m_moatTex[i].load(m_basePath + rel, false, false);
+    }
+
     // SDL cursors
     m_cursorArrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
     m_cursorFight = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR);

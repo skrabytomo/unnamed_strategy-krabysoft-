@@ -23,6 +23,24 @@ static std::pair<int,int> unitFactionTier(const CombatUnit& u,
     return { -1, 1 };  // truly unknown — no sprite lookup
 }
 
+// ── Helper: resolve a siege engine unit's name to its m_engineTex index ──────
+// Names must match exactly what makeSiegeEngines() assigns below. Order must
+// match kEngineKeys in Game_Core.cpp's texture-loading loop.
+static int engineTexIndex(const std::string& name)
+{
+    // Count must match Game::NUM_ENGINE_KEYS (kept as a literal here since
+    // that constant is private and this is a free function, not a member).
+    static const char* kNames[14] = {
+        "Catapult", "Battering Ram", "Trebuchet", "Siege Tower",
+        "Divine Trebuchet", "Silver Trebuchet", "Living Tower", "Bone Crusher",
+        "Blood Catapult", "Void Caster", "Iron Ram", "Iron Catapult",
+        "Iron Trebuchet", "Flesh Drill",
+    };
+    for (int i = 0; i < 14; ++i)
+        if (name == kNames[i]) return i;
+    return -1;
+}
+
 // ── Helper: render-time readability pass for a unit sprite ──────────────────
 // Several faction sheets bake partial alpha / sparse silhouettes into the art
 // (see SPRITE_HANDOFF.md) which makes units blend into terrain. Rather than
@@ -370,6 +388,37 @@ void Game::renderCombatBoard()
                 case CombatTileType::Moat:         fill = IM_COL32(25,  70,  130, 150); break;
                 default: break;
             }
+        }
+
+        // Fortification art (see ART_SIEGE.md): draw the faction's wall/gate/
+        // moat texture under the tile fill, then thin the fill's alpha so the
+        // art reads through — the fill remains as a colour wash for HP state
+        // and highlight overrides (attackable, reachable, active) below.
+        const Texture* fortTex = nullptr;
+        int sf = std::clamp(m_siegeTownFaction, 0, NUM_FACTIONS - 1);
+        if (tile && tile->type == CombatTileType::Wall) {
+            bool isGateHex = (h == grid.gateHex());
+            if (isGateHex && m_gateTex[sf].ok()) {
+                fortTex = &m_gateTex[sf];
+            } else if (!isGateHex) {
+                int maxHp = 40;
+                bool damaged = tile->wallHP > 0 && tile->wallHP * 2 < maxHp;
+                if (damaged && m_wallDamagedTex[sf].ok()) fortTex = &m_wallDamagedTex[sf];
+                else if (m_wallTex[sf].ok())              fortTex = &m_wallTex[sf];
+            }
+            if (fortTex) fill = (fill & 0x00FFFFFF) | (60u << 24);
+        } else if (tile && tile->type == CombatTileType::Moat) {
+            if (m_moatTex[sf].ok()) fortTex = &m_moatTex[sf];
+            if (fortTex) fill = (fill & 0x00FFFFFF) | (70u << 24);
+        }
+        if (fortTex) {
+            float minX = pts[0].x, maxX = pts[0].x, minY = pts[0].y, maxY = pts[0].y;
+            for (int i = 1; i < 6; ++i) {
+                minX = std::min(minX, pts[i].x); maxX = std::max(maxX, pts[i].x);
+                minY = std::min(minY, pts[i].y); maxY = std::max(maxY, pts[i].y);
+            }
+            ImTextureID ftid = (ImTextureID)(uintptr_t)fortTex->id();
+            dl->AddImage(ftid, {minX, minY}, {maxX, maxY}, {0, 0}, {1, 1});
         }
         // Reachable highlight
         for (const auto& rh : reach)
@@ -1330,6 +1379,7 @@ void Game::enterCombat(Hero& playerHero,
         FactionId townFac = siegeTown ? siegeTown->faction
                                       : (defenseSiege ? playerHero.faction : enemyHero.faction);
         int tfIdx = std::clamp(static_cast<int>(townFac), 0, 8);
+        m_siegeTownFaction = tfIdx;
         wallHP = kWallHP[tfIdx];
         gateHP = kGateHP[tfIdx];
         // Bastion strengthens the fortifications by 25%
@@ -1354,6 +1404,7 @@ void Game::enterCombat(Hero& playerHero,
             tower.alive        = true;
             tower.moraleImmune = true;
             tower.isTower      = true;
+            tower.factionHint  = tfIdx;
             tower.isPlayer     = defenseSiege;
             tower.stackSlot    = static_cast<int>(defUnits.size());
             defUnits.push_back(tower);
@@ -1568,6 +1619,24 @@ void Game::enterCombat(Hero& playerHero,
         anim.mirror   = m_combat.isSiege()
                       ? (u.isPlayer != m_combat.siegeAttackerIsPlayer())
                       : !u.isPlayer;
+        // Defensive towers and attacker siege engines use their own dedicated
+        // art (see ART_SIEGE.md) rather than the faction/tier unit lookup —
+        // resolve those first and skip the rest of the branch entirely.
+        if (u.isTower) {
+            anim.kind    = 3;
+            anim.faction = (u.factionHint >= 0 && u.factionHint < NUM_FACTIONS) ? u.factionHint : 0;
+            anim.numCols = m_towerTexCols[anim.faction] > 0 ? m_towerTexCols[anim.faction] : 8;
+            m_combatAnimators[u.id] = anim;
+            continue;
+        }
+        if (u.isSiegeEngine) {
+            int ei = engineTexIndex(u.name);
+            anim.kind      = 4;
+            anim.engineIdx = ei;
+            anim.numCols   = (ei >= 0 && m_engineTexCols[ei] > 0) ? m_engineTexCols[ei] : 8;
+            m_combatAnimators[u.id] = anim;
+            continue;
+        }
         // Prefer a unit's OWN faction sheet whenever it has one. The Crimson
         // Wardens' Tier-1 unit is literally named "Skeleton" (defId 2001), so it
         // must keep faction_1_t1 — the summon sheet is only a FALLBACK for

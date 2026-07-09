@@ -287,10 +287,35 @@ private:
     Texture           m_heroTex[NUM_FACTIONS];
     int               m_heroTexCols[NUM_FACTIONS] = {};
 
+    // ── Siege art: defensive towers (per faction) + attacker engines ─────────
+    // File: assets/sprites/tower_F.png (F=0-8), assets/sprites/engine_<key>.png
+    // See ART_SIEGE.md for the key list. Same 8-frame sheet format as units.
+    Texture           m_towerTex[NUM_FACTIONS];
+    int               m_towerTexCols[NUM_FACTIONS] = {};
+    static constexpr int NUM_ENGINE_KEYS = 14;
+    Texture           m_engineTex[NUM_ENGINE_KEYS];
+    int               m_engineTexCols[NUM_ENGINE_KEYS] = {};
+
+    // Siege fortification art: assets/siege/{wall,wall_damaged,gate,moat}_F.png
+    Texture           m_wallTex[NUM_FACTIONS];
+    Texture           m_wallDamagedTex[NUM_FACTIONS];
+    Texture           m_gateTex[NUM_FACTIONS];
+    Texture           m_moatTex[NUM_FACTIONS];
+    // Faction whose fortification art is in play for the current siege battle.
+    int               m_siegeTownFaction = 0;
+
     // Resolve which sheet a combat animator draws from (faction unit or summon).
     const Texture* combatSpriteTexture(const SpriteAnimator& a) const {
         if (a.kind == 1) return &m_summonSkelTex;
         if (a.kind == 2) return &m_summonGhostTex;
+        if (a.kind == 3) {
+            int fi = a.faction;
+            return (fi >= 0 && fi < NUM_FACTIONS) ? &m_towerTex[fi] : nullptr;
+        }
+        if (a.kind == 4) {
+            int ei = a.engineIdx;
+            return (ei >= 0 && ei < NUM_ENGINE_KEYS) ? &m_engineTex[ei] : nullptr;
+        }
         int fi = a.faction;
         int ti = std::max(0, std::min(NUM_UNIT_TIERS - 1, a.tier - 1));
         if (fi >= 0 && fi < NUM_FACTIONS) return &m_unitTex[fi][ti];
