@@ -210,7 +210,17 @@ void Game::renderGarrisonPanel()
     Town* town = nullptr;
     for (auto& t : m_towns) if (t.id == ct->id) { town = &t; break; }
     if (!town) return;
-    Hero* hero = m_heroes.empty() ? nullptr : &m_heroes[m_activeHeroIdx];
+    // Only let the garrison panel touch a hero's army if that hero is actually
+    // at (or adjacent to) this town — mirrors the guard in enterTown(). Without
+    // this, opening a town remotely from the world HUD's town list lets the
+    // panel silently move units into/out of whichever hero happens to be
+    // active, even if they're on the other side of the map.
+    Hero* hero = nullptr;
+    if (!m_heroes.empty()) {
+        Hero& h = m_heroes[m_activeHeroIdx];
+        if (h.pos == town->pos || HexGrid::distance(h.pos, town->pos) <= 1)
+            hero = &h;
+    }
 
     const auto& unitDefs = m_registry.units();
 
