@@ -6,12 +6,31 @@ This covers two gaps found during the sprite_brief.md audit:
 1. **Unit upgrade-path (A/B) sprites don't exist** — every PathA/PathB unit
    currently renders using its faction's base tier-1..6 sprite (`faction_F_tT.png`).
    No visual distinction between the base unit and its two upgrades.
-2. **No town-screen art at all** — building lists render as text/UI only, no
-   HoMM3-style painted town screen with buildings placed in a scene.
+2. **No true HoMM3-style town screen (buildings placed in a painted scene)** —
+   Holy Order, Crimson Wardens, and Eternal Empire *do* have per-dwelling
+   portrait art (`assets/units/<faction>/<building name>.png`, renamed to match
+   sprite_brief.md as of this pass) used in the recruit UI, but there's no
+   scene background with buildings positioned/clickable as structures. The
+   other 6 factions have no dwelling art at all yet.
 
 Shared house style (same as sprite_brief.md):
 > dark-fantasy strategy game art, painterly, high contrast, clean silhouette,
 > no text, no watermark, centered.
+
+---
+
+## 0. Dwelling portrait art — 6 factions have none (108 files)
+
+Holy Order, Crimson Wardens, and Eternal Empire have per-dwelling portrait art
+at `assets/units/<faction>/<name>.png` (base + Path A + Path B, 18 files each,
+just renamed to match sprite_brief.md). Thornkin, Bloodsworn, Voidkin, Iron
+Assembly, Amalgamate, and Convergence have **none** — same gap, 18 files per
+faction × 6 factions = 108 files. Use the base-unit prompt from sprite_brief.md
+for the base file, plus the Path A/B cue from the table in §1 below for the
+variant files. File naming to match the existing convention: `assets/units/
+<faction_folder>/<Building Name>.png` (base), `<Building Name> (A/B).png` or
+`<Unit Name> (A/B).png` per whichever convention that faction's dwelling
+table in `BuildingRegistry.cpp` / `Game_Core.cpp` uses once wired.
 
 ---
 

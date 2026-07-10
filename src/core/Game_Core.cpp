@@ -282,12 +282,12 @@ bool Game::init(const std::string& title, int width, int height)
     // Files: assets/units/holy_order/<DwellingName>[— Variant].png
     // nullptr entries = no art uploaded yet for that variant (falls back to icon)
     static const struct { const char* base; const char* varA; const char* varB; } kHODwellings[6] = {
-        { "Prison Yard",     "Prison Yard \xe2\x80\x94 Fast Death",     "Prison Yard \xe2\x80\x94 Hardened"        },
-        { "Militia Barracks","Militia Barracks \xe2\x80\x94 Arsonist",  "Militia Barracks \xe2\x80\x94 Devoted"    },
-        { "Apothecary",      "Plague Doctor \xe2\x80\x94 Sacrifice",    "Plague Doctor \xe2\x80\x94 Toxic Cloud"   },
+        { "Squire Barracks",  "Squire Barracks \xe2\x80\x94 Fast Death",  "Squire Barracks \xe2\x80\x94 Hardened"     },
+        { "Paladin Hall",     "Paladin Hall \xe2\x80\x94 Arsonist",       "Paladin Hall \xe2\x80\x94 Devoted"         },
+        { "Crusader Chapel",  "Crusader \xe2\x80\x94 Sacrifice",          "Crusader \xe2\x80\x94 Toxic Cloud"         },
         { nullptr,           nullptr,                                     nullptr                                    }, // T4 no art yet
-        { "Seraph",          "Seraph \xe2\x80\x94 Wide Aura",           "Seraph \xe2\x80\x94 Unchained"            },
-        { "Winged Hussar",   "Winged Hussar \xe2\x80\x94 Desperation",  "Winged Hussar \xe2\x80\x94 Both Meters"  },
+        { "Holy Champion",   "Holy Champion \xe2\x80\x94 Wide Aura",     "Holy Champion \xe2\x80\x94 Unchained"      },
+        { "Archangel",       "Archangel \xe2\x80\x94 Desperation",       "Archangel \xe2\x80\x94 Both Meters"        },
     };
     for (int t = 0; t < HO_DWELLING_TIERS; ++t) {
         const char* names[3] = { kHODwellings[t].base, kHODwellings[t].varA, kHODwellings[t].varB };
@@ -301,12 +301,12 @@ bool Game::init(const std::string& title, int width, int height)
 
     // CrimsonWardens dwelling art
     static const struct { const char* base; const char* varA; const char* varB; } kCWDwellings[6] = {
-        { "Ossuary",       "Hollow Knight",      "Marked Guard"      },
-        { "Archer Crypt",  "Bone Sniper",        "Marrow Archer"     },
-        { "Shade Hollow",  "Wight Paladin",      "Greater Wight"     },
-        { "Blood Roost",   "Crusader Vampire",   "Blood Vampire"     },
-        { "Lich Spire",    "High Lich",          "Undying Lich"      },
-        { "Dragon Crypts", "Holy Bone Dragon",   "Abyssal Dragon"    },
+        { "Scout Camp",     "Scout (A)",              "Scout (B)"               },
+        { "Ranger Lodge",   "Ranger (A)",             "Ranger (B)"              },
+        { "Hunter's Lodge", "Hunter (A)",             "Hunter (B)"              },
+        { "Berserker Hall", "Berserker (A)",          "Berserker (B)"           },
+        { "Warden's Tower", "Warden Commander (A)",   "Warden Commander (B)"    },
+        { "Warlord's Bastion", "Warlord (A)",         "Warlord (B)"             },
     };
     for (int t = 0; t < CW_DWELLING_TIERS; ++t) {
         const char* names[3] = { kCWDwellings[t].base, kCWDwellings[t].varA, kCWDwellings[t].varB };
@@ -320,12 +320,12 @@ bool Game::init(const std::string& title, int width, int height)
 
     // EternalEmpire dwelling art (base + A "Eternal Command" + B "Necromantic")
     static const struct { const char* base; const char* varA; const char* varB; } kEEDwellings[6] = {
-        { "Conscript",     "Eternal Conscript", "Shade"         },
-        { "Revenant",      "Eternal Revenant",  "Wraith"        },
-        { "Shade Archer",  "Eternal Archer",    "Soul Archer"   },
-        { "Steel Guardian","Eternal Guardian",  "Bone Knight"   },
-        { "Phantom Knight","Eternal Knight",    "Void Knight"   },
-        { "Immortal",      "True Immortal",     "Undying Avatar"},
+        { "Skeleton Soldier",   "Skeleton Soldier (A)",   "Skeleton Soldier (B)"   },
+        { "Armoured Skeleton",  "Armoured Skeleton (A)",  "Armoured Skeleton (B)"  },
+        { "Zombie Warrior",     "Zombie Warrior (A)",     "Zombie Warrior (B)"     },
+        { "Death Knight",       "Death Knight (A)",       "Death Knight (B)"       },
+        { "Lich",               "Lich (A)",                "Lich (B)"               },
+        { "Eternal Emperor",    "Eternal Emperor (A)",    "Eternal Emperor (B)"    },
     };
     for (int t = 0; t < EE_DWELLING_TIERS; ++t) {
         const char* names[3] = { kEEDwellings[t].base, kEEDwellings[t].varA, kEEDwellings[t].varB };
