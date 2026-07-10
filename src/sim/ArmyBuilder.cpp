@@ -1,15 +1,30 @@
 #include "ArmyBuilder.h"
 #include "../hero/Skills.h"
+#include "../data/Resources.h"
 #include <cmath>
 #include <algorithm>
 
-const UnitSimData* ArmyBuilder::getTierData(FactionId faction, int tier)
+const BuildingRegistry& ArmyBuilder::registry()
 {
-    for (int i = 0; i < SIM_UNIT_COUNT; ++i) {
-        if (SIM_UNITS[i].faction == faction && SIM_UNITS[i].tier == tier)
-            return &SIM_UNITS[i];
+    static BuildingRegistry s_registry = [] {
+        BuildingRegistry r;
+        r.init();
+        return r;
+    }();
+    return s_registry;
+}
+
+int ArmyBuilder::unlockWeekForTier(int tier)
+{
+    switch (tier) {
+        case 1: return 1;
+        case 2: return 2;
+        case 3: return 3;
+        case 4: return 5;
+        case 5: return 7;
+        case 6: return 9;
+        default: return 1;
     }
-    return nullptr;
 }
 
 int ArmyBuilder::heroLevelFromWeeks(int weeks)
@@ -23,13 +38,19 @@ std::vector<CombatUnit> ArmyBuilder::buildArmy(FactionId faction, int weeks)
 {
     std::vector<CombatUnit> army;
     army.reserve(6);
+    const BuildingRegistry& reg = registry();
 
     for (int tier = 1; tier <= 6; ++tier) {
-        const UnitSimData* d = getTierData(faction, tier);
+        const UnitDef* d = reg.getUnitDef(faction, tier, UpgradePath::None);
         if (!d) continue;
-        if (weeks < d->unlockWeek) continue;
 
-        int accumulated = (weeks - d->unlockWeek + 1) * d->weeklyGrowth;
+        int unlockWeek = unlockWeekForTier(tier);
+        if (weeks < unlockWeek) continue;
+
+        const BuildingDef* dwelling = reg.getDwelling(faction, tier, UpgradePath::None);
+        int weeklyGrowth = dwelling ? dwelling->weeklyGrowth : 1;
+
+        int accumulated = (weeks - unlockWeek + 1) * weeklyGrowth;
         int count = std::min(accumulated, MAX_STACK);
         if (count <= 0) continue;
 
@@ -40,8 +61,8 @@ std::vector<CombatUnit> ArmyBuilder::buildArmy(FactionId faction, int weeks)
         u.maxHp         = d->hp;
         u.attack        = d->attack;
         u.defense       = d->defense;
-        u.damageMin     = d->damageMin;
-        u.damageMax     = d->damageMax;
+        u.damageMin     = d->damage_min;
+        u.damageMax     = d->damage_max;
         u.speed         = d->speed;
         u.range         = d->range;
         u.shots         = d->shots;
@@ -62,12 +83,20 @@ std::vector<CombatUnit> ArmyBuilder::buildArmy(FactionId faction, int weeks)
 
 int ArmyBuilder::armyGoldCost(FactionId faction, int weeks)
 {
+    const BuildingRegistry& reg = registry();
     int total = 0;
     for (int tier = 1; tier <= 6; ++tier) {
-        const UnitSimData* d = getTierData(faction, tier);
-        if (!d || weeks < d->unlockWeek) continue;
-        int count = std::min((weeks - d->unlockWeek + 1) * d->weeklyGrowth, MAX_STACK);
-        if (count > 0) total += count * d->goldCost;
+        const UnitDef* d = reg.getUnitDef(faction, tier, UpgradePath::None);
+        if (!d) continue;
+
+        int unlockWeek = unlockWeekForTier(tier);
+        if (weeks < unlockWeek) continue;
+
+        const BuildingDef* dwelling = reg.getDwelling(faction, tier, UpgradePath::None);
+        int weeklyGrowth = dwelling ? dwelling->weeklyGrowth : 1;
+
+        int count = std::min((weeks - unlockWeek + 1) * weeklyGrowth, MAX_STACK);
+        if (count > 0) total += count * d->cost.get(ResourceType::Gold);
     }
     return total;
 }

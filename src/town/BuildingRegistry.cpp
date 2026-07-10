@@ -1682,6 +1682,20 @@ const UnitDef* BuildingRegistry::getUnitDef(int id) const {
     return nullptr;
 }
 
+const UnitDef* BuildingRegistry::getUnitDef(FactionId faction, int tier, UpgradePath path) const {
+    for (auto& u : m_units)
+        if (u.faction == faction && u.tier == tier && u.path == path) return &u;
+    return nullptr;
+}
+
+const BuildingDef* BuildingRegistry::getDwelling(FactionId faction, int tier, UpgradePath path) const {
+    for (auto& b : m_buildings)
+        if (b.faction == faction && b.tier == tier && b.path == path &&
+            b.category == BuildingCategory::UnitDwelling)
+            return &b;
+    return nullptr;
+}
+
 std::vector<const BuildingDef*> BuildingRegistry::getBuildingsForFaction(FactionId f) const {
     std::vector<const BuildingDef*> result;
     for (auto& b : m_buildings)

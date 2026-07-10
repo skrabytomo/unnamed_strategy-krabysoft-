@@ -6,6 +6,7 @@
 #include "../magic/SpellRegistry.h"
 #include "../world/HexGrid.h"
 #include "../town/UnitDef.h"
+#include "../sim/ArmyBuilder.h"
 #include <imgui.h>
 #include <cmath>
 #include <algorithm>
@@ -15,56 +16,24 @@ static constexpr float MOVE_SPEED = 4.0f;
 
 
 // ── Per-faction combat unit templates ─────────────────────────────────────────
-static std::vector<CombatUnit> makeFactionUnits(FactionId faction, bool isPlayer)
+// Fallback used only when a hero has zero recruited units (fresh hero, Arena
+// phantom opponent, etc). Delegates to ArmyBuilder — the single source of
+// truth for unit stats (BuildingRegistry) — rather than keeping a second,
+// separately-maintained roster that silently drifts out of sync on renames.
+static std::vector<CombatUnit> makeFactionUnits(FactionId faction, bool isPlayer, int heroLevel = 1)
 {
-    std::vector<CombatUnit> out;
+    // Invert ArmyBuilder::heroLevelFromWeeks (level = 1 + floor(sqrt(weeks*2)))
+    // to get an approximate week from the hero's level for this one-off fallback.
+    int lvl = std::max(1, heroLevel);
+    int weeks = std::max(1, ((lvl - 1) * (lvl - 1)) / 2);
+
+    auto army = ArmyBuilder::buildArmy(faction, weeks);
     int nextId = isPlayer ? 1 : 50;
-    auto add = [&](const char* name, int count, int hp, int atk, int def, int spd, int rng = 0) {
-        CombatUnit u;
-        u.id = nextId++; u.name = name; u.count = count;
-        u.maxHp = u.hp = hp; u.attack = atk; u.defense = def;
-        u.speed = spd; u.range = rng; u.shotsLeft = rng > 0 ? 8 : 0;
+    for (auto& u : army) {
+        u.id = nextId++;
         u.isPlayer = isPlayer;
-        out.push_back(u);
-    };
-    switch (faction) {
-    case FactionId::HolyOrder:
-        add("Penitent",       10, 6, 3, 2, 5);
-        add("Priest",          5, 4, 2, 1, 6, 3);
-        break;
-    case FactionId::Bloodsworn:
-        add("Raider",         10, 5, 4, 1, 7);
-        add("Bone Lancer",     6, 8, 3, 3, 4);
-        break;
-    case FactionId::Thornkin:
-        add("Thornling",      10, 4, 2, 3, 4);
-        add("Bark Sentinel",   5, 12, 3, 5, 3);
-        break;
-    case FactionId::EternalEmpire:
-        add("Skeleton",       10, 4, 2, 1, 4);
-        add("Shadow Archer",   6, 4, 4, 1, 5, 4);
-        break;
-    case FactionId::CrimsonWardens:
-        add("Warden Scout",    8, 5, 3, 2, 6);
-        add("Iron Warden",     5, 10, 4, 4, 4);
-        break;
-    case FactionId::Voidkin:
-        add("Void Wraith",     8, 5, 3, 1, 6);
-        add("Rift Stalker",    4, 8, 5, 2, 7);
-        break;
-    case FactionId::IronAssembly:
-        add("Automaton",       7, 8, 3, 3, 3);
-        add("Rifleman",        6, 5, 4, 1, 5, 5);
-        break;
-    case FactionId::Amalgamate:
-        add("Flesh Spawn",     9, 5, 2, 2, 4);
-        add("Plague Bearer",   5, 8, 3, 2, 5);
-        break;
-    default:
-        add("Soldier",        10, 5, 3, 2, 5);
-        break;
     }
-    return out;
+    return army;
 }
 
 // Generate mine guard units deterministically from mine position + resource type
@@ -130,7 +99,7 @@ static std::vector<CombatUnit> makeHeroUnits(const Hero& hero,
     const std::vector<UnitDef>& defs, bool isPlayer)
 {
     if (hero.army.empty())
-        return makeFactionUnits(hero.faction, isPlayer);
+        return makeFactionUnits(hero.faction, isPlayer, hero.level);
 
     std::vector<CombatUnit> out;
     int nextId = isPlayer ? 1 : 50;
@@ -164,14 +133,14 @@ static std::vector<CombatUnit> makeHeroUnits(const Hero& hero,
         u.adaptationDouble   = ud->adaptationDouble;
         out.push_back(u);
     }
-    return out.empty() ? makeFactionUnits(hero.faction, isPlayer) : out;
+    return out.empty() ? makeFactionUnits(hero.faction, isPlayer, hero.level) : out;
 }
 
 // Estimated combat strength: sum(count * hp * attack) per stack
 static int heroStrength(const Hero& hero, const std::vector<UnitDef>& defs)
 {
     if (hero.army.empty()) {
-        auto units = makeFactionUnits(hero.faction, true);
+        auto units = makeFactionUnits(hero.faction, true, hero.level);
         int s = 0;
         for (auto& u : units) s += u.count * u.hp * u.attack;
         return s;
@@ -7726,7 +7695,7 @@ void Game::startArenaCombat()
     arenaHero.faction = static_cast<FactionId>(fIdx);
     arenaHero.name    = "Arena Champion";
     int week = m_turns.week();
-    auto units = makeFactionUnits(arenaHero.faction, false);
+    auto units = makeFactionUnits(arenaHero.faction, false, arenaHero.level);
     for (auto& u : units) u.count = std::max(1, u.count * week / 2);
 
     m_lastCombatEnemyId    = 0;

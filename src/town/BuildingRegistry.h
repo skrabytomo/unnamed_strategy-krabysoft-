@@ -213,6 +213,14 @@ public:
     const BuildingDef* getBuildingDef(int id) const;
     const UnitDef*     getUnitDef(int id)     const;
 
+    // Look up a unit by faction+tier+path (path defaults to the base/None variant).
+    // This is the single source of truth for unit stats — other systems (ArmyBuilder,
+    // combat fallbacks) should call this instead of keeping their own copies.
+    const UnitDef* getUnitDef(FactionId faction, int tier, UpgradePath path = UpgradePath::None) const;
+
+    // Matching dwelling building for a faction+tier+path (for weeklyGrowth/cost lookups).
+    const BuildingDef* getDwelling(FactionId faction, int tier, UpgradePath path = UpgradePath::None) const;
+
     // Get all buildings for a faction
     std::vector<const BuildingDef*> getBuildingsForFaction(FactionId f) const;
 
