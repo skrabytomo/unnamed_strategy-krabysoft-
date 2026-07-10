@@ -107,6 +107,17 @@ Game (core loop — Game.cpp)
 - Save/Load: File menu or Ctrl+S/O → maps/*.map
 - Resource editor hardcodes Gold/amount=3 on place (type/amount not yet editable in UI)
 
+## Pending — Town building art & interactivity (not started)
+Building **names** are now fixed to match the roster (Crimson Wardens renamed from
+Undead-leftover Ossuary/Crypt/Lich Spire naming to Scout Camp/Ranger Lodge/Hunter's
+Lodge/Berserker Hall/Warden's Tower/Warlord's Bastion).
+
+Full missing-art catalog for this (backgrounds, building cutouts, and the 108
+missing upgrade-path unit sprites) is in **`ART_MISSING_TOWNS.md`** — generate
+externally (same Gemini/DALL-E workflow as sprite_brief.md), then ping to wire
+into the engine (path-aware sprite loading + town scene renderer, both noted
+as separate code tasks in that file).
+
 ## Build
 ```bash
 cmake --build build -j4
