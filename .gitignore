@@ -10,3 +10,4 @@ saves/*.db-wal
 *.so
 *.exe
 compile_commands.json
+_gen_src*.png
