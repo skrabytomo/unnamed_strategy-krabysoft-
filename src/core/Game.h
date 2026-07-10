@@ -368,6 +368,47 @@ private:
     static constexpr int EE_DWELLING_VARIANTS = 3;
     Texture m_eeDwellingTex[EE_DWELLING_TIERS][EE_DWELLING_VARIANTS];
 
+    // Files: assets/units/thornkin/<DwellingName>.png
+    static constexpr int TK_DWELLING_TIERS    = 6;
+    static constexpr int TK_DWELLING_VARIANTS = 3;
+    Texture m_tkDwellingTex[TK_DWELLING_TIERS][TK_DWELLING_VARIANTS];
+
+    // Files: assets/units/bloodsworn/<DwellingName>.png
+    static constexpr int BS_DWELLING_TIERS    = 6;
+    static constexpr int BS_DWELLING_VARIANTS = 3;
+    Texture m_bsDwellingTex[BS_DWELLING_TIERS][BS_DWELLING_VARIANTS];
+
+    // Files: assets/units/voidkin/<DwellingName>.png
+    static constexpr int VK_DWELLING_TIERS    = 6;
+    static constexpr int VK_DWELLING_VARIANTS = 3;
+    Texture m_vkDwellingTex[VK_DWELLING_TIERS][VK_DWELLING_VARIANTS];
+
+    // Files: assets/units/iron_assembly/<DwellingName>.png
+    static constexpr int IA_DWELLING_TIERS    = 6;
+    static constexpr int IA_DWELLING_VARIANTS = 3;
+    Texture m_iaDwellingTex[IA_DWELLING_TIERS][IA_DWELLING_VARIANTS];
+
+    // Files: assets/units/amalgamate/<DwellingName>.png
+    static constexpr int AM_DWELLING_TIERS    = 6;
+    static constexpr int AM_DWELLING_VARIANTS = 3;
+    Texture m_amDwellingTex[AM_DWELLING_TIERS][AM_DWELLING_VARIANTS];
+
+    // Files: assets/units/convergence/<DwellingName>.png
+    static constexpr int CV_DWELLING_TIERS    = 6;
+    static constexpr int CV_DWELLING_VARIANTS = 3;
+    Texture m_cvDwellingTex[CV_DWELLING_TIERS][CV_DWELLING_VARIANTS];
+
+    // Capitol buildings (one per faction): assets/buildings/capitol/<faction>.png
+    Texture m_capitolTex[NUM_FACTIONS];
+
+    // Faction special/support buildings (2 per faction): assets/buildings/special/<Name>.png
+    Texture m_powerSpecialTex[NUM_FACTIONS];
+    Texture m_supportSpecialTex[NUM_FACTIONS];
+
+    // Shared: Bastion + Shipyard: assets/buildings/special/<Name>.png
+    Texture m_bastionTex;
+    Texture m_shipyardTex;
+
     // ── Per-unit combat animators (keyed by CombatUnit id) ───────────────────
     std::unordered_map<uint32_t, SpriteAnimator> m_combatAnimators;
 

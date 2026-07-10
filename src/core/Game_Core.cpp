@@ -285,7 +285,7 @@ bool Game::init(const std::string& title, int width, int height)
         { "Prison Yard",     "Prison Yard \xe2\x80\x94 Fast Death",     "Prison Yard \xe2\x80\x94 Hardened"        },
         { "Militia Barracks","Militia Barracks \xe2\x80\x94 Arsonist",  "Militia Barracks \xe2\x80\x94 Devoted"    },
         { "Apothecary",      "Plague Doctor \xe2\x80\x94 Sacrifice",    "Plague Doctor \xe2\x80\x94 Toxic Cloud"   },
-        { nullptr,           nullptr,                                     nullptr                                    }, // T4 no art yet
+        { "Knight's Penance Hall", "Knight's Penance - Shield", "Knight's Penance - Bleed" },
         { "Seraph",          "Seraph \xe2\x80\x94 Wide Aura",           "Seraph \xe2\x80\x94 Unchained"            },
         { "Winged Hussar",   "Winged Hussar \xe2\x80\x94 Desperation",  "Winged Hussar \xe2\x80\x94 Both Meters"  },
     };
@@ -336,6 +336,150 @@ bool Game::init(const std::string& title, int width, int height)
             m_eeDwellingTex[t][v].load(m_basePath + buf, false, false);
         }
     }
+
+    // Thornkin dwelling art
+    static const struct { const char* base; const char* varA; const char* varB; } kTKDwellings[6] = {
+        { "Sprout Hollow",  "Seedling Twin Hollow",   "Ironroot Den"        },
+        { "Briar Thicket",  "Briar Pair Thicket",     "Thornwall Thicket"   },
+        { "Vine Den",       "Vine Duo Den",           "Elder Vine Den"      },
+        { "Guardian Grove", "Grove Bonded Sanctuary", "Ironwood Golem Grove"},
+        { "Elder Circle",   "Ancient Pair Circle",    "World Root Circle"   },
+        { "World Tree Root","Twin Thorn Canopy",      "Elder Thorn Root"    },
+    };
+    for (int t = 0; t < TK_DWELLING_TIERS; ++t) {
+        const char* names[3] = { kTKDwellings[t].base, kTKDwellings[t].varA, kTKDwellings[t].varB };
+        for (int v = 0; v < TK_DWELLING_VARIANTS; ++v) {
+            if (!names[v]) continue;
+            char buf[256];
+            std::snprintf(buf, sizeof(buf), "assets/units/thornkin/%s.png", names[v]);
+            m_tkDwellingTex[t][v].load(m_basePath + buf, false, false);
+        }
+    }
+
+    // Bloodsworn dwelling art
+    static const struct { const char* base; const char* varA; const char* varB; } kBSDwellings[6] = {
+        { "Bloodling Pen",    "Blood Fanatic Den",       "Pact Warrior Den"       },
+        { "Berserker Pits",   "Blood Berserker Pits",    "Ritual Guard Pits"      },
+        { "Shaman Hut",       "High Shaman Hut",         "Pact Shaman Hut"        },
+        { "Ravager Corral",   "Blood Ravager Corral",    "Pact Ravager Corral"    },
+        { "Warlord Pavilion", "Blood Avatar Pavilion",   "Ritual Champion Pavilion"},
+        { "Avatar Shrine",    "Blood God Shrine",        "Pact Titan Shrine"      },
+    };
+    for (int t = 0; t < BS_DWELLING_TIERS; ++t) {
+        const char* names[3] = { kBSDwellings[t].base, kBSDwellings[t].varA, kBSDwellings[t].varB };
+        for (int v = 0; v < BS_DWELLING_VARIANTS; ++v) {
+            if (!names[v]) continue;
+            char buf[256];
+            std::snprintf(buf, sizeof(buf), "assets/units/bloodsworn/%s.png", names[v]);
+            m_bsDwellingTex[t][v].load(m_basePath + buf, false, false);
+        }
+    }
+
+    // Voidkin dwelling art
+    static const struct { const char* base; const char* varA; const char* varB; } kVKDwellings[6] = {
+        { "Wisp Hollow",  "Phase Wisp Hollow",  "Void Anchor Hollow"  },
+        { "Phase Den",    "Flicker Den",        "Void Bulwark Den"    },
+        { "Rift Arch",    "Void Sniper Arch",   "Anchor Archer Arch"  },
+        { "Stalker Gate", "Phase Hunter Gate",  "Void Monolith Gate"  },
+        { "Wraith Spire", "Chaos Wraith Spire", "Entropy Anchor Spire"},
+        { "Colossus Rift","Void Specter Rift",  "Void Titan Rift"     },
+    };
+    for (int t = 0; t < VK_DWELLING_TIERS; ++t) {
+        const char* names[3] = { kVKDwellings[t].base, kVKDwellings[t].varA, kVKDwellings[t].varB };
+        for (int v = 0; v < VK_DWELLING_VARIANTS; ++v) {
+            if (!names[v]) continue;
+            char buf[256];
+            std::snprintf(buf, sizeof(buf), "assets/units/voidkin/%s.png", names[v]);
+            m_vkDwellingTex[t][v].load(m_basePath + buf, false, false);
+        }
+    }
+
+    // IronAssembly dwelling art
+    static const struct { const char* base; const char* varA; const char* varB; } kIADwellings[6] = {
+        { "Automaton Works",     "Runic Automaton Works",     "Salvage Bot Works"        },
+        { "Gun Construct Bay",   "Runic Gunner Bay",          "Scrap Gunner Bay"         },
+        { "Steam Walker Depot",  "Runic Walker Depot",        "Salvage Walker Depot"     },
+        { "Siege Bot Foundry",   "Runic Siege Bot Foundry",   "Salvage Bot MkII Foundry" },
+        { "Titan Assembly",      "Runic Titan Assembly",      "Salvage Titan Assembly"   },
+        { "Colossus Prime Dock", "Runic Colossus Dock",       "Salvage Prime Dock"       },
+    };
+    for (int t = 0; t < IA_DWELLING_TIERS; ++t) {
+        const char* names[3] = { kIADwellings[t].base, kIADwellings[t].varA, kIADwellings[t].varB };
+        for (int v = 0; v < IA_DWELLING_VARIANTS; ++v) {
+            if (!names[v]) continue;
+            char buf[256];
+            std::snprintf(buf, sizeof(buf), "assets/units/iron_assembly/%s.png", names[v]);
+            m_iaDwellingTex[t][v].load(m_basePath + buf, false, false);
+        }
+    }
+
+    // Amalgamate dwelling art
+    static const struct { const char* base; const char* varA; const char* varB; } kAMDwellings[6] = {
+        { "Flesh Crawler Vat", "Rapid Crawler Vat",   "Fused Crawler Vat"  },
+        { "Graft Soldier Bay", "Rapid Soldier Bay",   "Fused Soldier Bay"  },
+        { "Bone Machine Works","Rapid Machine Works", "Fused Machine Works"},
+        { "Fleshwork Forge",   "Rapid Knight Forge",  "Fused Knight Forge" },
+        { "Juggernaut Pit",    "Rapid Juggernaut Pit","Fused Juggernaut Pit"},
+        { "Spawn Chamber",     "Rapid Spawn Chamber", "Fused Spawn Chamber"},
+    };
+    for (int t = 0; t < AM_DWELLING_TIERS; ++t) {
+        const char* names[3] = { kAMDwellings[t].base, kAMDwellings[t].varA, kAMDwellings[t].varB };
+        for (int v = 0; v < AM_DWELLING_VARIANTS; ++v) {
+            if (!names[v]) continue;
+            char buf[256];
+            std::snprintf(buf, sizeof(buf), "assets/units/amalgamate/%s.png", names[v]);
+            m_amDwellingTex[t][v].load(m_basePath + buf, false, false);
+        }
+    }
+
+    // Convergence dwelling art
+    static const struct { const char* base; const char* varA; const char* varB; } kCVDwellings[6] = {
+        { "Awakening Chamber", "Mirror Awakening Chamber", "Harmony Seeker Chamber" },
+        { "Synthesis Lab",     "Mirror Synthesis Lab",     "Harmony Bound Lab"      },
+        { "Harmony Hall",      "Mirror Harmony Hall",      "Resonance Core Hall"    },
+        { "Resonance Spire",   "Mirror Resonance Spire",   "Harmony Knight Spire"   },
+        { "Transcendence Gate","Mirror Form Gate",         "Transcendent Prime Gate"},
+        { "Unity Forge",       "Mirror Unity Forge",       "Harmonic Unity Forge"   },
+    };
+    for (int t = 0; t < CV_DWELLING_TIERS; ++t) {
+        const char* names[3] = { kCVDwellings[t].base, kCVDwellings[t].varA, kCVDwellings[t].varB };
+        for (int v = 0; v < CV_DWELLING_VARIANTS; ++v) {
+            if (!names[v]) continue;
+            char buf[256];
+            std::snprintf(buf, sizeof(buf), "assets/units/convergence/%s.png", names[v]);
+            m_cvDwellingTex[t][v].load(m_basePath + buf, false, false);
+        }
+    }
+
+    // Capitol buildings (one per faction)
+    static const char* kCapitolNames[NUM_FACTIONS] = {
+        "Sacred Sanctum", "Grand Necropolis", "Ancient Heartwood", "Eternal Citadel",
+        "Bloodspire Fortress", "Void Core Nexus", "Grand Megaforge", "Grand Fleshpit", "Synthesis Nexus",
+    };
+    for (int f = 0; f < NUM_FACTIONS; ++f) {
+        char buf[256];
+        std::snprintf(buf, sizeof(buf), "assets/buildings/capitol/%s.png", kCapitolNames[f]);
+        m_capitolTex[f].load(m_basePath + buf, false, false);
+    }
+
+    // Faction power/support special buildings (2 per faction)
+    static const char* kPowerSpecialNames[NUM_FACTIONS] = {
+        "Light Shrine", "Death Altar", "Ancient Circle", "Necropolis Gate",
+        "Blood Altar", "Rift Gate", "Blueprint Vault", "Flesh Vault", "Resonance Well",
+    };
+    static const char* kSupportSpecialNames[NUM_FACTIONS] = {
+        "Reliquary", "Warden's Brand Chamber", "Symbiosis Web", "Monument of Eternity",
+        "War Shrine", "Void Lens", "Overclock Chamber", "Merge Chamber", "Mirror Chamber",
+    };
+    for (int f = 0; f < NUM_FACTIONS; ++f) {
+        char buf[256];
+        std::snprintf(buf, sizeof(buf), "assets/buildings/special/%s.png", kPowerSpecialNames[f]);
+        m_powerSpecialTex[f].load(m_basePath + buf, false, false);
+        std::snprintf(buf, sizeof(buf), "assets/buildings/special/%s.png", kSupportSpecialNames[f]);
+        m_supportSpecialTex[f].load(m_basePath + buf, false, false);
+    }
+    m_bastionTex.load(m_basePath + "assets/buildings/special/Bastion.png", false, false);
+    m_shipyardTex.load(m_basePath + "assets/buildings/special/Shipyard.png", false, false);
 
     renderLoadingScreen(0.90f, "Loading creatures");
 

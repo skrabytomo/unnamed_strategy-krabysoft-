@@ -1387,6 +1387,136 @@ void Game::enterTown(Town* town)
                         m_eeDwellingTex[t][v].ok()
                             ? (ImTextureID)(uintptr_t)m_eeDwellingTex[t][v].id() : nullptr);
         }
+
+        // Thornkin dwelling art (base + A/B variants per tier)
+        if (town->faction == FactionId::Thornkin) {
+            static const int kTKBIDs[TK_DWELLING_TIERS][TK_DWELLING_VARIANTS] = {
+                { BID::TK_T1, BID::TK_T1_A, BID::TK_T1_B },
+                { BID::TK_T2, BID::TK_T2_A, BID::TK_T2_B },
+                { BID::TK_T3, BID::TK_T3_A, BID::TK_T3_B },
+                { BID::TK_T4, BID::TK_T4_A, BID::TK_T4_B },
+                { BID::TK_T5, BID::TK_T5_A, BID::TK_T5_B },
+                { BID::TK_T6, BID::TK_T6_A, BID::TK_T6_B },
+            };
+            for (int t = 0; t < TK_DWELLING_TIERS; ++t)
+                for (int v = 0; v < TK_DWELLING_VARIANTS; ++v)
+                    m_townScreen.setBuildingArt(kTKBIDs[t][v],
+                        m_tkDwellingTex[t][v].ok()
+                            ? (ImTextureID)(uintptr_t)m_tkDwellingTex[t][v].id() : nullptr);
+        }
+
+        // Bloodsworn dwelling art (base + A/B variants per tier)
+        if (town->faction == FactionId::Bloodsworn) {
+            static const int kBSBIDs[BS_DWELLING_TIERS][BS_DWELLING_VARIANTS] = {
+                { BID::BS_T1, BID::BS_T1_A, BID::BS_T1_B },
+                { BID::BS_T2, BID::BS_T2_A, BID::BS_T2_B },
+                { BID::BS_T3, BID::BS_T3_A, BID::BS_T3_B },
+                { BID::BS_T4, BID::BS_T4_A, BID::BS_T4_B },
+                { BID::BS_T5, BID::BS_T5_A, BID::BS_T5_B },
+                { BID::BS_T6, BID::BS_T6_A, BID::BS_T6_B },
+            };
+            for (int t = 0; t < BS_DWELLING_TIERS; ++t)
+                for (int v = 0; v < BS_DWELLING_VARIANTS; ++v)
+                    m_townScreen.setBuildingArt(kBSBIDs[t][v],
+                        m_bsDwellingTex[t][v].ok()
+                            ? (ImTextureID)(uintptr_t)m_bsDwellingTex[t][v].id() : nullptr);
+        }
+
+        // Voidkin dwelling art (base + A/B variants per tier)
+        if (town->faction == FactionId::Voidkin) {
+            static const int kVKBIDs[VK_DWELLING_TIERS][VK_DWELLING_VARIANTS] = {
+                { BID::VK_T1, BID::VK_T1_A, BID::VK_T1_B },
+                { BID::VK_T2, BID::VK_T2_A, BID::VK_T2_B },
+                { BID::VK_T3, BID::VK_T3_A, BID::VK_T3_B },
+                { BID::VK_T4, BID::VK_T4_A, BID::VK_T4_B },
+                { BID::VK_T5, BID::VK_T5_A, BID::VK_T5_B },
+                { BID::VK_T6, BID::VK_T6_A, BID::VK_T6_B },
+            };
+            for (int t = 0; t < VK_DWELLING_TIERS; ++t)
+                for (int v = 0; v < VK_DWELLING_VARIANTS; ++v)
+                    m_townScreen.setBuildingArt(kVKBIDs[t][v],
+                        m_vkDwellingTex[t][v].ok()
+                            ? (ImTextureID)(uintptr_t)m_vkDwellingTex[t][v].id() : nullptr);
+        }
+
+        // IronAssembly dwelling art (base + A/B variants per tier)
+        if (town->faction == FactionId::IronAssembly) {
+            static const int kIABIDs[IA_DWELLING_TIERS][IA_DWELLING_VARIANTS] = {
+                { BID::IA_T1, BID::IA_T1_A, BID::IA_T1_B },
+                { BID::IA_T2, BID::IA_T2_A, BID::IA_T2_B },
+                { BID::IA_T3, BID::IA_T3_A, BID::IA_T3_B },
+                { BID::IA_T4, BID::IA_T4_A, BID::IA_T4_B },
+                { BID::IA_T5, BID::IA_T5_A, BID::IA_T5_B },
+                { BID::IA_T6, BID::IA_T6_A, BID::IA_T6_B },
+            };
+            for (int t = 0; t < IA_DWELLING_TIERS; ++t)
+                for (int v = 0; v < IA_DWELLING_VARIANTS; ++v)
+                    m_townScreen.setBuildingArt(kIABIDs[t][v],
+                        m_iaDwellingTex[t][v].ok()
+                            ? (ImTextureID)(uintptr_t)m_iaDwellingTex[t][v].id() : nullptr);
+        }
+
+        // Amalgamate dwelling art (base + A/B variants per tier)
+        if (town->faction == FactionId::Amalgamate) {
+            static const int kAMBIDs[AM_DWELLING_TIERS][AM_DWELLING_VARIANTS] = {
+                { BID::AM_T1, BID::AM_T1_A, BID::AM_T1_B },
+                { BID::AM_T2, BID::AM_T2_A, BID::AM_T2_B },
+                { BID::AM_T3, BID::AM_T3_A, BID::AM_T3_B },
+                { BID::AM_T4, BID::AM_T4_A, BID::AM_T4_B },
+                { BID::AM_T5, BID::AM_T5_A, BID::AM_T5_B },
+                { BID::AM_T6, BID::AM_T6_A, BID::AM_T6_B },
+            };
+            for (int t = 0; t < AM_DWELLING_TIERS; ++t)
+                for (int v = 0; v < AM_DWELLING_VARIANTS; ++v)
+                    m_townScreen.setBuildingArt(kAMBIDs[t][v],
+                        m_amDwellingTex[t][v].ok()
+                            ? (ImTextureID)(uintptr_t)m_amDwellingTex[t][v].id() : nullptr);
+        }
+
+        // Convergence dwelling art (base + A/B variants per tier)
+        if (town->faction == FactionId::Convergence) {
+            static const int kCVBIDs[CV_DWELLING_TIERS][CV_DWELLING_VARIANTS] = {
+                { BID::CV_T1, BID::CV_T1_A, BID::CV_T1_B },
+                { BID::CV_T2, BID::CV_T2_A, BID::CV_T2_B },
+                { BID::CV_T3, BID::CV_T3_A, BID::CV_T3_B },
+                { BID::CV_T4, BID::CV_T4_A, BID::CV_T4_B },
+                { BID::CV_T5, BID::CV_T5_A, BID::CV_T5_B },
+                { BID::CV_T6, BID::CV_T6_A, BID::CV_T6_B },
+            };
+            for (int t = 0; t < CV_DWELLING_TIERS; ++t)
+                for (int v = 0; v < CV_DWELLING_VARIANTS; ++v)
+                    m_townScreen.setBuildingArt(kCVBIDs[t][v],
+                        m_cvDwellingTex[t][v].ok()
+                            ? (ImTextureID)(uintptr_t)m_cvDwellingTex[t][v].id() : nullptr);
+        }
+
+        // Capitol building art (one per faction)
+        static const int kCapitolBIDs[NUM_FACTIONS] = {
+            BID::HO_SANCTUM, BID::CW_NECROPOLIS, BID::TK_HEARTWOOD, BID::EE_CITADEL,
+            BID::BS_BLOODSPIRE, BID::VK_VOIDCORE, BID::IA_MEGAFORGE, BID::AM_FLESHPIT, BID::CV_NEXUS,
+        };
+        m_townScreen.setBuildingArt(kCapitolBIDs[fid],
+            m_capitolTex[fid].ok() ? (ImTextureID)(uintptr_t)m_capitolTex[fid].id() : nullptr);
+
+        // Faction power/support special building art
+        static const int kPowerSpecialBIDs[NUM_FACTIONS] = {
+            BID::HO_LIGHT_SHRINE, BID::CW_DEATH_ALTAR, BID::TK_ANCIENT_CIRCLE, BID::EE_NECROPOLIS,
+            BID::BS_BLOOD_ALTAR, BID::VK_RIFT_GATE, BID::IA_BLUEPRINT_VAULT, BID::AM_FLESH_VAULT, BID::CV_RESONANCE_WELL,
+        };
+        static const int kSupportSpecialBIDs[NUM_FACTIONS] = {
+            BID::HO_RELIQUARY, BID::CW_WARDEN_BRAND, BID::TK_SYMBIOSIS_WEB, BID::EE_MONUMENT,
+            BID::BS_WAR_SHRINE, BID::VK_VOID_LENS, BID::IA_OVERCLOCK, BID::AM_MERGE_CHAMBER, BID::CV_MIRROR_CHAMBER,
+        };
+        m_townScreen.setBuildingArt(kPowerSpecialBIDs[fid],
+            m_powerSpecialTex[fid].ok() ? (ImTextureID)(uintptr_t)m_powerSpecialTex[fid].id() : nullptr);
+        m_townScreen.setBuildingArt(kSupportSpecialBIDs[fid],
+            m_supportSpecialTex[fid].ok() ? (ImTextureID)(uintptr_t)m_supportSpecialTex[fid].id() : nullptr);
+
+        // Shared Bastion + Shipyard art (same building, any faction)
+        m_townScreen.setBuildingArt(BID::BASTION,
+            m_bastionTex.ok() ? (ImTextureID)(uintptr_t)m_bastionTex.id() : nullptr);
+        m_townScreen.setBuildingArt(BID::TOWN_SHIPYARD,
+            m_shipyardTex.ok() ? (ImTextureID)(uintptr_t)m_shipyardTex.id() : nullptr);
     }
     // Play faction-specific theme; fall back to generic town_music
     int fid = static_cast<int>(town->faction);
