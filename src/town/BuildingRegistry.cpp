@@ -681,74 +681,74 @@ void BuildingRegistry::init()
       b.prerequisites={BID::TK_T5};
       b.upgradeA=BID::TK_T6_A; b.upgradeB=BID::TK_T6_B; m_buildings.push_back(b); }
     // Thornkin PathA upgrades — Bonded line (symbiosis flavor, VerdantSap)
-    { BuildingDef b; b.id=BID::TK_T1_A; b.name="Seedling Twin Hollow";
+    { BuildingDef b; b.id=BID::TK_T1_A; b.name="Sprout Hollow (A)";
       b.description="Upgrades Vine Sprites to Vine Sprites (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Thornkin;
       b.tier=1; b.path=UpgradePath::PathA; b.weeklyGrowth=13;
       b.cost=goldAndRes(500,ResourceType::VerdantSap,2);
       b.prerequisites={BID::TK_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::TK_T2_A; b.name="Briar Pair Thicket";
+    { BuildingDef b; b.id=BID::TK_T2_A; b.name="Briar Thicket (A)";
       b.description="Upgrades Thornkin Warriors to Thornkin Warriors (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Thornkin;
       b.tier=2; b.path=UpgradePath::PathA; b.weeklyGrowth=9;
       b.cost=goldAndRes(700,ResourceType::VerdantSap,2);
       b.prerequisites={BID::TK_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::TK_T3_A; b.name="Vine Duo Den";
+    { BuildingDef b; b.id=BID::TK_T3_A; b.name="Vine Den (A)";
       b.description="Upgrades Forest Guardians to Forest Guardians (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Thornkin;
       b.tier=3; b.path=UpgradePath::PathA; b.weeklyGrowth=6;
       b.cost=goldAndRes(1100,ResourceType::VerdantSap,2);
       b.prerequisites={BID::TK_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::TK_T4_A; b.name="Grove Bonded Sanctuary";
+    { BuildingDef b; b.id=BID::TK_T4_A; b.name="Guardian Grove (A)";
       b.description="Upgrades Treants to Treants (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Thornkin;
       b.tier=4; b.path=UpgradePath::PathA; b.weeklyGrowth=4;
       b.cost=goldAndRes(2000,ResourceType::VerdantSap,3);
       b.prerequisites={BID::TK_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::TK_T5_A; b.name="Ancient Pair Circle";
+    { BuildingDef b; b.id=BID::TK_T5_A; b.name="Elder Circle (A)";
       b.description="Upgrades Elder Thornkin to Elder Thornkin (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Thornkin;
       b.tier=5; b.path=UpgradePath::PathA; b.weeklyGrowth=2;
       b.cost=goldAndRes(3500,ResourceType::VerdantSap,4);
       b.prerequisites={BID::TK_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::TK_T6_A; b.name="Twin Thorn Canopy";
+    { BuildingDef b; b.id=BID::TK_T6_A; b.name="World Tree Root (A)";
       b.description="Upgrades Ancient Colossi to Ancient Colossi (A) (Flying)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Thornkin;
       b.tier=6; b.path=UpgradePath::PathA; b.weeklyGrowth=1;
       b.cost=goldAndRes(6500,ResourceType::VerdantSap,6);
       b.prerequisites={BID::TK_T6}; m_buildings.push_back(b); }
     // Thornkin PathB upgrades — Ancient line (solo giants, VerdantSap)
-    { BuildingDef b; b.id=BID::TK_T1_B; b.name="Ironroot Den";
+    { BuildingDef b; b.id=BID::TK_T1_B; b.name="Sprout Hollow (B)";
       b.description="Upgrades Vine Sprites to Vine Sprites (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Thornkin;
       b.tier=1; b.path=UpgradePath::PathB; b.weeklyGrowth=14;
       b.cost=goldAndRes(500,ResourceType::VerdantSap,2);
       b.prerequisites={BID::TK_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::TK_T2_B; b.name="Thornwall Thicket";
+    { BuildingDef b; b.id=BID::TK_T2_B; b.name="Briar Thicket (B)";
       b.description="Upgrades Thornkin Warriors to Thornkin Warriors (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Thornkin;
       b.tier=2; b.path=UpgradePath::PathB; b.weeklyGrowth=10;
       b.cost=goldAndRes(700,ResourceType::VerdantSap,2);
       b.prerequisites={BID::TK_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::TK_T3_B; b.name="Elder Vine Den";
+    { BuildingDef b; b.id=BID::TK_T3_B; b.name="Vine Den (B)";
       b.description="Upgrades Forest Guardians to Forest Guardians (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Thornkin;
       b.tier=3; b.path=UpgradePath::PathB; b.weeklyGrowth=7;
       b.cost=goldAndRes(1100,ResourceType::VerdantSap,3);
       b.prerequisites={BID::TK_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::TK_T4_B; b.name="Ironwood Golem Grove";
+    { BuildingDef b; b.id=BID::TK_T4_B; b.name="Guardian Grove (B)";
       b.description="Upgrades Treants to Treants (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Thornkin;
       b.tier=4; b.path=UpgradePath::PathB; b.weeklyGrowth=5;
       b.cost=goldAndRes(2000,ResourceType::VerdantSap,4);
       b.prerequisites={BID::TK_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::TK_T5_B; b.name="World Root Circle";
+    { BuildingDef b; b.id=BID::TK_T5_B; b.name="Elder Circle (B)";
       b.description="Upgrades Elder Thornkin to Elder Thornkin (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Thornkin;
       b.tier=5; b.path=UpgradePath::PathB; b.weeklyGrowth=3;
       b.cost=goldAndRes(3500,ResourceType::VerdantSap,5);
       b.prerequisites={BID::TK_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::TK_T6_B; b.name="Elder Thorn Root";
+    { BuildingDef b; b.id=BID::TK_T6_B; b.name="World Tree Root (B)";
       b.description="Upgrades Ancient Colossi to Ancient Colossi (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Thornkin;
       b.tier=6; b.path=UpgradePath::PathB; b.weeklyGrowth=2;
@@ -793,104 +793,104 @@ void BuildingRegistry::init()
       b.description="Town Hall - +1000 Gold weekly, +2 unit growth"; b.category=BuildingCategory::Economy;
       b.faction=F::EternalEmpire; b.cost=goldAndRes(500,ResourceType::Mercury,2); b.weeklyIncome=gold(1000); b.growthBonus=2;
       m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T1; b.name="Conscript Pen"; b.tier=1; b.weeklyGrowth=13;
+    { BuildingDef b; b.id=BID::EE_T1; b.name="Skeleton Pen"; b.tier=1; b.weeklyGrowth=13;
       b.description="Produces Skeleton Soldiers"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::EternalEmpire; b.cost=gold(300);
       b.upgradeA=BID::EE_T1_A; b.upgradeB=BID::EE_T1_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T2; b.name="Revenant Barracks"; b.tier=2; b.weeklyGrowth=10;
+    { BuildingDef b; b.id=BID::EE_T2; b.name="Armoured Crypt"; b.tier=2; b.weeklyGrowth=10;
       b.description="Produces Armoured Skeletons"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::EternalEmpire; b.cost=goldAndRes(600,ResourceType::BloodEssence,1);
       b.prerequisites={BID::EE_T1};
       b.upgradeA=BID::EE_T2_A; b.upgradeB=BID::EE_T2_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T3; b.name="Shade Gallery"; b.tier=3; b.weeklyGrowth=7;
+    { BuildingDef b; b.id=BID::EE_T3; b.name="Zombie Gallery"; b.tier=3; b.weeklyGrowth=7;
       b.description="Produces Zombie Warriors"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::EternalEmpire; b.cost=goldAndRes(1000,ResourceType::Mercury,1);
       b.prerequisites={BID::EE_T2};
       b.upgradeA=BID::EE_T3_A; b.upgradeB=BID::EE_T3_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T4; b.name="Steel Foundry"; b.tier=4; b.weeklyGrowth=5;
+    { BuildingDef b; b.id=BID::EE_T4; b.name="Death Knight Foundry"; b.tier=4; b.weeklyGrowth=5;
       b.description="Produces Death Knights"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::EternalEmpire; b.cost=goldAndRes(1800,ResourceType::Mercury,2);
       b.prerequisites={BID::EE_T3};
       b.upgradeA=BID::EE_T4_A; b.upgradeB=BID::EE_T4_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T5; b.name="Phantom Keep"; b.tier=5; b.weeklyGrowth=3;
+    { BuildingDef b; b.id=BID::EE_T5; b.name="Lich Keep"; b.tier=5; b.weeklyGrowth=3;
       b.description="Produces Liches"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::EternalEmpire; b.cost=goldAndRes(3000,ResourceType::Mercury,3);
       b.prerequisites={BID::EE_T4};
       b.upgradeA=BID::EE_T5_A; b.upgradeB=BID::EE_T5_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T6; b.name="Immortal Vault"; b.tier=6; b.weeklyGrowth=2;
+    { BuildingDef b; b.id=BID::EE_T6; b.name="Emperor's Vault"; b.tier=6; b.weeklyGrowth=2;
       b.description="Produces Eternal Emperors (Second Life)"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::EternalEmpire; b.cost=goldAndRes(5500,ResourceType::Mercury,5);
       b.prerequisites={BID::EE_T5};
       b.upgradeA=BID::EE_T6_A; b.upgradeB=BID::EE_T6_B; m_buildings.push_back(b); }
     // EternalEmpire PathA upgrades — Eternal Command (Mercury, hasSecondLife)
-    { BuildingDef b; b.id=BID::EE_T1_A; b.name="Eternal Conscript Barracks";
+    { BuildingDef b; b.id=BID::EE_T1_A; b.name="Skeleton Pen (A)";
       b.description="Upgrades Skeleton Soldiers to Skeleton Soldiers (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::EternalEmpire;
       b.tier=1; b.path=UpgradePath::PathA; b.weeklyGrowth=12;
       b.cost=goldAndRes(500,ResourceType::Mercury,2);
       b.prerequisites={BID::EE_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T2_A; b.name="Eternal Revenant Hall";
+    { BuildingDef b; b.id=BID::EE_T2_A; b.name="Armoured Crypt (A)";
       b.description="Upgrades Armoured Skeletons to Armoured Skeletons (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::EternalEmpire;
       b.tier=2; b.path=UpgradePath::PathA; b.weeklyGrowth=9;
       b.cost=goldAndRes(700,ResourceType::Mercury,2);
       b.prerequisites={BID::EE_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T3_A; b.name="Eternal Archer Gallery";
+    { BuildingDef b; b.id=BID::EE_T3_A; b.name="Zombie Gallery (A)";
       b.description="Upgrades Zombie Warriors to Zombie Warriors (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::EternalEmpire;
       b.tier=3; b.path=UpgradePath::PathA; b.weeklyGrowth=6;
       b.cost=goldAndRes(1100,ResourceType::Mercury,2);
       b.prerequisites={BID::EE_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T4_A; b.name="Eternal Guardian Foundry";
+    { BuildingDef b; b.id=BID::EE_T4_A; b.name="Death Knight Foundry (A)";
       b.description="Upgrades Death Knights to Death Knights (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::EternalEmpire;
       b.tier=4; b.path=UpgradePath::PathA; b.weeklyGrowth=4;
       b.cost=goldAndRes(2000,ResourceType::Mercury,3);
       b.prerequisites={BID::EE_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T5_A; b.name="Eternal Knight Keep";
+    { BuildingDef b; b.id=BID::EE_T5_A; b.name="Lich Keep (A)";
       b.description="Upgrades Liches to Liches (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::EternalEmpire;
       b.tier=5; b.path=UpgradePath::PathA; b.weeklyGrowth=2;
       b.cost=goldAndRes(3500,ResourceType::Mercury,4);
       b.prerequisites={BID::EE_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T6_A; b.name="True Immortal Vault";
+    { BuildingDef b; b.id=BID::EE_T6_A; b.name="Emperor's Vault (A)";
       b.description="Upgrades Eternal Emperors to Eternal Emperors (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::EternalEmpire;
       b.tier=6; b.path=UpgradePath::PathA; b.weeklyGrowth=1;
       b.cost=goldAndRes(6500,ResourceType::Mercury,6);
       b.prerequisites={BID::EE_T6}; m_buildings.push_back(b); }
     // EternalEmpire PathB upgrades — Necromantic line (BloodEssence)
-    { BuildingDef b; b.id=BID::EE_T1_B; b.name="Shade Barracks";
+    { BuildingDef b; b.id=BID::EE_T1_B; b.name="Skeleton Pen (B)";
       b.description="Upgrades Skeleton Soldiers to Skeleton Soldiers (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::EternalEmpire;
       b.tier=1; b.path=UpgradePath::PathB; b.weeklyGrowth=13;
       b.cost=goldAndRes(500,ResourceType::BloodEssence,2);
       b.prerequisites={BID::EE_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T2_B; b.name="Wraith Hall";
+    { BuildingDef b; b.id=BID::EE_T2_B; b.name="Armoured Crypt (B)";
       b.description="Upgrades Armoured Skeletons to Armoured Skeletons (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::EternalEmpire;
       b.tier=2; b.path=UpgradePath::PathB; b.weeklyGrowth=10;
       b.cost=goldAndRes(700,ResourceType::BloodEssence,2);
       b.prerequisites={BID::EE_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T3_B; b.name="Soul Archer Gallery";
+    { BuildingDef b; b.id=BID::EE_T3_B; b.name="Zombie Gallery (B)";
       b.description="Upgrades Zombie Warriors to Zombie Warriors (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::EternalEmpire;
       b.tier=3; b.path=UpgradePath::PathB; b.weeklyGrowth=7;
       b.cost=goldAndRes(1100,ResourceType::BloodEssence,2);
       b.prerequisites={BID::EE_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T4_B; b.name="Bone Knight Foundry";
+    { BuildingDef b; b.id=BID::EE_T4_B; b.name="Death Knight Foundry (B)";
       b.description="Upgrades Death Knights to Death Knights (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::EternalEmpire;
       b.tier=4; b.path=UpgradePath::PathB; b.weeklyGrowth=5;
       b.cost=goldAndRes(2000,ResourceType::BloodEssence,3);
       b.prerequisites={BID::EE_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T5_B; b.name="Void Knight Keep";
+    { BuildingDef b; b.id=BID::EE_T5_B; b.name="Lich Keep (B)";
       b.description="Upgrades Liches to Liches (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::EternalEmpire;
       b.tier=5; b.path=UpgradePath::PathB; b.weeklyGrowth=3;
       b.cost=goldAndRes(3500,ResourceType::BloodEssence,4);
       b.prerequisites={BID::EE_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::EE_T6_B; b.name="Undying Avatar Vault";
+    { BuildingDef b; b.id=BID::EE_T6_B; b.name="Emperor's Vault (B)";
       b.description="Upgrades Eternal Emperors to Eternal Emperors (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::EternalEmpire;
       b.tier=6; b.path=UpgradePath::PathB; b.weeklyGrowth=2;
@@ -940,104 +940,104 @@ void BuildingRegistry::init()
       b.description="Town Hall - +1000 Gold weekly, +2 unit growth"; b.category=BuildingCategory::Economy;
       b.faction=F::Bloodsworn; b.cost=goldAndRes(500,ResourceType::BloodEssence,2); b.weeklyIncome=gold(1000); b.growthBonus=2;
       m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T1; b.name="Bloodling Pen"; b.tier=1; b.weeklyGrowth=14;
+    { BuildingDef b; b.id=BID::BS_T1; b.name="Cultist Pen"; b.tier=1; b.weeklyGrowth=14;
       b.description="Produces Cultists"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Bloodsworn; b.cost=gold(300);
       b.upgradeA=BID::BS_T1_A; b.upgradeB=BID::BS_T1_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T2; b.name="Berserker Pits"; b.tier=2; b.weeklyGrowth=10;
+    { BuildingDef b; b.id=BID::BS_T2; b.name="Blood Warrior Pits"; b.tier=2; b.weeklyGrowth=10;
       b.description="Produces Blood Warriors"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Bloodsworn; b.cost=goldAndRes(600,ResourceType::BloodEssence,1);
       b.prerequisites={BID::BS_T1};
       b.upgradeA=BID::BS_T2_A; b.upgradeB=BID::BS_T2_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T3; b.name="Shaman Hut"; b.tier=3; b.weeklyGrowth=7;
+    { BuildingDef b; b.id=BID::BS_T3; b.name="Berserker Hut"; b.tier=3; b.weeklyGrowth=7;
       b.description="Produces Berserkers"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Bloodsworn; b.cost=goldAndRes(1000,ResourceType::BloodEssence,2);
       b.prerequisites={BID::BS_T2};
       b.upgradeA=BID::BS_T3_A; b.upgradeB=BID::BS_T3_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T4; b.name="Ravager Corral"; b.tier=4; b.weeklyGrowth=5;
+    { BuildingDef b; b.id=BID::BS_T4; b.name="Blood Champion Corral"; b.tier=4; b.weeklyGrowth=5;
       b.description="Produces Blood Champions"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Bloodsworn; b.cost=goldAndRes(1800,ResourceType::BloodEssence,3);
       b.prerequisites={BID::BS_T3};
       b.upgradeA=BID::BS_T4_A; b.upgradeB=BID::BS_T4_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T5; b.name="Warlord Pavilion"; b.tier=5; b.weeklyGrowth=3;
+    { BuildingDef b; b.id=BID::BS_T5; b.name="Oracle Pavilion"; b.tier=5; b.weeklyGrowth=3;
       b.description="Produces Oracles"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Bloodsworn; b.cost=goldAndRes(3000,ResourceType::BloodEssence,4);
       b.prerequisites={BID::BS_T4};
       b.upgradeA=BID::BS_T5_A; b.upgradeB=BID::BS_T5_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T6; b.name="Avatar Shrine"; b.tier=6; b.weeklyGrowth=2;
+    { BuildingDef b; b.id=BID::BS_T6; b.name="Bloodsworn Avatar Shrine"; b.tier=6; b.weeklyGrowth=2;
       b.description="Produces Bloodsworn Avatars"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Bloodsworn; b.cost=goldAndRes(5500,ResourceType::BloodEssence,6);
       b.prerequisites={BID::BS_T5};
       b.upgradeA=BID::BS_T6_A; b.upgradeB=BID::BS_T6_B; m_buildings.push_back(b); }
     // Bloodsworn PathA upgrades — Blood Rush (ATK heavy, BloodEssence)
-    { BuildingDef b; b.id=BID::BS_T1_A; b.name="Blood Fanatic Den";
+    { BuildingDef b; b.id=BID::BS_T1_A; b.name="Cultist Pen (A)";
       b.description="Upgrades Cultists to Cultists (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Bloodsworn;
       b.tier=1; b.path=UpgradePath::PathA; b.weeklyGrowth=13;
       b.cost=goldAndRes(500,ResourceType::BloodEssence,2);
       b.prerequisites={BID::BS_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T2_A; b.name="Blood Berserker Pits";
+    { BuildingDef b; b.id=BID::BS_T2_A; b.name="Blood Warrior Pits (A)";
       b.description="Upgrades Blood Warriors to Blood Warriors (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Bloodsworn;
       b.tier=2; b.path=UpgradePath::PathA; b.weeklyGrowth=9;
       b.cost=goldAndRes(700,ResourceType::BloodEssence,2);
       b.prerequisites={BID::BS_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T3_A; b.name="High Shaman Hut";
+    { BuildingDef b; b.id=BID::BS_T3_A; b.name="Berserker Hut (A)";
       b.description="Upgrades Berserkers to Berserkers (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Bloodsworn;
       b.tier=3; b.path=UpgradePath::PathA; b.weeklyGrowth=6;
       b.cost=goldAndRes(1100,ResourceType::BloodEssence,2);
       b.prerequisites={BID::BS_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T4_A; b.name="Blood Ravager Corral";
+    { BuildingDef b; b.id=BID::BS_T4_A; b.name="Blood Champion Corral (A)";
       b.description="Upgrades Blood Champions to Blood Champions (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Bloodsworn;
       b.tier=4; b.path=UpgradePath::PathA; b.weeklyGrowth=4;
       b.cost=goldAndRes(2000,ResourceType::BloodEssence,3);
       b.prerequisites={BID::BS_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T5_A; b.name="Blood Avatar Pavilion";
+    { BuildingDef b; b.id=BID::BS_T5_A; b.name="Oracle Pavilion (A)";
       b.description="Upgrades Oracles to Oracles (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Bloodsworn;
       b.tier=5; b.path=UpgradePath::PathA; b.weeklyGrowth=2;
       b.cost=goldAndRes(3500,ResourceType::BloodEssence,4);
       b.prerequisites={BID::BS_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T6_A; b.name="Blood God Shrine";
+    { BuildingDef b; b.id=BID::BS_T6_A; b.name="Bloodsworn Avatar Shrine (A)";
       b.description="Upgrades Bloodsworn Avatars to Bloodsworn Avatars (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Bloodsworn;
       b.tier=6; b.path=UpgradePath::PathA; b.weeklyGrowth=1;
       b.cost=goldAndRes(6500,ResourceType::BloodEssence,7);
       b.prerequisites={BID::BS_T6}; m_buildings.push_back(b); }
     // Bloodsworn PathB upgrades — Ritual Pact (tankier, Iron cost)
-    { BuildingDef b; b.id=BID::BS_T1_B; b.name="Pact Warrior Den";
+    { BuildingDef b; b.id=BID::BS_T1_B; b.name="Cultist Pen (B)";
       b.description="Upgrades Cultists to Cultists (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Bloodsworn;
       b.tier=1; b.path=UpgradePath::PathB; b.weeklyGrowth=14;
       b.cost=goldAndRes(500,ResourceType::Iron,2);
       b.prerequisites={BID::BS_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T2_B; b.name="Ritual Guard Pits";
+    { BuildingDef b; b.id=BID::BS_T2_B; b.name="Blood Warrior Pits (B)";
       b.description="Upgrades Blood Warriors to Blood Warriors (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Bloodsworn;
       b.tier=2; b.path=UpgradePath::PathB; b.weeklyGrowth=10;
       b.cost=goldAndRes(700,ResourceType::Iron,2);
       b.prerequisites={BID::BS_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T3_B; b.name="Pact Shaman Hut";
+    { BuildingDef b; b.id=BID::BS_T3_B; b.name="Berserker Hut (B)";
       b.description="Upgrades Berserkers to Berserkers (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Bloodsworn;
       b.tier=3; b.path=UpgradePath::PathB; b.weeklyGrowth=7;
       b.cost=goldAndRes(1100,ResourceType::Iron,2);
       b.prerequisites={BID::BS_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T4_B; b.name="Pact Ravager Corral";
+    { BuildingDef b; b.id=BID::BS_T4_B; b.name="Blood Champion Corral (B)";
       b.description="Upgrades Blood Champions to Blood Champions (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Bloodsworn;
       b.tier=4; b.path=UpgradePath::PathB; b.weeklyGrowth=5;
       b.cost=goldAndRes(2000,ResourceType::Iron,3);
       b.prerequisites={BID::BS_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T5_B; b.name="Ritual Champion Pavilion";
+    { BuildingDef b; b.id=BID::BS_T5_B; b.name="Oracle Pavilion (B)";
       b.description="Upgrades Oracles to Oracles (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Bloodsworn;
       b.tier=5; b.path=UpgradePath::PathB; b.weeklyGrowth=3;
       b.cost=goldAndRes(3500,ResourceType::Iron,4);
       b.prerequisites={BID::BS_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::BS_T6_B; b.name="Pact Titan Shrine";
+    { BuildingDef b; b.id=BID::BS_T6_B; b.name="Bloodsworn Avatar Shrine (B)";
       b.description="Upgrades Bloodsworn Avatars to Bloodsworn Avatars (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Bloodsworn;
       b.tier=6; b.path=UpgradePath::PathB; b.weeklyGrowth=2;
@@ -1083,21 +1083,21 @@ void BuildingRegistry::init()
       b.description="Town Hall - +1000 Gold, +2 VerdantSap weekly, +2 unit growth"; b.category=BuildingCategory::Economy;
       b.faction=F::Voidkin; b.cost=gold(500); b.weeklyIncome=goldAndRes(1000,ResourceType::VerdantSap,2); b.growthBonus=2;
       m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T1; b.name="Wisp Hollow"; b.tier=1; b.weeklyGrowth=13;
+    { BuildingDef b; b.id=BID::VK_T1; b.name="Sprite Hollow"; b.tier=1; b.weeklyGrowth=13;
       b.description="Produces Void Sprites"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Voidkin; b.cost=gold(300);
       b.upgradeA=BID::VK_T1_A; b.upgradeB=BID::VK_T1_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T2; b.name="Phase Den"; b.tier=2; b.weeklyGrowth=10;
+    { BuildingDef b; b.id=BID::VK_T2; b.name="Scout Den"; b.tier=2; b.weeklyGrowth=10;
       b.description="Produces Void Scouts"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Voidkin; b.cost=gold(600);
       b.prerequisites={BID::VK_T1};
       b.upgradeA=BID::VK_T2_A; b.upgradeB=BID::VK_T2_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T3; b.name="Rift Arch"; b.tier=3; b.weeklyGrowth=7;
+    { BuildingDef b; b.id=BID::VK_T3; b.name="Stalker Arch"; b.tier=3; b.weeklyGrowth=7;
       b.description="Produces Void Mages"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Voidkin; b.cost=goldAndRes(1000,ResourceType::VerdantSap,2);
       b.prerequisites={BID::VK_T2};
       b.upgradeA=BID::VK_T3_A; b.upgradeB=BID::VK_T3_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T4; b.name="Stalker Gate"; b.tier=4; b.weeklyGrowth=5;
+    { BuildingDef b; b.id=BID::VK_T4; b.name="Mage Gate"; b.tier=4; b.weeklyGrowth=5;
       b.description="Produces Void Stalkers"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Voidkin; b.cost=goldAndRes(1800,ResourceType::VerdantSap,3);
       b.prerequisites={BID::VK_T3};
@@ -1107,80 +1107,80 @@ void BuildingRegistry::init()
       b.faction=F::Voidkin; b.cost=goldAndRes(3000,ResourceType::VerdantSap,4);
       b.prerequisites={BID::VK_T4};
       b.upgradeA=BID::VK_T5_A; b.upgradeB=BID::VK_T5_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T6; b.name="Colossus Rift"; b.tier=6; b.weeklyGrowth=2;
+    { BuildingDef b; b.id=BID::VK_T6; b.name="Herald Rift"; b.tier=6; b.weeklyGrowth=2;
       b.description="Produces Void Heralds"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Voidkin; b.cost=goldAndRes(5500,ResourceType::VerdantSap,6);
       b.prerequisites={BID::VK_T5};
       b.upgradeA=BID::VK_T6_A; b.upgradeB=BID::VK_T6_B; m_buildings.push_back(b); }
     // Voidkin PathA upgrades — Phase line (speed+1, VerdantSap)
-    { BuildingDef b; b.id=BID::VK_T1_A; b.name="Phase Wisp Hollow";
+    { BuildingDef b; b.id=BID::VK_T1_A; b.name="Sprite Hollow (A)";
       b.description="Upgrades Void Sprites to Void Sprites (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Voidkin;
       b.tier=1; b.path=UpgradePath::PathA; b.weeklyGrowth=12;
       b.cost=goldAndRes(500,ResourceType::VerdantSap,2);
       b.prerequisites={BID::VK_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T2_A; b.name="Flicker Den";
+    { BuildingDef b; b.id=BID::VK_T2_A; b.name="Scout Den (A)";
       b.description="Upgrades Void Scouts to Void Scouts (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Voidkin;
       b.tier=2; b.path=UpgradePath::PathA; b.weeklyGrowth=9;
       b.cost=goldAndRes(700,ResourceType::VerdantSap,2);
       b.prerequisites={BID::VK_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T3_A; b.name="Void Sniper Arch";
+    { BuildingDef b; b.id=BID::VK_T3_A; b.name="Stalker Arch (A)";
       b.description="Upgrades Void Stalkers to Void Stalkers (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Voidkin;
       b.tier=3; b.path=UpgradePath::PathA; b.weeklyGrowth=6;
       b.cost=goldAndRes(1100,ResourceType::VerdantSap,2);
       b.prerequisites={BID::VK_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T4_A; b.name="Phase Hunter Gate";
+    { BuildingDef b; b.id=BID::VK_T4_A; b.name="Mage Gate (A)";
       b.description="Upgrades Void Mages to Void Mages (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Voidkin;
       b.tier=4; b.path=UpgradePath::PathA; b.weeklyGrowth=4;
       b.cost=goldAndRes(2000,ResourceType::VerdantSap,3);
       b.prerequisites={BID::VK_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T5_A; b.name="Chaos Wraith Spire";
+    { BuildingDef b; b.id=BID::VK_T5_A; b.name="Wraith Spire (A)";
       b.description="Upgrades Void Wraiths to Void Wraiths (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Voidkin;
       b.tier=5; b.path=UpgradePath::PathA; b.weeklyGrowth=2;
       b.cost=goldAndRes(3500,ResourceType::VerdantSap,4);
       b.prerequisites={BID::VK_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T6_A; b.name="Void Specter Rift";
+    { BuildingDef b; b.id=BID::VK_T6_A; b.name="Herald Rift (A)";
       b.description="Upgrades Void Heralds to Void Heralds (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Voidkin;
       b.tier=6; b.path=UpgradePath::PathA; b.weeklyGrowth=1;
       b.cost=goldAndRes(6500,ResourceType::VerdantSap,6);
       b.prerequisites={BID::VK_T6}; m_buildings.push_back(b); }
     // Voidkin PathB upgrades — Void Anchor (tankier, VerdantSap)
-    { BuildingDef b; b.id=BID::VK_T1_B; b.name="Void Anchor Hollow";
+    { BuildingDef b; b.id=BID::VK_T1_B; b.name="Sprite Hollow (B)";
       b.description="Upgrades Void Sprites to Void Sprites (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Voidkin;
       b.tier=1; b.path=UpgradePath::PathB; b.weeklyGrowth=13;
       b.cost=goldAndRes(500,ResourceType::VerdantSap,2);
       b.prerequisites={BID::VK_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T2_B; b.name="Void Bulwark Den";
+    { BuildingDef b; b.id=BID::VK_T2_B; b.name="Scout Den (B)";
       b.description="Upgrades Void Scouts to Void Scouts (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Voidkin;
       b.tier=2; b.path=UpgradePath::PathB; b.weeklyGrowth=10;
       b.cost=goldAndRes(700,ResourceType::VerdantSap,2);
       b.prerequisites={BID::VK_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T3_B; b.name="Anchor Archer Arch";
+    { BuildingDef b; b.id=BID::VK_T3_B; b.name="Stalker Arch (B)";
       b.description="Upgrades Void Stalkers to Void Stalkers (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Voidkin;
       b.tier=3; b.path=UpgradePath::PathB; b.weeklyGrowth=7;
       b.cost=goldAndRes(1100,ResourceType::VerdantSap,3);
       b.prerequisites={BID::VK_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T4_B; b.name="Void Monolith Gate";
+    { BuildingDef b; b.id=BID::VK_T4_B; b.name="Mage Gate (B)";
       b.description="Upgrades Void Mages to Void Mages (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Voidkin;
       b.tier=4; b.path=UpgradePath::PathB; b.weeklyGrowth=5;
       b.cost=goldAndRes(2000,ResourceType::VerdantSap,3);
       b.prerequisites={BID::VK_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T5_B; b.name="Entropy Anchor Spire";
+    { BuildingDef b; b.id=BID::VK_T5_B; b.name="Wraith Spire (B)";
       b.description="Upgrades Void Wraiths to Void Wraiths (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Voidkin;
       b.tier=5; b.path=UpgradePath::PathB; b.weeklyGrowth=3;
       b.cost=goldAndRes(3500,ResourceType::VerdantSap,4);
       b.prerequisites={BID::VK_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::VK_T6_B; b.name="Void Titan Rift";
+    { BuildingDef b; b.id=BID::VK_T6_B; b.name="Herald Rift (B)";
       b.description="Upgrades Void Heralds to Void Heralds (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Voidkin;
       b.tier=6; b.path=UpgradePath::PathB; b.weeklyGrowth=2;
@@ -1230,100 +1230,100 @@ void BuildingRegistry::init()
       b.description="Produces Automatons"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::IronAssembly; b.cost=goldAndRes(350,ResourceType::Iron,2);
       b.upgradeA=BID::IA_T1_A; b.upgradeB=BID::IA_T1_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T2; b.name="Gun Construct Bay"; b.tier=2; b.weeklyGrowth=9;
+    { BuildingDef b; b.id=BID::IA_T2; b.name="Infantry Bay"; b.tier=2; b.weeklyGrowth=9;
       b.description="Produces Infantry Units"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::IronAssembly; b.cost=goldAndRes(700,ResourceType::Iron,3);
       b.prerequisites={BID::IA_T1};
       b.upgradeA=BID::IA_T2_A; b.upgradeB=BID::IA_T2_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T3; b.name="Steam Walker Depot"; b.tier=3; b.weeklyGrowth=6;
+    { BuildingDef b; b.id=BID::IA_T3; b.name="Clockwork Depot"; b.tier=3; b.weeklyGrowth=6;
       b.description="Produces Clockwork Warriors"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::IronAssembly; b.cost=goldAndRes(1100,ResourceType::Iron,4);
       b.prerequisites={BID::IA_T2};
       b.upgradeA=BID::IA_T3_A; b.upgradeB=BID::IA_T3_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T4; b.name="Siege Bot Foundry"; b.tier=4; b.weeklyGrowth=5;
+    { BuildingDef b; b.id=BID::IA_T4; b.name="Gunner Foundry"; b.tier=4; b.weeklyGrowth=5;
       b.description="Produces Gunners (available week 3)"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::IronAssembly; b.cost=goldAndRes(2000,ResourceType::Iron,6);
       b.minWeek=3; b.prerequisites={BID::IA_T3};
       b.upgradeA=BID::IA_T4_A; b.upgradeB=BID::IA_T4_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T5; b.name="Titan Assembly"; b.tier=5; b.weeklyGrowth=3;
+    { BuildingDef b; b.id=BID::IA_T5; b.name="Steam Colossus Assembly"; b.tier=5; b.weeklyGrowth=3;
       b.description="Produces Steam Colossi (available week 5)"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::IronAssembly; b.cost=goldAndRes(3500,ResourceType::Iron,8);
       b.minWeek=5; b.prerequisites={BID::IA_T4};
       b.upgradeA=BID::IA_T5_A; b.upgradeB=BID::IA_T5_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T6; b.name="Colossus Prime Dock"; b.tier=6; b.weeklyGrowth=2;
+    { BuildingDef b; b.id=BID::IA_T6; b.name="Iron Titan Dock"; b.tier=6; b.weeklyGrowth=2;
       b.description="Produces Iron Titans (available week 7)"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::IronAssembly; b.cost=goldAndRes(6000,ResourceType::Iron,12);
       b.minWeek=7; b.prerequisites={BID::IA_T5};
       b.upgradeA=BID::IA_T6_A; b.upgradeB=BID::IA_T6_B; m_buildings.push_back(b); }
     // IronAssembly PathA upgrades — Runic line (Iron cost)
-    { BuildingDef b; b.id=BID::IA_T1_A; b.name="Runic Automaton Works";
+    { BuildingDef b; b.id=BID::IA_T1_A; b.name="Automaton Works (A)";
       b.description="Upgrades Automatons to Automatons (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::IronAssembly;
       b.tier=1; b.path=UpgradePath::PathA; b.weeklyGrowth=11;
       b.cost=goldAndRes(500,ResourceType::Iron,3);
       b.prerequisites={BID::IA_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T2_A; b.name="Runic Gunner Bay";
+    { BuildingDef b; b.id=BID::IA_T2_A; b.name="Infantry Bay (A)";
       b.description="Upgrades Infantry Units to Infantry Units (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::IronAssembly;
       b.tier=2; b.path=UpgradePath::PathA; b.weeklyGrowth=8;
       b.cost=goldAndRes(700,ResourceType::Iron,4);
       b.prerequisites={BID::IA_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T3_A; b.name="Runic Walker Depot";
+    { BuildingDef b; b.id=BID::IA_T3_A; b.name="Clockwork Depot (A)";
       b.description="Upgrades Clockwork Warriors to Clockwork Warriors (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::IronAssembly;
       b.tier=3; b.path=UpgradePath::PathA; b.weeklyGrowth=5;
       b.cost=goldAndRes(1200,ResourceType::Iron,5);
       b.prerequisites={BID::IA_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T4_A; b.name="Runic Siege Bot Foundry";
+    { BuildingDef b; b.id=BID::IA_T4_A; b.name="Gunner Foundry (A)";
       b.description="Upgrades Gunners to Gunners (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::IronAssembly;
       b.tier=4; b.path=UpgradePath::PathA; b.weeklyGrowth=4;
       b.cost=goldAndRes(2200,ResourceType::Iron,7);
       b.minWeek=3; b.prerequisites={BID::IA_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T5_A; b.name="Runic Titan Assembly";
+    { BuildingDef b; b.id=BID::IA_T5_A; b.name="Steam Colossus Assembly (A)";
       b.description="Upgrades Steam Colossi to Steam Colossi (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::IronAssembly;
       b.tier=5; b.path=UpgradePath::PathA; b.weeklyGrowth=2;
       b.cost=goldAndRes(4000,ResourceType::Iron,9);
       b.minWeek=5; b.prerequisites={BID::IA_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T6_A; b.name="Runic Colossus Dock";
+    { BuildingDef b; b.id=BID::IA_T6_A; b.name="Iron Titan Dock (A)";
       b.description="Upgrades Iron Titans to Iron Titans (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::IronAssembly;
       b.tier=6; b.path=UpgradePath::PathA; b.weeklyGrowth=1;
       b.cost=goldAndRes(7000,ResourceType::Iron,13);
       b.minWeek=7; b.prerequisites={BID::IA_T6}; m_buildings.push_back(b); }
     // IronAssembly PathB upgrades — Salvager line (cheaper, Iron cost)
-    { BuildingDef b; b.id=BID::IA_T1_B; b.name="Salvage Bot Works";
+    { BuildingDef b; b.id=BID::IA_T1_B; b.name="Automaton Works (B)";
       b.description="Upgrades Automatons to Automatons (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::IronAssembly;
       b.tier=1; b.path=UpgradePath::PathB; b.weeklyGrowth=12;
       b.cost=goldAndRes(450,ResourceType::Iron,2);
       b.prerequisites={BID::IA_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T2_B; b.name="Scrap Gunner Bay";
+    { BuildingDef b; b.id=BID::IA_T2_B; b.name="Infantry Bay (B)";
       b.description="Upgrades Infantry Units to Infantry Units (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::IronAssembly;
       b.tier=2; b.path=UpgradePath::PathB; b.weeklyGrowth=9;
       b.cost=goldAndRes(650,ResourceType::Iron,3);
       b.prerequisites={BID::IA_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T3_B; b.name="Salvage Walker Depot";
+    { BuildingDef b; b.id=BID::IA_T3_B; b.name="Clockwork Depot (B)";
       b.description="Upgrades Clockwork Warriors to Clockwork Warriors (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::IronAssembly;
       b.tier=3; b.path=UpgradePath::PathB; b.weeklyGrowth=6;
       b.cost=goldAndRes(1050,ResourceType::Iron,3);
       b.prerequisites={BID::IA_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T4_B; b.name="Salvage Bot MkII Foundry";
+    { BuildingDef b; b.id=BID::IA_T4_B; b.name="Gunner Foundry (B)";
       b.description="Upgrades Gunners to Gunners (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::IronAssembly;
       b.tier=4; b.path=UpgradePath::PathB; b.weeklyGrowth=5;
       b.cost=goldAndRes(1900,ResourceType::Iron,5);
       b.minWeek=3; b.prerequisites={BID::IA_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T5_B; b.name="Salvage Titan Assembly";
+    { BuildingDef b; b.id=BID::IA_T5_B; b.name="Steam Colossus Assembly (B)";
       b.description="Upgrades Steam Colossi to Steam Colossi (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::IronAssembly;
       b.tier=5; b.path=UpgradePath::PathB; b.weeklyGrowth=3;
       b.cost=goldAndRes(3400,ResourceType::Iron,7);
       b.minWeek=5; b.prerequisites={BID::IA_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::IA_T6_B; b.name="Salvage Prime Dock";
+    { BuildingDef b; b.id=BID::IA_T6_B; b.name="Iron Titan Dock (B)";
       b.description="Upgrades Iron Titans to Iron Titans (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::IronAssembly;
       b.tier=6; b.path=UpgradePath::PathB; b.weeklyGrowth=2;
@@ -1375,104 +1375,104 @@ void BuildingRegistry::init()
       b.description="Town Hall - +1000 Gold weekly, +2 unit growth"; b.category=BuildingCategory::Economy;
       b.faction=F::Amalgamate; b.cost=goldAndRes(500,ResourceType::BloodEssence,2); b.weeklyIncome=gold(1000); b.growthBonus=2;
       m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T1; b.name="Flesh Crawler Vat"; b.tier=1; b.weeklyGrowth=13;
+    { BuildingDef b; b.id=BID::AM_T1; b.name="Crawler Vat"; b.tier=1; b.weeklyGrowth=13;
       b.description="Produces Crawlers"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Amalgamate; b.cost=gold(300);
       b.upgradeA=BID::AM_T1_A; b.upgradeB=BID::AM_T1_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T2; b.name="Graft Soldier Bay"; b.tier=2; b.weeklyGrowth=9;
+    { BuildingDef b; b.id=BID::AM_T2; b.name="Flesh Warrior Bay"; b.tier=2; b.weeklyGrowth=9;
       b.description="Produces Flesh Warriors"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Amalgamate; b.cost=goldAndRes(650,ResourceType::Iron,1);
       b.prerequisites={BID::AM_T1};
       b.upgradeA=BID::AM_T2_A; b.upgradeB=BID::AM_T2_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T3; b.name="Bone Machine Works"; b.tier=3; b.weeklyGrowth=6;
+    { BuildingDef b; b.id=BID::AM_T3; b.name="Brute Works"; b.tier=3; b.weeklyGrowth=6;
       b.description="Produces Brutes"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Amalgamate; b.cost=goldAndRes(1100,ResourceType::Iron,2);
       b.prerequisites={BID::AM_T2};
       b.upgradeA=BID::AM_T3_A; b.upgradeB=BID::AM_T3_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T4; b.name="Fleshwork Forge"; b.tier=4; b.weeklyGrowth=5;
+    { BuildingDef b; b.id=BID::AM_T4; b.name="Behemoth Forge"; b.tier=4; b.weeklyGrowth=5;
       b.description="Produces Behemoths"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Amalgamate; b.cost=goldAndRes(1900,ResourceType::BloodEssence,2);
       b.prerequisites={BID::AM_T3};
       b.upgradeA=BID::AM_T4_A; b.upgradeB=BID::AM_T4_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T5; b.name="Juggernaut Pit"; b.tier=5; b.weeklyGrowth=3;
+    { BuildingDef b; b.id=BID::AM_T5; b.name="Flesh Colossus Pit"; b.tier=5; b.weeklyGrowth=3;
       b.description="Produces Flesh Colossi"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Amalgamate; b.cost=goldAndRes(3200,ResourceType::BloodEssence,3);
       b.prerequisites={BID::AM_T4};
       b.upgradeA=BID::AM_T5_A; b.upgradeB=BID::AM_T5_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T6; b.name="Spawn Chamber"; b.tier=6; b.weeklyGrowth=2;
+    { BuildingDef b; b.id=BID::AM_T6; b.name="Apex Chamber"; b.tier=6; b.weeklyGrowth=2;
       b.description="Produces Apex"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Amalgamate; b.cost=goldAndRes(5800,ResourceType::BloodEssence,5);
       b.prerequisites={BID::AM_T5};
       b.upgradeA=BID::AM_T6_A; b.upgradeB=BID::AM_T6_B; m_buildings.push_back(b); }
     // Amalgamate PathA upgrades — Rapid Evolution (Iron cost)
-    { BuildingDef b; b.id=BID::AM_T1_A; b.name="Rapid Crawler Vat";
+    { BuildingDef b; b.id=BID::AM_T1_A; b.name="Crawler Vat (A)";
       b.description="Upgrades Crawlers to Crawlers (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Amalgamate;
       b.tier=1; b.path=UpgradePath::PathA; b.weeklyGrowth=12;
       b.cost=goldAndRes(500,ResourceType::Iron,2);
       b.prerequisites={BID::AM_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T2_A; b.name="Rapid Soldier Bay";
+    { BuildingDef b; b.id=BID::AM_T2_A; b.name="Flesh Warrior Bay (A)";
       b.description="Upgrades Flesh Warriors to Flesh Warriors (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Amalgamate;
       b.tier=2; b.path=UpgradePath::PathA; b.weeklyGrowth=8;
       b.cost=goldAndRes(700,ResourceType::Iron,2);
       b.prerequisites={BID::AM_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T3_A; b.name="Rapid Machine Works";
+    { BuildingDef b; b.id=BID::AM_T3_A; b.name="Brute Works (A)";
       b.description="Upgrades Brutes to Brutes (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Amalgamate;
       b.tier=3; b.path=UpgradePath::PathA; b.weeklyGrowth=5;
       b.cost=goldAndRes(1200,ResourceType::Iron,3);
       b.prerequisites={BID::AM_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T4_A; b.name="Rapid Knight Forge";
+    { BuildingDef b; b.id=BID::AM_T4_A; b.name="Behemoth Forge (A)";
       b.description="Upgrades Behemoths to Behemoths (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Amalgamate;
       b.tier=4; b.path=UpgradePath::PathA; b.weeklyGrowth=4;
       b.cost=goldAndRes(2100,ResourceType::Iron,3);
       b.prerequisites={BID::AM_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T5_A; b.name="Rapid Juggernaut Pit";
+    { BuildingDef b; b.id=BID::AM_T5_A; b.name="Flesh Colossus Pit (A)";
       b.description="Upgrades Flesh Colossi to Flesh Colossi (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Amalgamate;
       b.tier=5; b.path=UpgradePath::PathA; b.weeklyGrowth=2;
       b.cost=goldAndRes(3500,ResourceType::Iron,4);
       b.prerequisites={BID::AM_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T6_A; b.name="Rapid Spawn Chamber";
+    { BuildingDef b; b.id=BID::AM_T6_A; b.name="Apex Chamber (A)";
       b.description="Upgrades Apex to Apex (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Amalgamate;
       b.tier=6; b.path=UpgradePath::PathA; b.weeklyGrowth=1;
       b.cost=goldAndRes(6500,ResourceType::Iron,6);
       b.prerequisites={BID::AM_T6}; m_buildings.push_back(b); }
     // Amalgamate PathB upgrades — Fused (BloodEssence cost)
-    { BuildingDef b; b.id=BID::AM_T1_B; b.name="Fused Crawler Vat";
+    { BuildingDef b; b.id=BID::AM_T1_B; b.name="Crawler Vat (B)";
       b.description="Upgrades Crawlers to Crawlers (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Amalgamate;
       b.tier=1; b.path=UpgradePath::PathB; b.weeklyGrowth=13;
       b.cost=goldAndRes(500,ResourceType::BloodEssence,2);
       b.prerequisites={BID::AM_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T2_B; b.name="Fused Soldier Bay";
+    { BuildingDef b; b.id=BID::AM_T2_B; b.name="Flesh Warrior Bay (B)";
       b.description="Upgrades Flesh Warriors to Flesh Warriors (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Amalgamate;
       b.tier=2; b.path=UpgradePath::PathB; b.weeklyGrowth=9;
       b.cost=goldAndRes(700,ResourceType::BloodEssence,2);
       b.prerequisites={BID::AM_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T3_B; b.name="Fused Machine Works";
+    { BuildingDef b; b.id=BID::AM_T3_B; b.name="Brute Works (B)";
       b.description="Upgrades Brutes to Brutes (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Amalgamate;
       b.tier=3; b.path=UpgradePath::PathB; b.weeklyGrowth=6;
       b.cost=goldAndRes(1200,ResourceType::BloodEssence,3);
       b.prerequisites={BID::AM_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T4_B; b.name="Fused Knight Forge";
+    { BuildingDef b; b.id=BID::AM_T4_B; b.name="Behemoth Forge (B)";
       b.description="Upgrades Behemoths to Behemoths (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Amalgamate;
       b.tier=4; b.path=UpgradePath::PathB; b.weeklyGrowth=5;
       b.cost=goldAndRes(2100,ResourceType::BloodEssence,3);
       b.prerequisites={BID::AM_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T5_B; b.name="Fused Juggernaut Pit";
+    { BuildingDef b; b.id=BID::AM_T5_B; b.name="Flesh Colossus Pit (B)";
       b.description="Upgrades Flesh Colossi to Flesh Colossi (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Amalgamate;
       b.tier=5; b.path=UpgradePath::PathB; b.weeklyGrowth=3;
       b.cost=goldAndRes(3500,ResourceType::BloodEssence,4);
       b.prerequisites={BID::AM_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::AM_T6_B; b.name="Fused Spawn Chamber";
+    { BuildingDef b; b.id=BID::AM_T6_B; b.name="Apex Chamber (B)";
       b.description="Upgrades Apex to Apex (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Amalgamate;
       b.tier=6; b.path=UpgradePath::PathB; b.weeklyGrowth=2;
@@ -1528,104 +1528,104 @@ void BuildingRegistry::init()
       b.description="Town Hall - +1000 Gold weekly, +2 unit growth"; b.category=BuildingCategory::Economy;
       b.faction=F::Convergence; b.cost=goldAndRes(500,ResourceType::Mercury,1); b.weeklyIncome=gold(1000); b.growthBonus=2;
       m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T1; b.name="Awakening Chamber"; b.tier=1; b.weeklyGrowth=11;
+    { BuildingDef b; b.id=BID::CV_T1; b.name="Initiate Chamber"; b.tier=1; b.weeklyGrowth=11;
       b.description="Produces Initiates"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Convergence; b.cost=gold(350);
       b.upgradeA=BID::CV_T1_A; b.upgradeB=BID::CV_T1_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T2; b.name="Synthesis Lab"; b.tier=2; b.weeklyGrowth=8;
+    { BuildingDef b; b.id=BID::CV_T2; b.name="Soldier Lab"; b.tier=2; b.weeklyGrowth=8;
       b.description="Produces Soldiers"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Convergence; b.cost=gold(700);
       b.prerequisites={BID::CV_T1};
       b.upgradeA=BID::CV_T2_A; b.upgradeB=BID::CV_T2_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T3; b.name="Harmony Hall"; b.tier=3; b.weeklyGrowth=6;
+    { BuildingDef b; b.id=BID::CV_T3; b.name="Mirror Warrior Hall"; b.tier=3; b.weeklyGrowth=6;
       b.description="Produces Mirror Warriors"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Convergence; b.cost=gold(1100);
       b.prerequisites={BID::CV_T2};
       b.upgradeA=BID::CV_T3_A; b.upgradeB=BID::CV_T3_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T4; b.name="Resonance Spire"; b.tier=4; b.weeklyGrowth=4;
+    { BuildingDef b; b.id=BID::CV_T4; b.name="Champion Spire"; b.tier=4; b.weeklyGrowth=4;
       b.description="Produces Champions"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Convergence; b.cost=gold(2000);
       b.prerequisites={BID::CV_T3};
       b.upgradeA=BID::CV_T4_A; b.upgradeB=BID::CV_T4_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T5; b.name="Transcendence Gate"; b.tier=5; b.weeklyGrowth=3;
+    { BuildingDef b; b.id=BID::CV_T5; b.name="Elite Gate"; b.tier=5; b.weeklyGrowth=3;
       b.description="Produces Elites"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Convergence; b.cost=gold(3200);
       b.prerequisites={BID::CV_T4};
       b.upgradeA=BID::CV_T5_A; b.upgradeB=BID::CV_T5_B; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T6; b.name="Unity Forge"; b.tier=6; b.weeklyGrowth=2;
+    { BuildingDef b; b.id=BID::CV_T6; b.name="Convergence Prime Forge"; b.tier=6; b.weeklyGrowth=2;
       b.description="Produces Convergence Primes"; b.category=BuildingCategory::UnitDwelling;
       b.faction=F::Convergence; b.cost=gold(5500);
       b.prerequisites={BID::CV_T5};
       b.upgradeA=BID::CV_T6_A; b.upgradeB=BID::CV_T6_B; m_buildings.push_back(b); }
     // Convergence PathA upgrades — Mirror line (gold only)
-    { BuildingDef b; b.id=BID::CV_T1_A; b.name="Mirror Awakening Chamber";
+    { BuildingDef b; b.id=BID::CV_T1_A; b.name="Initiate Chamber (A)";
       b.description="Upgrades Initiates to Initiates (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Convergence;
       b.tier=1; b.path=UpgradePath::PathA; b.weeklyGrowth=10;
       b.cost=gold(550);
       b.prerequisites={BID::CV_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T2_A; b.name="Mirror Synthesis Lab";
+    { BuildingDef b; b.id=BID::CV_T2_A; b.name="Soldier Lab (A)";
       b.description="Upgrades Soldiers to Soldiers (A) (Flying)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Convergence;
       b.tier=2; b.path=UpgradePath::PathA; b.weeklyGrowth=7;
       b.cost=gold(900);
       b.prerequisites={BID::CV_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T3_A; b.name="Mirror Harmony Hall";
+    { BuildingDef b; b.id=BID::CV_T3_A; b.name="Mirror Warrior Hall (A)";
       b.description="Upgrades Mirror Warriors to Mirror Warriors (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Convergence;
       b.tier=3; b.path=UpgradePath::PathA; b.weeklyGrowth=5;
       b.cost=gold(1350);
       b.prerequisites={BID::CV_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T4_A; b.name="Mirror Resonance Spire";
+    { BuildingDef b; b.id=BID::CV_T4_A; b.name="Champion Spire (A)";
       b.description="Upgrades Champions to Champions (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Convergence;
       b.tier=4; b.path=UpgradePath::PathA; b.weeklyGrowth=3;
       b.cost=gold(2400);
       b.prerequisites={BID::CV_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T5_A; b.name="Mirror Form Gate";
+    { BuildingDef b; b.id=BID::CV_T5_A; b.name="Elite Gate (A)";
       b.description="Upgrades Elites to Elites (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Convergence;
       b.tier=5; b.path=UpgradePath::PathA; b.weeklyGrowth=2;
       b.cost=gold(3900);
       b.prerequisites={BID::CV_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T6_A; b.name="Mirror Unity Forge";
+    { BuildingDef b; b.id=BID::CV_T6_A; b.name="Convergence Prime Forge (A)";
       b.description="Upgrades Convergence Primes to Convergence Primes (A)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Convergence;
       b.tier=6; b.path=UpgradePath::PathA; b.weeklyGrowth=1;
       b.cost=gold(6600);
       b.prerequisites={BID::CV_T6}; m_buildings.push_back(b); }
     // Convergence PathB upgrades — Harmony line (gold only)
-    { BuildingDef b; b.id=BID::CV_T1_B; b.name="Harmony Seeker Chamber";
+    { BuildingDef b; b.id=BID::CV_T1_B; b.name="Initiate Chamber (B)";
       b.description="Upgrades Initiates to Initiates (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Convergence;
       b.tier=1; b.path=UpgradePath::PathB; b.weeklyGrowth=11;
       b.cost=gold(550);
       b.prerequisites={BID::CV_T1}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T2_B; b.name="Harmony Bound Lab";
+    { BuildingDef b; b.id=BID::CV_T2_B; b.name="Soldier Lab (B)";
       b.description="Upgrades Soldiers to Soldiers (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Convergence;
       b.tier=2; b.path=UpgradePath::PathB; b.weeklyGrowth=8;
       b.cost=gold(900);
       b.prerequisites={BID::CV_T2}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T3_B; b.name="Resonance Core Hall";
+    { BuildingDef b; b.id=BID::CV_T3_B; b.name="Mirror Warrior Hall (B)";
       b.description="Upgrades Mirror Warriors to Mirror Warriors (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Convergence;
       b.tier=3; b.path=UpgradePath::PathB; b.weeklyGrowth=6;
       b.cost=gold(1350);
       b.prerequisites={BID::CV_T3}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T4_B; b.name="Harmony Knight Spire";
+    { BuildingDef b; b.id=BID::CV_T4_B; b.name="Champion Spire (B)";
       b.description="Upgrades Champions to Champions (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Convergence;
       b.tier=4; b.path=UpgradePath::PathB; b.weeklyGrowth=4;
       b.cost=gold(2400);
       b.prerequisites={BID::CV_T4}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T5_B; b.name="Transcendent Prime Gate";
+    { BuildingDef b; b.id=BID::CV_T5_B; b.name="Elite Gate (B)";
       b.description="Upgrades Elites to Elites (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Convergence;
       b.tier=5; b.path=UpgradePath::PathB; b.weeklyGrowth=3;
       b.cost=gold(3900);
       b.prerequisites={BID::CV_T5}; m_buildings.push_back(b); }
-    { BuildingDef b; b.id=BID::CV_T6_B; b.name="Harmonic Unity Forge";
+    { BuildingDef b; b.id=BID::CV_T6_B; b.name="Convergence Prime Forge (B)";
       b.description="Upgrades Convergence Primes to Convergence Primes (B)";
       b.category=BuildingCategory::UnitDwelling; b.faction=F::Convergence;
       b.tier=6; b.path=UpgradePath::PathB; b.weeklyGrowth=2;
