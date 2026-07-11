@@ -331,10 +331,6 @@ private:
     // File: assets/towns/faction_N.png  (N=0-8)
     Texture           m_townTex[NUM_FACTIONS];
 
-    // ── Live Town screen backdrop (courtyard scene behind building slots) ─────
-    // File: assets/towns/live_bg_N.png  (N=0-8)
-    Texture           m_liveTownBgTex[NUM_FACTIONS];
-
     // ── Building category icon atlas ───────────────────────────────────────────
     // File: assets/buildings/icons_buildings.png  (384×64, 6 cols × 1 row)
     Texture           m_buildingIconTex;
