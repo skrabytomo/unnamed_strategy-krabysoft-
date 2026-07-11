@@ -23,6 +23,23 @@ static std::pair<int,int> unitFactionTier(const CombatUnit& u,
     return { -1, 1 };  // truly unknown — no sprite lookup
 }
 
+// ── Helper: ranged-attack projectile tint per faction's magic/weapon identity ──
+static ImU32 factionProjectileColor(int fid)
+{
+    switch (fid) {
+        case 0: return IM_COL32(255, 230, 140, 255); // Holy Order — golden light
+        case 1: return IM_COL32(220, 40,  40,  255); // Crimson Wardens — blood red
+        case 2: return IM_COL32(120, 220, 90,  255); // Thornkin — nature green
+        case 3: return IM_COL32(160, 90,  220, 255); // Eternal Empire — death purple
+        case 4: return IM_COL32(200, 20,  20,  255); // Bloodsworn — dark blood red
+        case 5: return IM_COL32(150, 60,  220, 255); // Voidkin — void violet
+        case 6: return IM_COL32(255, 150, 40,  255); // Iron Assembly — forge orange
+        case 7: return IM_COL32(160, 200, 60,  255); // Amalgamate — sickly green
+        case 8: return IM_COL32(180, 220, 255, 255); // Convergence — prismatic cyan
+        default: return IM_COL32(255, 225, 140, 255);
+    }
+}
+
 // ── Helper: resolve a siege engine unit's name to its m_engineTex index ──────
 // Names must match exactly what makeSiegeEngines() assigns below. Order must
 // match kEngineKeys in Game_Core.cpp's texture-loading loop.
@@ -1717,7 +1734,8 @@ void Game::enterCombat(Hero& playerHero,
             if (t && t->alive) ti->second.setState(AnimState::Hurt);
         }
 
-        // Ranged attacks get a visible projectile traveling attacker → target
+        // Ranged attacks get a visible projectile traveling attacker → target,
+        // tinted to match the attacker's faction magic/weapon identity.
         const CombatUnit* atk = m_combat.grid().getUnit(attackerId);
         const CombatUnit* tgt = m_combat.grid().getUnit(targetId);
         if (atk && tgt && atk->range > 0 && HexGrid::distance(atk->pos, tgt->pos) > 1) {
@@ -1731,7 +1749,29 @@ void Game::enterCombat(Hero& playerHero,
             p.y1 = wy1 * m_combatBoardScale + m_combatBoardOffY;
             p.t = 0.0f;
             p.duration = 0.18f;
-            p.color = IM_COL32(255, 225, 140, 255);
+            p.color = factionProjectileColor(unitFactionTier(*atk, m_registry.units()).first);
+            m_combatProjectiles.push_back(p);
+        }
+    });
+    m_combat.setWallAttackCallback([this](uint32_t attackerId, HexCoord wallHex) {
+        const CombatUnit* atk = m_combat.grid().getUnit(attackerId);
+        if (!atk) return;
+        auto ai = m_combatAnimators.find(attackerId);
+        if (ai != m_combatAnimators.end()) ai->second.setState(AnimState::Attack);
+        // Ranged siege engines (catapult/trebuchet) lob a visible projectile
+        // at the wall; melee engines/units just swing (no projectile needed).
+        if (atk->isSiegeEngine && atk->range > 0 && HexGrid::distance(atk->pos, wallHex) > 1) {
+            float wx0, wy0, wx1, wy1;
+            m_combat.grid().hexGrid().hexToWorld(atk->pos, wx0, wy0);
+            m_combat.grid().hexGrid().hexToWorld(wallHex, wx1, wy1);
+            CombatProjectile p;
+            p.x0 = wx0 * m_combatBoardScale + m_combatBoardOffX;
+            p.y0 = wy0 * m_combatBoardScale + m_combatBoardOffY;
+            p.x1 = wx1 * m_combatBoardScale + m_combatBoardOffX;
+            p.y1 = wy1 * m_combatBoardScale + m_combatBoardOffY;
+            p.t = 0.0f;
+            p.duration = 0.28f;
+            p.color = IM_COL32(150, 120, 90, 255); // grey-brown hurled stone
             m_combatProjectiles.push_back(p);
         }
     });

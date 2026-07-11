@@ -2736,6 +2736,7 @@ bool CombatEngine::attackWall(HexCoord wallHex)
     bool breached = m_grid.damageWall(wallHex, dmg);
     addLog(unit->name + " attacked wall for " + std::to_string(dmg) + " dmg"
            + (breached ? " — BREACHED!" : ""));
+    if (m_wallAtkCb) m_wallAtkCb(unit->id, wallHex);
 
     unit->hasActed = true;
     advanceTurn();

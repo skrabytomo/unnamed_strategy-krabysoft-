@@ -43,6 +43,7 @@ public:
     using HealCallback   = std::function<void(uint32_t /*targetId*/, int /*amount*/, HexCoord /*pos*/)>;
     using MoraleCallback = std::function<void(uint32_t /*unitId*/, HexCoord /*pos*/)>;
     using AttackAnimCallback = std::function<void(uint32_t /*attackerId*/, uint32_t /*targetId*/)>;
+    using WallAttackCallback = std::function<void(uint32_t /*attackerId*/, HexCoord /*wallHex*/)>;
 
     CombatEngine() = default;
 
@@ -122,6 +123,8 @@ public:
     // basic attack — drives the attacker's Attack pose / target's Hurt pose.
     // Not fired for spell damage, DoT ticks, or Warden's Mark splash.
     void setAttackAnimCallback(AttackAnimCallback cb) { m_atkAnimCb = cb; }
+    // Fired whenever a unit attacks a wall/gate tile (see attackWall()).
+    void setWallAttackCallback(WallAttackCallback cb) { m_wallAtkCb = cb; }
 
     // XP earned this battle (enemy unit-count × 5, awarded on victory)
     int xpEarned() const { return m_enemyStartCount * 5; }
@@ -213,6 +216,7 @@ private:
     HealCallback           m_healCb;
     MoraleCallback         m_moraleCb;
     AttackAnimCallback     m_atkAnimCb;
+    WallAttackCallback     m_wallAtkCb;
     bool                   m_silent  = false;
     AIDifficulty           m_playerAI = AIDifficulty::Standard;
     AIDifficulty           m_enemyAI  = AIDifficulty::Standard;
