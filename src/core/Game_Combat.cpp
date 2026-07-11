@@ -385,6 +385,72 @@ void Game::renderCombatBoard()
     ImU32 tileBase = IM_COL32(0,   0,   0,  40);
     ImU32 obstCol  = IM_COL32(10,  10,  10, 170);
 
+    // ── Merge contiguous wall/moat hexes into one continuous fortification
+    // image instead of stamping the same tile art once per hex — stamping
+    // left visible seams where neighbouring pieces didn't line up. One draw
+    // per unbroken run of same-type tiles down the column; the gate's own
+    // art still overlays its specific row on top afterward.
+    if (m_combat.isSiege()) {
+        int sf = std::clamp(m_siegeTownFaction, 0, NUM_FACTIONS - 1);
+        auto colHex = [](int q, int row) {
+            int r = row - (q - (q & 1)) / 2;
+            return HexCoord{q, r};
+        };
+        auto hexScreenBounds = [&](HexCoord h, float& minX, float& maxX, float& minY, float& maxY) {
+            float c[12];
+            hg.hexCorners(h, c);
+            minX = maxX = c[0]; minY = maxY = c[1];
+            for (int i = 1; i < 6; ++i) {
+                minX = std::min(minX, c[i*2]);   maxX = std::max(maxX, c[i*2]);
+                minY = std::min(minY, c[i*2+1]); maxY = std::max(maxY, c[i*2+1]);
+            }
+            minX = minX * scale + m_combatBoardOffX; maxX = maxX * scale + m_combatBoardOffX;
+            minY = minY * scale + m_combatBoardOffY; maxY = maxY * scale + m_combatBoardOffY;
+        };
+
+        auto drawRun = [&](CombatTileType kind, int col, const Texture* healthyTex,
+                            const Texture* damagedTex, int maxHp) {
+            int row = 0;
+            while (row < CombatGrid::ROWS) {
+                const CombatTile* t0 = grid.getTile(colHex(col, row));
+                if (!t0 || t0->type != kind) { ++row; continue; }
+                int runStart = row;
+                bool anyDamaged = false;
+                while (row < CombatGrid::ROWS) {
+                    const CombatTile* t = grid.getTile(colHex(col, row));
+                    if (!t || t->type != kind) break;
+                    if (t->wallHP > 0 && t->wallHP * 2 < maxHp) anyDamaged = true;
+                    ++row;
+                }
+                int runEnd = row - 1;
+                const Texture* tex = (anyDamaged && damagedTex && damagedTex->ok())
+                                    ? damagedTex : healthyTex;
+                if (tex && tex->ok()) {
+                    float sMinX, sMaxX, sMinY, sMaxYUnused;
+                    hexScreenBounds(colHex(col, runStart), sMinX, sMaxX, sMinY, sMaxYUnused);
+                    float eMinX, eMaxX, eMinYUnused, eMaxY;
+                    hexScreenBounds(colHex(col, runEnd), eMinX, eMaxX, eMinYUnused, eMaxY);
+                    float minX = std::min(sMinX, eMinX), maxX = std::max(sMaxX, eMaxX);
+                    ImTextureID tid = (ImTextureID)(uintptr_t)tex->id();
+                    dl->AddImage(tid, {minX, sMinY}, {maxX, eMaxY});
+                }
+            }
+        };
+
+        drawRun(CombatTileType::Wall, 5, &m_wallTex[sf], &m_wallDamagedTex[sf], 40);
+        drawRun(CombatTileType::Moat, 4, &m_moatTex[sf], nullptr, 1);
+
+        // Gate art overlays its own row on top of the merged wall run
+        HexCoord gateH = grid.gateHex();
+        const CombatTile* gt = grid.getTile(gateH);
+        if (gt && gt->type == CombatTileType::Wall && m_gateTex[sf].ok()) {
+            float minX, maxX, minY, maxY;
+            hexScreenBounds(gateH, minX, maxX, minY, maxY);
+            ImTextureID tid = (ImTextureID)(uintptr_t)m_gateTex[sf].id();
+            dl->AddImage(tid, {minX, minY}, {maxX, maxY});
+        }
+    }
+
     // Draw tiles
     for (const auto& h : coords) {
         float corners[12];
@@ -411,35 +477,27 @@ void Game::renderCombatBoard()
             }
         }
 
-        // Fortification art (see ART_SIEGE.md): draw the faction's wall/gate/
-        // moat texture under the tile fill, then thin the fill's alpha so the
-        // art reads through — the fill remains as a colour wash for HP state
-        // and highlight overrides (attackable, reachable, active) below.
-        const Texture* fortTex = nullptr;
+        // Fortification art is drawn once per contiguous run in the merged
+        // pre-pass above (so a line of wall/moat hexes reads as one
+        // continuous structure instead of repeated stamped tiles). Here we
+        // only need to know whether art is present, to thin the fill's alpha
+        // so it reads through as a colour wash for HP state and highlight
+        // overrides (attackable, reachable, active) below.
+        bool hasFortArt = false;
         int sf = std::clamp(m_siegeTownFaction, 0, NUM_FACTIONS - 1);
         if (tile && tile->type == CombatTileType::Wall) {
             bool isGateHex = (h == grid.gateHex());
-            if (isGateHex && m_gateTex[sf].ok()) {
-                fortTex = &m_gateTex[sf];
-            } else if (!isGateHex) {
+            if (isGateHex) {
+                hasFortArt = m_gateTex[sf].ok();
+            } else {
                 int maxHp = 40;
                 bool damaged = tile->wallHP > 0 && tile->wallHP * 2 < maxHp;
-                if (damaged && m_wallDamagedTex[sf].ok()) fortTex = &m_wallDamagedTex[sf];
-                else if (m_wallTex[sf].ok())              fortTex = &m_wallTex[sf];
+                hasFortArt = (damaged && m_wallDamagedTex[sf].ok()) || m_wallTex[sf].ok();
             }
-            if (fortTex) fill = (fill & 0x00FFFFFF) | (60u << 24);
+            if (hasFortArt) fill = (fill & 0x00FFFFFF) | (60u << 24);
         } else if (tile && tile->type == CombatTileType::Moat) {
-            if (m_moatTex[sf].ok()) fortTex = &m_moatTex[sf];
-            if (fortTex) fill = (fill & 0x00FFFFFF) | (70u << 24);
-        }
-        if (fortTex) {
-            float minX = pts[0].x, maxX = pts[0].x, minY = pts[0].y, maxY = pts[0].y;
-            for (int i = 1; i < 6; ++i) {
-                minX = std::min(minX, pts[i].x); maxX = std::max(maxX, pts[i].x);
-                minY = std::min(minY, pts[i].y); maxY = std::max(maxY, pts[i].y);
-            }
-            ImTextureID ftid = (ImTextureID)(uintptr_t)fortTex->id();
-            dl->AddImage(ftid, {minX, minY}, {maxX, maxY}, {0, 0}, {1, 1});
+            hasFortArt = m_moatTex[sf].ok();
+            if (hasFortArt) fill = (fill & 0x00FFFFFF) | (70u << 24);
         }
         // Reachable highlight
         for (const auto& rh : reach)
