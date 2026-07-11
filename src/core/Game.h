@@ -269,6 +269,14 @@ private:
     Texture           m_spellIconTex;  // 5×5 atlas, 32×32 cells — spell icons
     Texture           m_menuBgTex;     // main-menu / loading-screen backdrop
 
+    // ── Ornate main-menu chrome (mode 0 only) ─────────────────────────────────
+    Texture           m_menuHeaderEmblemTex;   // assets/ui/menu_header_emblem.png
+    Texture           m_menuButtonFrameTex;    // assets/ui/menu_button_frame.png (wide bar, reused per button)
+    // Index order matches the mode-0 button list: New Game, Load Game, Campaign,
+    // Battle Sim, Watch AI vs AI, Settings, Map Editor, Quit.
+    static constexpr int NUM_MENU_ICONS = 8;
+    Texture           m_menuIconTex[NUM_MENU_ICONS];
+
     // ── Per-unit sprite textures: m_unitTex[faction][tier-1] ─────────────────
     // File: assets/sprites/faction_F_tT.png  (F=0-8, T=1-6)
     // Each is a single-row sprite sheet with TOTAL_COLS animation frames.

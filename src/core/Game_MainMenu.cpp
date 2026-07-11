@@ -268,23 +268,66 @@ void Game::renderMainMenu()
 
     // ── 0: Main ──────────────────────────────────────────────────────────────
     if (m_menuMode == 0) {
+        // Ornate wings-and-compass emblem above the title, matching the
+        // ornate button frames below.
+        if (m_menuHeaderEmblemTex.ok()) {
+            float emW = bw * 0.5f, emH = emW; // source art is square
+            ImVec2 cpos = ImGui::GetCursorScreenPos();
+            float offX = (bw - emW) * 0.5f;
+            ImGui::GetWindowDrawList()->AddImage(
+                (ImTextureID)(uintptr_t)m_menuHeaderEmblemTex.id(),
+                {cpos.x + offX, cpos.y}, {cpos.x + offX + emW, cpos.y + emH});
+            ImGui::Dummy({bw, emH});
+        }
         header("UNNAMED STRATEGY");
 
-        if (ImGui::Button("New Game",   ImVec2(bw, 40))) m_menuMode = 1;
+        // Ornate frame-and-icon button — the frame art is a single reusable
+        // wide bar (see assets/ui/menu_button_frame.png), icon on the left,
+        // gold label text on the right, hit-tested via an invisible button.
+        auto fancyButton = [&](const char* label, const Texture& icon) -> bool {
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            ImVec2 pos  = ImGui::GetCursorScreenPos();
+            float  h    = 46.0f;
+            ImVec2 size = {bw, h};
+
+            if (m_menuButtonFrameTex.ok())
+                dl->AddImage((ImTextureID)(uintptr_t)m_menuButtonFrameTex.id(),
+                             pos, {pos.x + size.x, pos.y + size.y});
+            else
+                dl->AddRectFilled(pos, {pos.x + size.x, pos.y + size.y}, IM_COL32(40, 32, 20, 255));
+
+            if (icon.ok()) {
+                float iconSz = h * 0.68f;
+                float iy = pos.y + (h - iconSz) * 0.5f;
+                float ix = pos.x + h * 0.32f;
+                dl->AddImage((ImTextureID)(uintptr_t)icon.id(), {ix, iy}, {ix + iconSz, iy + iconSz});
+            }
+
+            ImVec2 tsz = ImGui::CalcTextSize(label);
+            float tx = pos.x + h * 1.05f;
+            float ty = pos.y + (h - tsz.y) * 0.5f;
+            dl->AddText({tx + 1, ty + 1}, IM_COL32(0, 0, 0, 180), label);
+            dl->AddText({tx, ty}, IM_COL32(235, 205, 120, 255), label);
+
+            ImGui::SetCursorScreenPos(pos);
+            return ImGui::InvisibleButton(label, size);
+        };
+
+        if (fancyButton("New Game",   m_menuIconTex[0])) m_menuMode = 1;
         ImGui::Spacing();
-        if (ImGui::Button("Load Game",  ImVec2(bw, 40))) m_menuMode = 2;
+        if (fancyButton("Load Game",  m_menuIconTex[1])) m_menuMode = 2;
         ImGui::Spacing();
-        if (ImGui::Button("Campaign",   ImVec2(bw, 40))) m_menuMode = 4;
+        if (fancyButton("Campaign",   m_menuIconTex[2])) m_menuMode = 4;
         ImGui::Spacing();
-        if (ImGui::Button("Battle Sim", ImVec2(bw, 40))) m_menuMode = 5;
+        if (fancyButton("Battle Sim", m_menuIconTex[3])) m_menuMode = 5;
         ImGui::Spacing();
-        if (ImGui::Button("Watch AI vs AI", ImVec2(bw, 40))) m_menuMode = 6;
+        if (fancyButton("Watch AI vs AI", m_menuIconTex[4])) m_menuMode = 6;
         ImGui::Spacing();
-        if (ImGui::Button("Settings",   ImVec2(bw, 40))) m_menuMode = 3;
+        if (fancyButton("Settings",   m_menuIconTex[5])) m_menuMode = 3;
         ImGui::Spacing();
-        if (ImGui::Button("Map Editor", ImVec2(bw, 40))) { enterEditor(); }
+        if (fancyButton("Map Editor", m_menuIconTex[6])) { enterEditor(); }
         ImGui::Spacing();
-        if (ImGui::Button("Quit",       ImVec2(bw, 40))) m_running = false;
+        if (fancyButton("Quit",       m_menuIconTex[7])) m_running = false;
 
         ImGui::Spacing(); ImGui::Separator();
         ImGui::TextColored({0.4f, 0.4f, 0.4f, 1.0f}, "F5 Save  F9 Load  F2 Editor");

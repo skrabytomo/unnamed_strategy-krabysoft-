@@ -83,6 +83,17 @@ bool Game::init(const std::string& title, int width, int height)
     if (!m_batch.init())                          { fprintf(stderr, "SpriteBatch failed\n"); return false; }
     initImGui();
     m_menuBgTex.load(m_basePath + "assets/ui/menu_bg.png", true, false);
+    m_menuHeaderEmblemTex.load(m_basePath + "assets/ui/menu_header_emblem.png", true, false);
+    m_menuButtonFrameTex.load(m_basePath + "assets/ui/menu_button_frame.png", true, false);
+    {
+        static const char* kMenuIconFiles[NUM_MENU_ICONS] = {
+            "sword", "chest", "book", "crossedswords", "eye", "gear", "compass", "door"
+        };
+        for (int i = 0; i < NUM_MENU_ICONS; ++i) {
+            std::string rel = std::string("assets/ui/menu_icon_") + kMenuIconFiles[i] + ".png";
+            m_menuIconTex[i].load(m_basePath + rel, true, false);
+        }
+    }
     renderLoadingScreen(0.01f, "Starting up");
 
     // Hex terrain sheets (the biggest early load) — driven onto the bar per type.
