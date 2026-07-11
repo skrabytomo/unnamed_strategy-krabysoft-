@@ -86,6 +86,36 @@ void CombatEngine::startBattle(
     // the besieged town.
     bool playerAttacks = !isSiege || siegeAttackerIsPlayer;
 
+    // Towers flank the wall's two ends (top row and bottom row), hugging the
+    // wall on the defender's side, instead of being mixed into the regular
+    // troop columns — one placed searching top-down, the other bottom-up.
+    int playerTowerSeq = 0, enemyTowerSeq = 0;
+    auto placeUnitOnGrid = [&](CombatUnit* placed, int startQ, bool scanBottomUp) {
+        if (scanBottomUp) {
+            for (int row = CombatGrid::ROWS - 1; row >= 0; --row) {
+                int q = startQ;
+                int r = row - (q - (q & 1)) / 2;
+                HexCoord h{q, r};
+                if (m_grid.inBounds(h) && !m_grid.getTile(h)->occupied
+                    && m_grid.getTile(h)->type != CombatTileType::Wall) {
+                    m_grid.placeUnit(*placed, h);
+                    break;
+                }
+            }
+        } else {
+            for (int row = 0; row < CombatGrid::ROWS; ++row) {
+                int q = startQ;
+                int r = row - (q - (q & 1)) / 2;
+                HexCoord h{q, r};
+                if (m_grid.inBounds(h) && !m_grid.getTile(h)->occupied
+                    && m_grid.getTile(h)->type != CombatTileType::Wall) {
+                    m_grid.placeUnit(*placed, h);
+                    break;
+                }
+            }
+        }
+    };
+
     // Place player units
     for (auto& u : playerUnits) {
         CombatUnit copy = u;
@@ -105,16 +135,12 @@ void CombatEngine::startBattle(
                 // Player defends: behind the wall
                 startQ = CombatGrid::COLS - 4 + (placed->stackSlot % 4);
             }
-            for (int row = 0; row < CombatGrid::ROWS; ++row) {
-                int q = startQ;
-                int r = row - (q - (q & 1)) / 2;
-                HexCoord h{q, r};
-                if (m_grid.inBounds(h) && !m_grid.getTile(h)->occupied
-                    && m_grid.getTile(h)->type != CombatTileType::Wall) {
-                    m_grid.placeUnit(*placed, h);
-                    break;
-                }
-            }
+            bool isTowerUnit  = isSiege && placed->isTower;
+            bool isEngineUnit = isSiege && placed->isSiegeEngine && !isTowerUnit;
+            if (isTowerUnit) startQ = 6; // hug the wall, beside the main troop columns
+            // Siege engines deploy at the bottom of the field, behind the troops
+            bool scanBottomUp = (isTowerUnit && (playerTowerSeq++ % 2 == 1)) || isEngineUnit;
+            placeUnitOnGrid(placed, startQ, scanBottomUp);
         }
     }
 
@@ -135,16 +161,12 @@ void CombatEngine::startBattle(
                 // Enemy attacks: assault columns on the left
                 startQ = 0 + (placed->stackSlot % 2);
             }
-            for (int row = 0; row < CombatGrid::ROWS; ++row) {
-                int q = startQ;
-                int r = row - (q - (q & 1)) / 2;
-                HexCoord h{q, r};
-                if (m_grid.inBounds(h) && !m_grid.getTile(h)->occupied
-                    && m_grid.getTile(h)->type != CombatTileType::Wall) {
-                    m_grid.placeUnit(*placed, h);
-                    break;
-                }
-            }
+            bool isTowerUnit  = isSiege && placed->isTower;
+            bool isEngineUnit = isSiege && placed->isSiegeEngine && !isTowerUnit;
+            if (isTowerUnit) startQ = 6; // hug the wall, beside the main troop columns
+            // Siege engines deploy at the bottom of the field, behind the troops
+            bool scanBottomUp = (isTowerUnit && (enemyTowerSeq++ % 2 == 1)) || isEngineUnit;
+            placeUnitOnGrid(placed, startQ, scanBottomUp);
         }
     }
 
@@ -2704,9 +2726,11 @@ bool CombatEngine::attackWall(HexCoord wallHex)
             if (HexGrid::distance(unit->pos, wallHex) > 1) return false;
         }
     } else {
-        // Normal unit melee-attacking a wall
+        // Normal unit melee-attacking a wall — walls are built to shrug off
+        // regular troops; only dedicated siege engines should breach them
+        // quickly, so this is capped well below any engine's wallDamage.
         if (HexGrid::distance(unit->pos, wallHex) > 1) return false;
-        dmg = std::max(1, (unit->attack * unit->count) / 4);
+        dmg = std::clamp((unit->attack * unit->count) / 15, 1, 6);
     }
 
     bool breached = m_grid.damageWall(wallHex, dmg);

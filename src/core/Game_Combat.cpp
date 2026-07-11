@@ -192,6 +192,12 @@ void Game::updateCombat(float dt)
             [](const CombatDmgEffect& e){ return e.t <= 0.f; }),
         m_combatDmgEffects.end());
 
+    for (auto& p : m_combatProjectiles) p.t += dt;
+    m_combatProjectiles.erase(
+        std::remove_if(m_combatProjectiles.begin(), m_combatProjectiles.end(),
+            [](const CombatProjectile& p){ return p.t >= p.duration; }),
+        m_combatProjectiles.end());
+
     if (m_combat.phase() == CombatPhase::Victory)
         exitCombat(true);
     else if (m_combat.phase() == CombatPhase::Defeat)
@@ -883,6 +889,26 @@ void Game::renderCombatBoard()
                              IM_COL32(100, 160, 200, 180), 3.0f);
                 dl->AddText({tx, ty}, IM_COL32(200, 230, 255, 255), tileTip);
             }
+        }
+    }
+
+    // Ranged-attack projectiles
+    for (const auto& p : m_combatProjectiles) {
+        float frac     = std::clamp(p.t / p.duration, 0.0f, 1.0f);
+        float tailFrac = std::clamp(frac - 0.15f, 0.0f, 1.0f);
+        float hx = p.x0 + (p.x1 - p.x0) * frac,     hy = p.y0 + (p.y1 - p.y0) * frac;
+        float tx = p.x0 + (p.x1 - p.x0) * tailFrac, ty = p.y0 + (p.y1 - p.y0) * tailFrac;
+        dl->AddLine({tx, ty}, {hx, hy}, p.color, 3.0f);
+
+        float dx = p.x1 - p.x0, dy = p.y1 - p.y0;
+        float len = std::sqrt(dx * dx + dy * dy);
+        if (len > 0.001f) {
+            float nx = dx / len, ny = dy / len;
+            float px = -ny, py = nx;
+            ImVec2 tip   = {hx + nx * 5.0f, hy + ny * 5.0f};
+            ImVec2 left  = {hx - nx * 3.0f + px * 3.5f, hy - ny * 3.0f + py * 3.5f};
+            ImVec2 right = {hx - nx * 3.0f - px * 3.5f, hy - ny * 3.0f - py * 3.5f};
+            dl->AddTriangleFilled(tip, left, right, p.color);
         }
     }
 
@@ -1593,6 +1619,7 @@ void Game::enterCombat(Hero& playerHero,
     }
 
     m_combatDmgEffects.clear();
+    m_combatProjectiles.clear();
     m_combat.setDamageCallback([this](uint32_t targetId, int dmg, HexCoord pos) {
         m_audio.playSound("hit");
         // Convert hex pos to board pixel pos
@@ -1630,6 +1657,24 @@ void Game::enterCombat(Hero& playerHero,
         if (ti != m_combatAnimators.end()) {
             const CombatUnit* t = m_combat.grid().getUnit(targetId);
             if (t && t->alive) ti->second.setState(AnimState::Hurt);
+        }
+
+        // Ranged attacks get a visible projectile traveling attacker → target
+        const CombatUnit* atk = m_combat.grid().getUnit(attackerId);
+        const CombatUnit* tgt = m_combat.grid().getUnit(targetId);
+        if (atk && tgt && atk->range > 0 && HexGrid::distance(atk->pos, tgt->pos) > 1) {
+            float wx0, wy0, wx1, wy1;
+            m_combat.grid().hexGrid().hexToWorld(atk->pos, wx0, wy0);
+            m_combat.grid().hexGrid().hexToWorld(tgt->pos, wx1, wy1);
+            CombatProjectile p;
+            p.x0 = wx0 * m_combatBoardScale + m_combatBoardOffX;
+            p.y0 = wy0 * m_combatBoardScale + m_combatBoardOffY;
+            p.x1 = wx1 * m_combatBoardScale + m_combatBoardOffX;
+            p.y1 = wy1 * m_combatBoardScale + m_combatBoardOffY;
+            p.t = 0.0f;
+            p.duration = 0.18f;
+            p.color = IM_COL32(255, 225, 140, 255);
+            m_combatProjectiles.push_back(p);
         }
     });
     // Build sprite animators for every unit

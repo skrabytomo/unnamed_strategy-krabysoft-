@@ -416,6 +416,10 @@ private:
     struct CombatDmgEffect { float bx, by, t; int dmg; bool isHeal; };
     std::vector<CombatDmgEffect> m_combatDmgEffects;
 
+    // ── Ranged-attack projectiles (arrow/bolt travels attacker → target) ──────
+    struct CombatProjectile { float x0, y0, x1, y1, t, duration; ImU32 color; };
+    std::vector<CombatProjectile> m_combatProjectiles;
+
     // ── Editor ────────────────────────────────────────────────────────────────
     MapEditor         m_editor;
     SimulatorWindow   m_simWindow;
