@@ -136,6 +136,21 @@ void Game::updateCombat(float dt)
 
     m_combatHUD.onMouseMove(mx, my);
 
+    // Keyboard shortcuts for the action panel (W/D/S/R) — only on the player's
+    // turn and only when no ImGui widget (e.g. a text field) wants the keyboard.
+    if (m_combat.phase() == CombatPhase::PlayerTurn && !ImGui::GetIO().WantCaptureKeyboard) {
+        if (m_input.keyDown(SDLK_w)) {
+            m_combat.wait();
+        } else if (m_input.keyDown(SDLK_d)) {
+            CombatAction act; act.type = ActionType::Defend;
+            m_combat.submitAction(act);
+        } else if (m_input.keyDown(SDLK_s)) {
+            m_showSpellPanel = !m_showSpellPanel;
+        } else if (m_input.keyDown(SDLK_r)) {
+            exitCombat(false);
+        }
+    }
+
     // Advance sprite animators. Attack/Hurt are one-shot states triggered by
     // m_combat's attack-anim callback (see setAttackAnimCallback below) and
     // auto-revert to Idle when their animation completes (SpriteAnimator::update);
@@ -203,9 +218,9 @@ void Game::renderCombat()
             m_combat.phase() == CombatPhase::Victory    ? "VICTORY!"   :
             m_combat.phase() == CombatPhase::Defeat     ? "DEFEAT"     : "...";
 
-        ImGui::SetNextWindowPos(ImVec2((float)m_width - 190.f, (float)m_height - 155.f),
+        ImGui::SetNextWindowPos(ImVec2((float)m_width - 190.f, (float)m_height - 200.f),
                                 ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(186.f, 150.f), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(186.f, 190.f), ImGuiCond_Always);
         ImGui::Begin("##CombatActions", nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                      ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
@@ -214,16 +229,16 @@ void Game::renderCombat()
         ImGui::Separator();
         bool isPlayerTurn = m_combat.phase() == CombatPhase::PlayerTurn;
         if (!isPlayerTurn) ImGui::BeginDisabled();
-        if (ImGui::Button("Wait (end turn)", ImVec2(170, 28)))
+        if (ImGui::Button("Wait [W]", ImVec2(170, 28)))
             m_combat.wait();
-        if (ImGui::Button("Defend", ImVec2(170, 28))) {
+        if (ImGui::Button("Defend [D]", ImVec2(170, 28))) {
             CombatAction act; act.type = ActionType::Defend;
             m_combat.submitAction(act);
         }
-        if (ImGui::Button("Spells", ImVec2(170, 28)))
+        if (ImGui::Button("Spells [S]", ImVec2(170, 28)))
             m_showSpellPanel = !m_showSpellPanel;
         if (!isPlayerTurn) ImGui::EndDisabled();
-        if (ImGui::Button("Retreat", ImVec2(170, 28)))
+        if (ImGui::Button("Retreat [R]", ImVec2(170, 28)))
             exitCombat(false);
 
         ImGui::End();
@@ -980,7 +995,15 @@ void Game::renderSpellPanel()
         bool freeMirror = hasFreeByMirror;
         bool isFree     = freeBlood || freeMirror;
         bool canAfford  = isFree || hero.mana >= spell->manaCost;
-        bool canCast    = isPlayerTurn && canAfford;
+        bool needsTarget = (spell->target == SpellTarget::SingleAlly ||
+                            spell->target == SpellTarget::SingleEnemy);
+        bool hasValidTarget = true;
+        if (needsTarget) {
+            const CombatUnit* tgt = m_combat.grid().getUnit(m_spellTargetId);
+            bool wantAlly = (spell->target == SpellTarget::SingleAlly);
+            hasValidTarget = tgt && tgt->alive && (tgt->isPlayer == wantAlly);
+        }
+        bool canCast    = isPlayerTurn && canAfford && hasValidTarget;
 
         if (col == 1) ImGui::SameLine(0, 8);
 
@@ -1051,7 +1074,7 @@ void Game::renderSpellPanel()
             dl2->AddRect({cardPos.x, cardPos.y},
                          {cardPos.x + CARD_W, cardPos.y + CARD_H},
                          IM_COL32(255, 220, 80, 120), 6.0f, 0, 3.0f);
-            char tipBuf[256];
+            char tipBuf[300];
             if (scalesWithSchool)
                 std::snprintf(tipBuf, sizeof(tipBuf), "%s\nPower: %d + %s %d = %d",
                     spell->desc, spell->power, kSchoolName[si], schoolPow(spell->school),
@@ -1059,7 +1082,13 @@ void Game::renderSpellPanel()
             else
                 std::snprintf(tipBuf, sizeof(tipBuf), "%s\nPower: %d (buffs don't scale with school)",
                     spell->desc, displayPow);
-            ImGui::SetTooltip("%s", tipBuf);
+            if (needsTarget && !hasValidTarget) {
+                std::string withHint = std::string(tipBuf) +
+                    "\n[Pick a valid target from the Target dropdown above first]";
+                ImGui::SetTooltip("%s", withHint.c_str());
+            } else {
+                ImGui::SetTooltip("%s", tipBuf);
+            }
         }
 
         // Draw icon over the card

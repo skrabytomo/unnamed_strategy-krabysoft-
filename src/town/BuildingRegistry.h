@@ -25,7 +25,7 @@ namespace BID {
     constexpr int CITY_HALL     = 12; // +3500 Gold/wk; requires Town Hall, unlocks at week 3
     // Faction Capitols — unique tier-4 economy, requires City Hall + faction hall, week 5
     constexpr int HO_SANCTUM    = 13; // Holy Order: Sacred Sanctum
-    constexpr int CW_NECROPOLIS = 14; // Crimson Wardens: Grand Necropolis
+    constexpr int CW_NECROPOLIS = 14; // Crimson Wardens: Warden's Citadel
     constexpr int TK_HEARTWOOD  = 15; // Thornkin: Ancient Heartwood
     constexpr int EE_CITADEL    = 16; // Eternal Empire: Eternal Citadel
     constexpr int BS_BLOODSPIRE = 17; // Bloodsworn: Bloodspire Fortress
@@ -212,6 +212,14 @@ public:
 
     const BuildingDef* getBuildingDef(int id) const;
     const UnitDef*     getUnitDef(int id)     const;
+
+    // Look up a unit by faction+tier+path (path defaults to the base/None variant).
+    // This is the single source of truth for unit stats — other systems (ArmyBuilder,
+    // combat fallbacks) should call this instead of keeping their own copies.
+    const UnitDef* getUnitDef(FactionId faction, int tier, UpgradePath path = UpgradePath::None) const;
+
+    // Matching dwelling building for a faction+tier+path (for weeklyGrowth/cost lookups).
+    const BuildingDef* getDwelling(FactionId faction, int tier, UpgradePath path = UpgradePath::None) const;
 
     // Get all buildings for a faction
     std::vector<const BuildingDef*> getBuildingsForFaction(FactionId f) const;
