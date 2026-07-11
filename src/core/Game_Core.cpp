@@ -234,6 +234,13 @@ bool Game::init(const std::string& title, int width, int height)
         m_townTex[i].load(m_basePath + rel, false, false);
     }
 
+    // Load Live Town screen backdrops
+    for (int i = 0; i < NUM_FACTIONS; ++i) {
+        char rel[80];
+        std::snprintf(rel, sizeof(rel), "assets/towns/live_bg_%d.png", i);
+        m_liveTownBgTex[i].load(m_basePath + rel, false, false);
+    }
+
     renderLoadingScreen(0.70f, "Loading towns");
 
     // Load building category icon atlas

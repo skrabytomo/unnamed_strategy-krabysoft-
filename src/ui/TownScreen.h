@@ -99,7 +99,7 @@ private:
     // no per-faction position data needed, so it works for every faction
     // immediately (falls back to the category icon atlas where no per-building
     // art has been wired yet).
-    bool        m_liveTownMode = false;
+    bool        m_liveTownMode = true;
     ImTextureID m_liveTownBg   = nullptr;
 
 public:

@@ -1304,6 +1304,8 @@ void Game::enterTown(Town* town)
         int fid = std::clamp(static_cast<int>(town->faction), 0, NUM_FACTIONS - 1);
         m_townScreen.setTownBannerTex(m_portraitTex[fid].ok()
             ? (ImTextureID)(uintptr_t)m_portraitTex[fid].id() : nullptr);
+        m_townScreen.setLiveTownBg(m_liveTownBgTex[fid].ok()
+            ? (ImTextureID)(uintptr_t)m_liveTownBgTex[fid].id() : nullptr);
         m_townScreen.setBuildingIconTex(m_buildingIconTex.ok()
             ? (ImTextureID)(uintptr_t)m_buildingIconTex.id() : nullptr);
         // Per-faction single-tier buildings
