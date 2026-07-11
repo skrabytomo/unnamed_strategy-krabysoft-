@@ -736,8 +736,6 @@ private:
     std::vector<uint32_t> m_watchMovedThisDay;
     float m_watchAITimer    = 0.f;     // countdown to next auto end-turn
     float m_watchAISpeed    = 1.0f;    // delay multiplier (slider: 0.25 – 4.0)
-    int   m_watchAIFaction1 = 0;
-    int   m_watchAIFaction2 = 1;
     void  watchAiMovePlayerHero();     // runs player hero through same AI logic as enemies
     void  watchAiMoveSupportHero(Hero& hero, bool isCourier); // scouts/courier: no combat
     // Award XP to an AI hero and auto-apply level-ups (stats + class skills, no UI).
