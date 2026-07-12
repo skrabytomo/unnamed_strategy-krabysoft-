@@ -82,16 +82,19 @@ bool Game::init(const std::string& title, int width, int height)
     // right below — runs under the progress bar instead of a black window.
     if (!m_batch.init())                          { fprintf(stderr, "SpriteBatch failed\n"); return false; }
     initImGui();
-    m_menuBgTex.load(m_basePath + "assets/ui/menu_bg.png", true, false);
-    m_menuHeaderEmblemTex.load(m_basePath + "assets/ui/menu_header_emblem.png", true, false);
-    m_menuButtonFrameTex.load(m_basePath + "assets/ui/menu_button_frame.png", true, false);
+    // false = GL_LINEAR (smooth) filtering — this is painterly illustration
+    // art, not pixel art, so nearest-neighbor filtering just looks blocky
+    // when stretched to fill the screen.
+    m_menuBgTex.load(m_basePath + "assets/ui/menu_bg.png", false, false);
+    m_menuHeaderEmblemTex.load(m_basePath + "assets/ui/menu_header_emblem.png", false, false);
+    m_menuButtonFrameTex.load(m_basePath + "assets/ui/menu_button_frame.png", false, false);
     {
         static const char* kMenuIconFiles[NUM_MENU_ICONS] = {
             "sword", "chest", "book", "crossedswords", "eye", "gear", "compass", "door"
         };
         for (int i = 0; i < NUM_MENU_ICONS; ++i) {
             std::string rel = std::string("assets/ui/menu_icon_") + kMenuIconFiles[i] + ".png";
-            m_menuIconTex[i].load(m_basePath + rel, true, false);
+            m_menuIconTex[i].load(m_basePath + rel, false, false);
         }
     }
     renderLoadingScreen(0.01f, "Starting up");
