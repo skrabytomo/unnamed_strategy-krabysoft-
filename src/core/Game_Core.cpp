@@ -27,13 +27,22 @@ static constexpr const char* HIDEOUT_PATH = "saves/hideout.db";
 // ── Init ──────────────────────────────────────────────────────────────────────
 bool Game::init(const std::string& title, int width, int height)
 {
-    m_width  = width;
-    m_height = height;
-
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
         fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
         return false;
     }
+
+    // Default to the desktop's native resolution instead of the fixed
+    // 1280x720 the caller passes — that's a comically small, non-native box
+    // on modern high-res displays, and everything looks soft/stretched once
+    // the window is resized or maximized to fill the actual screen.
+    SDL_DisplayMode dm;
+    if (SDL_GetDesktopDisplayMode(0, &dm) == 0 && dm.w > 0 && dm.h > 0) {
+        width  = dm.w;
+        height = dm.h;
+    }
+    m_width  = width;
+    m_height = height;
 
     // Resolve executable directory for asset loading
     {
@@ -60,7 +69,8 @@ bool Game::init(const std::string& title, int width, int height)
 
     m_window = SDL_CreateWindow(title.c_str(),
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+        width, height,
+        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED);
     if (!m_window) { fprintf(stderr, "Window: %s\n", SDL_GetError()); return false; }
 
     m_glCtx = SDL_GL_CreateContext(m_window);
