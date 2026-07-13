@@ -447,23 +447,27 @@ void Game::watchAiMovePlayerHero()
     hero.movePool = hero.maxMove;
 
     int myStr = heroStrength(hero, udefs);
-    int bestOppStr = 0;
+    // Gauge against the NEAREST enemy hero, not the globally strongest one.
+    // On multi-AI maps the strongest of 7 bots is almost always stronger than
+    // you and often on the far side of the map, which pinned strRatio < 0.4
+    // (veryWeak) permanently — so the watched hero just cowered and grabbed
+    // resources within 6 tiles, never committing to distant mines or fights.
+    int nearestEnemyDist = 999;
+    int nearestOppStr = 0;
     for (const auto& eh : m_enemyHeroes) {
-        int s = heroStrength(eh, udefs);
-        if (s > bestOppStr) bestOppStr = s;
+        int d = HexGrid::distance(hero.pos, eh.pos);
+        if (d < nearestEnemyDist) {
+            nearestEnemyDist = d;
+            nearestOppStr = heroStrength(eh, udefs);
+        }
     }
+    int bestOppStr = nearestOppStr;
     float strRatio   = bestOppStr > 0 ? (float)myStr / bestOppStr : 99.f;
     bool veryWeak    = strRatio < 0.4f;
     bool softRetreat = strRatio < 0.6f;
     bool dominant    = strRatio >= 1.2f;
-    // Same proximity rule as the enemy AI: only cower when a threat is near
-    {
-        int nearestEnemyDist = 999;
-        for (const auto& eh : m_enemyHeroes)
-            nearestEnemyDist = std::min(nearestEnemyDist,
-                                        HexGrid::distance(hero.pos, eh.pos));
-        if (nearestEnemyDist > 10) { veryWeak = false; softRetreat = false; }
-    }
+    // Only cower when that nearest threat is actually close.
+    if (nearestEnemyDist > 10) { veryWeak = false; softRetreat = false; }
 
     while (hero.movePool > 0) {
         struct Cand { HexCoord pos; float score; };
@@ -599,10 +603,42 @@ void Game::watchAiMovePlayerHero()
         if (hero.onBoat && nt->terrain != Terrain::Water)
             hero.onBoat = false;  // disembark
 
-        // Claim resource
+        // Claim resource — but guarded mines require beating the guard first.
+        // (Was an unconditional r.ownedBy = 1, so the watched hero grabbed every
+        // guarded mine for free and never fought a single one.)
         if (nt->resourceId != 0) {
-            for (auto& r : m_resources)
-                if (r.id == nt->resourceId) { r.ownedBy = 1; break; }
+            for (auto& r : m_resources) {
+                if (r.id != nt->resourceId) continue;
+                if (r.ownedBy == 1u) break;                 // already ours
+                if (r.guardId != 0 && !r.guardBeaten) {
+                    // Fight the guard, auto-resolved, only if we can plausibly win.
+                    int myS = heroStrength(hero, udefs);
+                    int guardStr = std::min(1400, 250 + m_turns.week() * 50);
+                    if (myS >= guardStr * 13 / 10) {
+                        Hero guardHero;
+                        guardHero.id      = 0;
+                        guardHero.name    = "Mine Guardian";
+                        guardHero.faction = FactionId::None;
+                        guardHero.army    = {};
+                        auto gUnits = makeMineGuardUnits(r, m_turns.week());
+                        auto pUnits = makeHeroUnits(hero, udefs, true);
+                        r.guardBeaten          = true;   // presume win (auto-resolve)
+                        r.ownedBy              = 1u;
+                        m_pendingMineId        = r.id;
+                        m_lastCombatEnemyId    = 0;
+                        m_pendingTownCaptureId = 0;
+                        m_fromBattleSim    = true;
+                        m_simAutoPlay      = true;
+                        m_simAutoPlayTimer = 0.f;
+                        enterCombat(hero, pUnits, guardHero, gUnits);
+                        return;
+                    }
+                    // Too weak — leave the mine guarded, don't claim.
+                    break;
+                }
+                r.ownedBy = 1u;   // unguarded or already-cleared
+                break;
+            }
         }
         // Claim or visit town
         if (nt->townId != 0) {
