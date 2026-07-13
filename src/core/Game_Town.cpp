@@ -202,6 +202,164 @@ void Game::renderTown()
 }
 
 // ── Garrison management panel ─────────────────────────────────────────────────
+// Shared 7-slot unit-stack row: icon + count badge, click-to-select then
+// click-target to move/merge/swap. Ctrl+click a source stack to mark it for
+// a split — the next click on a slot drops half the stack there instead of
+// the whole thing (merges into a matching stack, or a fresh half-stack into
+// an empty/target slot; the other half stays behind in the source).
+void Game::drawUnitSlotRow(int side, std::vector<UnitStack>& army,
+                            int& selSide, int& selSlot, bool& splitMode)
+{
+    const auto& unitDefs = m_registry.units();
+    auto getUd = [&](int defId) -> const UnitDef* {
+        for (const auto& u : unitDefs) if (u.id == defId) return &u;
+        return nullptr;
+    };
+    auto getUnitTex = [&](const UnitDef* ud) -> ImTextureID {
+        if (!ud) return nullptr;
+        int fid = std::clamp(static_cast<int>(ud->faction), 0, NUM_FACTIONS - 1);
+        int tid = std::clamp(ud->tier - 1, 0, NUM_UNIT_TIERS - 1);
+        return m_unitTex[fid][tid].ok() ? (ImTextureID)(uintptr_t)m_unitTex[fid][tid].id() : nullptr;
+    };
+
+    const float SW = 58.0f, SH = 80.0f, GAP = 4.0f;
+    const int   NS = 7;
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+
+    for (int i = 0; i < NS; ++i) {
+        if (i > 0) ImGui::SameLine(0, GAP);
+
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        bool hasUnit = (i < (int)army.size() && army[i].count > 0);
+        bool selected = (selSide == side && selSlot == i);
+
+        ImU32 bg  = hasUnit ? IM_COL32(20, 22, 35, 235) : IM_COL32(12, 14, 22, 180);
+        ImU32 brd = selected ? (splitMode ? IM_COL32(120, 220, 255, 255) : IM_COL32(255, 195, 40, 255))
+                  : hasUnit  ? IM_COL32(90, 100, 130, 200)
+                             : IM_COL32(40, 45, 65, 150);
+        dl->AddRectFilled(pos, {pos.x + SW, pos.y + SH}, bg, 4.0f);
+        dl->AddRect(pos, {pos.x + SW, pos.y + SH}, brd, 4.0f, 0, selected ? 2.5f : 1.5f);
+
+        if (hasUnit) {
+            const UnitStack& s = army[i];
+            const UnitDef* ud = getUd(s.defId);
+            ImTextureID tex = getUnitTex(ud);
+
+            float sprW2 = SW - 4.0f, sprH2 = SH - 20.0f;
+            float sprX = pos.x + 2.0f, sprY = pos.y + 2.0f;
+            if (tex) {
+                dl->AddImage(tex, {sprX, sprY}, {sprX + sprW2, sprY + sprH2},
+                             {0.0f, 0.0f}, {0.125f, 1.0f}); // frame 0 of 8
+            } else {
+                dl->AddRectFilled({sprX, sprY}, {sprX + sprW2, sprY + sprH2},
+                                  IM_COL32(28, 32, 48, 200), 3.0f);
+                if (ud) {
+                    char t2[4]; std::snprintf(t2, sizeof(t2), "T%d", ud->tier);
+                    dl->AddText({sprX + sprW2 * 0.5f - 8, sprY + sprH2 * 0.5f - 7},
+                                IM_COL32(140, 150, 180, 200), t2);
+                }
+            }
+            // Count badge
+            char cnt[12]; std::snprintf(cnt, sizeof(cnt), "x%d", s.count);
+            ImVec2 sz = ImGui::CalcTextSize(cnt);
+            float cx = pos.x + (SW - sz.x) * 0.5f;
+            float cy = pos.y + SH - 16.0f;
+            dl->AddText({cx + 1, cy + 1}, IM_COL32(0, 0, 0, 200), cnt);
+            dl->AddText({cx, cy},          IM_COL32(225, 225, 255, 255), cnt);
+        } else {
+            dl->AddText({pos.x + SW * 0.5f - 4, pos.y + SH * 0.5f - 7},
+                        IM_COL32(45, 50, 72, 160), "--");
+        }
+
+        // Invisible button for click + hover
+        char bid[24]; std::snprintf(bid, sizeof(bid), "##us%d_%d_%p", side, i, (void*)&army);
+        ImGui::InvisibleButton(bid, {SW, SH});
+
+        if (ImGui::IsItemHovered() && hasUnit) {
+            const UnitDef* ud = getUd(army[i].defId);
+            if (ud) {
+                ImGui::BeginTooltip();
+                ImGui::Text("%s  x%d", ud->name.c_str(), army[i].count);
+                ImGui::TextDisabled("ATK %d  DEF %d  HP %d  SPD %d",
+                                   ud->attack, ud->defense, ud->hp, ud->speed);
+                if (ud->range > 0) ImGui::TextDisabled("Ranged (shots %d)", ud->shots);
+                if (ud->flying)    ImGui::TextDisabled("Flying");
+                if (ud->vampiric)  ImGui::TextDisabled("Vampiric");
+                if (army[i].count >= 2)
+                    ImGui::TextDisabled("Ctrl+click to split half off");
+                ImGui::EndTooltip();
+            }
+        }
+
+        if (ImGui::IsItemClicked()) {
+            if (selSide >= 0) {
+                if (selSide == side && selSlot == i) {
+                    // Clicking the already-selected slot again — deselect.
+                    selSide = -1; selSlot = -1; splitMode = false;
+                } else {
+                    // A different slot was clicked while something is selected —
+                    // record it as the transfer target. The caller resolves the
+                    // actual source/target arrays and performs the move, since
+                    // this function only ever sees one army at a time.
+                    m_slotTransferTargetSide = side;
+                    m_slotTransferTargetSlot = i;
+                }
+            } else if (hasUnit) {
+                selSide = side;
+                selSlot = i;
+                splitMode = ImGui::GetIO().KeyCtrl;
+            }
+        }
+    }
+    ImGui::Spacing();
+}
+
+void Game::resolveSlotTransfer(std::vector<UnitStack>& srcArmy, std::vector<UnitStack>& dstArmy,
+                                int& selSlot, bool& splitMode)
+{
+    int targetSlot = m_slotTransferTargetSlot;
+    m_slotTransferTargetSide = -1;
+    m_slotTransferTargetSlot = -1;
+    if (selSlot < 0 || selSlot >= (int)srcArmy.size() || targetSlot < 0) { selSlot = -1; return; }
+
+    // Copy the source stack by value before any push_back on dstArmy — when
+    // src and dst are the same vector (reordering within one row), growing it
+    // can reallocate and would dangle a reference taken beforehand.
+    UnitStack from = srcArmy[selSlot];
+    if (from.count <= 0) { selSlot = -1; splitMode = false; return; }
+
+    if (splitMode && from.count >= 2) {
+        // Split half off into the target slot; keep the remainder in source.
+        int half = from.count / 2;
+        if (targetSlot < 7) {
+            while ((int)dstArmy.size() <= targetSlot) dstArmy.push_back({0, 0});
+            UnitStack& to = dstArmy[targetSlot];
+            if (to.count == 0) {
+                to = {from.defId, half};
+                srcArmy[selSlot].count -= half;
+            } else if (to.defId == from.defId) {
+                to.count += half;
+                srcArmy[selSlot].count -= half;
+            }
+            // Mismatched non-empty target: split has nowhere to go — no-op.
+        }
+    } else if (targetSlot < 7) {
+        while ((int)dstArmy.size() <= targetSlot) dstArmy.push_back({0, 0});
+        UnitStack& to = dstArmy[targetSlot];
+        if (to.count == 0) {
+            to = from; srcArmy[selSlot] = {0, 0};
+        } else if (to.defId == from.defId) {
+            to.count += from.count; srcArmy[selSlot] = {0, 0};
+        } else {
+            std::swap(srcArmy[selSlot], to);
+        }
+    }
+    while (srcArmy.size() > 1 && srcArmy.back().count == 0) srcArmy.pop_back();
+    while (dstArmy.size() > 1 && dstArmy.back().count == 0) dstArmy.pop_back();
+    selSlot = -1;
+    splitMode = false;
+}
+
 void Game::renderGarrisonPanel()
 {
     // Resolve mutable town pointer
@@ -222,21 +380,7 @@ void Game::renderGarrisonPanel()
             hero = &h;
     }
 
-    const auto& unitDefs = m_registry.units();
-
-    // Look up UnitDef and its texture by defId
-    auto getUd = [&](int defId) -> const UnitDef* {
-        for (const auto& u : unitDefs) if (u.id == defId) return &u;
-        return nullptr;
-    };
-    auto getUnitTex = [&](const UnitDef* ud) -> ImTextureID {
-        if (!ud) return nullptr;
-        int fid = std::clamp(static_cast<int>(ud->faction), 0, NUM_FACTIONS - 1);
-        int tid = std::clamp(ud->tier - 1, 0, NUM_UNIT_TIERS - 1);
-        return m_unitTex[fid][tid].ok() ? (ImTextureID)(uintptr_t)m_unitTex[fid][tid].id() : nullptr;
-    };
-
-    const float SW = 58.0f, SH = 80.0f, GAP = 4.0f;
+    const float SW = 58.0f, GAP = 4.0f;
     const int   NS = 7;
 
     ImGuiIO& io = ImGui::GetIO();
@@ -252,134 +396,46 @@ void Game::renderGarrisonPanel()
         ImGui::End(); return;
     }
 
-    ImDrawList* dl = ImGui::GetWindowDrawList();
-
-    // Draw one 7-slot row for either hero army (side=0) or town garrison (side=1)
-    auto drawRow = [&](int side, std::vector<UnitStack>& army) {
-        float rowStartX = ImGui::GetCursorScreenPos().x;
-        float rowStartY = ImGui::GetCursorScreenPos().y;
-
-        for (int i = 0; i < NS; ++i) {
-            if (i > 0) ImGui::SameLine(0, GAP);
-
-            ImVec2 pos = ImGui::GetCursorScreenPos();
-            bool hasUnit = (i < (int)army.size() && army[i].count > 0);
-            bool selected = (m_garrisonSelSide == side && m_garrisonSelSlot == i);
-
-            // Slot background
-            ImU32 bg  = hasUnit ? IM_COL32(20, 22, 35, 235) : IM_COL32(12, 14, 22, 180);
-            ImU32 brd = selected ? IM_COL32(255, 195, 40, 255)
-                      : hasUnit  ? IM_COL32(90, 100, 130, 200)
-                                 : IM_COL32(40, 45, 65, 150);
-            dl->AddRectFilled(pos, {pos.x + SW, pos.y + SH}, bg, 4.0f);
-            dl->AddRect(pos, {pos.x + SW, pos.y + SH}, brd, 4.0f, 0, selected ? 2.5f : 1.5f);
-
-            if (hasUnit) {
-                const UnitStack& s = army[i];
-                const UnitDef* ud = getUd(s.defId);
-                ImTextureID tex = getUnitTex(ud);
-
-                float sprW2 = SW - 4.0f, sprH2 = SH - 20.0f;
-                float sprX = pos.x + 2.0f, sprY = pos.y + 2.0f;
-                if (tex) {
-                    dl->AddImage(tex, {sprX, sprY}, {sprX + sprW2, sprY + sprH2},
-                                 {0.0f, 0.0f}, {0.125f, 1.0f}); // frame 0 of 8
-                } else {
-                    dl->AddRectFilled({sprX, sprY}, {sprX + sprW2, sprY + sprH2},
-                                      IM_COL32(28, 32, 48, 200), 3.0f);
-                    if (ud) {
-                        char t2[4]; std::snprintf(t2, sizeof(t2), "T%d", ud->tier);
-                        dl->AddText({sprX + sprW2 * 0.5f - 8, sprY + sprH2 * 0.5f - 7},
-                                    IM_COL32(140, 150, 180, 200), t2);
-                    }
-                }
-                // Count badge
-                char cnt[12]; std::snprintf(cnt, sizeof(cnt), "x%d", s.count);
-                ImVec2 sz = ImGui::CalcTextSize(cnt);
-                float cx = pos.x + (SW - sz.x) * 0.5f;
-                float cy = pos.y + SH - 16.0f;
-                dl->AddText({cx + 1, cy + 1}, IM_COL32(0, 0, 0, 200), cnt);
-                dl->AddText({cx, cy},          IM_COL32(225, 225, 255, 255), cnt);
-            } else {
-                dl->AddText({pos.x + SW * 0.5f - 4, pos.y + SH * 0.5f - 7},
-                            IM_COL32(45, 50, 72, 160), "--");
-            }
-
-            // Invisible button for click + hover
-            char bid[24]; std::snprintf(bid, sizeof(bid), "##gs%d_%d", side, i);
-            ImGui::InvisibleButton(bid, {SW, SH});
-
-            if (ImGui::IsItemHovered() && hasUnit) {
-                const UnitDef* ud = getUd(army[i].defId);
-                if (ud) {
-                    ImGui::BeginTooltip();
-                    ImGui::Text("%s  x%d", ud->name.c_str(), army[i].count);
-                    ImGui::TextDisabled("ATK %d  DEF %d  HP %d  SPD %d",
-                                       ud->attack, ud->defense, ud->hp, ud->speed);
-                    if (ud->range > 0) ImGui::TextDisabled("Ranged (shots %d)", ud->shots);
-                    if (ud->flying)    ImGui::TextDisabled("Flying");
-                    if (ud->vampiric)  ImGui::TextDisabled("Vampiric");
-                    ImGui::EndTooltip();
-                }
-            }
-
-            if (ImGui::IsItemClicked()) {
-                if (m_garrisonSelSide >= 0) {
-                    // Transfer unless clicking own selected slot (deselect)
-                    if (m_garrisonSelSide == side && m_garrisonSelSlot == i) {
-                        m_garrisonSelSide = -1; m_garrisonSelSlot = -1;
-                    } else {
-                        // Perform transfer
-                        auto& fromArmy = (m_garrisonSelSide == 0 && hero) ? hero->army : town->garrison;
-                        auto& toArmy   = (side == 0 && hero)              ? hero->army : town->garrison;
-                        if (m_garrisonSelSlot < (int)fromArmy.size()) {
-                            if (i >= 7) { m_garrisonSelSide = -1; m_garrisonSelSlot = -1; return; }
-                            while ((int)toArmy.size() <= i) toArmy.push_back({0, 0});
-                            UnitStack& from = fromArmy[m_garrisonSelSlot];
-                            UnitStack& to   = toArmy[i];
-                            if (to.count == 0) {
-                                to = from; from = {0, 0};
-                            } else if (to.defId == from.defId) {
-                                to.count += from.count; from = {0, 0};
-                            } else {
-                                std::swap(from, to);
-                            }
-                            // Trim trailing empty slots
-                            while (fromArmy.size() > 1 && fromArmy.back().count == 0)
-                                fromArmy.pop_back();
-                            while (toArmy.size() > 1 && toArmy.back().count == 0)
-                                toArmy.pop_back();
-                        }
-                        m_garrisonSelSide = -1; m_garrisonSelSlot = -1;
-                    }
-                } else if (hasUnit) {
-                    m_garrisonSelSide = side;
-                    m_garrisonSelSlot = i;
-                }
-            }
-        }
-        (void)rowStartX; (void)rowStartY;
-        ImGui::Spacing();
-    };
+    static std::vector<UnitStack> s_empty;
 
     // ── Hero army row ─────────────────────────────────────────────────────────
     if (hero) {
         ImGui::TextColored({1.0f, 0.82f, 0.2f, 1.0f}, "Hero: %s", hero->name.c_str());
-        drawRow(0, hero->army);
+        drawUnitSlotRow(0, hero->army, m_garrisonSelSide, m_garrisonSelSlot, m_garrisonSplitMode);
     } else {
         ImGui::TextDisabled("No hero in town");
-        static std::vector<UnitStack> empty;
-        drawRow(0, empty);
+        drawUnitSlotRow(0, s_empty, m_garrisonSelSide, m_garrisonSelSlot, m_garrisonSplitMode);
     }
 
     ImGui::Separator();
 
     // ── Town garrison row ─────────────────────────────────────────────────────
     ImGui::TextColored({0.65f, 0.75f, 0.95f, 1.0f}, "Garrison: %s", town->name.c_str());
-    drawRow(1, town->garrison);
+    drawUnitSlotRow(1, town->garrison, m_garrisonSelSide, m_garrisonSelSlot, m_garrisonSplitMode);
+
+    // Resolve the actual transfer now that both rows are drawn and we know
+    // which real array each side maps to (drawUnitSlotRow only tracks clicks).
+    if (m_slotTransferTargetSide >= 0 && m_garrisonSelSide >= 0) {
+        auto& srcArmy = (m_garrisonSelSide == 0 && hero) ? hero->army : town->garrison;
+        auto& dstArmy = (m_slotTransferTargetSide == 0 && hero) ? hero->army : town->garrison;
+        // A hero can't be left with zero units — a garrison sitting empty is a
+        // normal (if risky) state, but a hero with no army stops being a hero.
+        // Only guard hero->garrison moves; a split always leaves half behind,
+        // and garrison->hero / hero-internal reordering never empties the hero.
+        int nonEmpty = 0;
+        for (const auto& s : srcArmy) if (s.count > 0) ++nonEmpty;
+        bool wouldEmptyHero = hero && (&srcArmy == &hero->army) && !m_garrisonSplitMode && nonEmpty <= 1;
+        if (wouldEmptyHero) {
+            m_slotTransferTargetSide = -1; m_slotTransferTargetSlot = -1;
+            m_garrisonSelSide = -1; m_garrisonSelSlot = -1; m_garrisonSplitMode = false;
+        } else {
+            resolveSlotTransfer(srcArmy, dstArmy, m_garrisonSelSlot, m_garrisonSplitMode);
+            m_garrisonSelSide = -1;
+        }
+    }
 
     ImGui::Separator();
-    ImGui::TextDisabled("Click unit to select  |  Click target slot to move / merge / swap");
+    ImGui::TextDisabled("Click unit to select  |  Click target to move/merge/swap  |  Ctrl+click to split");
 
     ImGui::End();
 }
@@ -801,7 +857,7 @@ void Game::renderTavern()
             currentResources().add(ResourceType::Gold, -HIRE_COST);
             cand.id  = 200u + static_cast<uint32_t>(m_heroes.size());
             spawnHero(cand);
-            gLog("Hired hero: %s (%s)\n", cand.name.c_str(), cls ? cls->name : "?");
+            gLog("Hired hero: %s (%s)\n", cand.name.c_str(), cls ? cls->name.c_str() : "?");
         }
         if (!canAfford) ImGui::EndDisabled();
         ImGui::PopID();
@@ -1306,6 +1362,8 @@ void Game::enterTown(Town* town)
             ? (ImTextureID)(uintptr_t)m_portraitTex[fid].id() : nullptr);
         m_townScreen.setBuildingIconTex(m_buildingIconTex.ok()
             ? (ImTextureID)(uintptr_t)m_buildingIconTex.id() : nullptr);
+        m_townScreen.setResIconTex(m_iconTex.ok()
+            ? (ImTextureID)(uintptr_t)m_iconTex.id() : nullptr);
         // Per-faction single-tier buildings
         auto setFA = [&](int bid, const Texture* tex) {
             m_townScreen.setBuildingArt(bid,

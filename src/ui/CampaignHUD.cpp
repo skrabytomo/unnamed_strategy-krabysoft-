@@ -219,6 +219,10 @@ void CampaignHUD::drawDecisionModal(CampaignManager& mgr, LuaEngine& lua)
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.45f,0.1f,0.1f,0.9f));
             else if (hasGoodOrder && hasGoodLight)
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f,0.35f,0.45f,0.9f));
+            else if (hasBadOrder || hasBadLight)
+                // Mixed outcome (one stat up, the other down) — amber warning
+                // instead of reading identical to a plain neutral choice.
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.45f,0.32f,0.08f,0.9f));
             else
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f,0.2f,0.3f,0.9f));
 

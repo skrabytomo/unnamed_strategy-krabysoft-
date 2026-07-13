@@ -39,6 +39,18 @@ struct Hero
     FactionId   faction  = FactionId::None;
     int         classId  = 0;    // HeroClassDef id
 
+    // Which player slot (1-based, matches Town::ownerId) this hero belongs to.
+    // Only meaningfully set for AI heroes (m_enemyHeroes) — each AI player slot
+    // gets its own economy/strategy now instead of every bot sharing one pool.
+    // 0 = unset (human heroes don't need this; m_heroes is swapped per active
+    // player in hot-seat instead).
+    uint32_t    ownerId  = 0;
+
+    // Set when this hero loses an off-screen AI-vs-AI field battle; it is
+    // pruned from m_enemyHeroes at the top of the next doEndTurn() call.
+    // Never persisted (an eliminated hero is erased, not saved).
+    bool        eliminated = false;
+
     HexCoord    pos      = {0, 0};
     int         movePool = 0;
     int         maxMove  = 16;   // reduced from 20: a hero can no longer cross

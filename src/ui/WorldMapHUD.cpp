@@ -1,6 +1,7 @@
 #include "WorldMapHUD.h"
 #include <string>
 #include <sstream>
+#include <algorithm>
 
 bool WorldMapHUD::init(int screenW, int screenH)
 {
@@ -282,7 +283,10 @@ void WorldMapHUD::drawTownPanel(UIRenderer& rdr, const std::vector<Town>& towns)
     m_townCount = static_cast<int>(playerTowns.size());
     if (m_townCount == 0) return;
 
-    float rowH = 28.0f;
+    // Icon/row sized to match the hero panel above so both lists read as one
+    // consistent family of portraits instead of towns looking like an afterthought.
+    const float portSz = 52.0f;
+    const float rowH = portSz + 8.0f;
     // Position town panel just below the hero panel
     m_townPanel.bounds.y = m_heroPanel.bounds.y + m_heroPanel.bounds.h + 4.0f;
     float panelH = 26.0f + m_townCount * (rowH + 4.0f);
@@ -294,7 +298,6 @@ void WorldMapHUD::drawTownPanel(UIRenderer& rdr, const std::vector<Town>& towns)
     float w = m_townPanel.bounds.w - 8.0f;
 
     auto* dl = ImGui::GetBackgroundDrawList();
-    const float icoSz = 20.0f;
     for (int i = 0; i < m_townCount; ++i) {
         const Town* t = playerTowns[i];
         Rect btn{x, y, w, rowH};
@@ -302,22 +305,43 @@ void WorldMapHUD::drawTownPanel(UIRenderer& rdr, const std::vector<Town>& towns)
             UIColor::hex(UITheme::BG_PANEL_DARK),
             UIColor::hex(UITheme::GOLD), 1.0f);
 
-        float iy = y + (rowH - icoSz) * 0.5f;
-        if (m_iconTex) {
-            ImVec2 uv0 = { 2.0f / 8.0f, 0.0f / 6.0f };
-            ImVec2 uv1 = { 3.0f / 8.0f, 1.0f / 6.0f };
-            dl->AddImage(m_iconTex, {x + 2.0f, iy}, {x + 2.0f + icoSz, iy + icoSz}, uv0, uv1);
+        float portX = x + 2.0f;
+        float portY = y + 4.0f;
+        int fid = static_cast<int>(t->faction);
+        ImTextureID townTex = (fid >= 0 && fid < 9) ? m_townArtTex[fid] : nullptr;
+        if (townTex) {
+            dl->AddImage(townTex, {portX, portY}, {portX + portSz, portY + portSz});
+            dl->AddRect({portX, portY}, {portX + portSz, portY + portSz},
+                        IM_COL32(180, 150, 80, 200), 2.0f);
         } else {
-            dl->AddRectFilled({x + 3.0f, iy + 3.0f}, {x + 3.0f + 14.0f, iy + 14.0f},
-                              IM_COL32(120, 180, 255, 200), 2.0f);
+            rdr.drawRect({portX, portY, portSz, portSz},
+                         UIColor::hex(0x223344), UIColor::hex(UITheme::BORDER), 1.0f);
         }
 
-        // Town name + building count
-        char townLine[80];
-        std::snprintf(townLine, sizeof(townLine), "%s (%d bldgs)",
-                      t->name.c_str(), static_cast<int>(t->builtBuildings.size()));
-        rdr.drawText(townLine, x + icoSz + 6.0f, y + 6.0f,
-                     UIColor::hex(UITheme::TEXT_PRIMARY), 10.0f);
+        float tx = portX + portSz + 4.0f;
+        float tw = btn.x + btn.w - tx - 2.0f;
+
+        rdr.drawText(t->name, tx, y + 2.0f, UIColor::hex(UITheme::TEXT_PRIMARY), 11.0f);
+
+        int built = static_cast<int>(t->builtBuildings.size());
+        int maxB  = (fid >= 0 && fid < 9) ? m_maxBuildings[fid] : 0;
+        char cntStr[24];
+        std::snprintf(cntStr, sizeof(cntStr), "%d/%d built", built, maxB > 0 ? maxB : built);
+        rdr.drawText(cntStr, tx, y + 14.0f, UIColor::hex(0xFFCC88), 9.5f);
+
+        // Build-progress bar — the "is this town developed" visual the map icon lacks
+        float buildFrac = maxB > 0 ? std::min(1.0f, static_cast<float>(built) / maxB) : 0.0f;
+        Rect buildBar{tx, y + 27.0f, tw, 6.0f};
+        rdr.drawBar(buildBar, buildFrac,
+                    UIColor::hex(UITheme::GOLD),
+                    UIColor::hex(UITheme::BG_DARK),
+                    UIColor::hex(UITheme::BORDER));
+
+        // Fort status
+        const char* fortStr = t->fortHP > 0 ? "Fort up" : "No fort";
+        rdr.drawText(fortStr, tx, y + 38.0f,
+                     t->fortHP > 0 ? UIColor::hex(0x88CC88) : UIColor::hex(0x996666), 9.5f);
+
         y += rowH + 4.0f;
     }
 }

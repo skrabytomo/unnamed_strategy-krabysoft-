@@ -53,9 +53,22 @@ public:
     Game() = default;
     ~Game() = default;
 
-    bool init(const std::string& title, int width, int height);
+    // hidden=true creates the SDL window with SDL_WINDOW_HIDDEN instead of
+    // maximized — used by the --watch-ai-test CLI path so a background dev
+    // smoke test never appears on screen or steals focus from anything else
+    // running.
+    bool init(const std::string& title, int width, int height, bool hidden = false);
     void run();
     void shutdown();
+
+    // Dev/test hook: skip the menu entirely and drop straight into a
+    // Watch-AI game with the given player count/map shape/size so AI-vs-AI
+    // behaviour can be verified from the gLog output alone (no UI
+    // interaction needed). Slots 0 and 1 are put on the same team so
+    // alliance behaviour gets exercised too. shape: 0=Hexagon, 1=JebusCross,
+    // 2=JebusCross3, 3=Ring. size: 0=Small..3=XLarge — see --watch-ai-test
+    // in main.cpp.
+    void autoStartWatchAI(int playerCount = 6, int shape = 0, int size = 0);
 
 private:
     // ── Core loop ──────────────────────────────────────────────────────────────
@@ -244,10 +257,19 @@ private:
 
     // ── Economy / turn ────────────────────────────────────────────────────────
     Resources    m_playerResources;
-    // Shared AI-team pool: the AI plays the same economy as the player (earns
-    // income from its towns/mines, pays for units/buildings/heroes). Its only
-    // allowed advantage is information (no fog of war).
-    Resources    m_enemyResources;
+    // Per-AI-player economy: index i = ownerId (m_numHumanPlayers + 1 + i).
+    // Each bot earns income from and pays for its own towns/mines/units/heroes
+    // independently now — previously every AI player pooled into one shared
+    // "AI team" fund, which is also why they never fought each other (nothing
+    // about a shared pool respects individual ownership). AI's only allowed
+    // advantage over a human is information (no fog of war).
+    std::vector<Resources> m_aiResources;
+    Resources& aiResources(uint32_t ownerId) {
+        static Resources dummy;
+        int idx = static_cast<int>(ownerId) - m_numHumanPlayers - 1;
+        if (idx < 0 || idx >= (int)m_aiResources.size()) { dummy = Resources{}; return dummy; }
+        return m_aiResources[idx];
+    }
     TurnManager  m_turns;
 
     // AI-owned ids: towns/mines store enemy HERO ids, which are always above
@@ -517,7 +539,27 @@ private:
     bool        m_showGarrisonPanel   = false;
     int         m_garrisonSelSlot     = -1;
     int         m_garrisonSelSide     = -1;   // 0=hero army, 1=town garrison
+    bool        m_garrisonSplitMode   = false; // true if selection was ctrl+clicked (split-in-half on drop)
     void renderGarrisonPanel();
+
+    // Shared 7-slot unit-stack row UI (icon + count, click-to-select then
+    // click-target to move/merge/swap, ctrl+click to split in half) — used by
+    // both the garrison panel and the hero<->hero unit exchange so they read
+    // and behave identically. Only draws + tracks selection; it cannot perform
+    // the transfer itself since it only sees one army at a time. When the user
+    // clicks a target slot, it stores the click in m_slotTransferTarget* and
+    // leaves (selSide,selSlot) as the source — the caller resolves both arrays
+    // and calls resolveSlotTransfer() once after drawing every row for the frame.
+    int  m_slotTransferTargetSide = -1;
+    int  m_slotTransferTargetSlot = -1;
+    void drawUnitSlotRow(int side, std::vector<UnitStack>& army,
+                          int& selSide, int& selSlot, bool& splitMode);
+    // Call once after all rows for a screen are drawn. srcArmy/dstArmy are
+    // resolved by the caller from (selSide) and (m_slotTransferTargetSide).
+    // Performs move/merge/swap (or split-in-half if splitMode was set) and
+    // clears the shared selection/target state.
+    void resolveSlotTransfer(std::vector<UnitStack>& srcArmy, std::vector<UnitStack>& dstArmy,
+                              int& selSlot, bool& splitMode);
 
     std::unordered_set<int> m_mageGuildT4BonusGiven;  // hero IDs that already got the T4 mana bonus this game
 
@@ -566,10 +608,15 @@ private:
     std::string m_lostTownName;
 
     // ── Unit exchange between player heroes ────────────────────────────────────
+    // Same slot-grid / click-select-then-click-target model as the garrison
+    // panel (0=hero A, 1=hero B), including ctrl+click-to-split.
     bool        m_showUnitExchange  = false;
     int         m_exchangeHeroIdx   = -1;   // index of the OTHER hero (in m_heroes)
-    int         m_exchangeSelSlotA  = -1;   // selected slot in hero A's army
-    int         m_exchangeSelSlotB  = -1;   // selected slot in hero B's army
+    int         m_exchangeSelSide   = -1;   // 0=hero A, 1=hero B
+    int         m_exchangeSelSlot   = -1;
+    bool        m_exchangeSplitMode = false;
+    int         m_exchangeSelArtifactSide = -1; // artifact trade: 0=hero A inventory, 1=hero B
+    int         m_exchangeSelArtifactIdx  = -1;
 
     // ── World object interactions ─────────────────────────────────────────────
     uint32_t m_pendingObjId          = 0;
@@ -707,6 +754,7 @@ private:
     // ── Main menu sub-state ───────────────────────────────────────────────────
     int  m_menuMode            = 0;   // 0=main, 1=newgame, 2=loadgame, 3=settings, 4=campaign, 5=battlesim
     int  m_newGameMapSize    = 0;   // 0=Small, 1=Medium, 2=Large, 3=XLarge
+    int  m_newGameMapShape   = 0;   // 0=Hexagon, 1=JebusCross, 2=JebusCross3, 3=Ring
     int  m_newGameFaction    = 0;   // 0=HolyOrder ... 8=Convergence
     int  m_newGameDifficulty = 1;   // 0=Easy, 1=Normal, 2=Hard
     int  m_newGameClassId    = 0;   // classId of chosen hero class (0=auto)
@@ -714,10 +762,28 @@ private:
     // ── HoMM-style game setup slots ───────────────────────────────────────────
     // Slot 0 is always you. Each additional slot is Human (hot-seat) or Bot,
     // with its own faction (9 = Random) and starting bonus.
-    int m_setupPlayerCount = 2;                 // total players, 2..4 (map zones)
-    int m_slotType[4]      = {0, 1, 1, 1};      // 0=Human, 1=Bot
-    int m_slotFaction[4]   = {0, 9, 9, 9};      // 0..8 faction, 9=Random
-    int m_slotBonus[4]     = {2, 2, 2, 2};      // 0=Artifact, 1=+5 faction resource, 2=+1500 gold
+    static constexpr int MAX_SETUP_SLOTS = 8;
+    int m_setupPlayerCount = 2;                             // total players, 2..8 (map zones)
+    int m_slotType[MAX_SETUP_SLOTS]    = {0, 1, 1, 1, 1, 1, 1, 1};  // 0=Human, 1=Bot
+    int m_slotFaction[MAX_SETUP_SLOTS] = {0, 9, 9, 9, 9, 9, 9, 9};  // 0..8 faction, 9=Random
+    int m_slotBonus[MAX_SETUP_SLOTS]   = {2, 2, 2, 2, 2, 2, 2, 2};  // 0=Artifact, 1=+5 faction resource, 2=+1500 gold
+    // 0 = free agent (default, everyone is their own team — current FFA
+    // behaviour). >0 = team number; slots sharing a team number are allies.
+    int m_slotTeam[MAX_SETUP_SLOTS]    = {0, 0, 0, 0, 0, 0, 0, 0};
+
+    // ── Alliances ──────────────────────────────────────────────────────────
+    // Live-game team per player slot, index = ownerId - 1 (slot s -> ownerId
+    // s+1 for both human and AI slots — matches Town::ownerId/Hero::ownerId).
+    // Populated from m_slotTeam at game start; persisted across save/load.
+    std::vector<int> m_playerTeam;
+    bool isAllied(uint32_t a, uint32_t b) const {
+        if (a == b) return true;
+        int ia = static_cast<int>(a) - 1, ib = static_cast<int>(b) - 1;
+        if (ia < 0 || ia >= (int)m_playerTeam.size() || ib < 0 || ib >= (int)m_playerTeam.size())
+            return false;
+        int ta = m_playerTeam[ia], tb = m_playerTeam[ib];
+        return ta != 0 && ta == tb; // team 0 = free agent, allied with no one
+    }
 
     // ── Hotseat multiplayer state ─────────────────────────────────────────────
     int  m_numHumanPlayers      = 1;   // 1=singleplayer, N=N-player hotseat

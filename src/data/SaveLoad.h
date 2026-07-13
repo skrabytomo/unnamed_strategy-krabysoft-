@@ -175,7 +175,19 @@ struct GameSaveData
 
     // AI team resource pool (version 5+) — the fair-economy AI's earned pool.
     // v4 saves load with all zeros; Game seeds a default on load instead.
+    // Superseded by aiResourceAmounts below (one pool per AI player instead of
+    // one shared pool) but kept so old v5-v6 saves still parse correctly.
     std::array<int, RESOURCE_COUNT> enemyResourceAmounts = {};
+
+    // Per-AI-player resource pools (version 7+), index-aligned with
+    // enemyHeroes. Empty on older saves — Game re-seeds defaults in that case
+    // rather than trying to split the old shared pool arbitrarily.
+    std::vector<std::array<int, RESOURCE_COUNT>> aiResourceAmounts;
+
+    // Per-player-slot team assignment (version 7+), index = ownerId - 1.
+    // 0 = free agent. Empty on older saves — Game treats that as "everyone
+    // free agent" (identical to pre-alliance behaviour).
+    std::vector<int> playerTeam;
 
     // Entities
     std::vector<HeroSave>        heroes;

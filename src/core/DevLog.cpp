@@ -16,8 +16,14 @@ void gLog(const char* fmt, ...) noexcept
     vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
 
-    if (!s_silent)
+    if (!s_silent) {
         fputs(buf, stdout);
+        // Redirecting stdout to a file switches libc to full buffering, so
+        // without this a tail -f (or a hung/crashed process) can look like
+        // dozens of lines never happened when they're just sitting in the
+        // unflushed buffer. Log lines are rare enough that this costs nothing.
+        fflush(stdout);
+    }
 
     // Strip trailing newline for clean ImGui display
     int len = static_cast<int>(strlen(buf));

@@ -278,10 +278,25 @@ static json buildSaveJson(const GameSaveData& data)
         for (int v : data.resourceAmounts) resArr.push_back(v);
         j["resources"] = resArr;
 
-        // AI team resource pool (v5+)
+        // AI team resource pool (v5+, superseded by per-player pools below but
+        // kept for backward-readability)
         json aiResArr = json::array();
         for (int v : data.enemyResourceAmounts) aiResArr.push_back(v);
         j["enemyResources"] = aiResArr;
+
+        // Per-AI-player resource pools (v7+)
+        json aiPlayerResArr = json::array();
+        for (auto& amounts : data.aiResourceAmounts) {
+            json one = json::array();
+            for (int v : amounts) one.push_back(v);
+            aiPlayerResArr.push_back(one);
+        }
+        j["aiPlayerResources"] = aiPlayerResArr;
+
+        // Per-player-slot team assignment (v7+)
+        json teamArr = json::array();
+        for (int t : data.playerTeam) teamArr.push_back(t);
+        j["playerTeam"] = teamArr;
 
         // Heroes
         json heroArr = json::array();
@@ -401,6 +416,26 @@ static bool parseJsonIntoSave(const json& j, GameSaveData& out)
                 if (i < RESOURCE_COUNT) out.enemyResourceAmounts[i++] = v.get<int>();
             }
         }
+
+        // Per-AI-player pools (v7+; absent in older saves — Game re-seeds
+        // defaults for every AI player in that case)
+        out.aiResourceAmounts.clear();
+        if (j.contains("aiPlayerResources")) {
+            for (auto& jOne : j.at("aiPlayerResources")) {
+                std::array<int, RESOURCE_COUNT> amounts{};
+                int i = 0;
+                for (auto& v : jOne) {
+                    if (i < RESOURCE_COUNT) amounts[i++] = v.get<int>();
+                }
+                out.aiResourceAmounts.push_back(amounts);
+            }
+        }
+
+        // Per-player-slot team assignment (v7+; absent in older saves means
+        // everyone is a free agent, identical to pre-alliance behaviour)
+        out.playerTeam.clear();
+        if (j.contains("playerTeam"))
+            for (auto& v : j.at("playerTeam")) out.playerTeam.push_back(v.get<int>());
 
         out.heroes.clear();
         if (j.contains("heroes"))

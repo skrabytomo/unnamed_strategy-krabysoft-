@@ -1,6 +1,8 @@
 #include "../core/DevLog.h"
 #include "HexMapRenderer.h"
 #include <cmath>
+#include <cstdint>
+#include <algorithm>
 #include <stdio.h>
 #include <string.h>
 
@@ -288,7 +290,31 @@ void HexMapRenderer::render(const HexMap& map, const Camera2D& camera,
     m_shader.setFloat("uTime", m_time);
     glBindVertexArray(m_vao);
 
-    for (auto& coord : map.coords()) {
+    // Cull to the tiles actually on screen instead of walking every tile on
+    // the map — at 150k+ tiles (XLarge) iterating map.coords() unconditionally
+    // meant issuing that many draw calls every frame regardless of zoom, which
+    // is why large maps got dramatically slower once the map-density pass made
+    // tile counts ~10x bigger. A screen-space AABB maps to a parallelogram in
+    // axial hex space (wy depends on both q and r), so take the q/r min/max
+    // across all 4 screen corners and pad by a couple hexes for safety.
+    int qMin = INT32_MAX, qMax = INT32_MIN, rMin = INT32_MAX, rMax = INT32_MIN;
+    {
+        float cornersX[4] = {0.0f, (float)camera.width(), 0.0f, (float)camera.width()};
+        float cornersY[4] = {0.0f, 0.0f, (float)camera.height(), (float)camera.height()};
+        for (int i = 0; i < 4; ++i) {
+            float wx, wy;
+            camera.screenToWorld(cornersX[i], cornersY[i], wx, wy);
+            HexCoord hc = m_grid.worldToHex(wx, wy);
+            qMin = std::min(qMin, hc.q); qMax = std::max(qMax, hc.q);
+            rMin = std::min(rMin, hc.r); rMax = std::max(rMax, hc.r);
+        }
+        const int pad = 2;
+        qMin -= pad; qMax += pad; rMin -= pad; rMax += pad;
+    }
+
+    for (int hq = qMin; hq <= qMax; ++hq)
+    for (int hr = rMin; hr <= rMax; ++hr) {
+        HexCoord coord{hq, hr};
         const HexTile* tile = map.getTile(coord);
         if (!tile) continue;
         bool isWater = (tile->terrain == Terrain::Water);

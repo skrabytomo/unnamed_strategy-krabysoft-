@@ -98,6 +98,7 @@ static std::vector<CombatUnit> makeMineGuardUnits(const ResourceNode& r, int wee
 static std::vector<CombatUnit> makeHeroUnits(const Hero& hero,
     const std::vector<UnitDef>& defs, bool isPlayer)
 {
+    if (hero.eliminated) return {};
     if (hero.army.empty())
         return makeFactionUnits(hero.faction, isPlayer, hero.level);
 
@@ -139,6 +140,7 @@ static std::vector<CombatUnit> makeHeroUnits(const Hero& hero,
 // Estimated combat strength: sum(count * hp * attack) per stack
 static int heroStrength(const Hero& hero, const std::vector<UnitDef>& defs)
 {
+    if (hero.eliminated) return 0;
     if (hero.army.empty()) {
         auto units = makeFactionUnits(hero.faction, true, hero.level);
         int s = 0;
@@ -821,6 +823,7 @@ void Game::updateWorldMap(float dt)
         }
         if (m_showCombatResult)        m_showCombatResult        = false;
         if (m_showTownLostPopup)       m_showTownLostPopup       = false;
+        if (m_showCapturePopup)        m_showCapturePopup        = false;
         if (m_showWeekSummary)         m_showWeekSummary         = false;
         if (m_showEncounterPrompt) {
             // Auto-accept encounters (fight neutral stacks)
@@ -1309,6 +1312,19 @@ void Game::aiEquipOrStashArtifact(Hero& hero, int artifactId)
 
 void Game::doEndTurn()
 {
+    // Prune any AI heroes eliminated by an AI-vs-AI field battle since the
+    // last call — done first, before any early-return path below, so an
+    // elimination never lingers with a stale `heroId` left on the map.
+    for (auto it = m_enemyHeroes.begin(); it != m_enemyHeroes.end(); ) {
+        if (it->eliminated) {
+            uint32_t deadId = it->id;
+            m_map.forEach([&](HexTile& ht){ if (ht.heroId == deadId) ht.heroId = 0; });
+            it = m_enemyHeroes.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
     // ── Hotseat: non-last player ends turn → switch to next player ───────────────
     if (m_numHumanPlayers >= 2 && m_currentPlayerIdx < m_numHumanPlayers - 1) {
         int nextIdx = m_currentPlayerIdx + 1;
@@ -1550,17 +1566,20 @@ void Game::doEndTurn()
             ResourceType denialRes = (plFidx >= 0 && plFidx < 9)
                                    ? kFactionResource[plFidx] : ResourceType::Gold;
 
-            // Resource blocking the AI team's own build queue — its mines get
-            // top priority (same 180 weighting the watch hero uses).
-            ResourceType aiNeededRes = static_cast<ResourceType>(RESOURCE_COUNT);
+            // Resource blocking each AI player's own build queue — its mines
+            // get top priority (same 180 weighting the watch hero uses).
+            // Per-owner now: each AI player has its own economy/build queue,
+            // not one shared "team" queue.
+            std::unordered_map<uint32_t, ResourceType> aiNeededResByOwner;
             {
                 const auto& allDefs = m_registry.buildings();
                 for (const auto& t : m_towns) {
                     if (!isAiOwner(t.ownerId)) continue;
+                    if (aiNeededResByOwner.count(t.ownerId)) continue;
                     int tfi = static_cast<int>(t.faction);
                     if (tfi < 0 || tfi >= 9) continue;
-                    aiNeededRes = aiBlockingResource(t, kBuildOrder[tfi], allDefs, m_enemyResources);
-                    if (static_cast<int>(aiNeededRes) < RESOURCE_COUNT) break;
+                    ResourceType need = aiBlockingResource(t, kBuildOrder[tfi], allDefs, aiResources(t.ownerId));
+                    if (static_cast<int>(need) < RESOURCE_COUNT) aiNeededResByOwner[t.ownerId] = need;
                 }
             }
 
@@ -1574,20 +1593,28 @@ void Game::doEndTurn()
             int aggrPct    = kAggrPct[diffIdx];
             int retreatPct = kRetreatPct[diffIdx];
 
-            // ── Gather ALL human-controlled heroes (not just the active one) so
-            //    the AI hunts whichever human hero is nearest, across all players. ─
-            struct HumanHero { HexCoord pos; int str; };
-            std::vector<HumanHero> humanHeroes;
+            // ── Gather every hero on the map (human AND rival AI) so each bot
+            //    hunts/fears whichever hero is nearest, human or bot alike —
+            //    real AI-vs-AI hostility instead of only ever targeting humans. ─
+            struct RivalHero { HexCoord pos; int str; uint32_t ownerId; };
+            std::vector<RivalHero> allHeroesForTargeting;
             for (const auto& h : m_heroes)
-                humanHeroes.push_back({h.pos, heroStrength(h, unitDefs)});
+                allHeroesForTargeting.push_back(
+                    {h.pos, heroStrength(h, unitDefs), static_cast<uint32_t>(m_currentPlayerIdx + 1)});
             for (int pi = 0; pi < m_numHumanPlayers; ++pi) {
                 if (pi == m_currentPlayerIdx) continue;  // that roster is live in m_heroes
                 for (const auto& h : m_players[pi].heroes)
-                    humanHeroes.push_back({h.pos, heroStrength(h, unitDefs)});
+                    allHeroesForTargeting.push_back(
+                        {h.pos, heroStrength(h, unitDefs), static_cast<uint32_t>(pi + 1)});
             }
-            auto nearestHuman = [&](HexCoord from, int& outStr) -> const HumanHero* {
-                const HumanHero* best = nullptr; int bestD = INT32_MAX;
-                for (const auto& hh : humanHeroes) {
+            for (const auto& h : m_enemyHeroes)
+                allHeroesForTargeting.push_back({h.pos, heroStrength(h, unitDefs), h.ownerId});
+            // Nearest RIVAL (any owner other than selfOwnerId or an ally) —
+            // human or bot.
+            auto nearestRival = [&](HexCoord from, uint32_t selfOwnerId, int& outStr) -> const RivalHero* {
+                const RivalHero* best = nullptr; int bestD = INT32_MAX;
+                for (const auto& hh : allHeroesForTargeting) {
+                    if (isAllied(hh.ownerId, selfOwnerId)) continue;
                     int d = HexGrid::distance(from, hh.pos);
                     if (d < bestD) { bestD = d; best = &hh; }
                 }
@@ -1607,24 +1634,31 @@ void Game::doEndTurn()
             std::vector<int> heroRank(m_enemyHeroes.size(), 0);  // 0=raider,1=economic,2+=defender
             for (size_t r = 0; r < byStrength.size(); ++r) heroRank[byStrength[r]] = (int)r;
 
+            // AI-vs-AI field battles are resolved off-screen inline below by
+            // setting `eliminated` on the loser rather than erasing from
+            // m_enemyHeroes mid-loop (which would silently corrupt the
+            // `eHero` reference for whichever index shifts into its slot).
+            // Actual removal happens at the top of the NEXT doEndTurn() call.
             for (int ehi = 0; ehi < static_cast<int>(m_enemyHeroes.size()); ++ehi) {
                 // NOTE: combat no longer aborts the roster — once one hero enters
                 // combat, the rest still take their turn; they just can't start a
                 // second fight (the player-tile is blocked and untargeted below).
                 auto& eHero = m_enemyHeroes[ehi];
+                if (eHero.eliminated) continue; // lost a field battle earlier this pass
 
                 // ── Strength-based role (see byStrength above) ────────────────────
                 bool isRaider   = (heroRank[ehi] == 0);
                 bool isDefender = (heroRank[ehi] >= 2);
 
-                // Recruit from any AI-team town within 1 tile — paid from the
-                // team pool at real unit costs, plus pick up the garrison
-                // (which weekly recruitment fills).
+                // Recruit from one of THIS player's own towns within 1 tile —
+                // paid from its own pool at real unit costs, plus pick up the
+                // garrison (which weekly recruitment fills). Was "any AI
+                // town" — a rival AI player's town, not just a teammate's.
                 for (auto& t : m_towns) {
-                    if (!isAiOwner(t.ownerId)) continue;
+                    if (t.ownerId != eHero.ownerId) continue;
                     if (HexGrid::distance(eHero.pos, t.pos) > 1) continue;
                     takeGarrison(t, eHero);
-                    aiPaidRecruit(t, eHero.army, m_enemyResources, unitDefs);
+                    aiPaidRecruit(t, eHero.army, aiResources(eHero.ownerId), unitDefs);
                     // Field-upgrade base-tier stacks to whichever upgrade path the
                     // town has built (previously only the watch-mode player did this,
                     // so enemy armies stayed base-tier forever).
@@ -1646,11 +1680,11 @@ void Game::doEndTurn()
 
                 int eiStr = heroStrength(eHero, unitDefs);
 
-                // Strength gauge vs the NEAREST human hero to this AI hero (was
-                // always the single active player hero — in hot-seat that ignored
-                // closer opponents entirely).
+                // Strength gauge vs the NEAREST rival hero to this AI hero —
+                // human or bot alike (was always the single active player
+                // hero, so hot-seat/rival-AI opponents nearer by were ignored).
                 int nearHumanStr = plStr;
-                const HumanHero* target = nearestHuman(eHero.pos, nearHumanStr);
+                const RivalHero* target = nearestRival(eHero.pos, eHero.ownerId, nearHumanStr);
                 HexCoord targetPos = target ? target->pos : playerHero.pos;
                 if (nearHumanStr <= 0) nearHumanStr = plStr;
 
@@ -1686,7 +1720,7 @@ void Game::doEndTurn()
                 // Pinned by siege camp: enemy hero can't leave their besieged town
                 bool pinnedBySiege = false;
                 for (const auto& t : m_towns) {
-                    if (t.ownerId != eHero.id || !t.underSiege) continue;
+                    if (t.ownerId != eHero.ownerId || !t.underSiege) continue;
                     if (HexGrid::distance(eHero.pos, t.pos) <= 1) { pinnedBySiege = true; break; }
                 }
                 if (pinnedBySiege) { eHero.movePool = 0; }
@@ -1710,7 +1744,7 @@ void Game::doEndTurn()
 
                     if (veryWeak) {
                         for (const auto& t : m_towns)
-                            if (t.ownerId == eHero.id) add(t.pos, 500.f);
+                            if (t.ownerId == eHero.ownerId) add(t.pos, 500.f);
                         // A weak hero that's already home has no retreat target left
                         // (add() rejects a candidate equal to its own position), so
                         // it would otherwise freeze in place indefinitely every turn
@@ -1718,27 +1752,30 @@ void Game::doEndTurn()
                         // nearby (within 4 hexes) unclaimed resources so it keeps
                         // doing something productive instead of statue-standing.
                         for (const auto& r : m_resources) {
-                            if (isAiOwner(r.ownedBy)) continue;   // skip any team mine
+                            if (isAllied(r.ownedBy, eHero.ownerId)) continue;   // skip own/ally mine
                             if (HexGrid::distance(eHero.pos, r.pos) <= 6) add(r.pos, 40.f);
                         }
                     } else if (isDefender) {
                         for (const auto& r : m_resources)
-                            if (!isAiOwner(r.ownedBy)) add(r.pos, 100.f);
+                            if (!isAllied(r.ownedBy, eHero.ownerId)) add(r.pos, 100.f);
                         for (const auto& t : m_towns)
-                            if (t.ownerId == eHero.id) add(t.pos, 80.f);
-                        // Defenders actively intercept any human hero threatening an
-                        // owned town (previously defenders just wandered for resources
+                            if (t.ownerId == eHero.ownerId) add(t.pos, 80.f);
+                        // Defenders actively intercept any RIVAL hero (human or
+                        // bot — allies excluded) threatening an owned town
+                        // (previously defenders just wandered for resources
                         // and never protected anything).
                         for (const auto& t : m_towns) {
-                            if (t.ownerId != eHero.id) continue;
-                            for (const auto& hh : humanHeroes)
+                            if (t.ownerId != eHero.ownerId) continue;
+                            for (const auto& hh : allHeroesForTargeting) {
+                                if (isAllied(hh.ownerId, eHero.ownerId)) continue;
                                 if (HexGrid::distance(hh.pos, t.pos) <= 6)
                                     add(hh.pos, 250.f * ghostMult);
+                            }
                         }
                     } else {
                         // Own town to recruit
                         for (const auto& t : m_towns) {
-                            if (t.ownerId != eHero.id) continue;
+                            if (t.ownerId != eHero.ownerId) continue;
                             bool hasU = false;
                             for (const auto& dw : t.dwellings) if (dw.available > 0) { hasU = true; break; }
                             if (hasU && (int)eHero.army.size() < 7) add(t.pos, 250.f);
@@ -1756,19 +1793,22 @@ void Game::doEndTurn()
                             int eFidx = static_cast<int>(eHero.faction);
                             ResourceType enemyKeyRes = (eFidx >= 0 && eFidx < 9)
                                                      ? kFactionResource[eFidx] : ResourceType::Gold;
+                            auto neededIt = aiNeededResByOwner.find(eHero.ownerId);
+                            ResourceType myNeededRes = (neededIt != aiNeededResByOwner.end())
+                                                     ? neededIt->second : static_cast<ResourceType>(RESOURCE_COUNT);
                             for (const auto& r : m_resources) {
-                                // Skip mines the TEAM already holds — bots were
-                                // wastefully re-grabbing each other's mines
-                                // (all AI share one pool, so it's pointless).
-                                // Enemy/unclaimed mines stay valid targets.
-                                if (isAiOwner(r.ownedBy)) continue;
-                                // Unclaimed mines are always worth taking —
+                                // Skip mines THIS player or an ALLY already
+                                // holds — every non-allied AI player runs its
+                                // own economy, so a rival bot's mine is a
+                                // legitimate raid target, not team property.
+                                if (isAllied(r.ownedBy, eHero.ownerId)) continue;
+                                // Unclaimed/rival mines are always worth taking —
                                 // they're the whole income engine now.
                                 float val = 100.f;
                                 if (r.type == denialRes)    val = std::max(val, 130.f);
                                 if (r.type == enemyKeyRes)  val = std::max(val, 110.f);
                                 // Mine type blocking our own build queue wins
-                                if (r.type == aiNeededRes)  val = std::max(val, 180.f);
+                                if (r.type == myNeededRes)  val = std::max(val, 180.f);
                                 add(r.pos, val);
                             }
                         }
@@ -1845,10 +1885,12 @@ void Game::doEndTurn()
                     if (path.empty()) {
                         std::vector<HexCoord> docks;
                         for (const auto& t : m_towns)
-                            if (isAiOwner(t.ownerId) && t.hasBuilding(BID::TOWN_SHIPYARD))
+                            // Own docks only — a rival AI player's shipyard
+                            // isn't this hero's to use.
+                            if (t.ownerId == eHero.ownerId && t.hasBuilding(BID::TOWN_SHIPYARD))
                                 docks.push_back(t.pos);
                         if (!aiTryBoat(m_map, m_worldObjects, docks, eHero,
-                                       m_enemyResources, costFn, path))
+                                       aiResources(eHero.ownerId), costFn, path))
                             break;
                     }
                     if (path.empty()) break;
@@ -1867,8 +1909,48 @@ void Game::doEndTurn()
                     if (eHero.onBoat && nextTile->terrain != Terrain::Water)
                         eHero.onBoat = false;  // disembark
 
+                    // Combat with a RIVAL AI hero? Real AI-vs-AI hostility:
+                    // resolve it off-screen (no human is present to fight it
+                    // out on the battlefield) instead of silently letting two
+                    // bots' heroes phase through each other on the same tile.
+                    {
+                        bool fought = false;
+                        for (int oj = 0; oj < static_cast<int>(m_enemyHeroes.size()); ++oj) {
+                            if (oj == ehi) continue;
+                            Hero& other = m_enemyHeroes[oj];
+                            if (other.eliminated || isAllied(other.ownerId, eHero.ownerId)) continue;
+                            if (other.pos != eHero.pos) continue;
+
+                            int otherStr = heroStrength(other, unitDefs);
+                            bool eWins = eiStr >= otherStr; // ties favour the mover
+                            Hero& winner = eWins ? eHero : other;
+                            Hero& loser  = eWins ? other  : eHero;
+                            int winnerStr = eWins ? eiStr : otherStr;
+                            int loserStr  = eWins ? otherStr : eiStr;
+
+                            if (!winner.army.empty()) {
+                                int bigIdx = 0;
+                                for (int i = 1; i < (int)winner.army.size(); ++i)
+                                    if (winner.army[i].count > winner.army[bigIdx].count) bigIdx = i;
+                                // Close fights cost the winner more than a rout.
+                                int lossPct = (winnerStr > 0 && loserStr * 10 >= winnerStr * 7) ? 20 : 8;
+                                winner.army[bigIdx].count = std::max(1, winner.army[bigIdx].count
+                                                            - winner.army[bigIdx].count * lossPct / 100);
+                            }
+                            loser.army.clear();
+                            loser.eliminated = true;
+                            if (HexTile* ct = m_map.getTile(eHero.pos)) ct->heroId = winner.id;
+                            gLog("%s defeated rival %s in the field (week %d)\n",
+                                 winner.name.c_str(), loser.name.c_str(), m_turns.week());
+                            fought = true;
+                            break;
+                        }
+                        if (fought && eHero.eliminated) { eHero.movePool = 0; break; }
+                    }
+
                     // Combat with player? (only the first collision per day fights)
-                    if (eHero.pos == playerHero.pos && !combatTriggered) {
+                    if (eHero.pos == playerHero.pos && !combatTriggered
+                        && !isAllied(static_cast<uint32_t>(currentPlayerId()), eHero.ownerId)) {
                         m_lastCombatEnemyId = eHero.id;
                         auto pUnits = makeHeroUnits(playerHero, unitDefs, true);
                         auto eUnits = makeHeroUnits(eHero, unitDefs, false);
@@ -1934,12 +2016,13 @@ void Game::doEndTurn()
                         // Persistent sites are used, not consumed
                         if (isPersistentSite(obj.type)) {
                             if (obj.type == WorldObjectType::UnitDwelling) {
-                                // Capture: the AI side gains +1 weekly growth of
-                                // this tier in its matching towns, and buys out
-                                // the available pool at player rates.
-                                obj.linkedId = eHero.id;
+                                // Capture: this AI PLAYER (not "the AI team")
+                                // gains +1 weekly growth of this tier in its
+                                // matching towns, and buys out the available
+                                // pool from its own pocket.
+                                obj.linkedId = eHero.ownerId;
                                 dwellingPaidRecruit(obj, eHero.army,
-                                                    m_enemyResources, unitDefs);
+                                                    aiResources(eHero.ownerId), unitDefs);
                             }
                             continue;
                         }
@@ -1984,6 +2067,10 @@ void Game::doEndTurn()
                             // (was `break` — bailed at the first non-matching
                             // node, so the AI claimed 0 mines in every game)
                             if (r.id != nextTile->resourceId) continue;
+                            // An ally's mine — leave ownership alone, don't
+                            // silently steal it by walking onto it.
+                            if (r.ownedBy != 0 && r.ownedBy != eHero.ownerId
+                                && isAllied(r.ownedBy, eHero.ownerId)) break;
                             if (!r.guardBeaten && r.guardId != 0) {
                                 // Guard strength scales with the week; take it if the
                                 // hero has a healthy margin, and lose some troops.
@@ -2007,7 +2094,7 @@ void Game::doEndTurn()
                             }
                             // Unguarded mines are claimable outright (guardBeaten
                             // is only meaningful when a guard exists)
-                            if (r.guardId == 0 || r.guardBeaten) r.ownedBy = eHero.id;
+                            if (r.guardId == 0 || r.guardBeaten) r.ownedBy = eHero.ownerId;
                             break;
                         }
                     }
@@ -2016,7 +2103,7 @@ void Game::doEndTurn()
                     if (nextTile->townId != 0) {
                         for (auto& t : m_towns) {
                             if (t.id != nextTile->townId) continue;
-                            if (t.ownerId == eHero.id && veryWeak && !eHero.army.empty()) {
+                            if (t.ownerId == eHero.ownerId && veryWeak && !eHero.army.empty()) {
                                 // Retreating hero deposits their smallest stack as garrison
                                 int weakIdx = 0;
                                 for (int i = 1; i < (int)eHero.army.size(); ++i)
@@ -2033,14 +2120,47 @@ void Game::doEndTurn()
                                         eHero.army.erase(eHero.army.begin() + weakIdx);
                                 }
                                 eHero.movePool = 0; // done retreating for this turn
-                            } else if (isAiOwner(t.ownerId)) {
-                                // Stepped into an AI-team town — pick up the
-                                // garrison and recruit at cost, then keep moving
+                            } else if (t.ownerId == eHero.ownerId) {
+                                // Stepped into one of its OWN towns — pick up
+                                // the garrison and recruit, keep moving.
                                 takeGarrison(t, eHero);
-                                aiPaidRecruit(t, eHero.army, m_enemyResources, unitDefs);
+                                aiPaidRecruit(t, eHero.army, aiResources(eHero.ownerId), unitDefs);
                             } else if (t.ownerId == 0) {
-                                t.ownerId = eHero.id;
+                                t.ownerId = eHero.ownerId;
                                 gLog("Enemy %s captured %s\n", eHero.name.c_str(), t.name.c_str());
+                            } else if (isAllied(t.ownerId, eHero.ownerId)) {
+                                // An ally's town (bot or human) is never a
+                                // hostile target — no siege, no reaching into
+                                // its garrison/economy. Just pass through.
+                            } else if (isAiOwner(t.ownerId)) {
+                                // A RIVAL bot's town — real AI-vs-AI hostility.
+                                // No human is present to play this out on the
+                                // battlefield, so resolve it off-screen the
+                                // same way mine-guard fights are resolved
+                                // above: compare strength, a decisive attacker
+                                // takes the town, otherwise it bounces off
+                                // with losses (mirrors the human-town "empty
+                                // garrison" stop-here behaviour below).
+                                int garrStr  = stacksStrength(t.garrison, unitDefs);
+                                int fortBonus = t.hasBuilding(BID::BASTION) ? garrStr / 2 : garrStr / 4;
+                                int defStr = garrStr + fortBonus + 100; // token wall/defender floor
+                                int bigIdx = 0;
+                                for (int i = 1; i < (int)eHero.army.size(); ++i)
+                                    if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
+                                if (eiStr * 10 >= defStr * 13) {
+                                    if (!eHero.army.empty())
+                                        eHero.army[bigIdx].count = std::max(1, eHero.army[bigIdx].count
+                                                                    - eHero.army[bigIdx].count / 10);
+                                    t.garrison.clear();
+                                    t.ownerId = eHero.ownerId;
+                                    gLog("Enemy %s stormed rival town %s (week %d)\n",
+                                         eHero.name.c_str(), t.name.c_str(), m_turns.week());
+                                } else {
+                                    if (!eHero.army.empty())
+                                        eHero.army[bigIdx].count = std::max(1, eHero.army[bigIdx].count
+                                                                    - eHero.army[bigIdx].count / 6);
+                                    eHero.movePool = 0; // assault failed, stops here
+                                }
                             } else if (t.ownerId > 0 && t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) {
                                 // Assault on a human/watched player's town: ALWAYS
                                 // fight it for real on the battlefield. There is NO
@@ -2156,12 +2276,11 @@ void Game::doEndTurn()
             for (auto& t : m_towns)
                 if (t.id == h.siegeTargetTownId) t.underSiege = true;
         }
-        // Trigger siege combat for any town that has camped heroes this turn
+        // Trigger siege combat for any town that has camped heroes this turn.
+        // (Fortify's actual bonuses are read and cleared inside
+        // triggerSiegeCombat itself, once combat is confirmed to start.)
         for (auto& t : m_towns) {
             if (!t.underSiege) continue;
-            // Reset fortify flag for next turn
-            bool fortified = t.siegeFortified;
-            t.siegeFortified = false;
             triggerSiegeCombat(t.id);
             // triggerSiegeCombat may change game state; stop processing if combat started
             if (m_state == GameState::Combat) return;
@@ -2186,20 +2305,25 @@ void Game::doEndTurn()
             // (Other human players' weekly income is applied in the
             //  lastPlayerEndedTurn block below via m_players[pi].resources.)
 
-            // AI team income: same rules as the player — towns pay their
-            // weeklyIncome, owned mines pay mineYield. This block runs exactly
-            // once per game-week (hot-seat early-outs before endTurn for all
-            // but the last player).
+            // Each AI player's income: same rules as the player — towns pay
+            // their weeklyIncome, owned mines pay mineYield, into THAT
+            // player's own pool (previously every AI town/mine fed one shared
+            // pool regardless of which bot actually owned it). This block
+            // runs exactly once per game-week (hot-seat early-outs before
+            // endTurn for all but the last player).
             {
                 int aiTowns = 0, aiMines = 0;
                 for (const auto& t : m_towns)
-                    if (isAiOwner(t.ownerId)) { m_enemyResources.addAll(t.weeklyIncome); ++aiTowns; }
+                    if (isAiOwner(t.ownerId)) { aiResources(t.ownerId).addAll(t.weeklyIncome); ++aiTowns; }
                 for (const auto& r : m_resources)
-                    if (isAiOwner(r.ownedBy)) { m_enemyResources.add(r.type, mineYield(r)); ++aiMines; }
-                gLog("AI economy: %d towns + %d mines -> pool %dg %di\n",
-                     aiTowns, aiMines,
-                     m_enemyResources.get(ResourceType::Gold),
-                     m_enemyResources.get(ResourceType::Iron));
+                    if (isAiOwner(r.ownedBy)) { aiResources(r.ownedBy).add(r.type, mineYield(r)); ++aiMines; }
+                int totalGold = 0, totalIron = 0;
+                for (const auto& res : m_aiResources) {
+                    totalGold += res.get(ResourceType::Gold);
+                    totalIron += res.get(ResourceType::Iron);
+                }
+                gLog("AI economy: %d towns + %d mines across %zu players -> %dg %di combined\n",
+                     aiTowns, aiMines, m_aiResources.size(), totalGold, totalIron);
             }
 
             // Garrison upkeep — 350 gold/week per garrisoned player hero
@@ -2233,25 +2357,15 @@ void Game::doEndTurn()
             {
                 const auto& unitDefs = m_registry.units();
 
-                // Reassign towns whose AI owner died: without this they keep
-                // the dead hero's id forever and their production is orphaned.
-                if (!m_enemyHeroes.empty()) {
-                    const Hero* strongest = &m_enemyHeroes[0];
-                    for (const auto& eh : m_enemyHeroes)
-                        if (heroStrength(eh, unitDefs) > heroStrength(*strongest, unitDefs))
-                            strongest = &eh;
-                    for (auto& t : m_towns) {
-                        if (t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) continue;
-                        bool alive = false;
-                        for (const auto& eh : m_enemyHeroes)
-                            if (eh.id == t.ownerId) { alive = true; break; }
-                        if (!alive) {
-                            gLog("AI town %s inherited by %s (owner %u died)\n",
-                                 t.name.c_str(), strongest->name.c_str(), t.ownerId);
-                            t.ownerId = strongest->id;
-                        }
-                    }
-                }
+                // NOTE: towns used to get silently reassigned here to "whoever
+                // the strongest living AI hero is" every week, because a
+                // capture-time bug stored a HERO id (not the player's ownerId)
+                // on captured towns, orphaning them the moment that specific
+                // hero died. That capture bug is fixed now (ownerId is always
+                // a stable player-slot id, exactly like a human player's towns
+                // when their hero dies) so a town no longer needs "inheriting"
+                // — it just waits for its owner's emergency-recruit to field a
+                // new hero, same as everyone else.
 
                 // Each AI town recruits into its garrison at real cost — but
                 // spends at most HALF the pool's gold on troops. Recruiting
@@ -2267,7 +2381,7 @@ void Game::doEndTurn()
                     bool watchPlayerTown = (t.ownerId == 1 && m_watchingAI);
                     bool aiTown          = isAiOwner(t.ownerId);
                     if (!watchPlayerTown && !aiTown) continue;
-                    Resources& pool = watchPlayerTown ? m_playerResources : m_enemyResources;
+                    Resources& pool = watchPlayerTown ? m_playerResources : aiResources(t.ownerId);
                     Resources budget = pool;
                     budget.set(ResourceType::Gold, pool.get(ResourceType::Gold) / 2);
                     Resources before = budget;
@@ -2290,8 +2404,9 @@ void Game::doEndTurn()
 
             // ── AI town building: faction-specific priority order ─────────────────
             // Every side builds from its REAL pool: watch-mode player towns
-            // from m_playerResources, AI towns from m_enemyResources. Human
-            // towns (any player in hot-seat) are never auto-built.
+            // from m_playerResources, each AI town from its OWN player's pool
+            // via aiResources(town.ownerId). Human towns (any player in
+            // hot-seat) are never auto-built.
             {
                 const auto& allBuildings = m_registry.buildings();
 
@@ -2304,7 +2419,7 @@ void Game::doEndTurn()
                     bool built = false;
                     int fIdx = static_cast<int>(town.faction);
                     Resources& buildRes = watchPlayerTown ? m_playerResources
-                                                          : m_enemyResources;
+                                                          : aiResources(town.ownerId);
 
                     // Market trading: find the first building we could LEGALLY
                     // build (prereqs/week satisfied) but can't pay for, and
@@ -2316,9 +2431,11 @@ void Game::doEndTurn()
                     if (fIdx >= 0 && fIdx < 9) {
                         bool hasMarket = false;
                         for (const auto& t : m_towns) {
-                            bool sameSide = watchPlayerTown ? (t.ownerId == 1)
-                                                            : isAiOwner(t.ownerId);
-                            if (sameSide && t.hasBuilding(BID::MARKET)) { hasMarket = true; break; }
+                            // Same OWNER, not just "any AI" — each AI player is
+                            // its own economy now, so a market three players
+                            // over doesn't help this town sell surplus.
+                            if (t.ownerId != town.ownerId) continue;
+                            if (t.hasBuilding(BID::MARKET)) { hasMarket = true; break; }
                         }
                         const BuildingDef* wantDef = nullptr;
                         if (hasMarket) {
@@ -2387,6 +2504,24 @@ void Game::doEndTurn()
                         }
                     }
 
+                    // Coastal towns get a Shipyard fairly promptly — it isn't
+                    // in any faction's kBuildOrder, so without this an
+                    // island-isolated AI only ever got one from the "last
+                    // resort" roll below, which dwelling/priority spam could
+                    // starve out indefinitely (a real "AI stuck on an island
+                    // forever" bug, not just a slow one).
+                    if (!built && !town.hasBuilding(BID::TOWN_SHIPYARD)) {
+                        bool coastal = false;
+                        for (const auto& nb : HexGrid::neighbors(town.pos)) {
+                            const HexTile* nt = m_map.getTile(nb);
+                            if (nt && nt->terrain == Terrain::Water) { coastal = true; break; }
+                        }
+                        if (coastal && town.build(BID::TOWN_SHIPYARD, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
+                            gLog("AI %s built Shipyard (coastal)\n", town.name.c_str());
+                            built = true;
+                        }
+                    }
+
                     // Fallback: lowest unbought base dwelling tier
                     for (int tier = 1; tier <= 6 && !built; ++tier) {
                         for (const auto& def : allBuildings) {
@@ -2422,8 +2557,7 @@ void Game::doEndTurn()
                 static const int kHeroCap[3] = { 5, 6, 8 };
                 const int AI_HERO_CAP = kHeroCap[std::clamp(m_newGameDifficulty, 0, 2)];
                 constexpr int AI_HIRE_COST = 2500;  // same as the human tavern
-                if (static_cast<int>(m_enemyHeroes.size()) < AI_HERO_CAP
-                    && m_enemyResources.get(ResourceType::Gold) >= AI_HIRE_COST) {
+                {
                     static const char* kAINames[] = {
                         "Drafted Sword","Hired Blade","Road Warden",
                         "Freelance Arm","Wandering Axe","Sellsword",
@@ -2431,6 +2565,14 @@ void Game::doEndTurn()
                     };
                     for (auto& recruitTown : m_towns) {
                         if (recruitTown.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) continue;
+                        // Cap and afford per OWNER now — each AI player fields
+                        // its own roster from its own wallet, not one shared
+                        // cap/pool across every bot on the map.
+                        int ownerHeroCount = 0;
+                        for (const auto& h : m_enemyHeroes)
+                            if (h.ownerId == recruitTown.ownerId) ++ownerHeroCount;
+                        if (ownerHeroCount >= AI_HERO_CAP) continue;
+                        if (aiResources(recruitTown.ownerId).get(ResourceType::Gold) < AI_HIRE_COST) continue;
                         bool occupied = false;
                         for (const auto& e : m_enemyHeroes)
                             if (e.pos == recruitTown.pos) { occupied = true; break; }
@@ -2443,6 +2585,7 @@ void Game::doEndTurn()
                         uint32_t nameSeed = (m_turns.week() * 7919u) ^ static_cast<uint32_t>(recruitTown.pos.q * 317u + recruitTown.pos.r);
                         Hero newHero;
                         newHero.id      = newId;
+                        newHero.ownerId = recruitTown.ownerId;
                         newHero.faction = recruitTown.faction;
                         newHero.name    = kAINames[nameSeed % 10];
                         newHero.pos     = recruitTown.pos;
@@ -2450,14 +2593,14 @@ void Game::doEndTurn()
 
                         // Tavern retinue included in the fee (same as human hires)
                         giveTavernRetinue(newHero, m_registry.buildings(), m_registry.units());
-                        m_enemyResources.add(ResourceType::Gold, -AI_HIRE_COST);
+                        aiResources(recruitTown.ownerId).add(ResourceType::Gold, -AI_HIRE_COST);
                         // Consolidate: scoop the town garrison and buy more with the
                         // AI pool — a TRUE mirror of the watched-side hire below.
                         // Without this the enemy fielded fodder heroes while its
                         // garrison + gold rotted in the town (223 mines / 185k gold
                         // and still losing), so the enemy hire must match exactly.
                         takeGarrison(recruitTown, newHero);
-                        aiPaidRecruit(recruitTown, newHero.army, m_enemyResources, m_registry.units());
+                        aiPaidRecruit(recruitTown, newHero.army, aiResources(recruitTown.ownerId), m_registry.units());
                         HexCoord spawnPos = recruitTown.pos;
                         for (auto& nb : HexGrid::neighbors(recruitTown.pos)) {
                             const HexTile* nt = m_map.getTile(nb);
@@ -2470,7 +2613,18 @@ void Game::doEndTurn()
                         m_enemyHeroes.push_back(std::move(newHero));
                         gLog("AI recruited hero at %s (week %d)\n",
                              recruitTown.name.c_str(), m_turns.week());
-                        break;
+                        // NOT a break: this used to cap the ENTIRE map to one
+                        // new hero per week total, so whichever town happened
+                        // to iterate first every week (same player, every
+                        // time) hoarded all hero replenishment forever while
+                        // every other AI player's civilization went silent
+                        // the moment its one hero died — confirmed live via
+                        // a 119-week Watch AI run where 4 of 5 AI players
+                        // never recruited or built again after week ~3. Each
+                        // owner already has its own per-owner cap/afford
+                        // check above, so letting every eligible owner hire
+                        // once per week (instead of only the map's first
+                        // eligible town) is the correct per-player behaviour.
                     }
                 }
             }
@@ -3005,13 +3159,14 @@ void Game::doEndTurn()
                     int tier = obj.value;
                     obj.available += 3 + tier;  // T1=4, T6=9 per week
                     // Captured dwelling: +1 weekly growth of this tier in the
-                    // owner side's towns of the same faction
+                    // capturing player's own towns of the same faction. Was
+                    // "any AI town" (obj.linkedId used to get set from a hero
+                    // ID, which could never equal a real ownerId, so this
+                    // fell back to treating every AI player as one side) —
+                    // linkedId is a real ownerId now, so match it directly.
                     if (obj.linkedId != 0) {
                         for (auto& t : m_towns) {
-                            bool sameSide = isAiOwner(obj.linkedId)
-                                          ? isAiOwner(t.ownerId)
-                                          : (t.ownerId == obj.linkedId);
-                            if (!sameSide) continue;
+                            if (t.ownerId != obj.linkedId) continue;
                             if (static_cast<uint8_t>(t.faction) != obj.faction) continue;
                             for (auto& dw : t.dwellings)
                                 if (dw.tier == tier) { dw.available += 1; break; }
@@ -4332,7 +4487,10 @@ void Game::checkTileEvents()
                 }
                 m_campaign.onTownCaptured(t.id, prevOwner);
             }
-            enterTown(&t);
+            // Watch AI has no one to click through the town UI — opening it
+            // here would hard-freeze the sim (m_state leaves WorldMap and
+            // the auto-dismiss-modals loop above never runs again).
+            if (!m_watchingAI) enterTown(&t);
             return;
         }
     }
@@ -4347,8 +4505,11 @@ void Game::checkTileEvents()
             if (m_heroes[i].pos == hero.pos) {
                 m_showUnitExchange    = true;
                 m_exchangeHeroIdx     = i;
-                m_exchangeSelSlotA    = -1;
-                m_exchangeSelSlotB    = -1;
+                m_exchangeSelSide     = -1;
+                m_exchangeSelSlot     = -1;
+                m_exchangeSplitMode   = false;
+                m_exchangeSelArtifactSide = -1;
+                m_exchangeSelArtifactIdx  = -1;
                 return;
             }
         }
@@ -4356,6 +4517,7 @@ void Game::checkTileEvents()
         if (m_numHumanPlayers >= 2) {
             for (int pi = 0; pi < m_numHumanPlayers; ++pi) {
                 if (pi == m_currentPlayerIdx) continue;
+                if (isAllied(static_cast<uint32_t>(pi + 1), static_cast<uint32_t>(currentPlayerId()))) continue;
                 for (auto& oh : m_players[pi].heroes) {
                     if (oh.pos != hero.pos) continue;
                     if (HexTile* et = m_map.getTile(oh.pos)) et->heroId = 0;
@@ -4374,10 +4536,13 @@ void Game::checkTileEvents()
                 }
             }
         }
-        // Enemy AI hero (by position)
+        // Enemy AI hero (by position) — skip an ally, never a hostile target
         Hero* enemyPtr = nullptr;
-        for (auto& e : m_enemyHeroes)
-            if (e.pos == hero.pos) { enemyPtr = &e; break; }
+        for (auto& e : m_enemyHeroes) {
+            if (e.pos != hero.pos) continue;
+            if (isAllied(e.ownerId, static_cast<uint32_t>(currentPlayerId()))) continue;
+            enemyPtr = &e; break;
+        }
         if (enemyPtr) {
             // Move enemy off this tile so the player can stand here after combat
             if (HexTile* et = m_map.getTile(enemyPtr->pos)) et->heroId = 0;
@@ -4416,6 +4581,12 @@ void Game::renderWorldOverlay()
         m_hexRenderer.grid().hexToWorld(h, wx, wy);
         m_camera.worldToScreen(wx, wy, sx, sy);
     };
+
+    // On-screen radius of one hex tile — several per-tile overlays below (roads,
+    // movement range) used to hardcode this as 20px, hand-tuned for the old
+    // fixed hexSize=40 at zoom=1 (40*0.5=20). Now that hexSize varies by map
+    // density, those must scale with it instead or they bleed across tiles.
+    const float hexPxR = m_hexRenderer.grid().hexSize() * m_camera.zoom() * 0.5f;
 
     // Returns true if a label at (lx, ly) of approx width lw is in a safe area,
     // i.e. not overlapping the top bar, bottom bar, or right-side panels.
@@ -4479,7 +4650,7 @@ void Game::renderWorldOverlay()
             project(rc, sx, sy);
             if (sy < HUD_TOP + 22.0f || sy > HUD_BOTTOM) continue;
             // Base dirt circle
-            dl->AddCircleFilled({sx, sy}, 18.0f, IM_COL32(160, 130, 85, 140));
+            dl->AddCircleFilled({sx, sy}, hexPxR * 0.9f, IM_COL32(160, 130, 85, 140));
             // Draw line segments to each explored road neighbor for continuity
             for (const auto& nb : HexGrid::neighbors(rc)) {
                 if (m_roadHexes.count(nb)) {
@@ -4502,8 +4673,8 @@ void Game::renderWorldOverlay()
             float sx, sy;
             project(rc, sx, sy);
             if (sy < HUD_TOP || sy > HUD_BOTTOM) continue;
-            dl->AddCircleFilled({sx, sy}, 20.0f, IM_COL32(80, 220, 100, 35));
-            dl->AddCircle({sx, sy}, 20.0f, IM_COL32(80, 220, 100, 110), 0, 1.2f);
+            dl->AddCircleFilled({sx, sy}, hexPxR, IM_COL32(80, 220, 100, 35));
+            dl->AddCircle({sx, sy}, hexPxR, IM_COL32(80, 220, 100, 110), 0, 1.2f);
         }
     }
 
@@ -4583,6 +4754,20 @@ void Game::renderWorldOverlay()
         if (labelOK(nameX, nameY, nameW * 2.0f)) {
             dl->AddText(ImGui::GetFont(), 14.f, {nameX+1, nameY+1}, IM_COL32(0,0,0,200), town.name.c_str());
             dl->AddText(ImGui::GetFont(), 14.f, {nameX,   nameY},   IM_COL32(210,230,255,255), town.name.c_str());
+        }
+
+        // ── Build-progress bar — visible at a glance whether the town is
+        // still mostly empty or fully built out, without opening it.
+        {
+            int maxB = static_cast<int>(m_registry.getBuildingsForFaction(town.faction).size());
+            if (maxB > 0) {
+                float frac = std::min(1.0f, static_cast<float>(town.builtBuildings.size()) / maxB);
+                float barW = CS * 1.6f, barH = 4.0f;
+                float barX = sx - barW * 0.5f, barY = sy + CS + (labelOK(nameX, nameY, nameW*2.0f) ? 20.0f : 5.0f);
+                dl->AddRectFilled({barX, barY}, {barX + barW, barY + barH}, IM_COL32(0, 0, 0, 160));
+                dl->AddRectFilled({barX, barY}, {barX + barW * frac, barY + barH}, IM_COL32(230, 190, 70, 230));
+                dl->AddRect({barX, barY}, {barX + barW, barY + barH}, IM_COL32(0, 0, 0, 200));
+            }
         }
     }
 
@@ -6009,160 +6194,84 @@ void Game::renderUnitExchange()
 
     Hero& heroA = m_heroes[m_activeHeroIdx];
     Hero& heroB = m_heroes[m_exchangeHeroIdx];
-    const auto& unitDefs = m_registry.units();
-
-    auto unitName = [&](int defId) -> std::string {
-        for (const auto& ud : unitDefs)
-            if (ud.id == defId) return ud.name;
-        return "Unit";
-    };
 
     ImGuiIO& io = ImGui::GetIO();
-    float cx = io.DisplaySize.x * 0.5f, cy = io.DisplaySize.y * 0.5f;
-    ImGui::SetNextWindowPos({cx, cy}, ImGuiCond_Always, {0.5f, 0.5f});
-    ImGui::SetNextWindowSize({520, 0}, ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.92f);
+    ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
+                            ImGuiCond_Always, {0.5f, 0.5f});
+    ImGui::SetNextWindowSize({7 * (58.0f + 4.0f) + 24.0f, 0}, ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.96f);
     ImGuiWindowFlags wf = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
                         | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar;
     if (!ImGui::Begin("##exchange", nullptr, wf)) { ImGui::End(); return; }
 
-    ImGui::TextColored({1.0f, 0.85f, 0.2f, 1.0f}, "Unit Exchange");
+    ImGui::TextColored({1.0f, 0.85f, 0.2f, 1.0f}, "Hero Exchange");
     ImGui::SameLine(ImGui::GetWindowWidth() - 60);
     if (ImGui::SmallButton("Close")) {
         m_showUnitExchange = false;
-        m_exchangeSelSlotA = m_exchangeSelSlotB = -1;
+        m_exchangeSelSide = -1; m_exchangeSelSlot = -1; m_exchangeSplitMode = false;
+        m_exchangeSelArtifactSide = -1; m_exchangeSelArtifactIdx = -1;
     }
     ImGui::Separator();
 
-    // Helper: draw one hero's army column
-    // Returns true if the user selected a slot
-    auto drawCol = [&](const char* label, Hero& h, int& selSlot, bool isA) {
-        ImGui::BeginGroup();
-        ImGui::TextColored({0.7f,0.85f,1.0f,1.0f}, "%s", label);
-        ImGui::Text("%s", h.name.c_str());
-        ImGui::Spacing();
-        constexpr int MAX_SLOTS = 7;
-        for (int i = 0; i < MAX_SLOTS; ++i) {
-            ImGui::PushID(isA ? (i * 100) : (i * 100 + 50));
-            bool occupied = i < static_cast<int>(h.army.size()) && h.army[i].count > 0;
-            bool selected = (selSlot == i);
-            if (selected)
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.9f, 0.9f));
-            else if (!occupied)
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f,0.15f,0.15f,0.6f));
-            else
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f,0.35f,0.25f,0.8f));
+    // Same slot-grid UI as the town garrison screen: click to select, click a
+    // target to move/merge/swap, ctrl+click to split half off.
+    ImGui::TextColored({1.0f, 0.82f, 0.2f, 1.0f}, "%s", heroA.name.c_str());
+    drawUnitSlotRow(0, heroA.army, m_exchangeSelSide, m_exchangeSelSlot, m_exchangeSplitMode);
 
-            char lbl[64];
-            if (occupied)
-                std::snprintf(lbl, sizeof(lbl), "%-16s x%d",
-                    unitName(h.army[i].defId).c_str(), h.army[i].count);
-            else
-                std::snprintf(lbl, sizeof(lbl), "[ empty ]");
+    ImGui::Separator();
 
-            if (ImGui::Button(lbl, {220, 26})) selSlot = (selSlot == i) ? -1 : i;
-            ImGui::PopStyleColor();
-            ImGui::PopID();
+    ImGui::TextColored({0.65f, 0.75f, 0.95f, 1.0f}, "%s", heroB.name.c_str());
+    drawUnitSlotRow(1, heroB.army, m_exchangeSelSide, m_exchangeSelSlot, m_exchangeSplitMode);
+
+    // A hero can never be left with an empty army — block a full move (not a
+    // split, which always leaves half behind) that would empty the source.
+    if (m_slotTransferTargetSide >= 0 && m_exchangeSelSide >= 0) {
+        auto& srcArmy = (m_exchangeSelSide == 0) ? heroA.army : heroB.army;
+        auto& dstArmy = (m_slotTransferTargetSide == 0) ? heroA.army : heroB.army;
+        bool wouldEmpty = !m_exchangeSplitMode && srcArmy.size() == 1
+                        && m_exchangeSelSlot >= 0 && m_exchangeSelSlot < (int)srcArmy.size();
+        if (wouldEmpty) {
+            m_slotTransferTargetSide = -1; m_slotTransferTargetSlot = -1;
+            m_exchangeSelSide = -1; m_exchangeSelSlot = -1; m_exchangeSplitMode = false;
+        } else {
+            resolveSlotTransfer(srcArmy, dstArmy, m_exchangeSelSlot, m_exchangeSplitMode);
+            m_exchangeSelSide = -1;
         }
-        ImGui::EndGroup();
-    };
-
-    drawCol("HERO A", heroA, m_exchangeSelSlotA, true);
-    ImGui::SameLine(0, 16);
-
-    // Transfer arrow buttons in the middle
-    ImGui::BeginGroup();
-    ImGui::Dummy({50, 60});
-    // A hero can never be left with an empty army — block a full-stack transfer
-    // when it's the source hero's last remaining stack. Half-transfers (below)
-    // never fully empty a stack, so they don't need this guard.
-    bool canAtoB = m_exchangeSelSlotA >= 0
-        && m_exchangeSelSlotA < static_cast<int>(heroA.army.size())
-        && heroA.army[m_exchangeSelSlotA].count > 0
-        && heroA.army.size() > 1;
-    bool canBtoA = m_exchangeSelSlotB >= 0
-        && m_exchangeSelSlotB < static_cast<int>(heroB.army.size())
-        && heroB.army[m_exchangeSelSlotB].count > 0
-        && heroB.army.size() > 1;
-
-    if (!canAtoB) ImGui::BeginDisabled();
-    if (ImGui::Button("A>>B", {50, 26})) {
-        auto& srcSlot = heroA.army[m_exchangeSelSlotA];
-        bool merged = false;
-        for (auto& s : heroB.army)
-            if (s.defId == srcSlot.defId) { s.count += srcSlot.count; merged = true; break; }
-        bool added = merged;
-        if (!merged && heroB.army.size() < 7) { heroB.army.push_back(srcSlot); added = true; }
-        if (added)
-            heroA.army.erase(heroA.army.begin() + m_exchangeSelSlotA);
-        m_exchangeSelSlotA = -1;
     }
-    if (!canAtoB) ImGui::EndDisabled();
-    if (m_exchangeSelSlotA >= 0 && m_exchangeSelSlotA < static_cast<int>(heroA.army.size())
-        && heroA.army.size() == 1 && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-        ImGui::SetTooltip("Can't leave Hero A with an empty army");
 
-    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::TextDisabled("Click unit to select  |  Click target to move/merge/swap  |  Ctrl+click to split");
 
-    if (!canBtoA) ImGui::BeginDisabled();
-    if (ImGui::Button("B>>A", {50, 26})) {
-        auto& srcSlot = heroB.army[m_exchangeSelSlotB];
-        bool merged = false;
-        for (auto& s : heroA.army)
-            if (s.defId == srcSlot.defId) { s.count += srcSlot.count; merged = true; break; }
-        bool added = merged;
-        if (!merged && heroA.army.size() < 7) { heroA.army.push_back(srcSlot); added = true; }
-        if (added)
-            heroB.army.erase(heroB.army.begin() + m_exchangeSelSlotB);
-        m_exchangeSelSlotB = -1;
-    }
-    if (!canBtoA) ImGui::EndDisabled();
-    if (m_exchangeSelSlotB >= 0 && m_exchangeSelSlotB < static_cast<int>(heroB.army.size())
-        && heroB.army.size() == 1 && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-        ImGui::SetTooltip("Can't leave Hero B with an empty army");
+    // ── Artifacts ─────────────────────────────────────────────────────────────
+    if (!heroA.artifactInventory.empty() || !heroB.artifactInventory.empty()) {
+        ImGui::Separator();
+        ImGui::TextColored({0.85f, 0.75f, 1.0f, 1.0f}, "Artifacts");
 
-    ImGui::Spacing();
-
-    // Split half — recheck slots in case A>>B or B>>A just ran and cleared them
-    if (canAtoB && m_exchangeSelSlotA >= 0
-        && m_exchangeSelSlotA < static_cast<int>(heroA.army.size())
-        && heroA.army[m_exchangeSelSlotA].count >= 2) {
-        if (ImGui::Button("A/2>B", {50, 26})) {
-            auto& src = heroA.army[m_exchangeSelSlotA];
-            int half = src.count / 2;
-            bool merged = false;
-            for (auto& s : heroB.army)
-                if (s.defId == src.defId) { s.count += half; merged = true; break; }
-            bool added = merged;
-            if (!merged && heroB.army.size() < 7) {
-                heroB.army.push_back({src.defId, half}); added = true;
+        auto drawArtList = [&](const char* label, Hero& owner, Hero& other, int side) {
+            ImGui::BeginGroup();
+            ImGui::TextDisabled("%s (%d)", label, (int)owner.artifactInventory.size());
+            for (int j = 0; j < (int)owner.artifactInventory.size(); ++j) {
+                int aid = owner.artifactInventory[j];
+                const ArtifactDef* def = m_artifactRegistry.getDef(aid);
+                ImGui::PushID(side * 1000 + j);
+                ImGui::TextUnformatted(def ? def->name.c_str() : "Artifact");
+                if (def && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", def->description.c_str());
+                ImGui::SameLine();
+                if (other.artifactInventory.size() + 1 <= 64 && ImGui::SmallButton(side == 0 ? ">>" : "<<")) {
+                    other.artifactInventory.push_back(aid);
+                    owner.artifactInventory.erase(owner.artifactInventory.begin() + j);
+                    ImGui::PopID();
+                    break;
+                }
+                ImGui::PopID();
             }
-            if (added) src.count -= half;
-            m_exchangeSelSlotA = -1;
-        }
-    }
-    ImGui::Spacing();
-    if (canBtoA && m_exchangeSelSlotB >= 0
-        && m_exchangeSelSlotB < static_cast<int>(heroB.army.size())
-        && heroB.army[m_exchangeSelSlotB].count >= 2) {
-        if (ImGui::Button("B/2>A", {50, 26})) {
-            auto& src = heroB.army[m_exchangeSelSlotB];
-            int half = src.count / 2;
-            bool merged = false;
-            for (auto& s : heroA.army)
-                if (s.defId == src.defId) { s.count += half; merged = true; break; }
-            bool added = merged;
-            if (!merged && heroA.army.size() < 7) {
-                heroA.army.push_back({src.defId, half}); added = true;
-            }
-            if (added) src.count -= half;
-            m_exchangeSelSlotB = -1;
-        }
-    }
-    ImGui::EndGroup();
+            ImGui::EndGroup();
+        };
 
-    ImGui::SameLine(0, 16);
-    drawCol("HERO B", heroB, m_exchangeSelSlotB, false);
+        drawArtList(heroA.name.c_str(), heroA, heroB, 0);
+        ImGui::SameLine(0, 24);
+        drawArtList(heroB.name.c_str(), heroB, heroA, 1);
+    }
 
     ImGui::End();
 }
@@ -6188,6 +6297,11 @@ void Game::renderDwellingPopup()
     int tier = obj->value;
     int costPerUnit = tier * 50;
     FactionId fac = static_cast<FactionId>(obj->faction);
+
+    if (ImGui::IsWindowAppearing())
+        gLog("[DBG dwelling popup] objId=%u type=%d value=%d faction=%d available=%d collected=%d pos=(%d,%d)\n",
+             obj->id, (int)obj->type, obj->value, (int)obj->faction, obj->available, (int)obj->collected,
+             obj->pos.q, obj->pos.r);
 
     // Find unit name for display
     const char* unitName = "Units";

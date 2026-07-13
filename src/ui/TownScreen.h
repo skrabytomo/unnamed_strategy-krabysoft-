@@ -85,6 +85,10 @@ private:
     static constexpr int MAX_TIERS = 6;
     ImTextureID m_unitTex[MAX_TIERS] = {};
 
+    // Shared resource icon atlas (8 cols x 6 rows) — same texture/layout as the
+    // world-map resource bar, used to show icons (not just letters) in cost tooltips.
+    ImTextureID m_resIconTex = nullptr;
+
     // Recruit destination toggle
     bool m_recruitToGarrison = false;
 
@@ -100,6 +104,7 @@ public:
     void setUnitTex(int tierIdx, ImTextureID t) {
         if (tierIdx >= 0 && tierIdx < MAX_TIERS) m_unitTex[tierIdx] = t;
     }
+    void setResIconTex(ImTextureID t) { m_resIconTex = t; }
     void setRecruitTarget(bool toGarrison) { m_recruitToGarrison = toGarrison; }
     bool recruitToGarrison() const { return m_recruitToGarrison; }
 

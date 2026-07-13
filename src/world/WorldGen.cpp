@@ -6,6 +6,9 @@
 #include <cmath>
 #include <algorithm>
 #include <cstdio>
+#include <queue>
+#include <deque>
+#include <unordered_map>
 
 // ── Terrain constants ─────────────────────────────────────────────────────────
 static const Terrain kHomeTerrain[] = {
@@ -949,6 +952,127 @@ void WorldGen::placeZoneObjects(
         occupied.push_back(c);
         result.worldObjects.push_back(obj);
         ++outpostPlaced;
+    }
+
+    // ── Mountain ridges along zone borders ────────────────────────────────────
+    // Terrain::Mountain is impassable (Hero::canEnter) but nothing used to ever
+    // paint it — every zone border was open ground, so crossing into a
+    // neighbour's territory was never a real obstacle, just a few extra move
+    // points. Convert a majority (not all — real gaps must remain, this is
+    // probabilistic rather than a guaranteed-solvable maze) of border tiles
+    // into Mountain so zone boundaries read as actual ridgelines with passes,
+    // while staying clear of player spawns so nobody starts walled in.
+    {
+        std::vector<HexCoord> spawnPositions;
+        for (int zi = 0; zi < (int)allCenters.size(); ++zi)
+            if (zonePlayer[zi] >= 0) spawnPositions.push_back(allCenters[zi]);
+        const int spawnClearR = std::max(3, map.radius() / 6);
+
+        for (auto& c : borderTiles) {
+            if (lcg(rng) % 100 >= 65) continue; // ~65% of border tiles become ridge
+            if (!isSuitable(map, c, 1, occupied)) continue;
+            bool nearSpawn = false;
+            for (auto& sp : spawnPositions)
+                if (HexGrid::distance(c, sp) < spawnClearR) { nearSpawn = true; break; }
+            if (nearSpawn) continue;
+            bool used = false;
+            for (const auto& wo : result.worldObjects)
+                if (wo.pos == c) { used = true; break; }
+            if (used) continue;
+
+            if (HexTile* t = map.getTile(c)) t->terrain = Terrain::Mountain;
+        }
+    }
+
+    // ── Connectivity guarantee ─────────────────────────────────────────────────
+    // Verify every player town can reach every other by land, and if not,
+    // carve the cheapest possible path back open. This isn't only about the
+    // new ridge pass above — testing found ~1 in 4 maps already had a town
+    // separated purely by water gaps in the coastline/zone noise, with no
+    // Mountain involved at all, a pre-existing bug this happens to fix too.
+    if (result.towns.size() > 1) {
+        // Dijkstra weighting: Mountain and Water are both crossable at a steep
+        // cost (water pricier — it's the bigger ask to hand-wave away) so the
+        // search only cuts through either when there's truly no dry route.
+        auto costOf = [](Terrain t) -> int {
+            if (t == Terrain::Mountain) return 40;
+            if (t == Terrain::Water)    return 60;
+            if (!isLand(t))              return -1;
+            return 1;
+        };
+        // Reachability check matches Hero::canEnter exactly (Mountain blocked,
+        // Water needs a boat we can't assume here) so this actually detects
+        // the disconnections costOf's steep-but-finite pricing would hide.
+        auto reachableFrom = [&](HexCoord start) {
+            std::unordered_map<HexCoord, bool, HexCoordHash> seen;
+            std::deque<HexCoord> q;
+            seen[start] = true;
+            q.push_back(start);
+            while (!q.empty()) {
+                HexCoord cur = q.front(); q.pop_front();
+                for (auto& n : HexGrid::neighbors(cur)) {
+                    const HexTile* t = map.getTile(n);
+                    if (!t || t->terrain == Terrain::Mountain || !isLand(t->terrain) || seen.count(n)) continue;
+                    seen[n] = true;
+                    q.push_back(n);
+                }
+            }
+            return seen;
+        };
+
+        HexCoord anchor = result.towns[0].pos;
+        for (size_t ti = 1; ti < result.towns.size(); ++ti) {
+            HexCoord target = result.towns[ti].pos;
+            auto seen = reachableFrom(anchor);
+            if (seen.count(target)) continue; // already fine
+
+            // Dijkstra from anchor to target, Mountain allowed at a steep cost.
+            // HexCoord has no ordering operator (only equality, for the hash
+            // maps above), so the queue orders strictly by cost and ignores
+            // the coord in ties.
+            std::unordered_map<HexCoord, int, HexCoordHash> dist;
+            std::unordered_map<HexCoord, HexCoord, HexCoordHash> prev;
+            using PQItem = std::pair<int, HexCoord>;
+            auto cmpCostOnly = [](const PQItem& a, const PQItem& b) { return a.first > b.first; };
+            std::priority_queue<PQItem, std::vector<PQItem>, decltype(cmpCostOnly)> pq(cmpCostOnly);
+            dist[anchor] = 0;
+            pq.push({0, anchor});
+            while (!pq.empty()) {
+                auto [d, cur] = pq.top(); pq.pop();
+                if (d > dist[cur]) continue;
+                if (cur == target) break;
+                for (auto& n : HexGrid::neighbors(cur)) {
+                    const HexTile* t = map.getTile(n);
+                    if (!t) continue;
+                    int c = costOf(t->terrain);
+                    if (c < 0) continue;
+                    int nd = d + c;
+                    auto it = dist.find(n);
+                    if (it == dist.end() || nd < it->second) {
+                        dist[n] = nd;
+                        prev[n] = cur;
+                        pq.push({nd, n});
+                    }
+                }
+            }
+            // Walk the found path back from target and revert any Mountain or
+            // Water tile on it to Highland (a "pass" — same convention the
+            // Jebus Cross bridge-carving uses elsewhere in this file).
+            if (dist.count(target)) {
+                HexCoord walk = target;
+                while (walk != anchor) {
+                    if (HexTile* t = map.getTile(walk);
+                        t && (t->terrain == Terrain::Mountain || t->terrain == Terrain::Water))
+                        t->terrain = Terrain::Highland;
+                    auto it = prev.find(walk);
+                    if (it == prev.end()) break;
+                    walk = it->second;
+                }
+            }
+            // If dist doesn't contain target at all, every tile costOf() saw is
+            // impassable outright (shouldn't happen — Mountain/Water are both
+            // finite-cost above) so there's nothing left to carve.
+        }
     }
 
     // ── Neutral zones ─────────────────────────────────────────────────────────

@@ -17,6 +17,8 @@ public:
     float x()    const { return m_x; }
     float y()    const { return m_y; }
     float zoom() const { return m_zoom; }
+    int   width()  const { return m_w; }
+    int   height() const { return m_h; }
 
     // Returns column-major 4x4 orthographic projection matrix
     // suitable for glUniformMatrix4fv and SpriteBatch::begin()

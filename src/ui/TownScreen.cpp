@@ -407,7 +407,25 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
                 ImGui::TextDisabled("%s", def.description.c_str());
             if (!built) {
                 ImGui::Separator();
-                ImGui::Text("Cost: %s", costStr(def.cost).c_str());
+                ImGui::TextUnformatted("Cost:");
+                static const int kResIconIdx[RESOURCE_COUNT] = { 32, 33, 34, 35, 36, 37 };
+                bool first = true;
+                for (int ri = 0; ri < RESOURCE_COUNT; ++ri) {
+                    int v = def.cost.amounts[ri];
+                    if (v <= 0) continue;
+                    if (!first) ImGui::SameLine(0, 10.0f);
+                    first = false;
+                    if (m_resIconTex) {
+                        float col = static_cast<float>(kResIconIdx[ri] % 8);
+                        float row = static_cast<float>(kResIconIdx[ri] / 8);
+                        ImGui::Image(m_resIconTex, {18, 18},
+                                     {col / 8.0f, row / 6.0f},
+                                     {(col + 1.0f) / 8.0f, (row + 1.0f) / 6.0f});
+                        ImGui::SameLine(0, 3.0f);
+                    }
+                    ImGui::Text("%d %s", v, resourceName(static_cast<ResourceType>(ri)));
+                }
+                if (first) ImGui::TextDisabled("free");
             }
             if (artTex) ImGui::EndGroup();
             ImGui::EndTooltip();
@@ -415,7 +433,9 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
 
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) &&
             ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            m_previewBuildingId = def.id;
+            // Clicking the already-previewed building's art closes it again —
+            // no need to reach for the separate Close button for the common case.
+            m_previewBuildingId = (m_previewBuildingId == def.id) ? -1 : def.id;
         }
 
         col = 1 - col;
@@ -509,18 +529,25 @@ void TownScreen::drawBuildingPreview(UIRenderer& rdr)
     if (built) {
         ImGui::TextColored(ImVec4(0.45f,0.75f,0.45f,1.f), "Built");
     } else {
-        std::string cs;
-        if (def->cost.get(ResourceType::Gold) > 0)
-            cs += std::to_string(def->cost.get(ResourceType::Gold)) + "g";
-        for (int ri = 1; ri < RESOURCE_COUNT; ++ri) {
-            auto rt = static_cast<ResourceType>(ri);
-            int v = def->cost.get(rt);
-            if (v > 0) {
-                if (!cs.empty()) cs += " ";
-                cs += std::to_string(v) + resourceName(rt)[0];
+        ImGui::TextColored(ImVec4(0.6f,0.55f,0.3f,0.9f), "Cost:");
+        static const int kResIconIdx[RESOURCE_COUNT] = { 32, 33, 34, 35, 36, 37 };
+        bool first = true;
+        for (int ri = 0; ri < RESOURCE_COUNT; ++ri) {
+            int v = def->cost.amounts[ri];
+            if (v <= 0) continue;
+            if (!first) ImGui::SameLine(0, 10.0f);
+            first = false;
+            if (m_resIconTex) {
+                float col = static_cast<float>(kResIconIdx[ri] % 8);
+                float row = static_cast<float>(kResIconIdx[ri] / 8);
+                ImGui::Image(m_resIconTex, {16, 16},
+                             {col / 8.0f, row / 6.0f},
+                             {(col + 1.0f) / 8.0f, (row + 1.0f) / 6.0f});
+                ImGui::SameLine(0, 3.0f);
             }
+            ImGui::Text("%d %s", v, resourceName(static_cast<ResourceType>(ri)));
         }
-        ImGui::TextColored(ImVec4(0.6f,0.55f,0.3f,0.9f), "Cost: %s", cs.empty() ? "free" : cs.c_str());
+        if (first) ImGui::TextDisabled("free");
     }
 
     ImGui::End();

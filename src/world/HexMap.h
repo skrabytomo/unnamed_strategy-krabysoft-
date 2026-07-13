@@ -46,14 +46,18 @@ struct HexTile
 // ── Map sizes ──────────────────────────────────────────────────────────────────
 enum class MapSize { Small, Medium, Large, XLarge };
 
+// Radii scaled by sqrt(10) from the original 24/36/52/72 so each named size
+// carries ~10x the hex count (tile count grows with radius^2), paired with a
+// proportionally smaller hexSize (see Game_Core.cpp) so the map's overall
+// on-screen reach at default zoom stays about the same — denser, not just bigger.
 inline int mapRadius(MapSize s) {
     switch (s) {
-        case MapSize::Small:  return 24;
-        case MapSize::Medium: return 36;
-        case MapSize::Large:  return 52;
-        case MapSize::XLarge: return 72;
+        case MapSize::Small:  return 76;
+        case MapSize::Medium: return 114;
+        case MapSize::Large:  return 164;
+        case MapSize::XLarge: return 228;
     }
-    return 36;
+    return 114;
 }
 
 // ── HexMap ────────────────────────────────────────────────────────────────────

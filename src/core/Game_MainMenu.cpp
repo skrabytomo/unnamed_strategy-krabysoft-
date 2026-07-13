@@ -105,6 +105,28 @@ void Game::renderMainMenu()
         }
         ImGui::Spacing();
 
+        // Map shape — layout/topology, independent of size. Hexagon is a
+        // wide-open circular island (no chokepoints); the Jebus Cross shapes
+        // connect zones through narrow guarded bridges instead.
+        ImGui::Text("Map Shape:");
+        static const char* kShapeNames[] = { "Hexagon", "Jebus Cross", "Jebus Cross 3", "Ring" };
+        static const char* kShapeTooltips[] = {
+            "Open circular island. No chokepoints — every zone borders every other.",
+            "Zones connected by narrow water bridges, each guarded by a chokepoint monster stack.",
+            "Jebus Cross plus a rich, heavily-guarded sacred zone at the map centre.",
+            "Donut-shaped: players ring a central water body.",
+        };
+        for (int i = 0; i < 4; ++i) {
+            if (i > 0) ImGui::SameLine();
+            bool sel = (m_newGameMapShape == i);
+            if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.3f, 0.1f, 1.f));
+            char shLbl[32]; std::snprintf(shLbl, sizeof(shLbl), "%s##sh%d", kShapeNames[i], i);
+            if (ImGui::Button(shLbl, ImVec2((bw - 6) / 4.f, 26))) m_newGameMapShape = i;
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", kShapeTooltips[i]);
+            if (sel) ImGui::PopStyleColor();
+        }
+        ImGui::Spacing();
+
         // Faction
         ImGui::Text("Faction:");
         static const char* kFacNames[] = {
@@ -175,12 +197,14 @@ void Game::renderMainMenu()
 
         // ── Player slots (HoMM-style lobby) ─────────────────────────────────
         ImGui::Text("Players:");
-        for (int pc = 2; pc <= 4; ++pc) {
+        constexpr int kNumPlayerChoices = MAX_SETUP_SLOTS - 1; // 2..8
+        float pcw = (bw - 4.0f * (kNumPlayerChoices - 1)) / kNumPlayerChoices;
+        for (int pc = 2; pc <= MAX_SETUP_SLOTS; ++pc) {
             if (pc > 2) ImGui::SameLine(0, 4);
             bool sel = (m_setupPlayerCount == pc);
             if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.2f, 1.f));
             char pcl[16]; std::snprintf(pcl, sizeof(pcl), "%d##pcnt%d", pc, pc);
-            if (ImGui::Button(pcl, ImVec2((bw - 8) / 3.f, 26))) m_setupPlayerCount = pc;
+            if (ImGui::Button(pcl, ImVec2(pcw, 26))) m_setupPlayerCount = pc;
             if (sel) ImGui::PopStyleColor();
         }
         ImGui::Spacing();
@@ -193,9 +217,12 @@ void Game::renderMainMenu()
             static const char* kBonusNames[] = {
                 "Artifact", "+5 Resource", "+1500 Gold"
             };
+            static const char* kTeamNames[] = {
+                "FFA", "Team 1", "Team 2", "Team 3", "Team 4"
+            };
             m_slotType[0]    = 0;                    // slot 0 is always you
             m_slotFaction[0] = m_newGameFaction;     // driven by the picker above
-            float thirdW = (bw - 8) / 3.f;
+            float thirdW = (bw - 12) / 4.f;
             for (int s = 0; s < m_setupPlayerCount; ++s) {
                 ImGui::PushID(s);
                 // Human / Bot toggle (slot 0 fixed)
@@ -232,6 +259,16 @@ void Game::renderMainMenu()
                     m_slotBonus[s] = (m_slotBonus[s] + 1) % 3;
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("Starting bonus: random artifact, +5 of the faction's key resource, or +1500 gold.");
+                // Team cycle: FFA (no alliance) or Team 1-4. Slots sharing a
+                // team fight side by side — AI hostility/targeting and combat
+                // triggers all respect this.
+                ImGui::SameLine(0, 4);
+                char tlbl[24];
+                std::snprintf(tlbl, sizeof(tlbl), "%s##team", kTeamNames[std::clamp(m_slotTeam[s], 0, 4)]);
+                if (ImGui::Button(tlbl, ImVec2(thirdW, 26)))
+                    m_slotTeam[s] = (m_slotTeam[s] + 1) % 5;
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Click to cycle. Slots on the same team are allies and never fight each other.");
                 ImGui::PopID();
             }
         }

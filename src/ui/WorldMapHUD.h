@@ -37,8 +37,18 @@ public:
     void setPortraitTex(int factionIdx, ImTextureID tex) {
         if (factionIdx >= 0 && factionIdx < 9) m_portraitTex[factionIdx] = tex;
     }
+    // Per-faction town art (castle/settlement illustration) — distinct from the
+    // hero portrait, used for the Towns panel so it doesn't show a hero's face.
+    void setTownArtTex(int factionIdx, ImTextureID tex) {
+        if (factionIdx >= 0 && factionIdx < 9) m_townArtTex[factionIdx] = tex;
+    }
     void setCurrentPlayerId(int id) { m_currentPlayerId = id; }
     void setNumHumanPlayers(int n) { m_numHumanPlayers = n; }
+    // Total constructible buildings for a faction's town — used to render a
+    // build-progress bar (builtBuildings.size() / this) in the town panel.
+    void setMaxBuildings(int factionIdx, int count) {
+        if (factionIdx >= 0 && factionIdx < 9) m_maxBuildings[factionIdx] = count;
+    }
 
 private:
     void buildLayout(int sw, int sh);
@@ -71,6 +81,8 @@ private:
     TooltipWidget m_tooltip;
     ImTextureID m_iconTex = nullptr;
     ImTextureID m_portraitTex[9] = {};
+    ImTextureID m_townArtTex[9] = {};
+    int m_maxBuildings[9] = {};
     int m_currentPlayerId = 1;
     int m_numHumanPlayers = 1;
 };
