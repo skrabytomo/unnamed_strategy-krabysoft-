@@ -1218,6 +1218,26 @@ void Game::startNewGame()
     m_resources = std::move(wgResult.resources);
     m_nextObjId = static_cast<uint32_t>(m_resources.size()) + 1;
 
+    // ── Assign mine guards ────────────────────────────────────────────────────
+    // guardId was never set anywhere, so every mine defaulted to unguarded (0)
+    // and could be claimed by walking onto it — the AI grabbed hundreds of
+    // mines for free and no one ever fought a mine guardian. Now: any mine not
+    // adjacent to a starting town gets a guard (guardId != 0). Mines within 3
+    // tiles of a town stay free so the early economy isn't walled off.
+    {
+        uint32_t guardCtr = 900000u;   // distinct id-space from heroes/objects
+        for (auto& r : m_resources) {
+            bool nearTown = false;
+            for (const auto& t : wgResult.towns) {
+                if (HexGrid::distance(r.pos, t.pos) <= 3) { nearTown = true; break; }
+            }
+            if (!nearTown) {
+                r.guardId     = ++guardCtr;
+                r.guardBeaten = false;
+            }
+        }
+    }
+
     // Starting resources scale with difficulty: the AI always gets a full
     // player share (5000g + 20 iron per AI hero); the human starts with
     // 100% / 90% / 80% of that on Easy / Normal / Hard.

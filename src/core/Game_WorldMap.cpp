@@ -630,6 +630,8 @@ void Game::watchAiMovePlayerHero()
                         m_fromBattleSim    = true;
                         m_simAutoPlay      = true;
                         m_simAutoPlayTimer = 0.f;
+                        gLog("Watch hero %s fights mine guard (%s mine, week %d)\n",
+                             hero.name.c_str(), resourceName(r.type), m_turns.week());
                         enterCombat(hero, pUnits, guardHero, gUnits);
                         return;
                     }
