@@ -611,31 +611,25 @@ void Game::watchAiMovePlayerHero()
                 if (r.id != nt->resourceId) continue;
                 if (r.ownedBy == 1u) break;                 // already ours
                 if (r.guardId != 0 && !r.guardBeaten) {
-                    // Fight the guard, auto-resolved, only if we can plausibly win.
+                    // Auto-resolve like the enemy AI: only take the mine with a
+                    // healthy margin, and only shave a few % off the army — no
+                    // full real-combat battle that can kamikaze the whole hero.
                     int myS = heroStrength(hero, udefs);
-                    int guardStr = std::min(1400, 250 + m_turns.week() * 50);
-                    if (myS >= guardStr * 13 / 10) {
-                        Hero guardHero;
-                        guardHero.id      = 0;
-                        guardHero.name    = "Mine Guardian";
-                        guardHero.faction = FactionId::None;
-                        guardHero.army    = {};
-                        auto gUnits = makeMineGuardUnits(r, m_turns.week());
-                        auto pUnits = makeHeroUnits(hero, udefs, true);
-                        r.guardBeaten          = true;   // presume win (auto-resolve)
-                        r.ownedBy              = 1u;
-                        m_pendingMineId        = r.id;
-                        m_lastCombatEnemyId    = 0;
-                        m_pendingTownCaptureId = 0;
-                        m_fromBattleSim    = true;
-                        m_simAutoPlay      = true;
-                        m_simAutoPlayTimer = 0.f;
-                        gLog("Watch hero %s fights mine guard (%s mine, week %d)\n",
+                    int guardStr = std::min(900, 150 + m_turns.week() * 35);
+                    if (myS >= guardStr * 3 / 2) {
+                        r.guardBeaten = true;
+                        r.ownedBy     = 1u;
+                        int bigIdx = 0;
+                        for (int i = 1; i < (int)hero.army.size(); ++i)
+                            if (hero.army[i].count > hero.army[bigIdx].count) bigIdx = i;
+                        if (!hero.army.empty())
+                            hero.army[bigIdx].count =
+                                std::max(1, hero.army[bigIdx].count - hero.army[bigIdx].count / 14);
+                        gLog("Watch hero %s cleared %s mine guard (week %d)\n",
                              hero.name.c_str(), resourceName(r.type), m_turns.week());
-                        enterCombat(hero, pUnits, guardHero, gUnits);
-                        return;
                     }
-                    // Too weak — leave the mine guarded, don't claim.
+                    // Too weak — leave the mine guarded; the hero will come back
+                    // once it has grown, instead of dying to it.
                     break;
                 }
                 r.ownedBy = 1u;   // unguarded or already-cleared
@@ -2173,22 +2167,22 @@ void Game::doEndTurn()
                             if (r.ownedBy != 0 && r.ownedBy != eHero.ownerId
                                 && isAllied(r.ownedBy, eHero.ownerId)) break;
                             if (!r.guardBeaten && r.guardId != 0) {
-                                // Guard strength scales with the week; take it if the
-                                // hero has a healthy margin, and lose some troops.
-                                // Fair-economy tuning: mine guards cap out so
-                                // the AI can always eventually claim mines —
-                                // its income depends on them now.
-                                int guardStr = std::min(1400, 250 + m_turns.week() * 50);
-                                if (eiStr >= guardStr * 13 / 10) {
+                                // Guard strength scales with the week but is kept
+                                // low and capped so a hero with a modest army can
+                                // clear nearby mines early — the AI's economy
+                                // depends on them. Require a 1.5x margin so it
+                                // doesn't gut its army on a marginal fight.
+                                int guardStr = std::min(900, 150 + m_turns.week() * 35);
+                                if (eiStr >= guardStr * 3 / 2) {
                                     r.guardBeaten = true;
-                                    // Casualties: shave ~8% off the hero's largest stack.
+                                    // Casualties: shave ~7% off the hero's largest stack.
                                     int bigIdx = 0;
                                     for (int i = 1; i < (int)eHero.army.size(); ++i)
                                         if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
                                     if (!eHero.army.empty())
                                         eHero.army[bigIdx].count =
                                             std::max(1, eHero.army[bigIdx].count -
-                                                     eHero.army[bigIdx].count / 12);
+                                                     eHero.army[bigIdx].count / 14);
                                     gLog("Enemy %s beat mine guard (week %d)\n",
                                          eHero.name.c_str(), m_turns.week());
                                 }
