@@ -31,7 +31,7 @@ static FILE* openUtf8Path(const std::string& path)
 }
 #endif
 
-bool Texture::load(const std::string& path, bool pixelArt, bool flipV, bool repeat, bool wrapMirror)
+bool Texture::load(const std::string& path, bool pixelArt, bool flipV, bool repeat, bool wrapMirror, bool quiet)
 {
     stbi_set_flip_vertically_on_load(flipV ? 1 : 0);
 
@@ -40,7 +40,7 @@ bool Texture::load(const std::string& path, bool pixelArt, bool flipV, bool repe
 #ifdef _WIN32
     FILE* f = openUtf8Path(path);
     if (!f) {
-        fprintf(stderr, "Texture: failed to load %s — can't fopen\n", path.c_str());
+        if (!quiet) fprintf(stderr, "Texture: failed to load %s — can't fopen\n", path.c_str());
         return false;
     }
     data = stbi_load_from_file(f, &m_width, &m_height, &channels, 4);
@@ -49,7 +49,7 @@ bool Texture::load(const std::string& path, bool pixelArt, bool flipV, bool repe
     data = stbi_load(path.c_str(), &m_width, &m_height, &channels, 4);
 #endif
     if (!data) {
-        fprintf(stderr, "Texture: failed to load %s — %s\n", path.c_str(), stbi_failure_reason());
+        if (!quiet) fprintf(stderr, "Texture: failed to load %s — %s\n", path.c_str(), stbi_failure_reason());
         return false;
     }
 

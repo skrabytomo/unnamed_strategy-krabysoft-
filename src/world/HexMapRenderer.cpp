@@ -228,8 +228,10 @@ bool HexMapRenderer::init(float hexSize, const std::string& basePath,
         for (int v = 0; v < MAX_VARIANTS; ++v) {
             std::string rel = std::string(s_terrainBase[i]) + "_" + std::to_string(v) + ".png";
             std::string full = basePath + rel;
-            if (m_terrainTex[i][v].load(full, false, false, false, mirror) ||
-                (!basePath.empty() && m_terrainTex[i][v].load(rel, false, false, false, mirror))) {
+            // quiet=true: probing for the next variant, a miss just means
+            // "no more variants" — not an error worth logging.
+            if (m_terrainTex[i][v].load(full, false, false, false, mirror, true) ||
+                (!basePath.empty() && m_terrainTex[i][v].load(rel, false, false, false, mirror, true))) {
                 m_variantCount[i]++;
             } else {
                 break; // stop at first missing variant
