@@ -1013,6 +1013,23 @@ void Game::updateWorldMap(float dt)
             }
 
             if (!m_showCombatResult && !m_showLevelUpModal) {
+                // Consolidate: watched-side extra heroes standing next to the
+                // main hero (index 0) dump their army into it — same one-fat-
+                // stack behaviour as the enemy AI, so Watch mirrors real play.
+                if (m_heroes.size() > 1) {
+                    Hero& main = m_heroes[0];
+                    for (size_t fi = 1; fi < m_heroes.size(); ++fi) {
+                        Hero& feeder = m_heroes[fi];
+                        if (HexGrid::distance(feeder.pos, main.pos) > 1) continue;
+                        for (auto it = feeder.army.begin(); it != feeder.army.end();) {
+                            bool merged = false;
+                            for (auto& s : main.army)
+                                if (s.defId == it->defId) { s.count += it->count; merged = true; break; }
+                            if (!merged && main.army.size() < 7) { main.army.push_back(*it); merged = true; }
+                            it = merged ? feeder.army.erase(it) : ++it;
+                        }
+                    }
+                }
                 // Drive EVERY watched-side hero once per game-day (a real
                 // roster, mirroring the enemy). A hero is marked moved before
                 // it acts, so if it enters combat it isn't re-driven when the
@@ -1726,6 +1743,39 @@ void Game::doEndTurn()
                 }
             }
 
+            // ── Consolidate armies into each player's raider ──────────────────
+            //    HoMM opening: extra heroes act as army shuttles — they feed the
+            //    main (raider) hero rather than wandering off solo with split
+            //    forces. Any non-raider hero adjacent to / on the same tile as
+            //    its player's raider dumps its army into the raider (7-slot cap
+            //    respected). This makes the AI field one fat stack instead of
+            //    several weak ones that each die to guards/rivals.
+            {
+                // map ownerId -> raider hero index (rank 0)
+                for (int ri = 0; ri < (int)m_enemyHeroes.size(); ++ri) {
+                    if (heroRank[ri] != 0 || m_enemyHeroes[ri].eliminated) continue;
+                    Hero& raider = m_enemyHeroes[ri];
+                    for (int fi = 0; fi < (int)m_enemyHeroes.size(); ++fi) {
+                        if (fi == ri) continue;
+                        Hero& feeder = m_enemyHeroes[fi];
+                        if (feeder.eliminated) continue;
+                        if (feeder.ownerId != raider.ownerId) continue;
+                        int d = HexGrid::distance(feeder.pos, raider.pos);
+                        if (d > 1) continue;   // must be adjacent or same tile
+                        // Merge feeder's army into the raider (cap 7 slots).
+                        for (auto it = feeder.army.begin(); it != feeder.army.end();) {
+                            bool merged = false;
+                            for (auto& s : raider.army)
+                                if (s.defId == it->defId) { s.count += it->count; merged = true; break; }
+                            if (!merged && raider.army.size() < 7) {
+                                raider.army.push_back(*it); merged = true;
+                            }
+                            it = merged ? feeder.army.erase(it) : ++it;
+                        }
+                    }
+                }
+            }
+
             // AI-vs-AI field battles are resolved off-screen inline below by
             // setting `eliminated` on the loser rather than erasing from
             // m_enemyHeroes mid-loop (which would silently corrupt the
@@ -1865,6 +1915,23 @@ void Game::doEndTurn()
                             }
                         }
                     } else {
+                        // Army-shuttle: a non-raider hero carrying troops heads
+                        // for its player's raider to hand them over (the merge
+                        // above fires once adjacent). Strongly weighted so extra
+                        // heroes concentrate force instead of scattering.
+                        if (!isRaider) {
+                            int carried = 0;
+                            for (const auto& s : eHero.army) carried += s.count;
+                            if (carried > 0) {
+                                for (int rj = 0; rj < (int)m_enemyHeroes.size(); ++rj) {
+                                    if (heroRank[rj] != 0) continue;
+                                    const Hero& raider = m_enemyHeroes[rj];
+                                    if (raider.eliminated || raider.ownerId != eHero.ownerId) continue;
+                                    add(raider.pos, 400.f);
+                                    break;
+                                }
+                            }
+                        }
                         // Own town to recruit
                         for (const auto& t : m_towns) {
                             if (t.ownerId != eHero.ownerId) continue;
