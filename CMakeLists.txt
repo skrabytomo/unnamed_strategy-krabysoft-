@@ -99,7 +99,7 @@ else()
 endif()
 
 # ── Game sources ──────────────────────────────────────────────────────────────
-file(GLOB_RECURSE SOURCES
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     src/*.cpp
     src/*.h
 )
