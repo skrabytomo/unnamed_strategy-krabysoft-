@@ -489,3 +489,43 @@ void ConquestDB::setPathChoice(int faction, int tier, int choice)
     std::snprintf(key, sizeof(key), "path_%d_%d", faction, tier);
     setStateInt(key, choice);
 }
+
+// ── Arena (Phase 5) ──────────────────────────────────────────────────────────
+
+ConquestDB::ArenaRow ConquestDB::arenaGet(int week) const
+{
+    ArenaRow r{week, 0, 0, 0};
+    if (!m_db) return r;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT points, entriesToday, lastEntryDay FROM conquest_arena WHERE week = ?;",
+        -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(st, 1, week);
+        if (sqlite3_step(st) == SQLITE_ROW) {
+            r.points       = sqlite3_column_int(st, 0);
+            r.entriesToday = sqlite3_column_int(st, 1);
+            r.lastEntryDay = sqlite3_column_int(st, 2);
+        }
+    }
+    sqlite3_finalize(st);
+    return r;
+}
+
+void ConquestDB::arenaSet(const ArenaRow& r)
+{
+    if (!m_db) return;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "INSERT INTO conquest_arena (week, points, entriesToday, lastEntryDay)"
+        " VALUES (?, ?, ?, ?)"
+        " ON CONFLICT(week) DO UPDATE SET points=excluded.points,"
+        " entriesToday=excluded.entriesToday, lastEntryDay=excluded.lastEntryDay;",
+        -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(st, 1, r.week);
+        sqlite3_bind_int(st, 2, r.points);
+        sqlite3_bind_int(st, 3, r.entriesToday);
+        sqlite3_bind_int(st, 4, r.lastEntryDay);
+        sqlite3_step(st);
+    }
+    sqlite3_finalize(st);
+}

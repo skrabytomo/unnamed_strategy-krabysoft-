@@ -24,6 +24,10 @@ public:
     // Returns total gold cost of the army produced by buildArmy()
     static int armyGoldCost(FactionId faction, int weeks);
 
+    // Returns a rough "power" score for a generated army — used by Conquest
+    // arena matchmaking. Same formula as ConquestMode::teamPower.
+    static int armyPower(FactionId faction, int weeks);
+
     // Returns a Hero with attack/defense scaled by hero level (derived from weeks)
     static Hero buildHero(FactionId faction, int weeks);
 

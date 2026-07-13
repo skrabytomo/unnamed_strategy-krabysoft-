@@ -123,6 +123,21 @@ public:
     // If no choice made (or lookup fails) returns the input defId unchanged.
     int  resolveVariant(int baseDefId, const class BuildingRegistry& reg) const;
 
+    // ── Arena (Phase 5) — NO CASUALTIES (exhibition, see CONQUEST_MODE.md) ─────
+    static constexpr int ARENA_ENTRIES_PER_DAY = 3;
+    static constexpr int ARENA_EXTRA_ENTRY_GEMS = 15;
+    // Total power of the current battle team (with chosen path variants applied).
+    int  teamPower(const class BuildingRegistry& reg) const;
+    int  arenaPoints() const;
+    int  arenaEntriesLeft() const;                 // free tries remaining today
+    bool arenaCanEnter() const;                    // free entry OR affordable
+    bool arenaConsumeEntry();                      // spend a free try or gems; false if none
+    // Apply arena result: points delta, win streak → chest, quest event.
+    // Returns points gained (can be negative on loss).
+    int  arenaReportResult(bool won);
+    // Ghost opponent power for the player's next arena fight (0.95-1.15× team).
+    int  arenaOpponentPower(const class BuildingRegistry& reg) const;
+
     ConquestDB& db() { return m_db; }
 
 private:
@@ -136,4 +151,5 @@ private:
     std::vector<ConquestNode> m_nodes;
     int   m_week   = 0;
     bool  m_active = false;
+    int   m_arenaStreak = 0;   // consecutive arena wins (session, feeds chest reward)
 };

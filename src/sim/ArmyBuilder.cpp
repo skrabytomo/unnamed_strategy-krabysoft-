@@ -106,6 +106,24 @@ int ArmyBuilder::armyGoldCost(FactionId faction, int weeks)
     return total;
 }
 
+int ArmyBuilder::armyPower(FactionId faction, int weeks)
+{
+    const BuildingRegistry& reg = registry();
+    int power = 0;
+    for (int tier = 1; tier <= 6; ++tier) {
+        const UnitDef* d = reg.getUnitDef(faction, tier, UpgradePath::None);
+        if (!d) continue;
+        int unlockWeek = unlockWeekForTier(tier);
+        if (weeks < unlockWeek) continue;
+        const BuildingDef* dwelling = reg.getDwelling(faction, tier, UpgradePath::None);
+        int weeklyGrowth = dwelling ? dwelling->weeklyGrowth : 1;
+        int count = std::min((weeks - unlockWeek + 1) * weeklyGrowth, MAX_STACK);
+        if (count > 0) power += count * tier * tier;
+    }
+    power += heroLevelFromWeeks(weeks) * 10;
+    return power;
+}
+
 Hero ArmyBuilder::buildHero(FactionId faction, int weeks)
 {
     Hero h;

@@ -1852,7 +1852,8 @@ void Game::exitCombat(bool playerWon)
     // ── Conquest mode battle: no world-map hero to sync — grant rewards,
     // update the node graph, and return to the conquest screen.
     if (m_prevState == GameState::Conquest) {
-        onConquestBattleEnd(playerWon);
+        if (m_conquestInArena) onArenaBattleEnd(playerWon);
+        else                   onConquestBattleEnd(playerWon);
         return;
     }
 

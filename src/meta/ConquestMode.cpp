@@ -543,3 +543,108 @@ int ConquestMode::resolveVariant(int baseDefId, const BuildingRegistry& reg) con
     const UnitDef* variant = reg.getUnitDef(base->faction, base->tier, p);
     return variant ? variant->id : baseDefId;
 }
+
+// ── Arena (Phase 5) ──────────────────────────────────────────────────────────
+
+static int localDayNumber()
+{
+    std::time_t t = std::time(nullptr);
+    std::tm tmv{};
+#ifdef _WIN32
+    localtime_s(&tmv, &t);
+#else
+    localtime_r(&t, &tmv);
+#endif
+    return (tmv.tm_year + 1900) * 1000 + tmv.tm_yday;   // unique per calendar day
+}
+
+int ConquestMode::teamPower(const BuildingRegistry& reg) const
+{
+    // power = Σ(count × tier² × pathBonus) + heroLevel×10
+    int power = 0;
+    for (auto& [defId, count] : m_db.teamGet()) {
+        int variantId = resolveVariant(defId, reg);
+        const UnitDef* d = reg.getUnitDef(variantId);
+        if (!d) d = reg.getUnitDef(defId);
+        if (!d) continue;
+        float pathBonus = (d->path == UpgradePath::None) ? 1.0f : 1.15f;
+        power += (int)(count * d->tier * d->tier * pathBonus);
+    }
+    power += currentLevel() * 10;
+    return power;
+}
+
+int ConquestMode::arenaPoints() const
+{
+    return const_cast<ConquestDB&>(m_db).arenaGet(m_week).points;
+}
+
+int ConquestMode::arenaEntriesLeft() const
+{
+    auto r = const_cast<ConquestDB&>(m_db).arenaGet(m_week);
+    int today = localDayNumber();
+    if (r.lastEntryDay != today) return ARENA_ENTRIES_PER_DAY;   // fresh day
+    return std::max(0, ARENA_ENTRIES_PER_DAY - r.entriesToday);
+}
+
+bool ConquestMode::arenaCanEnter() const
+{
+    if (arenaEntriesLeft() > 0) return true;
+    return m_db.gems() >= ARENA_EXTRA_ENTRY_GEMS;
+}
+
+bool ConquestMode::arenaConsumeEntry()
+{
+    auto r = m_db.arenaGet(m_week);
+    int today = localDayNumber();
+    if (r.lastEntryDay != today) { r.entriesToday = 0; r.lastEntryDay = today; }
+
+    if (r.entriesToday < ARENA_ENTRIES_PER_DAY) {
+        r.entriesToday += 1;
+        m_db.arenaSet(r);
+        return true;
+    }
+    // Out of free tries — pay gems
+    if (m_db.gems() >= ARENA_EXTRA_ENTRY_GEMS) {
+        m_db.addGems(-ARENA_EXTRA_ENTRY_GEMS);
+        r.entriesToday += 1;
+        m_db.arenaSet(r);
+        return true;
+    }
+    return false;
+}
+
+int ConquestMode::arenaReportResult(bool won)
+{
+    auto r = m_db.arenaGet(m_week);
+    int delta = won ? (20 + m_arenaStreak * 5) : -10;
+    r.points = std::max(0, r.points + delta);
+    m_db.arenaSet(r);
+
+    if (won) {
+        m_arenaStreak += 1;
+        m_db.addGold(150);
+        // 3-win streak → Golden chest, then streak resets
+        if (m_arenaStreak >= 3) {
+            grantChest(ChestType::Golden);
+            m_arenaStreak = 0;
+        }
+        reportEvent(QuestEvent::ArenaWon);
+    } else {
+        m_arenaStreak = 0;
+    }
+    return delta;
+}
+
+int ConquestMode::arenaOpponentPower(const BuildingRegistry& reg) const
+{
+    int base = teamPower(reg);
+    if (base <= 0) base = 50 + currentLevel() * 10;   // no team set yet
+    // Deterministic 0.95-1.15× jitter seeded by week+points so the "ladder"
+    // opponent is stable within a sitting but climbs as you win.
+    uint32_t seed = (uint32_t)m_week * 2246822519u
+                  ^ (uint32_t)arenaPoints() * 3266489917u;
+    std::mt19937 rng(seed);
+    float mult = 0.95f + std::uniform_real_distribution<float>(0.f, 0.20f)(rng);
+    return (int)(base * mult);
+}

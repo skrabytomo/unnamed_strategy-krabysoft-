@@ -6,6 +6,7 @@
 #include <imgui.h>
 #include <cstdio>
 #include <algorithm>
+#include <cstdint>
 
 static const char* nodeTypeName(ConquestNodeType t)
 {
@@ -197,6 +198,9 @@ void Game::renderConquest()
         ImGui::SameLine(0, 12);
         if (ImGui::Button("Upgrades", ImVec2(100, 40)))
             m_conquestShowUpgrades = !m_conquestShowUpgrades;
+        ImGui::SameLine(0, 12);
+        if (ImGui::Button("Arena", ImVec2(90, 40)))
+            m_conquestShowArena = !m_conquestShowArena;
         ImGui::SameLine(0, 20);
 
         static const char* kChestNames[] = {"Wooden", "Iron", "Golden", "Grand"};
@@ -485,6 +489,52 @@ void Game::renderConquest()
         ImGui::End();
     }
 
+    // ── Arena (Phase 5) ───────────────────────────────────────────────────────
+    if (m_conquestShowArena) {
+        ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
+                                ImGuiCond_Always, {0.5f, 0.5f});
+        ImGui::SetNextWindowSize({420, 0}, ImGuiCond_Always);
+        ImGui::Begin("Arena", &m_conquestShowArena,
+                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+
+        int myPower  = m_conquest.teamPower(m_registry);
+        int oppPower = m_conquest.arenaOpponentPower(m_registry);
+        int left     = m_conquest.arenaEntriesLeft();
+
+        ImGui::Text("Exhibition fights — no casualties, win or lose.");
+        ImGui::Separator();
+        ImGui::Text("Rank points: %d", m_conquest.arenaPoints());
+        ImGui::Text("Your team power:   %d", myPower);
+        ImGui::Text("Opponent power:    ~%d", oppPower);
+        ImGui::Spacing();
+        if (left > 0)
+            ImGui::Text("Free entries today: %d / %d",
+                        left, ConquestMode::ARENA_ENTRIES_PER_DAY);
+        else
+            ImGui::TextColored({1.f, 0.7f, 0.3f, 1.f},
+                "No free entries left — extra fight costs %d gems.",
+                ConquestMode::ARENA_EXTRA_ENTRY_GEMS);
+        ImGui::Spacing();
+
+        bool canEnter = m_conquest.arenaCanEnter() && myPower > 0;
+        if (myPower <= 0) {
+            ImGui::TextDisabled("Assemble a team first (Army / Collection).");
+        }
+        if (!canEnter) ImGui::BeginDisabled();
+        if (ImGui::Button("Fight!", ImVec2(-1, 40))) {
+            if (m_conquest.arenaConsumeEntry()) {
+                m_conquestShowArena = false;
+                startArenaBattle();
+            }
+        }
+        if (!canEnter) ImGui::EndDisabled();
+
+        ImGui::Spacing();
+        ImGui::TextDisabled("Win streaks grant bonus points; 3 wins = Golden chest.\n"
+                            "Rank resets each week.");
+        ImGui::End();
+    }
+
     endImGuiFrame();
 }
 
@@ -539,6 +589,72 @@ void Game::startConquestBattle(int nodeIndex)
     enterCombat(playerHero, playerUnits, enemyHero, enemyUnits);
     // enterCombat sets m_prevState = Conquest (we came from Conquest state),
     // which routes exitCombat back into onConquestBattleEnd.
+}
+
+void Game::startArenaBattle()
+{
+    const ConquestHero& ch = m_conquest.hero();
+
+    // Player: same team as map battles, path variants applied. No casualties
+    // are tracked — arena is exhibition (see CONQUEST_MODE.md).
+    Hero playerHero = ArmyBuilder::buildHero(ch.faction, std::max(1, ch.level));
+    playerHero.name    = ch.name;
+    playerHero.level   = ch.level;
+    playerHero.classId = ch.classId;
+    playerHero.attack  = ch.attack + (ch.level - 1) / 2;
+    playerHero.defense = ch.defense + (ch.level - 1) / 2;
+
+    std::vector<CombatUnit> playerUnits;
+    auto team = m_conquest.team();
+    int slot = 0;
+    for (auto& [defId, wantCount] : team) {
+        int owned = m_conquest.ownedCount(defId);
+        int count = std::min(wantCount, owned);
+        if (count <= 0) continue;
+        int variantId = m_conquest.resolveVariant(defId, m_registry);
+        const UnitDef* d = m_registry.getUnitDef(variantId);
+        if (!d) d = m_registry.getUnitDef(defId);
+        if (!d) continue;
+        playerUnits.push_back(ArmyBuilder::makeCombatUnit(*d, count, slot++));
+    }
+    if (playerUnits.empty())
+        playerUnits = ArmyBuilder::buildArmy(ch.faction, std::max(1, ch.level));
+
+    // Opponent: a "ghost" army power-matched to the player. Approximate a
+    // target power by scaling a random faction's generated army (weeks) until
+    // its power is closest to arenaOpponentPower().
+    int targetPower = m_conquest.arenaOpponentPower(m_registry);
+    uint32_t seed = (uint32_t)m_conquest.week() * 40503u
+                  ^ (uint32_t)m_conquest.arenaPoints() * 2654435761u;
+    FactionId ef = static_cast<FactionId>(seed % 9);
+
+    int bestWeeks = 1, bestDiff = 1 << 30;
+    for (int w = 1; w <= 40; ++w) {
+        int p = ArmyBuilder::armyPower(ef, w);
+        int diff = std::abs(p - targetPower);
+        if (diff < bestDiff) { bestDiff = diff; bestWeeks = w; }
+    }
+    Hero enemyHero = ArmyBuilder::buildHero(ef, bestWeeks);
+    auto enemyUnits = ArmyBuilder::buildArmy(ef, bestWeeks);
+
+    int pid = 1, eid = 50;
+    for (auto& u : playerUnits) { u.id = pid++; u.isPlayer = true;  u.factionHint = (int)ch.faction; }
+    for (auto& u : enemyUnits)  { u.id = eid++; u.isPlayer = false; u.factionHint = (int)ef; }
+
+    m_conquestInArena = true;
+    m_conquestDeployed.clear();   // arena = no casualties
+    enterCombat(playerHero, playerUnits, enemyHero, enemyUnits);
+}
+
+void Game::onArenaBattleEnd(bool victory)
+{
+    // NO casualties — collection untouched. Only points/rewards change.
+    int delta = m_conquest.arenaReportResult(victory);
+    gLog("Arena %s (%+d pts, now %d)\n",
+         victory ? "won" : "lost", delta, m_conquest.arenaPoints());
+    m_conquestInArena = false;
+    m_audio.playMusic("worldmap_music");
+    m_state = GameState::Conquest;
 }
 
 void Game::onConquestBattleEnd(bool victory)

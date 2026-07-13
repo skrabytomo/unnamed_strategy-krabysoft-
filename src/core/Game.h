@@ -93,6 +93,8 @@ private:
     void renderConquest();
     void startConquestBattle(int nodeIndex);
     void onConquestBattleEnd(bool victory);
+    void startArenaBattle();
+    void onArenaBattleEnd(bool victory);
     // Draw a full-screen loading frame (backdrop + progress bar) during init().
     void renderLoadingScreen(float progress, const char* label);
     // Draw the menu backdrop aspect-correct "cover" (fills any resolution without
@@ -507,6 +509,9 @@ private:
     // Phase 4: unit path upgrades
     bool         m_conquestShowUpgrades  = false;
     int          m_conquestUpgradeFaction = 0;
+    // Phase 5: arena
+    bool         m_conquestShowArena = false;
+    bool         m_conquestInArena   = false;   // true while an arena fight is active
 
     // ── Level-up flow ──────────────────────────────────────────────────────────
     HeroClassRegistry          m_classRegistry;

@@ -95,6 +95,11 @@ public:
     int  pathChoice(int faction, int tier) const;
     void setPathChoice(int faction, int tier, int choice);
 
+    // ── Arena (Phase 5) ───────────────────────────────────────────────────────
+    struct ArenaRow { int week; int points; int entriesToday; int lastEntryDay; };
+    ArenaRow arenaGet(int week) const;                   // zero row if none
+    void     arenaSet(const ArenaRow& r);
+
 private:
     bool createSchema();
     bool execSQL(const char* sql) const;

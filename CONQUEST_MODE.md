@@ -71,11 +71,15 @@ units there would kill the mode). Real attrition exists only on the map.
 
 | Phase | Content | Status |
 |---|---|---|
-| 1 | Mode entry, persistent hero, weekly linear map, XP/gold, DB schema | IN PROGRESS |
-| 2 | Chests + collection pool + team assembly UI | — |
-| 3 | Quests + gems | — |
-| 4 | Keys + path-upgrade screen | — |
-| 5 | Arena + weekly ghost ladder | — |
+| 1 | Mode entry, persistent hero, weekly linear map, XP/gold, DB schema | DONE |
+| 2 | Chests + collection pool + team assembly UI | DONE |
+| 3 | Quests + gems | DONE |
+| 4 | Keys + path-upgrade screen | DONE |
+| 5 | Arena + weekly ghost ladder | DONE |
+
+All five phases implemented. Possible future polish: town gold-upgrade screen
+(dwelling drip / walls / mage guild), leaderboard cosmetics, real ghost-army
+snapshots of other players (currently generated power-matched opponents).
 
 ## DB schema (added to the existing hideout sqlite file)
 
