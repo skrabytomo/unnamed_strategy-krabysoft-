@@ -898,41 +898,80 @@ void Game::updateWorldMap(float dt)
         if (m_watchAITimer <= 0.f) {
             m_watchAITimer = 1.0f / m_watchAISpeed;
 
-            // Watch game over: end when a side is eliminated (no town AND no
-            // army) OR one side is decisively dominant (>=6x total strength,
-            // more towns, past week 3) — otherwise the sim grinds for dozens
-            // of weeks after the outcome is already settled.
+            // Watch game over (free-for-all): every ownerId is an independent
+            // player, NOT a Blue-vs-Red team. The old 2-side model summed all
+            // AI players into one "Red" side, so on an 8-player map it declared
+            // a landslide on turn 1 (7 towns vs 1). End only when a single
+            // player is left standing, or the watched player (owner 1) is out.
             {
                 const auto& udefs = m_registry.units();
-                auto sideTowns = [&](bool ai) {
-                    int n = 0;
-                    for (const auto& t : m_towns)
-                        if (ai ? isAiOwner(t.ownerId) : (t.ownerId == 1u)) ++n;
-                    return n;
-                };
-                auto sideStrength = [&](bool ai) {
+
+                // Per-owner strength = own heroes' + own towns' garrisons.
+                auto ownerStrength = [&](uint32_t owner) -> long long {
                     long long s = 0;
-                    const auto& roster = ai ? m_enemyHeroes : m_heroes;
-                    for (const auto& h : roster) s += heroStrength(h, udefs);
+                    if (owner == 1u) {
+                        for (const auto& h : m_heroes) s += heroStrength(h, udefs);
+                    } else {
+                        for (const auto& h : m_enemyHeroes)
+                            if (h.ownerId == owner) s += heroStrength(h, udefs);
+                    }
                     for (const auto& t : m_towns)
-                        if (ai ? isAiOwner(t.ownerId) : (t.ownerId == 1u))
-                            s += stacksStrength(t.garrison, udefs);
+                        if (t.ownerId == owner) s += stacksStrength(t.garrison, udefs);
                     return s;
                 };
-                int  blueTowns = sideTowns(false), redTowns = sideTowns(true);
-                long long blueStr = sideStrength(false), redStr = sideStrength(true);
-                bool blueOut = (blueTowns == 0 && blueStr == 0);
-                bool redOut  = (redTowns  == 0 && redStr  == 0);
-                bool blueDominant = (m_turns.week() > 3 && blueTowns >= redTowns
-                                     && blueStr > redStr * 6 && redStr > 0);
-                bool redDominant  = (m_turns.week() > 3 && redTowns >= blueTowns
-                                     && redStr > blueStr * 6 && blueStr > 0);
-                if (blueOut || redOut || blueDominant || redDominant) {
-                    bool blueWins = redOut || blueDominant;
+                auto ownerTowns = [&](uint32_t owner) {
+                    int n = 0;
+                    for (const auto& t : m_towns) if (t.ownerId == owner) ++n;
+                    return n;
+                };
+
+                // Collect every player id that owns anything (town or army).
+                std::vector<uint32_t> owners;
+                auto note = [&](uint32_t o){
+                    if (std::find(owners.begin(), owners.end(), o) == owners.end())
+                        owners.push_back(o);
+                };
+                for (const auto& t : m_towns) note(t.ownerId);
+                if (!m_heroes.empty()) note(1u);
+                for (const auto& h : m_enemyHeroes) note(h.ownerId);
+
+                // Which owners are still alive (have a town or any strength)?
+                std::vector<uint32_t> alive;
+                for (uint32_t o : owners)
+                    if (ownerTowns(o) > 0 || ownerStrength(o) > 0)
+                        alive.push_back(o);
+
+                bool watchedAlive = std::find(alive.begin(), alive.end(), 1u) != alive.end();
+                bool gameOver = (alive.size() <= 1) || !watchedAlive;
+
+                // Early stop: one surviving player dwarfs ALL other survivors
+                // combined (>=6×) past week 5 — the outcome is settled. This is
+                // the per-player replacement for the old team-sum dominance.
+                uint32_t dominantOwner = 0;
+                if (!gameOver && alive.size() >= 2 && m_turns.week() > 5) {
+                    long long total = 0;
+                    std::vector<std::pair<uint32_t,long long>> strs;
+                    for (uint32_t o : alive) {
+                        long long s = ownerStrength(o);
+                        strs.push_back({o, s});
+                        total += s;
+                    }
+                    for (auto& [o, s] : strs) {
+                        long long rest = total - s;
+                        if (rest > 0 && s > rest * 6) { dominantOwner = o; gameOver = true; break; }
+                    }
+                }
+
+                if (gameOver) {
+                    uint32_t winner = dominantOwner ? dominantOwner
+                                    : (alive.empty() ? 0u : alive.front());
                     gLog("=== WATCH GAME OVER (week %d) — %s wins "
-                         "(Blue str %lld / %d towns, Red str %lld / %d towns) ===\n",
-                         m_turns.week(), blueWins ? "BLUE (watched)" : "RED (bot 2)",
-                         blueStr, blueTowns, redStr, redTowns);
+                         "(%zu players left, winner owner %u: str %lld / %d towns) ===\n",
+                         m_turns.week(),
+                         winner == 1u ? "BLUE (watched)" : "an AI player",
+                         alive.size(), winner,
+                         winner ? ownerStrength(winner) : 0,
+                         winner ? ownerTowns(winner) : 0);
                     m_watchingAI  = false;
                     m_fogDisabled = false;
                     m_state       = GameState::MainMenu;
