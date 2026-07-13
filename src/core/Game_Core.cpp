@@ -770,6 +770,7 @@ void Game::update(float dt)
 
     switch (m_state) {
         case GameState::MainMenu: updateMainMenu(dt);  break;
+        case GameState::Conquest: updateConquest(dt);  break;
         case GameState::WorldMap: updateWorldMap(dt);  break;
         case GameState::Combat:   updateCombat(dt);    break;
         case GameState::Town:     updateTown(dt);      break;
@@ -788,6 +789,7 @@ void Game::render()
 
     switch (m_state) {
         case GameState::MainMenu: renderMainMenu();  break;
+        case GameState::Conquest: renderConquest();  break;
         case GameState::WorldMap: renderWorldMap();  break;
         case GameState::Combat:   renderCombat();    break;
         case GameState::Town:     renderTown();      break;

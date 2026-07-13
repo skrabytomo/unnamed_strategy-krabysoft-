@@ -1840,6 +1840,13 @@ void Game::exitCombat(bool playerWon)
 {
     gLog("Combat ended — %s\n", playerWon ? "Victory" : "Defeat/Retreat");
 
+    // ── Conquest mode battle: no world-map hero to sync — grant rewards,
+    // update the node graph, and return to the conquest screen.
+    if (m_prevState == GameState::Conquest) {
+        onConquestBattleEnd(playerWon);
+        return;
+    }
+
     // ── Town DEFENSE siege: the garrison fought, not a hero — handle the
     // outcome here and skip all hero-centric processing below.
     if (m_pendingTownDefenseId != 0) {

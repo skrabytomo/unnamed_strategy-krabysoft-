@@ -9,4 +9,5 @@ enum class GameState
     Editor,
     MainMenu,
     WatchAI,     // both sides AI-controlled; player observes
+    Conquest,    // persistent progression mode (node map screen)
 };

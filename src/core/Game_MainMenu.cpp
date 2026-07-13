@@ -315,6 +315,8 @@ void Game::renderMainMenu()
 
         if (fancyButton("New Game",   m_menuIconTex[0])) m_menuMode = 1;
         ImGui::Spacing();
+        if (fancyButton("Conquest",   m_menuIconTex[2])) m_state = GameState::Conquest;
+        ImGui::Spacing();
         if (fancyButton("Load Game",  m_menuIconTex[1])) m_menuMode = 2;
         ImGui::Spacing();
         if (fancyButton("Campaign",   m_menuIconTex[2])) m_menuMode = 4;

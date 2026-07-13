@@ -32,6 +32,7 @@
 #include "../ui/CombatHUD.h"
 #include "../ui/TownScreen.h"
 #include "../meta/HideoutDB.h"
+#include "../meta/ConquestMode.h"
 #include "../scripting/LuaEngine.h"
 #include "../scripting/TriggerSystem.h"
 #include "../editor/MapEditor.h"
@@ -75,6 +76,10 @@ private:
     void renderCampaign();
     void updateMainMenu(float dt);
     void renderMainMenu();
+    void updateConquest(float dt);
+    void renderConquest();
+    void startConquestBattle(int nodeIndex);
+    void onConquestBattleEnd(bool victory);
     // Draw a full-screen loading frame (backdrop + progress bar) during init().
     void renderLoadingScreen(float progress, const char* label);
     // Draw the menu backdrop aspect-correct "cover" (fills any resolution without
@@ -462,6 +467,13 @@ private:
     HideoutDB    m_hideout;
     HideoutScreen m_hideoutScreen;
     bool          m_showHideoutScreen = false;
+
+    // ── Conquest mode (see CONQUEST_MODE.md) ──────────────────────────────────
+    ConquestMode m_conquest;
+    int          m_conquestActiveNode = -1;   // node currently being fought
+    bool         m_conquestHeroSetup  = false; // hero-creation sub-screen open
+    int          m_conquestSetupFaction = 0;
+    char         m_conquestSetupName[48] = "Wanderer";
 
     // ── Level-up flow ──────────────────────────────────────────────────────────
     HeroClassRegistry          m_classRegistry;
