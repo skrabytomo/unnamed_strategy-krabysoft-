@@ -68,6 +68,30 @@ public:
     int  gold() const { return m_db.gold(); }
     int  gems() const { return m_db.gems(); }
 
+    // ── Chests (Phase 2) ─────────────────────────────────────────────────────
+    // Inventory of unopened chests, persisted per type.
+    enum class ChestType : int { Wooden = 0, Iron = 1, Golden = 2, Grand = 3 };
+    struct ChestDrop { int defId; int count; std::string name; int tier; FactionId faction; };
+    struct ChestResult
+    {
+        std::vector<ChestDrop> units;
+        int keysFaction = -1;   // faction that got keys (-1 = none)
+        int keysGained  = 0;
+        int gemsGained  = 0;
+    };
+    int  chestCount(ChestType t) const;
+    void grantChest(ChestType t, int n = 1);
+    // Opens one chest (if owned); rolls contents from the registry and applies
+    // them to the collection/keys/gems. Returns what dropped.
+    ChestResult openChest(ChestType t, const class BuildingRegistry& reg);
+
+    // ── Collection & team (Phase 2) ──────────────────────────────────────────
+    std::vector<std::pair<int,int>> collection() const { return m_db.collectionAll(); }
+    int  ownedCount(int defId) const { return m_db.collectionCount(defId); }
+    void addUnits(int defId, int n)  { m_db.collectionAdd(defId, n); }
+    std::vector<std::pair<int,int>> team() const { return m_db.teamGet(); }
+    void setTeam(const std::vector<std::pair<int,int>>& t) { m_db.teamSet(t); }
+
     ConquestDB& db() { return m_db; }
 
 private:

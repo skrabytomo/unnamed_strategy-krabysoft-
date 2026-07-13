@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <utility>
 #include <cstdint>
 #include "../hero/FactionId.h"
 
@@ -58,6 +59,24 @@ public:
     // ── Streak (Phase 1: feeds XP multiplier) ─────────────────────────────────
     int  winStreak() const;
     void setWinStreak(int streak);
+
+    // ── Generic persisted ints (chest counts, flags…) ─────────────────────────
+    int  stateInt(const std::string& key, int defaultVal = 0) const;
+    void setStateInt(const std::string& key, int value);
+
+    // ── Collection pool (Phase 2) ─────────────────────────────────────────────
+    // defId → owned count. pathChoice is reserved for Phase 4.
+    std::vector<std::pair<int,int>> collectionAll() const;   // (defId, count), count>0
+    int  collectionCount(int defId) const;
+    void collectionAdd(int defId, int delta);                // clamped at 0
+
+    // ── Team (Phase 2): up to 6 slots of (defId, count) ───────────────────────
+    std::vector<std::pair<int,int>> teamGet() const;
+    void teamSet(const std::vector<std::pair<int,int>>& team);
+
+    // ── Faction keys (granted from Phase 2 chests, spent in Phase 4) ──────────
+    int  keyCount(int faction) const;
+    void addKeys(int faction, int delta);
 
 private:
     bool createSchema();

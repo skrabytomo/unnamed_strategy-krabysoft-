@@ -84,6 +84,11 @@ int ConquestMode::grantVictoryRewards(int nodeIndex)
     if (n.type == ConquestNodeType::Boss)     goldGain += 400;
     m_db.addGold(goldGain);
 
+    // Chests (Phase 2): side treasures and elites drop Wooden, bosses Golden
+    if (n.type == ConquestNodeType::Treasure) grantChest(ChestType::Wooden);
+    if (n.type == ConquestNodeType::Elite)    grantChest(ChestType::Wooden);
+    if (n.type == ConquestNodeType::Boss)     grantChest(ChestType::Golden);
+
     return after - before;
 }
 
@@ -224,4 +229,88 @@ int ConquestMode::isoWeekNumber()
     std::strftime(buf, sizeof(buf), "%V", &tmv);      // ISO week 01-53
     int wk = std::atoi(buf);
     return (tmv.tm_year + 1900) * 100 + wk;           // e.g. 202628 — unique per week
+}
+
+// ── Chests (Phase 2) ─────────────────────────────────────────────────────────
+#include "../town/BuildingRegistry.h"
+
+static const char* chestKey(ConquestMode::ChestType t)
+{
+    switch (t) {
+    case ConquestMode::ChestType::Wooden: return "chest_wooden";
+    case ConquestMode::ChestType::Iron:   return "chest_iron";
+    case ConquestMode::ChestType::Golden: return "chest_golden";
+    case ConquestMode::ChestType::Grand:  return "chest_grand";
+    }
+    return "chest_wooden";
+}
+
+int ConquestMode::chestCount(ChestType t) const
+{
+    return const_cast<ConquestDB&>(m_db).stateInt(chestKey(t));
+}
+
+void ConquestMode::grantChest(ChestType t, int n)
+{
+    m_db.setStateInt(chestKey(t), m_db.stateInt(chestKey(t)) + n);
+}
+
+ConquestMode::ChestResult ConquestMode::openChest(ChestType t, const BuildingRegistry& reg)
+{
+    ChestResult res;
+    int owned = chestCount(t);
+    if (owned <= 0) return res;
+    m_db.setStateInt(chestKey(t), owned - 1);
+
+    // Non-deterministic on purpose: each chest opening is a fresh roll.
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    auto ri = [&](int lo, int hi) {
+        return std::uniform_int_distribution<int>(lo, hi)(rng);
+    };
+
+    int drops = 0, maxTier = 2, factions = 1;
+    switch (t) {
+    case ChestType::Wooden: drops = 3; maxTier = 2; factions = 1; break;
+    case ChestType::Iron:   drops = 4; maxTier = 4; factions = 2; break;
+    case ChestType::Golden: drops = 5; maxTier = 5; factions = 2; break;
+    case ChestType::Grand:  drops = 6; maxTier = 6; factions = 3; break;
+    }
+
+    // Pick the faction pool for this chest
+    std::vector<FactionId> pool;
+    while ((int)pool.size() < factions) {
+        FactionId f = static_cast<FactionId>(ri(0, 8));
+        bool dup = false;
+        for (auto p : pool) if (p == f) dup = true;
+        if (!dup) pool.push_back(f);
+    }
+
+    for (int d = 0; d < drops; ++d) {
+        FactionId f = pool[ri(0, (int)pool.size() - 1)];
+        // Tier roll weighted low: tier = 1 + min of two rolls
+        int tier = 1 + std::min(ri(0, maxTier - 1), ri(0, maxTier - 1));
+        // Grand chest T6 is rare even when rolled: 30% keep, else downgrade
+        if (tier == 6 && ri(0, 99) >= 30) tier = 5;
+        const UnitDef* u = reg.getUnitDef(f, tier, UpgradePath::None);
+        if (!u) continue;
+        // Count scales inversely with tier
+        int count = std::max(1, ri(1, 7 - tier));
+        m_db.collectionAdd(u->id, count);
+        res.units.push_back({u->id, count, u->name, tier, f});
+    }
+
+    if (t == ChestType::Golden) {
+        res.keysFaction = ri(0, 8);
+        res.keysGained  = 1;
+        m_db.addKeys(res.keysFaction, 1);
+    } else if (t == ChestType::Grand) {
+        res.keysFaction = ri(0, 8);
+        res.keysGained  = 3;
+        m_db.addKeys(res.keysFaction, 3);
+        res.gemsGained  = ri(50, 100);
+        m_db.addGems(res.gemsGained);
+    }
+
+    return res;
 }

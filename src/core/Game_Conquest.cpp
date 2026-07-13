@@ -76,6 +76,7 @@ void Game::renderConquest()
             auto classes = m_classRegistry.getClassesForFaction(f);
             int classId = classes.empty() ? 0 : classes[0]->id;
             m_conquest.createHero(m_conquestSetupName, f, classId);
+            m_conquest.grantChest(ConquestMode::ChestType::Wooden, 2); // starter units
         }
         if (ImGui::Button("Back", ImVec2(-1, 28)))
             m_state = GameState::MainMenu;
@@ -175,6 +176,144 @@ void Game::renderConquest()
     }
 
     ImGui::End();
+
+    // ── Bottom bar: chests + army button (Phase 2) ────────────────────────────
+    {
+        ImGui::SetNextWindowPos({0, io.DisplaySize.y - 64}, ImGuiCond_Always);
+        ImGui::SetNextWindowSize({io.DisplaySize.x, 64}, ImGuiCond_Always);
+        ImGui::Begin("##conqBottom", nullptr,
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
+
+        if (ImGui::Button("Army / Collection", ImVec2(170, 40)))
+            m_conquestShowArmy = !m_conquestShowArmy;
+        ImGui::SameLine(0, 30);
+
+        static const char* kChestNames[] = {"Wooden", "Iron", "Golden", "Grand"};
+        for (int c = 0; c < 4; ++c) {
+            auto ct = static_cast<ConquestMode::ChestType>(c);
+            int n = m_conquest.chestCount(ct);
+            char lbl[48];
+            std::snprintf(lbl, sizeof(lbl), "%s Chest x%d##c%d", kChestNames[c], n, c);
+            if (n <= 0) ImGui::BeginDisabled();
+            if (ImGui::Button(lbl, ImVec2(150, 40))) {
+                m_conquestChestResult = m_conquest.openChest(ct, m_registry);
+                m_conquestShowChestResult = true;
+            }
+            if (n <= 0) ImGui::EndDisabled();
+            if (c < 3) ImGui::SameLine();
+        }
+        ImGui::End();
+    }
+
+    // ── Chest result popup ────────────────────────────────────────────────────
+    if (m_conquestShowChestResult) {
+        ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
+                                ImGuiCond_Always, {0.5f, 0.5f});
+        ImGui::SetNextWindowSize({360, 0}, ImGuiCond_Always);
+        ImGui::Begin("Chest Opened!", nullptr,
+                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+        for (const auto& d : m_conquestChestResult.units)
+            ImGui::Text("+%d  %s (T%d)", d.count, d.name.c_str(), d.tier);
+        if (m_conquestChestResult.keysGained > 0) {
+            static const char* kF[] = {"Holy Order","Crimson Wardens","Thornkin",
+                "Eternal Empire","Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"};
+            ImGui::TextColored({1.f, 0.8f, 0.2f, 1.f}, "+%d %s Key(s)",
+                m_conquestChestResult.keysGained,
+                kF[m_conquestChestResult.keysFaction % 9]);
+        }
+        if (m_conquestChestResult.gemsGained > 0)
+            ImGui::TextColored({0.5f, 0.85f, 1.f, 1.f}, "+%d Gems",
+                m_conquestChestResult.gemsGained);
+        if (m_conquestChestResult.units.empty() &&
+            m_conquestChestResult.keysGained == 0)
+            ImGui::TextDisabled("(empty — no chest available)");
+        ImGui::Spacing();
+        if (ImGui::Button("OK", ImVec2(-1, 32)))
+            m_conquestShowChestResult = false;
+        ImGui::End();
+    }
+
+    // ── Army / collection screen ──────────────────────────────────────────────
+    if (m_conquestShowArmy) {
+        ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
+                                ImGuiCond_Always, {0.5f, 0.5f});
+        ImGui::SetNextWindowSize({760, 480}, ImGuiCond_Always);
+        ImGui::Begin("Army & Collection", &m_conquestShowArmy,
+                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+
+        auto team = m_conquest.team();
+        auto owned = m_conquest.collection();
+
+        // Reserved counts (already in team) so the pool shows what's free
+        auto reservedOf = [&](int defId) {
+            int r = 0;
+            for (auto& [d, c] : team) if (d == defId) r += c;
+            return r;
+        };
+
+        ImGui::Columns(2, "##armyCols", true);
+
+        // Left: collection pool
+        ImGui::Text("Collection (open chests to gain units)");
+        ImGui::Separator();
+        ImGui::BeginChild("##pool", {0, 360});
+        if (owned.empty())
+            ImGui::TextDisabled("Empty. Clear Treasure/Elite/Boss nodes\nto earn chests, then open them below.");
+        for (auto& [defId, count] : owned) {
+            const UnitDef* d = m_registry.getUnitDef(defId);
+            if (!d) continue;
+            int freeCount = count - reservedOf(defId);
+            char row[96];
+            std::snprintf(row, sizeof(row), "%s (T%d)  x%d free##p%d",
+                          d->name.c_str(), d->tier, freeCount, defId);
+            bool canAdd = freeCount > 0 && (int)team.size() < 6;
+            if (!canAdd) ImGui::BeginDisabled();
+            if (ImGui::Button(row, ImVec2(-1, 26))) {
+                // Merge into an existing slot of the same unit, else new slot
+                bool merged = false;
+                for (auto& [td, tc] : team)
+                    if (td == defId) { tc += freeCount; merged = true; break; }
+                if (!merged) team.emplace_back(defId, freeCount);
+                m_conquest.setTeam(team);
+            }
+            if (!canAdd) ImGui::EndDisabled();
+        }
+        ImGui::EndChild();
+
+        // Right: team slots
+        ImGui::NextColumn();
+        ImGui::Text("Battle Team (max 6 stacks)");
+        ImGui::Separator();
+        int removeIdx = -1;
+        for (int i = 0; i < (int)team.size(); ++i) {
+            const UnitDef* d = m_registry.getUnitDef(team[i].first);
+            if (!d) continue;
+            ImGui::PushID(i);
+            ImGui::Text("%d. %s (T%d)", i + 1, d->name.c_str(), d->tier);
+            ImGui::SameLine(240);
+            int c = team[i].second;
+            ImGui::SetNextItemWidth(80);
+            if (ImGui::InputInt("##cnt", &c)) {
+                int maxC = m_conquest.ownedCount(team[i].first);
+                team[i].second = std::clamp(c, 1, maxC);
+                m_conquest.setTeam(team);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("X##rm", ImVec2(24, 22))) removeIdx = i;
+            ImGui::PopID();
+        }
+        if (removeIdx >= 0) {
+            team.erase(team.begin() + removeIdx);
+            m_conquest.setTeam(team);
+        }
+        if (team.empty())
+            ImGui::TextDisabled("No team set — battles will use a\ndefault army for your faction.");
+        ImGui::Columns(1);
+
+        ImGui::End();
+    }
+
     endImGuiFrame();
 }
 
@@ -184,14 +323,31 @@ void Game::startConquestBattle(int nodeIndex)
 
     const ConquestHero& ch = m_conquest.hero();
 
-    // Player: hero + army scaled by hero level (collection pool arrives Phase 2)
+    // Player: assembled team from the collection (Phase 2); falls back to a
+    // generated army for the hero's faction if no team is set.
     Hero playerHero = ArmyBuilder::buildHero(ch.faction, std::max(1, ch.level));
     playerHero.name    = ch.name;
     playerHero.level   = ch.level;
     playerHero.classId = ch.classId;
     playerHero.attack  = ch.attack + (ch.level - 1) / 2;
     playerHero.defense = ch.defense + (ch.level - 1) / 2;
-    auto playerUnits = ArmyBuilder::buildArmy(ch.faction, std::max(1, ch.level));
+
+    std::vector<CombatUnit> playerUnits;
+    m_conquestDeployed.clear();
+    auto team = m_conquest.team();
+    if (!team.empty()) {
+        int slot = 0;
+        for (auto& [defId, wantCount] : team) {
+            const UnitDef* d = m_registry.getUnitDef(defId);
+            int ownedNow = m_conquest.ownedCount(defId);
+            int count = std::min(wantCount, ownedNow);
+            if (!d || count <= 0) continue;
+            playerUnits.push_back(ArmyBuilder::makeCombatUnit(*d, count, slot++));
+            m_conquestDeployed.emplace_back(defId, count);
+        }
+    }
+    if (playerUnits.empty())   // no team (or team invalid) → generated fallback
+        playerUnits = ArmyBuilder::buildArmy(ch.faction, std::max(1, ch.level));
 
     // Enemy: scaled by node depth
     FactionId ef = m_conquest.enemyFactionForNode(nodeIndex);
@@ -210,6 +366,28 @@ void Game::startConquestBattle(int nodeIndex)
 
 void Game::onConquestBattleEnd(bool victory)
 {
+    // ── Casualties (Phase 2): units that didn't survive leave the collection.
+    // Survivors (including after a retreat) return to the pool untouched.
+    if (!m_conquestDeployed.empty()) {
+        for (auto& [defId, sent] : m_conquestDeployed) {
+            int survived = 0;
+            for (const auto& cu : m_combat.grid().units())
+                if (cu.isPlayer && cu.alive && cu.defId == defId)
+                    survived += cu.count;
+            int losses = sent - std::min(survived, sent);
+            if (losses > 0) m_conquest.addUnits(defId, -losses);
+        }
+        m_conquestDeployed.clear();
+        // Clamp team counts to what's still owned so the next fight is valid
+        auto team = m_conquest.team();
+        std::vector<std::pair<int,int>> pruned;
+        for (auto& [defId, cnt] : team) {
+            int ownedNow = m_conquest.ownedCount(defId);
+            if (ownedNow > 0) pruned.emplace_back(defId, std::min(cnt, ownedNow));
+        }
+        m_conquest.setTeam(pruned);
+    }
+
     if (victory && m_conquestActiveNode >= 0) {
         int levelsGained = m_conquest.grantVictoryRewards(m_conquestActiveNode);
         m_conquest.clearNode(m_conquestActiveNode);

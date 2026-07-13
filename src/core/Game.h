@@ -474,6 +474,11 @@ private:
     bool         m_conquestHeroSetup  = false; // hero-creation sub-screen open
     int          m_conquestSetupFaction = 0;
     char         m_conquestSetupName[48] = "Wanderer";
+    // Phase 2: army screen + chest popup + casualty tracking
+    bool         m_conquestShowArmy = false;
+    std::vector<std::pair<int,int>> m_conquestDeployed; // defId→count sent into battle
+    ConquestMode::ChestResult m_conquestChestResult;
+    bool         m_conquestShowChestResult = false;
 
     // ── Level-up flow ──────────────────────────────────────────────────────────
     HeroClassRegistry          m_classRegistry;

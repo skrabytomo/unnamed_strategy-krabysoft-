@@ -230,3 +230,157 @@ void ConquestDB::setWinStreak(int streak)
     }
     sqlite3_finalize(st);
 }
+
+// ── Generic persisted ints ───────────────────────────────────────────────────
+
+int ConquestDB::stateInt(const std::string& key, int defaultVal) const
+{
+    if (!m_db) return defaultVal;
+    sqlite3_stmt* st = nullptr;
+    int out = defaultVal;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT value FROM conquest_state WHERE key = ?;", -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(st, 1, key.c_str(), -1, SQLITE_TRANSIENT);
+        if (sqlite3_step(st) == SQLITE_ROW) out = sqlite3_column_int(st, 0);
+    }
+    sqlite3_finalize(st);
+    return out;
+}
+
+void ConquestDB::setStateInt(const std::string& key, int value)
+{
+    if (!m_db) return;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "INSERT INTO conquest_state (key, value) VALUES (?, ?)"
+        " ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
+        -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(st, 1, key.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int (st, 2, value);
+        sqlite3_step(st);
+    }
+    sqlite3_finalize(st);
+}
+
+// ── Collection pool ──────────────────────────────────────────────────────────
+
+std::vector<std::pair<int,int>> ConquestDB::collectionAll() const
+{
+    std::vector<std::pair<int,int>> out;
+    if (!m_db) return out;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT defId, count FROM conquest_collection WHERE count > 0 ORDER BY defId;",
+        -1, &st, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(st) == SQLITE_ROW)
+            out.emplace_back(sqlite3_column_int(st, 0), sqlite3_column_int(st, 1));
+    }
+    sqlite3_finalize(st);
+    return out;
+}
+
+int ConquestDB::collectionCount(int defId) const
+{
+    if (!m_db) return 0;
+    sqlite3_stmt* st = nullptr;
+    int out = 0;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT count FROM conquest_collection WHERE defId = ?;", -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(st, 1, defId);
+        if (sqlite3_step(st) == SQLITE_ROW) out = sqlite3_column_int(st, 0);
+    }
+    sqlite3_finalize(st);
+    return out;
+}
+
+void ConquestDB::collectionAdd(int defId, int delta)
+{
+    if (!m_db) return;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "INSERT INTO conquest_collection (defId, count) VALUES (?, MAX(0, ?))"
+        " ON CONFLICT(defId) DO UPDATE SET count = MAX(0, count + ?);",
+        -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(st, 1, defId);
+        sqlite3_bind_int(st, 2, delta);
+        sqlite3_bind_int(st, 3, delta);
+        sqlite3_step(st);
+    }
+    sqlite3_finalize(st);
+}
+
+// ── Team ─────────────────────────────────────────────────────────────────────
+
+std::vector<std::pair<int,int>> ConquestDB::teamGet() const
+{
+    std::vector<std::pair<int,int>> out;
+    if (!m_db) return out;
+    // Table created lazily here so older DBs pick it up without a migration.
+    const_cast<ConquestDB*>(this)->execSQL(
+        "CREATE TABLE IF NOT EXISTS conquest_team ("
+        " slot INTEGER PRIMARY KEY, defId INTEGER, count INTEGER);");
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT defId, count FROM conquest_team WHERE count > 0 ORDER BY slot;",
+        -1, &st, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(st) == SQLITE_ROW)
+            out.emplace_back(sqlite3_column_int(st, 0), sqlite3_column_int(st, 1));
+    }
+    sqlite3_finalize(st);
+    return out;
+}
+
+void ConquestDB::teamSet(const std::vector<std::pair<int,int>>& team)
+{
+    if (!m_db) return;
+    execSQL("CREATE TABLE IF NOT EXISTS conquest_team ("
+            " slot INTEGER PRIMARY KEY, defId INTEGER, count INTEGER);");
+    execSQL("DELETE FROM conquest_team;");
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "INSERT INTO conquest_team (slot, defId, count) VALUES (?, ?, ?);",
+        -1, &st, nullptr) == SQLITE_OK) {
+        int slot = 0;
+        for (const auto& [defId, count] : team) {
+            if (count <= 0 || slot >= 6) continue;
+            sqlite3_reset(st);
+            sqlite3_bind_int(st, 1, slot++);
+            sqlite3_bind_int(st, 2, defId);
+            sqlite3_bind_int(st, 3, count);
+            sqlite3_step(st);
+        }
+    }
+    sqlite3_finalize(st);
+}
+
+// ── Keys ─────────────────────────────────────────────────────────────────────
+
+int ConquestDB::keyCount(int faction) const
+{
+    if (!m_db) return 0;
+    sqlite3_stmt* st = nullptr;
+    int out = 0;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT count FROM conquest_keys WHERE faction = ?;", -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(st, 1, faction);
+        if (sqlite3_step(st) == SQLITE_ROW) out = sqlite3_column_int(st, 0);
+    }
+    sqlite3_finalize(st);
+    return out;
+}
+
+void ConquestDB::addKeys(int faction, int delta)
+{
+    if (!m_db) return;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "INSERT INTO conquest_keys (faction, count) VALUES (?, MAX(0, ?))"
+        " ON CONFLICT(faction) DO UPDATE SET count = MAX(0, count + ?);",
+        -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(st, 1, faction);
+        sqlite3_bind_int(st, 2, delta);
+        sqlite3_bind_int(st, 3, delta);
+        sqlite3_step(st);
+    }
+    sqlite3_finalize(st);
+}

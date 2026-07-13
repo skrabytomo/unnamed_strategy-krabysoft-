@@ -27,6 +27,10 @@ public:
     // Returns a Hero with attack/defense scaled by hero level (derived from weeks)
     static Hero buildHero(FactionId faction, int weeks);
 
+    // Builds a single CombatUnit stack from a UnitDef (shared by buildArmy and
+    // Conquest-mode team assembly).
+    static CombatUnit makeCombatUnit(const UnitDef& d, int count, int slot);
+
     // Hero level from weeks: 2 fights/week × XP ramp → approx level
     static int heroLevelFromWeeks(int weeks);
 

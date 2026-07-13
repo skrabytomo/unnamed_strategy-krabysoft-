@@ -34,6 +34,32 @@ int ArmyBuilder::heroLevelFromWeeks(int weeks)
     return 1 + static_cast<int>(std::sqrt(static_cast<float>(weeks) * 2.0f));
 }
 
+CombatUnit ArmyBuilder::makeCombatUnit(const UnitDef& d, int count, int slot)
+{
+    CombatUnit u;
+    u.name          = d.name;
+    u.defId         = d.id;
+    u.count         = count;
+    u.hp            = d.hp;
+    u.maxHp         = d.hp;
+    u.attack        = d.attack;
+    u.defense       = d.defense;
+    u.damageMin     = d.damage_min;
+    u.damageMax     = d.damage_max;
+    u.speed         = d.speed;
+    u.range         = d.range;
+    u.shots         = d.shots;
+    u.shotsLeft     = d.shots;
+    u.flying        = d.flying;
+    u.tags          = d.tags;
+    u.stackSlot     = slot;
+    u.alive         = true;
+    u.moraleImmune  = hasTag(d.tags, UnitTag::Undead) || hasTag(d.tags, UnitTag::Mechanical);
+    u.hasSecondLife = d.hasSecondLife;
+    u.morale        = 50;
+    return u;
+}
+
 std::vector<CombatUnit> ArmyBuilder::buildArmy(FactionId faction, int weeks)
 {
     std::vector<CombatUnit> army;
@@ -54,28 +80,7 @@ std::vector<CombatUnit> ArmyBuilder::buildArmy(FactionId faction, int weeks)
         int count = std::min(accumulated, MAX_STACK);
         if (count <= 0) continue;
 
-        CombatUnit u;
-        u.name          = d->name;
-        u.count         = count;
-        u.hp            = d->hp;
-        u.maxHp         = d->hp;
-        u.attack        = d->attack;
-        u.defense       = d->defense;
-        u.damageMin     = d->damage_min;
-        u.damageMax     = d->damage_max;
-        u.speed         = d->speed;
-        u.range         = d->range;
-        u.shots         = d->shots;
-        u.shotsLeft     = d->shots;
-        u.flying        = d->flying;
-        u.tags          = d->tags;
-        u.stackSlot     = tier - 1;
-        u.alive         = true;
-        u.moraleImmune  = hasTag(d->tags, UnitTag::Undead) || hasTag(d->tags, UnitTag::Mechanical);
-        u.hasSecondLife = d->hasSecondLife;
-        u.morale        = 50;
-
-        army.push_back(u);
+        army.push_back(makeCombatUnit(*d, count, tier - 1));
     }
 
     return army;
