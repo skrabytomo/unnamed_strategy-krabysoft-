@@ -384,3 +384,91 @@ void ConquestDB::addKeys(int faction, int delta)
     }
     sqlite3_finalize(st);
 }
+
+// ── Quests (Phase 3) ─────────────────────────────────────────────────────────
+
+std::vector<ConquestDB::QuestRow> ConquestDB::questsAll() const
+{
+    std::vector<QuestRow> out;
+    if (!m_db) return out;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT id, type, param, progress, target, expiry, claimed FROM conquest_quests"
+        " ORDER BY type, id;", -1, &st, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(st) == SQLITE_ROW) {
+            QuestRow q;
+            q.id       = sqlite3_column_int(st, 0);
+            // conquest_quests.type encodes (weekly<<8 | event)
+            int packed = sqlite3_column_int(st, 1);
+            q.weekly   = (packed >> 8) & 1;
+            q.event    = packed & 0xFF;
+            q.param    = sqlite3_column_int(st, 2);
+            q.progress = sqlite3_column_int(st, 3);
+            q.target   = sqlite3_column_int(st, 4);
+            q.expiry   = sqlite3_column_int64(st, 5);
+            q.claimed  = sqlite3_column_int(st, 6) != 0;
+            out.push_back(q);
+        }
+    }
+    sqlite3_finalize(st);
+    return out;
+}
+
+void ConquestDB::questClear(bool weekly)
+{
+    if (!m_db) return;
+    sqlite3_stmt* st = nullptr;
+    // Delete rows whose packed weekly-bit matches
+    if (sqlite3_prepare_v2(m_db,
+        "DELETE FROM conquest_quests WHERE ((type >> 8) & 1) = ?;", -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(st, 1, weekly ? 1 : 0);
+        sqlite3_step(st);
+    }
+    sqlite3_finalize(st);
+}
+
+int ConquestDB::questInsert(bool weekly, int event, int param, int target, long long expiry)
+{
+    if (!m_db) return -1;
+    sqlite3_stmt* st = nullptr;
+    int packed = ((weekly ? 1 : 0) << 8) | (event & 0xFF);
+    int id = -1;
+    if (sqlite3_prepare_v2(m_db,
+        "INSERT INTO conquest_quests (type, param, progress, target, expiry, claimed)"
+        " VALUES (?, ?, 0, ?, ?, 0);", -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int  (st, 1, packed);
+        sqlite3_bind_int  (st, 2, param);
+        sqlite3_bind_int  (st, 3, target);
+        sqlite3_bind_int64(st, 4, expiry);
+        if (sqlite3_step(st) == SQLITE_DONE)
+            id = (int)sqlite3_last_insert_rowid(m_db);
+    }
+    sqlite3_finalize(st);
+    return id;
+}
+
+void ConquestDB::questSetProgress(int id, int progress)
+{
+    if (!m_db) return;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "UPDATE conquest_quests SET progress = ? WHERE id = ?;", -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(st, 1, progress);
+        sqlite3_bind_int(st, 2, id);
+        sqlite3_step(st);
+    }
+    sqlite3_finalize(st);
+}
+
+void ConquestDB::questSetClaimed(int id, bool claimed)
+{
+    if (!m_db) return;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "UPDATE conquest_quests SET claimed = ? WHERE id = ?;", -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(st, 1, claimed ? 1 : 0);
+        sqlite3_bind_int(st, 2, id);
+        sqlite3_step(st);
+    }
+    sqlite3_finalize(st);
+}

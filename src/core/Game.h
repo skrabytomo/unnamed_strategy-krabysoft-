@@ -501,6 +501,9 @@ private:
     std::vector<std::pair<int,int>> m_conquestDeployed; // defId→count sent into battle
     ConquestMode::ChestResult m_conquestChestResult;
     bool         m_conquestShowChestResult = false;
+    // Phase 3: quests + gem shop
+    bool         m_conquestShowQuests  = false;
+    bool         m_conquestShowGemShop = false;
 
     // ── Level-up flow ──────────────────────────────────────────────────────────
     HeroClassRegistry          m_classRegistry;

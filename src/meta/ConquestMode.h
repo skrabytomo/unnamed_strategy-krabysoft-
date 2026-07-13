@@ -3,6 +3,7 @@
 #include <string>
 #include <cstdint>
 #include "ConquestDB.h"
+#include "ConquestQuests.h"
 #include "../hero/FactionId.h"
 
 // ── ConquestMode ─────────────────────────────────────────────────────────────
@@ -91,6 +92,22 @@ public:
     void addUnits(int defId, int n)  { m_db.collectionAdd(defId, n); }
     std::vector<std::pair<int,int>> team() const { return m_db.teamGet(); }
     void setTeam(const std::vector<std::pair<int,int>>& t) { m_db.teamSet(t); }
+
+    // ── Quests (Phase 3) ──────────────────────────────────────────────────────
+    // Regenerates daily/weekly sets whose window has elapsed, then returns all.
+    void refreshQuests();
+    std::vector<class Quest> quests() const;
+    // Gameplay hook: bump matching quests. `count` is how much to add.
+    void reportEvent(QuestEvent e, int count = 1);
+    // Claim a completed, unclaimed quest → applies reward. Returns reward desc.
+    std::string claimQuest(int questId, const class BuildingRegistry& reg);
+
+    // ── Gem spending (Phase 3) ────────────────────────────────────────────────
+    // Buy a chest with gems. Returns false if too few gems.
+    bool buyChestWithGems(ChestType t);
+    static int chestGemPrice(ChestType t);
+    // Hero respec: refund one attribute point cost, etc. (kept minimal for now)
+    bool spendGems(int amount);
 
     ConquestDB& db() { return m_db; }
 

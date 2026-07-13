@@ -89,6 +89,11 @@ int ConquestMode::grantVictoryRewards(int nodeIndex)
     if (n.type == ConquestNodeType::Elite)    grantChest(ChestType::Wooden);
     if (n.type == ConquestNodeType::Boss)     grantChest(ChestType::Golden);
 
+    // Quest events (Phase 3): treasure nodes don't count as a "battle won".
+    reportEvent(QuestEvent::NodeCleared);
+    if (n.sideBranch) reportEvent(QuestEvent::SideNodeCleared);
+    if (n.type != ConquestNodeType::Treasure) reportEvent(QuestEvent::BattleWon);
+
     return after - before;
 }
 
@@ -312,5 +317,178 @@ ConquestMode::ChestResult ConquestMode::openChest(ChestType t, const BuildingReg
         m_db.addGems(res.gemsGained);
     }
 
+    reportEvent(QuestEvent::ChestOpened);   // Phase 3 quest hook
     return res;
+}
+
+// ── Quests (Phase 3) ─────────────────────────────────────────────────────────
+#include <ctime>
+
+static long long nowUnix() { return (long long)std::time(nullptr); }
+
+// Midnight (local) after `t`, as unix seconds.
+static long long nextMidnight(long long t)
+{
+    std::time_t tt = (std::time_t)t;
+    std::tm tmv{};
+#ifdef _WIN32
+    localtime_s(&tmv, &tt);
+#else
+    localtime_r(&tt, &tmv);
+#endif
+    tmv.tm_hour = 0; tmv.tm_min = 0; tmv.tm_sec = 0;
+    tmv.tm_mday += 1;                       // start of tomorrow
+    return (long long)std::mktime(&tmv);
+}
+
+void ConquestMode::refreshQuests()
+{
+    long long now = nowUnix();
+    auto rows = m_db.questsAll();
+
+    bool haveDaily = false, haveWeekly = false;
+    long long dailyExpiry = 0, weeklyExpiry = 0;
+    for (auto& r : rows) {
+        if (r.weekly) { haveWeekly = true; weeklyExpiry = r.expiry; }
+        else          { haveDaily  = true; dailyExpiry  = r.expiry; }
+    }
+
+    std::mt19937 rng((uint32_t)now);
+    auto pick = [&](const std::vector<QuestEvent>& pool) {
+        return pool[rng() % pool.size()];
+    };
+
+    // Daily set: regenerate if missing or expired
+    if (!haveDaily || now >= dailyExpiry) {
+        m_db.questClear(false);
+        long long exp = nextMidnight(now);
+        std::vector<QuestEvent> pool = {
+            QuestEvent::BattleWon, QuestEvent::NodeCleared,
+            QuestEvent::SideNodeCleared, QuestEvent::ChestOpened,
+            QuestEvent::MultiFactionWin
+        };
+        // 3 distinct daily quests
+        std::vector<QuestEvent> chosen;
+        while (chosen.size() < 3) {
+            QuestEvent e = pick(pool);
+            bool dup = false; for (auto c : chosen) if (c == e) dup = true;
+            if (!dup) chosen.push_back(e);
+        }
+        for (auto e : chosen) {
+            int target = 2;
+            switch (e) {
+            case QuestEvent::BattleWon:       target = 2 + (rng() % 2); break;
+            case QuestEvent::NodeCleared:     target = 3 + (rng() % 3); break;
+            case QuestEvent::SideNodeCleared: target = 1 + (rng() % 2); break;
+            case QuestEvent::ChestOpened:     target = 2 + (rng() % 2); break;
+            case QuestEvent::MultiFactionWin: target = 1; break;
+            default: break;
+            }
+            m_db.questInsert(false, (int)e, 0, target, exp);
+        }
+    }
+
+    // Weekly set: regenerate if missing or expired
+    if (!haveWeekly || now >= weeklyExpiry) {
+        m_db.questClear(true);
+        long long exp = now + 7 * 24 * 3600;   // 7 days
+        std::vector<QuestEvent> pool = {
+            QuestEvent::NodeCleared, QuestEvent::ArenaWon, QuestEvent::ChestOpened
+        };
+        for (auto e : pool) {
+            int target = 10;
+            switch (e) {
+            case QuestEvent::NodeCleared: target = 10; break;
+            case QuestEvent::ArenaWon:    target = 5;  break;
+            case QuestEvent::ChestOpened: target = 4;  break;
+            default: break;
+            }
+            m_db.questInsert(true, (int)e, 0, target, exp);
+        }
+    }
+}
+
+std::vector<Quest> ConquestMode::quests() const
+{
+    std::vector<Quest> out;
+    for (auto& r : const_cast<ConquestDB&>(m_db).questsAll()) {
+        Quest q;
+        q.id       = r.id;
+        q.weekly   = r.weekly;
+        q.event    = (QuestEvent)r.event;
+        q.param    = r.param;
+        q.progress = r.progress;
+        q.target   = r.target;
+        q.expiry   = r.expiry;
+        q.claimed  = r.claimed;
+        q.text     = questText(q.event, q.target, q.weekly);
+        out.push_back(q);
+    }
+    return out;
+}
+
+void ConquestMode::reportEvent(QuestEvent e, int count)
+{
+    for (auto& r : m_db.questsAll()) {
+        if (r.claimed) continue;
+        if ((QuestEvent)r.event != e) continue;
+        int np = std::min(r.target, r.progress + count);
+        if (np != r.progress) m_db.questSetProgress(r.id, np);
+    }
+}
+
+std::string ConquestMode::claimQuest(int questId, const BuildingRegistry& reg)
+{
+    for (auto& r : m_db.questsAll()) {
+        if (r.id != questId) continue;
+        if (r.claimed || r.progress < r.target) return "";
+        Quest q;
+        q.weekly = r.weekly; q.event = (QuestEvent)r.event;
+        q.target = r.target;
+        QuestReward rw = QuestRewards::forQuest(q);
+        switch (rw.kind) {
+        case QuestRewardKind::Gold:        m_db.addGold(rw.amount); break;
+        case QuestRewardKind::Gems:        m_db.addGems(rw.amount); break;
+        case QuestRewardKind::WoodenChest: grantChest(ChestType::Wooden, rw.amount); break;
+        case QuestRewardKind::IronChest:   grantChest(ChestType::Iron,   rw.amount); break;
+        case QuestRewardKind::Key: {
+            std::random_device rd; std::mt19937 rng(rd());
+            m_db.addKeys(rng() % 9, rw.amount);
+            break;
+        }
+        }
+        m_db.questSetClaimed(r.id, true);
+        (void)reg;
+        return QuestRewards::describe(rw);
+    }
+    return "";
+}
+
+// ── Gem spending (Phase 3) ───────────────────────────────────────────────────
+
+int ConquestMode::chestGemPrice(ChestType t)
+{
+    switch (t) {
+    case ChestType::Wooden: return 20;
+    case ChestType::Iron:   return 50;
+    case ChestType::Golden: return 150;
+    case ChestType::Grand:  return 400;
+    }
+    return 50;
+}
+
+bool ConquestMode::buyChestWithGems(ChestType t)
+{
+    int price = chestGemPrice(t);
+    if (m_db.gems() < price) return false;
+    m_db.addGems(-price);
+    grantChest(t, 1);
+    return true;
+}
+
+bool ConquestMode::spendGems(int amount)
+{
+    if (m_db.gems() < amount) return false;
+    m_db.addGems(-amount);
+    return true;
 }

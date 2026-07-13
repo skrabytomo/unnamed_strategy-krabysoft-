@@ -78,6 +78,17 @@ public:
     int  keyCount(int faction) const;
     void addKeys(int faction, int delta);
 
+    // ── Quests (Phase 3) ──────────────────────────────────────────────────────
+    struct QuestRow {
+        int id; bool weekly; int event; int param;
+        int progress; int target; long long expiry; bool claimed;
+    };
+    std::vector<QuestRow> questsAll() const;
+    void  questClear(bool weekly);                       // wipe daily or weekly set
+    int   questInsert(bool weekly, int event, int param, int target, long long expiry);
+    void  questSetProgress(int id, int progress);
+    void  questSetClaimed(int id, bool claimed);
+
 private:
     bool createSchema();
     bool execSQL(const char* sql) const;

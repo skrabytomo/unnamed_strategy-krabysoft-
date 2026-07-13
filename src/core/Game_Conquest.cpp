@@ -48,6 +48,7 @@ void Game::renderConquest()
     // Lazy init on first entry
     if (!m_conquest.active())
         m_conquest.init("hideout.db");
+    m_conquest.refreshQuests();   // regenerate daily/weekly sets if elapsed
 
     // ── Hero setup gate ───────────────────────────────────────────────────────
     if (!m_conquest.hasHero()) {
@@ -103,6 +104,9 @@ void Game::renderConquest()
     ImGui::TextColored({1.0f, 0.85f, 0.2f, 1.f}, "Gold: %d", m_conquest.gold());
     ImGui::SameLine(720);
     ImGui::TextColored({0.5f, 0.85f, 1.0f, 1.f}, "Gems: %d", m_conquest.gems());
+    if (ImGui::IsItemClicked()) m_conquestShowGemShop = !m_conquestShowGemShop;
+    ImGui::SameLine(830);
+    ImGui::TextDisabled("(click gems to shop)");
     ImGui::SameLine(io.DisplaySize.x - 190);
     ImGui::TextDisabled("Week map #%d  [Esc: menu]", m_conquest.week() % 100);
     ImGui::End();
@@ -187,7 +191,10 @@ void Game::renderConquest()
 
         if (ImGui::Button("Army / Collection", ImVec2(170, 40)))
             m_conquestShowArmy = !m_conquestShowArmy;
-        ImGui::SameLine(0, 30);
+        ImGui::SameLine(0, 12);
+        if (ImGui::Button("Quests", ImVec2(90, 40)))
+            m_conquestShowQuests = !m_conquestShowQuests;
+        ImGui::SameLine(0, 20);
 
         static const char* kChestNames[] = {"Wooden", "Iron", "Golden", "Grand"};
         for (int c = 0; c < 4; ++c) {
@@ -314,6 +321,72 @@ void Game::renderConquest()
         ImGui::End();
     }
 
+    // ── Quests panel (Phase 3) ────────────────────────────────────────────────
+    if (m_conquestShowQuests) {
+        ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
+                                ImGuiCond_Always, {0.5f, 0.5f});
+        ImGui::SetNextWindowSize({520, 440}, ImGuiCond_Always);
+        ImGui::Begin("Quests", &m_conquestShowQuests,
+                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+
+        auto qs = m_conquest.quests();
+        auto drawQuest = [&](const Quest& q) {
+            ImGui::PushID(q.id);
+            QuestReward rw = QuestRewards::forQuest(q);
+            ImGui::Text("%s", q.text.c_str());
+            ImGui::SameLine(300);
+            ImGui::ProgressBar((float)q.progress / (float)std::max(1, q.target),
+                               ImVec2(120, 16));
+            ImGui::SameLine();
+            if (q.claimed) {
+                ImGui::TextDisabled("Claimed");
+            } else if (q.complete()) {
+                if (ImGui::Button("Claim", ImVec2(70, 20)))
+                    m_conquest.claimQuest(q.id, m_registry);
+            } else {
+                ImGui::TextDisabled("%s", QuestRewards::describe(rw).c_str());
+            }
+            ImGui::PopID();
+        };
+
+        ImGui::TextColored({1.f, 0.85f, 0.3f, 1.f}, "Daily");
+        ImGui::Separator();
+        for (auto& q : qs) if (!q.weekly) drawQuest(q);
+        ImGui::Spacing();
+        ImGui::TextColored({0.6f, 0.8f, 1.f, 1.f}, "Weekly");
+        ImGui::Separator();
+        for (auto& q : qs) if (q.weekly) drawQuest(q);
+
+        ImGui::Spacing(); ImGui::Separator();
+        ImGui::TextDisabled("Daily resets at midnight; weekly every 7 days.");
+        ImGui::End();
+    }
+
+    // ── Gem shop: buy chests (Phase 3) ────────────────────────────────────────
+    if (m_conquestShowGemShop) {
+        ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
+                                ImGuiCond_Always, {0.5f, 0.5f});
+        ImGui::SetNextWindowSize({320, 0}, ImGuiCond_Always);
+        ImGui::Begin("Gem Shop", &m_conquestShowGemShop,
+                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+        ImGui::Text("Gems: %d", m_conquest.gems());
+        ImGui::Separator();
+        static const char* kChestNames[] = {"Wooden", "Iron", "Golden", "Grand"};
+        for (int c = 0; c < 4; ++c) {
+            auto ct = static_cast<ConquestMode::ChestType>(c);
+            int price = ConquestMode::chestGemPrice(ct);
+            char lbl[64];
+            std::snprintf(lbl, sizeof(lbl), "Buy %s Chest — %d gems##buy%d",
+                          kChestNames[c], price, c);
+            bool afford = m_conquest.gems() >= price;
+            if (!afford) ImGui::BeginDisabled();
+            if (ImGui::Button(lbl, ImVec2(-1, 30)))
+                m_conquest.buyChestWithGems(ct);
+            if (!afford) ImGui::EndDisabled();
+        }
+        ImGui::End();
+    }
+
     endImGuiFrame();
 }
 
@@ -391,6 +464,22 @@ void Game::onConquestBattleEnd(bool victory)
     if (victory && m_conquestActiveNode >= 0) {
         int levelsGained = m_conquest.grantVictoryRewards(m_conquestActiveNode);
         m_conquest.clearNode(m_conquestActiveNode);
+
+        // Multi-faction quest: count distinct factions among deployed units
+        {
+            std::vector<int> seen;
+            for (const auto& cu : m_combat.grid().units()) {
+                if (!cu.isPlayer || cu.defId == 0) continue;
+                const UnitDef* d = m_registry.getUnitDef(cu.defId);
+                if (!d) continue;
+                int f = (int)d->faction;
+                if (std::find(seen.begin(), seen.end(), f) == seen.end())
+                    seen.push_back(f);
+            }
+            if ((int)seen.size() >= 3)
+                m_conquest.reportEvent(QuestEvent::MultiFactionWin);
+        }
+
         if (levelsGained > 0)
             gLog("Conquest: level up! Now level %d\n", m_conquest.currentLevel());
     } else {
