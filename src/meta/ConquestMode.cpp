@@ -3,6 +3,7 @@
 #include <random>
 #include <algorithm>
 #include <cstdio>
+#include "../town/BuildingRegistry.h"
 
 // ── Init / shutdown ──────────────────────────────────────────────────────────
 
@@ -237,7 +238,6 @@ int ConquestMode::isoWeekNumber()
 }
 
 // ── Chests (Phase 2) ─────────────────────────────────────────────────────────
-#include "../town/BuildingRegistry.h"
 
 static const char* chestKey(ConquestMode::ChestType t)
 {
@@ -322,7 +322,6 @@ ConquestMode::ChestResult ConquestMode::openChest(ChestType t, const BuildingReg
 }
 
 // ── Quests (Phase 3) ─────────────────────────────────────────────────────────
-#include <ctime>
 
 static long long nowUnix() { return (long long)std::time(nullptr); }
 
