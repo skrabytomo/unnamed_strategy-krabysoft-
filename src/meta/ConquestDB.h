@@ -89,6 +89,12 @@ public:
     void  questSetProgress(int id, int progress);
     void  questSetClaimed(int id, bool claimed);
 
+    // ── Path upgrades (Phase 4) ───────────────────────────────────────────────
+    // Per faction (0-8) × tier (1-5): 0 = base/undecided, 1 = Path A, 2 = Path B.
+    // Once chosen, all owned/future units of that faction+tier resolve to it.
+    int  pathChoice(int faction, int tier) const;
+    void setPathChoice(int faction, int tier, int choice);
+
 private:
     bool createSchema();
     bool execSQL(const char* sql) const;

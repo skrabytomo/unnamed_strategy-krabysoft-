@@ -492,3 +492,54 @@ bool ConquestMode::spendGems(int amount)
     m_db.addGems(-amount);
     return true;
 }
+
+// ── Keys & path upgrades (Phase 4) ───────────────────────────────────────────
+
+int ConquestMode::keyCostForTier(int tier)
+{
+    switch (tier) {
+    case 1: return 1;
+    case 2: return 2;
+    case 3: return 3;
+    case 4: return 5;
+    case 5: return 8;
+    default: return 99;   // T6 has no paths
+    }
+}
+
+bool ConquestMode::chooseUnitPath(int faction, int tier, int choice)
+{
+    if (tier < 1 || tier > 5) return false;
+    if (choice != 1 && choice != 2) return false;
+    if (m_db.pathChoice(faction, tier) != 0) return false;   // already chosen
+    int cost = keyCostForTier(tier);
+    if (m_db.keyCount(faction) < cost) return false;
+    m_db.addKeys(faction, -cost);
+    m_db.setPathChoice(faction, tier, choice);
+    return true;
+}
+
+bool ConquestMode::respecUnitPath(int faction, int tier, int newChoice)
+{
+    if (tier < 1 || tier > 5) return false;
+    if (newChoice != 1 && newChoice != 2) return false;
+    int cur = m_db.pathChoice(faction, tier);
+    if (cur == 0) return chooseUnitPath(faction, tier, newChoice);  // not yet chosen
+    if (cur == newChoice) return false;                             // no change
+    if (m_db.gems() < respecGemCost()) return false;
+    m_db.addGems(-respecGemCost());
+    m_db.setPathChoice(faction, tier, newChoice);
+    return true;
+}
+
+int ConquestMode::resolveVariant(int baseDefId, const BuildingRegistry& reg) const
+{
+    const UnitDef* base = reg.getUnitDef(baseDefId);
+    if (!base) return baseDefId;
+    if (base->tier < 1 || base->tier > 5) return baseDefId;   // T6 = no paths
+    int choice = m_db.pathChoice((int)base->faction, base->tier);
+    if (choice == 0) return baseDefId;
+    UpgradePath p = (choice == 1) ? UpgradePath::PathA : UpgradePath::PathB;
+    const UnitDef* variant = reg.getUnitDef(base->faction, base->tier, p);
+    return variant ? variant->id : baseDefId;
+}

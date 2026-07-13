@@ -109,6 +109,20 @@ public:
     // Hero respec: refund one attribute point cost, etc. (kept minimal for now)
     bool spendGems(int amount);
 
+    // ── Keys & path upgrades (Phase 4) ────────────────────────────────────────
+    int  keys(int faction) const { return m_db.keyCount(faction); }
+    int  pathChoice(int faction, int tier) const { return m_db.pathChoice(faction, tier); }
+    static int keyCostForTier(int tier);       // T1=1 … T5=8
+    static int respecGemCost() { return 100; }
+    // Spend keys to lock in Path A(1)/B(2) for faction+tier. False if too few
+    // keys or already chosen (use respec to change).
+    bool chooseUnitPath(int faction, int tier, int choice);
+    // Change an existing choice for gems.
+    bool respecUnitPath(int faction, int tier, int newChoice);
+    // Resolve a base unit's defId to the player's chosen variant defId.
+    // If no choice made (or lookup fails) returns the input defId unchanged.
+    int  resolveVariant(int baseDefId, const class BuildingRegistry& reg) const;
+
     ConquestDB& db() { return m_db; }
 
 private:

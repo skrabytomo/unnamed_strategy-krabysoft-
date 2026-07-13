@@ -504,6 +504,9 @@ private:
     // Phase 3: quests + gem shop
     bool         m_conquestShowQuests  = false;
     bool         m_conquestShowGemShop = false;
+    // Phase 4: unit path upgrades
+    bool         m_conquestShowUpgrades  = false;
+    int          m_conquestUpgradeFaction = 0;
 
     // ── Level-up flow ──────────────────────────────────────────────────────────
     HeroClassRegistry          m_classRegistry;

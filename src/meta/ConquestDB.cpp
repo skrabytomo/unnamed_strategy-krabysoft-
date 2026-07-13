@@ -472,3 +472,20 @@ void ConquestDB::questSetClaimed(int id, bool claimed)
     }
     sqlite3_finalize(st);
 }
+
+// ── Path upgrades (Phase 4) ──────────────────────────────────────────────────
+// Stored in conquest_state under key "path_F_T" so no schema change needed.
+
+int ConquestDB::pathChoice(int faction, int tier) const
+{
+    char key[24];
+    std::snprintf(key, sizeof(key), "path_%d_%d", faction, tier);
+    return const_cast<ConquestDB*>(this)->stateInt(key, 0);
+}
+
+void ConquestDB::setPathChoice(int faction, int tier, int choice)
+{
+    char key[24];
+    std::snprintf(key, sizeof(key), "path_%d_%d", faction, tier);
+    setStateInt(key, choice);
+}

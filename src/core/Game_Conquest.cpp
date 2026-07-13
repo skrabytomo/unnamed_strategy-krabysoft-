@@ -194,6 +194,9 @@ void Game::renderConquest()
         ImGui::SameLine(0, 12);
         if (ImGui::Button("Quests", ImVec2(90, 40)))
             m_conquestShowQuests = !m_conquestShowQuests;
+        ImGui::SameLine(0, 12);
+        if (ImGui::Button("Upgrades", ImVec2(100, 40)))
+            m_conquestShowUpgrades = !m_conquestShowUpgrades;
         ImGui::SameLine(0, 20);
 
         static const char* kChestNames[] = {"Wooden", "Iron", "Golden", "Grand"};
@@ -387,6 +390,101 @@ void Game::renderConquest()
         ImGui::End();
     }
 
+    // ── Unit path upgrade screen (Phase 4) ────────────────────────────────────
+    if (m_conquestShowUpgrades) {
+        ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
+                                ImGuiCond_Always, {0.5f, 0.5f});
+        ImGui::SetNextWindowSize({640, 520}, ImGuiCond_Always);
+        ImGui::Begin("Unit Path Upgrades", &m_conquestShowUpgrades,
+                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+
+        static const char* kF[] = {"Holy Order","Crimson Wardens","Thornkin",
+            "Eternal Empire","Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"};
+        ImGui::Text("Spend faction Keys to permanently pick Path A or B per tier.");
+        ImGui::TextDisabled("Applies to every owned & future unit of that tier. Respec costs %d gems.",
+                            ConquestMode::respecGemCost());
+        ImGui::Separator();
+
+        ImGui::SetNextItemWidth(200);
+        ImGui::Combo("Faction", &m_conquestUpgradeFaction, kF, 9);
+        int f = m_conquestUpgradeFaction;
+        ImGui::SameLine(0, 30);
+        ImGui::TextColored({1.f, 0.85f, 0.2f, 1.f}, "%s Keys: %d",
+                           kF[f], m_conquest.keys(f));
+        ImGui::Separator();
+
+        if (ImGui::BeginTable("##upg", 5,
+                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("Tier");
+            ImGui::TableSetupColumn("Path A");
+            ImGui::TableSetupColumn("Path B");
+            ImGui::TableSetupColumn("Chosen");
+            ImGui::TableSetupColumn("Cost");
+            ImGui::TableHeadersRow();
+
+            for (int tier = 1; tier <= 5; ++tier) {
+                ImGui::TableNextRow();
+                ImGui::PushID(tier);
+
+                const UnitDef* a = m_registry.getUnitDef((FactionId)f, tier, UpgradePath::PathA);
+                const UnitDef* b = m_registry.getUnitDef((FactionId)f, tier, UpgradePath::PathB);
+                int chosen = m_conquest.pathChoice(f, tier);
+                int cost   = ConquestMode::keyCostForTier(tier);
+                bool canAfford = m_conquest.keys(f) >= cost;
+
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("T%d", tier);
+
+                ImGui::TableSetColumnIndex(1);
+                if (chosen == 0) {
+                    if (!canAfford) ImGui::BeginDisabled();
+                    char lbl[64]; std::snprintf(lbl, sizeof(lbl), "%s##a%d",
+                        a ? a->name.c_str() : "Path A", tier);
+                    if (ImGui::Button(lbl, ImVec2(-1, 0)))
+                        m_conquest.chooseUnitPath(f, tier, 1);
+                    if (!canAfford) ImGui::EndDisabled();
+                } else {
+                    ImGui::TextColored(chosen == 1 ? ImVec4(0.4f,1,0.4f,1) : ImVec4(0.5f,0.5f,0.5f,1),
+                        "%s", a ? a->name.c_str() : "Path A");
+                }
+
+                ImGui::TableSetColumnIndex(2);
+                if (chosen == 0) {
+                    if (!canAfford) ImGui::BeginDisabled();
+                    char lbl[64]; std::snprintf(lbl, sizeof(lbl), "%s##b%d",
+                        b ? b->name.c_str() : "Path B", tier);
+                    if (ImGui::Button(lbl, ImVec2(-1, 0)))
+                        m_conquest.chooseUnitPath(f, tier, 2);
+                    if (!canAfford) ImGui::EndDisabled();
+                } else {
+                    ImGui::TextColored(chosen == 2 ? ImVec4(0.4f,1,0.4f,1) : ImVec4(0.5f,0.5f,0.5f,1),
+                        "%s", b ? b->name.c_str() : "Path B");
+                }
+
+                ImGui::TableSetColumnIndex(3);
+                if (chosen == 0) {
+                    ImGui::TextDisabled("—");
+                } else {
+                    ImGui::Text("Path %s", chosen == 1 ? "A" : "B");
+                    // Respec button switches to the other path for gems
+                    bool canRespec = m_conquest.gems() >= ConquestMode::respecGemCost();
+                    if (!canRespec) ImGui::BeginDisabled();
+                    if (ImGui::SmallButton("Swap"))
+                        m_conquest.respecUnitPath(f, tier, chosen == 1 ? 2 : 1);
+                    if (!canRespec) ImGui::EndDisabled();
+                }
+
+                ImGui::TableSetColumnIndex(4);
+                if (chosen == 0) ImGui::Text("%d keys", cost);
+                else             ImGui::TextDisabled("%d gems", ConquestMode::respecGemCost());
+
+                ImGui::PopID();
+            }
+            ImGui::EndTable();
+        }
+        ImGui::End();
+    }
+
     endImGuiFrame();
 }
 
@@ -411,12 +509,18 @@ void Game::startConquestBattle(int nodeIndex)
     if (!team.empty()) {
         int slot = 0;
         for (auto& [defId, wantCount] : team) {
-            const UnitDef* d = m_registry.getUnitDef(defId);
             int ownedNow = m_conquest.ownedCount(defId);
             int count = std::min(wantCount, ownedNow);
-            if (!d || count <= 0) continue;
+            if (count <= 0) continue;
+            // Resolve the collection's base unit to the player's chosen A/B
+            // variant (Phase 4). The pool always stores base defIds; the
+            // upgrade is applied at deploy time.
+            int variantId = m_conquest.resolveVariant(defId, m_registry);
+            const UnitDef* d = m_registry.getUnitDef(variantId);
+            if (!d) d = m_registry.getUnitDef(defId);
+            if (!d) continue;
             playerUnits.push_back(ArmyBuilder::makeCombatUnit(*d, count, slot++));
-            m_conquestDeployed.emplace_back(defId, count);
+            m_conquestDeployed.emplace_back(defId, count);   // track by BASE id
         }
     }
     if (playerUnits.empty())   // no team (or team invalid) → generated fallback
@@ -442,13 +546,16 @@ void Game::onConquestBattleEnd(bool victory)
     // ── Casualties (Phase 2): units that didn't survive leave the collection.
     // Survivors (including after a retreat) return to the pool untouched.
     if (!m_conquestDeployed.empty()) {
-        for (auto& [defId, sent] : m_conquestDeployed) {
+        for (auto& [baseId, sent] : m_conquestDeployed) {
+            // Survivors carry the resolved variant defId; map back to base.
+            int variantId = m_conquest.resolveVariant(baseId, m_registry);
             int survived = 0;
             for (const auto& cu : m_combat.grid().units())
-                if (cu.isPlayer && cu.alive && cu.defId == defId)
+                if (cu.isPlayer && cu.alive &&
+                    (cu.defId == baseId || cu.defId == variantId))
                     survived += cu.count;
             int losses = sent - std::min(survived, sent);
-            if (losses > 0) m_conquest.addUnits(defId, -losses);
+            if (losses > 0) m_conquest.addUnits(baseId, -losses);
         }
         m_conquestDeployed.clear();
         // Clamp team counts to what's still owned so the next fight is valid
