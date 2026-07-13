@@ -563,9 +563,15 @@ void Game::watchAiMovePlayerHero()
         };
         // Fall through to lower-scored candidates when the best one is
         // unreachable — otherwise the hero freezes for the rest of the game.
+        // Cap A* exploration to a horizon: on XL maps unbounded search over
+        // the whole grid, per hero per turn, was the main Watch-mode lag
+        // source. A distant target scores low anyway and is re-evaluated next
+        // turn as the hero closes in, so we lose nothing by not pathing to the
+        // far corner of the map in one shot.
+        constexpr int kAiPathHorizon = 60;   // ~ a few turns of movement
         std::vector<HexCoord> path;
         for (size_t ci = 0; ci < cands.size() && ci < 10; ++ci) {
-            path = Pathfinder::find(m_map, hero.pos, cands[ci].pos, costFn);
+            path = Pathfinder::find(m_map, hero.pos, cands[ci].pos, costFn, kAiPathHorizon);
             if (!path.empty()) break;
         }
         // Everything unreachable by land: buy passage across the water
@@ -1622,17 +1628,32 @@ void Game::doEndTurn()
                 return best;
             };
 
-            // ── Strength-based weekly roles: strongest AI hero raids, 2nd grabs the
-            //    map economy, the rest defend. (Was index-based, so the strongest
-            //    hero could end up a passive defender while a weakling raided.) ─────
-            std::vector<int> byStrength(m_enemyHeroes.size());
-            for (size_t i = 0; i < byStrength.size(); ++i) byStrength[i] = (int)i;
-            std::sort(byStrength.begin(), byStrength.end(), [&](int a, int b){
-                return heroStrength(m_enemyHeroes[a], unitDefs)
-                     > heroStrength(m_enemyHeroes[b], unitDefs);
-            });
+            // ── Strength-based weekly roles, computed PER PLAYER ──────────────
+            //    Previously ranked the entire m_enemyHeroes pool globally, so on
+            //    multi-AI maps only the single strongest hero raided and the 2nd
+            //    grabbed economy — every other AI player's heroes were forced into
+            //    the "defender" role (rank>=2) and never acted. Now each AI owner
+            //    gets its own raider/economic/defender split, so all AI players
+            //    play the game.
             std::vector<int> heroRank(m_enemyHeroes.size(), 0);  // 0=raider,1=economic,2+=defender
-            for (size_t r = 0; r < byStrength.size(); ++r) heroRank[byStrength[r]] = (int)r;
+            {
+                // group hero indices by ownerId
+                std::vector<uint32_t> owners;
+                for (const auto& eh : m_enemyHeroes)
+                    if (std::find(owners.begin(), owners.end(), eh.ownerId) == owners.end())
+                        owners.push_back(eh.ownerId);
+                for (uint32_t owner : owners) {
+                    std::vector<int> idxs;
+                    for (int i = 0; i < (int)m_enemyHeroes.size(); ++i)
+                        if (m_enemyHeroes[i].ownerId == owner) idxs.push_back(i);
+                    std::sort(idxs.begin(), idxs.end(), [&](int a, int b){
+                        return heroStrength(m_enemyHeroes[a], unitDefs)
+                             > heroStrength(m_enemyHeroes[b], unitDefs);
+                    });
+                    for (size_t r = 0; r < idxs.size(); ++r)
+                        heroRank[idxs[r]] = (int)r;
+                }
+            }
 
             // AI-vs-AI field battles are resolved off-screen inline below by
             // setting `eliminated` on the loser rather than erasing from
@@ -1876,9 +1897,12 @@ void Game::doEndTurn()
                     // Try candidates in score order until one is actually
                     // reachable — an unreachable top target (e.g. across
                     // water) used to freeze the hero for the whole game.
+                    // Horizon cap (see watched-hero note above) keeps XL-map
+                    // multi-hero turns from exploring the whole grid per hero.
+                    constexpr int kAiPathHorizon = 60;
                     std::vector<HexCoord> path;
                     for (size_t ci = 0; ci < cands.size() && ci < 10; ++ci) {
-                        path = Pathfinder::find(m_map, eHero.pos, cands[ci].pos, costFn);
+                        path = Pathfinder::find(m_map, eHero.pos, cands[ci].pos, costFn, kAiPathHorizon);
                         if (!path.empty()) break;
                     }
                     // Everything unreachable by land: buy passage across the water
