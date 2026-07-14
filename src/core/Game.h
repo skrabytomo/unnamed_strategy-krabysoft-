@@ -488,8 +488,23 @@ private:
     Terrain                 m_pendingCombatTerrain = Terrain::Plains;
     Terrain                 m_combatTerrain        = Terrain::Plains;
 
-    // ── Persistent meta layer ──────────────────────────────────────────────────
-    HideoutDB    m_hideout;
+    // ── AI bot personalities (per owner) ──────────────────────────────────────
+    // Explorer: roams for mines/objects, timid in fights, wide map grab.
+    // Builder:  turtles, pours gold into town buildings, defends.
+    // Warrior:  aggressive, hunts rival heroes/towns early, army over economy.
+    // Mage:     calm economy + defense early, escalates to dominance late.
+    enum class AiPersonality : uint8_t { Explorer = 0, Builder, Warrior, Mage };
+    // Indexed by ownerId (0 unused); assigned at game start, ~8 slots + margin.
+    AiPersonality m_aiPersonality[10] = {};
+    const char*   aiPersonalityName(AiPersonality p) const {
+        switch (p) {
+            case AiPersonality::Explorer: return "Explorer";
+            case AiPersonality::Builder:  return "Builder";
+            case AiPersonality::Warrior:  return "Warrior";
+            case AiPersonality::Mage:     return "Mage";
+        }
+        return "?";
+    }
     HideoutScreen m_hideoutScreen;
     bool          m_showHideoutScreen = false;
 

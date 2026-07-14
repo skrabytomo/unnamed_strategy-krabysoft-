@@ -1218,6 +1218,18 @@ void Game::startNewGame()
     m_resources = std::move(wgResult.resources);
     m_nextObjId = static_cast<uint32_t>(m_resources.size()) + 1;
 
+    // ── Assign an AI personality per owner (seeded, stable for the game) ──────
+    {
+        uint32_t pseed = wgp.seed ^ 0x9E3779B9u;
+        for (int o = 1; o < 10; ++o) {
+            pseed = pseed * 1664525u + 1013904223u;
+            m_aiPersonality[o] = static_cast<AiPersonality>((pseed >> 16) % 4);
+        }
+        for (int o = 2; o <= slotCount; ++o)
+            gLog("AI player %d personality: %s\n", o,
+                 aiPersonalityName(m_aiPersonality[o]));
+    }
+
     // ── Assign mine guards ────────────────────────────────────────────────────
     // guardId was never set anywhere, so every mine defaulted to unguarded (0)
     // and could be claimed by walking onto it — the AI grabbed hundreds of
