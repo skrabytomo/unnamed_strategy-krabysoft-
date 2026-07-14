@@ -548,13 +548,27 @@ void Game::watchAiMovePlayerHero()
             for (const auto& obj : m_worldObjects) {
                 if (obj.collected) continue;
                 float val = 0.f;
-                if (obj.type == WorldObjectType::ArtifactChest)   val = 80.f;
-                else if (obj.type == WorldObjectType::TreasureChest) val = 70.f;
+                if (obj.type == WorldObjectType::UnitDwelling)
+                    val = 160.f;   // free weekly units
+                else if (obj.type == WorldObjectType::NeutralOutpost) {
+                    int siteStr = std::min(1400, 250 + m_turns.week() * 50);
+                    val = (myStr >= siteStr * 14 / 10) ? 150.f : 0.f;
+                }
+                else if (obj.type == WorldObjectType::ResourceCache ||
+                         obj.type == WorldObjectType::Campfire      ||
+                         obj.type == WorldObjectType::LavaCrystal)   val = 90.f;
+                else if (obj.type == WorldObjectType::ArtifactChest) val = 100.f;
+                else if (obj.type == WorldObjectType::TreasureChest) val = 85.f;
+                else if (obj.type == WorldObjectType::Stables        ||
+                         obj.type == WorldObjectType::TreeOfKnowledge||
+                         obj.type == WorldObjectType::WitchHut       ||
+                         obj.type == WorldObjectType::Landmark)       val = 70.f;
                 else if (obj.type == WorldObjectType::XPShrine    ||
                          obj.type == WorldObjectType::ForestShrine ||
                          obj.type == WorldObjectType::StatShrine   ||
                          obj.type == WorldObjectType::SpellScroll  ||
-                         obj.type == WorldObjectType::SwampAltar)   val = 50.f;
+                         obj.type == WorldObjectType::SwampAltar   ||
+                         obj.type == WorldObjectType::Observatory)  val = 50.f;
                 if (val > 0.f) add(obj.pos, val);
             }
             // Enemy heroes — same sqrt-damped, week-scaled hunt value as the enemy
@@ -2047,9 +2061,12 @@ void Game::doEndTurn()
                                 // own economy, so a rival bot's mine is a
                                 // legitimate raid target, not team property.
                                 if (isAllied(r.ownedBy, eHero.ownerId)) continue;
-                                // Unclaimed/rival mines are always worth taking —
-                                // they're the whole income engine now.
-                                float val = 100.f;
+                                // Unclaimed/rival mines are worth taking — they're
+                                // the income engine. Unguarded ones are free money
+                                // and always attractive; guarded ones the arrival
+                                // check gates on strength.
+                                bool guarded = (r.guardId != 0 && !r.guardBeaten);
+                                float val = guarded ? 100.f : 120.f;
                                 if (r.type == denialRes)    val = std::max(val, 130.f);
                                 if (r.type == enemyKeyRes)  val = std::max(val, 110.f);
                                 // Mine type blocking our own build queue wins
@@ -2061,27 +2078,48 @@ void Game::doEndTurn()
                         for (const auto& obj : m_worldObjects) {
                             if (obj.collected) continue;
                             float val = 0.f;
-                            if (obj.type == WorldObjectType::ArtifactChest)  val = 80.f;
-                            else if (obj.type == WorldObjectType::TreasureChest) val = 70.f;
+                            // ── Free army & growth — highest map priority ─────
+                            if (obj.type == WorldObjectType::UnitDwelling)
+                                val = 160.f;   // weekly recruitable units — huge
+                            else if (obj.type == WorldObjectType::NeutralOutpost) {
+                                // Guarded, but capture gives permanent weekly
+                                // production — very worth it once beatable.
+                                int siteStr = std::min(1400, 250 + m_turns.week() * 50);
+                                val = (eiStr >= siteStr * 14 / 10) ? 150.f : 0.f;
+                            }
+                            // ── Free resources / gold pickups ─────────────────
+                            else if (obj.type == WorldObjectType::ResourceCache ||
+                                     obj.type == WorldObjectType::Campfire      ||
+                                     obj.type == WorldObjectType::LavaCrystal)
+                                val = 90.f;
+                            // ── Chests & artifacts ───────────────────────────
+                            else if (obj.type == WorldObjectType::ArtifactChest)  val = 100.f;
+                            else if (obj.type == WorldObjectType::TreasureChest)  val = 85.f;
+                            // ── Permanent hero upgrades ──────────────────────
+                            else if (obj.type == WorldObjectType::Stables        ||
+                                     obj.type == WorldObjectType::TreeOfKnowledge ||
+                                     obj.type == WorldObjectType::WitchHut        ||
+                                     obj.type == WorldObjectType::Landmark)       val = 70.f;
+                            // ── Shrines / scrolls ────────────────────────────
                             else if (obj.type == WorldObjectType::XPShrine   ||
                                      obj.type == WorldObjectType::ForestShrine||
                                      obj.type == WorldObjectType::StatShrine  ||
                                      obj.type == WorldObjectType::SpellScroll ||
-                                     obj.type == WorldObjectType::SwampAltar)  val = 50.f;
-                            // Guarded high-value sites: worth clearing once the hero
-                            // can plausibly beat the guardians (checked on arrival).
+                                     obj.type == WorldObjectType::SwampAltar  ||
+                                     obj.type == WorldObjectType::Observatory)  val = 50.f;
+                            // ── Guarded high-value sites ─────────────────────
                             else if (obj.type == WorldObjectType::Crypt      ||
                                      obj.type == WorldObjectType::Utopia     ||
                                      obj.type == WorldObjectType::PandoraBox ||
                                      obj.type == WorldObjectType::BanditCamp) {
-                                // Fair-economy tuning: paid armies grow far
-                                // slower than the old conjured ones, so site
-                                // guards scale gently and cap out.
                                 int siteStr = std::min(2200, 350 + m_turns.week() * 80);
                                 if (obj.type == WorldObjectType::Utopia)     siteStr *= 2;
                                 if (obj.type == WorldObjectType::PandoraBox) siteStr = siteStr * 3 / 2;
                                 if (eiStr >= siteStr * 14 / 10) val = 110.f;
                             }
+                            // Explorer persona loves map content — bump non-combat grabs.
+                            if (persona == AiPersonality::Explorer && val > 0.f && val < 120.f)
+                                val *= 1.4f;
                             if (val > 0.f) add(obj.pos, val);
                         }
                         // Nearest human hero. The old score (300/dist) meant a hero
