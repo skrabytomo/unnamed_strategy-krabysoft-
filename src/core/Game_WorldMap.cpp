@@ -1839,8 +1839,27 @@ void Game::doEndTurn()
 
                 // Raider: attack at the difficulty-scaled ratio OR when the opponent
                 // is wounded; Economic: only at 1.5×; Defender: never.
+                // ── Personality modifies aggression per this hero's owner ─────
+                // Warrior commits at a lower ratio; Builder/Mage need a bigger
+                // edge before attacking; Explorer is timid but roams (handled in
+                // candidate scoring below).
+                int ownerAggr    = aggrPct;
+                int ownerRetreat = retreatPct;
+                AiPersonality persona = m_aiPersonality[std::min<uint32_t>(eHero.ownerId, 9)];
+                switch (persona) {
+                    case AiPersonality::Warrior:  ownerAggr -= 2; ownerRetreat -= 1; break;
+                    case AiPersonality::Explorer: ownerAggr += 1;                    break;
+                    case AiPersonality::Builder:  ownerAggr += 2; ownerRetreat += 1; break;
+                    case AiPersonality::Mage:
+                        // calm early, escalates late
+                        ownerAggr += (m_turns.week() < 12 ? 3 : -2);
+                        break;
+                }
+                ownerAggr    = std::max(2, ownerAggr);
+                ownerRetreat = std::max(1, ownerRetreat);
+
                 bool aggressive = isDefender ? false
-                                : isRaider   ? (playerIsWeak || eiStr * 10 >= nearHumanStr * aggrPct)
+                                : isRaider   ? (playerIsWeak || eiStr * 10 >= nearHumanStr * ownerAggr)
                                 :              (eiStr * 10 >= nearHumanStr * 15);
                 // Late-game escalation: past week 20 any non-defender at >=80%
                 // relative strength commits — prevents the endless "both sides farm
@@ -1848,8 +1867,8 @@ void Game::doEndTurn()
                 if (m_turns.week() >= 20 && !isDefender
                     && eiStr * 10 >= nearHumanStr * 8)
                     aggressive = true;
-                // Retreat when very weak regardless of role (difficulty-scaled)
-                bool veryWeak   = (eiStr * 10 <  nearHumanStr * retreatPct);
+                // Retreat when very weak regardless of role (difficulty + persona)
+                bool veryWeak   = (eiStr * 10 <  nearHumanStr * ownerRetreat);
 
                 // Graduated retreat thresholds
                 float strRatio = nearHumanStr > 0 ? (float)eiStr / nearHumanStr : 99.f;
@@ -1882,6 +1901,20 @@ void Game::doEndTurn()
                 }
 
                 while (eHero.movePool > 0) {
+                    // Persona weight biases: mineMul favours resources, attackMul
+                    // favours enemy heroes/towns. Warrior hunts, Explorer grabs
+                    // mines, Builder/Mage lean economic/defensive.
+                    float mineMul = 1.f, attackMul = 1.f;
+                    switch (persona) {
+                        case AiPersonality::Explorer: mineMul = 1.8f; attackMul = 0.7f; break;
+                        case AiPersonality::Warrior:  mineMul = 0.8f; attackMul = 1.8f; break;
+                        case AiPersonality::Builder:  mineMul = 1.2f; attackMul = 0.7f; break;
+                        case AiPersonality::Mage:
+                            mineMul   = 1.2f;
+                            attackMul = (m_turns.week() < 12 ? 0.6f : 1.6f);
+                            break;
+                    }
+
                     // Score-based candidate selection: value / distance
                     struct Cand { HexCoord pos; float score; };
                     std::vector<Cand> cands;
@@ -1890,6 +1923,9 @@ void Game::doEndTurn()
                         int d = std::max(1, HexGrid::distance(eHero.pos, pos));
                         cands.push_back({pos, val / d});
                     };
+                    // Persona-weighted variants for resource / attack candidates.
+                    auto addMine   = [&](HexCoord pos, float val){ add(pos, val * mineMul); };
+                    auto addAttack = [&](HexCoord pos, float val){ add(pos, val * attackMul); };
 
                     if (veryWeak) {
                         for (const auto& t : m_towns)
@@ -1906,7 +1942,7 @@ void Game::doEndTurn()
                         }
                     } else if (isDefender) {
                         for (const auto& r : m_resources)
-                            if (!isAllied(r.ownedBy, eHero.ownerId)) add(r.pos, 100.f);
+                            if (!isAllied(r.ownedBy, eHero.ownerId)) addMine(r.pos, 100.f);
                         for (const auto& t : m_towns)
                             if (t.ownerId == eHero.ownerId) add(t.pos, 80.f);
                         // Defenders actively intercept any RIVAL hero (human or
@@ -1918,7 +1954,7 @@ void Game::doEndTurn()
                             for (const auto& hh : allHeroesForTargeting) {
                                 if (isAllied(hh.ownerId, eHero.ownerId)) continue;
                                 if (HexGrid::distance(hh.pos, t.pos) <= 6)
-                                    add(hh.pos, 250.f * ghostMult);
+                                    addAttack(hh.pos, 250.f * ghostMult);
                             }
                         }
                     } else {
@@ -1949,10 +1985,10 @@ void Game::doEndTurn()
                         // Towns — any human-owned town is a capture target (ownerId
                         // 1..numHumanPlayers), neutral towns a lesser one.
                         for (const auto& t : m_towns) {
-                            if (t.ownerId == 0)  add(t.pos, 150.f);
+                            if (t.ownerId == 0)  addAttack(t.pos, 150.f);
                             else if (t.ownerId >= 1
                                      && t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers))
-                                add(t.pos, 200.f);
+                                addAttack(t.pos, 200.f);
                         }
                         // Resources — deny player's key resource and favour own faction's
                         {
@@ -1975,7 +2011,7 @@ void Game::doEndTurn()
                                 if (r.type == enemyKeyRes)  val = std::max(val, 110.f);
                                 // Mine type blocking our own build queue wins
                                 if (r.type == myNeededRes)  val = std::max(val, 180.f);
-                                add(r.pos, val);
+                                addMine(r.pos, val);
                             }
                         }
                         // World objects
