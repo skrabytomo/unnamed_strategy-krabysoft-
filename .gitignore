@@ -11,3 +11,4 @@ saves/*.db-wal
 *.exe
 compile_commands.json
 _gen_src*.png
+unnamed_strategy-krabysoft-/
