@@ -505,6 +505,8 @@ private:
         }
         return "?";
     }
+    // ── Persistent meta layer ──────────────────────────────────────────────────
+    HideoutDB    m_hideout;
     HideoutScreen m_hideoutScreen;
     bool          m_showHideoutScreen = false;
 
