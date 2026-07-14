@@ -641,7 +641,7 @@ void Game::watchAiMovePlayerHero()
                     for (auto& t : m_towns) {
                         if (t.ownerId != 1u) continue;
                         blockingRes = aiBlockingResource(t, kBuildOrder[std::clamp(myFidx,0,8)],
-                                                         udefs, m_playerResources);
+                                                         m_registry.buildings(), m_playerResources);
                         if (static_cast<int>(blockingRes) < RESOURCE_COUNT) break;
                     }
                     bool worthwhile = (r.type == myKeyRes)
