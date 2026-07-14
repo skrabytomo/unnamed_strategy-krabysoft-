@@ -520,9 +520,27 @@ void Game::watchAiMovePlayerHero()
                         if (static_cast<int>(neededMineRes) < RESOURCE_COUNT) break;
                     }
                 }
+                int myFidx = static_cast<int>(hero.faction);
+                ResourceType myKeyRes = (myFidx >= 0 && myFidx < 9)
+                                      ? kFactionResource[myFidx] : ResourceType::Gold;
                 for (const auto& r : m_resources) {
                     if (r.ownedBy == 1) continue;
-                    float val = (r.type == neededMineRes) ? 180.f : 100.f;
+                    bool guarded  = (r.guardId != 0 && !r.guardBeaten);
+                    bool valuable = (r.type == neededMineRes)
+                                 || (r.type == myKeyRes)
+                                 || (r.type == ResourceType::Gold);
+                    float val;
+                    if (!guarded) {
+                        // Free to walk onto — always worth grabbing.
+                        val = (r.type == neededMineRes) ? 180.f : 90.f;
+                    } else if (valuable) {
+                        // Guarded but worth the fight.
+                        val = (r.type == neededMineRes) ? 170.f : 110.f;
+                    } else {
+                        // Guarded and we don't need it — very low priority so the
+                        // hero doesn't detour to bleed troops for a useless mine.
+                        val = 20.f;
+                    }
                     add(r.pos, val);
                 }
             }
@@ -611,25 +629,50 @@ void Game::watchAiMovePlayerHero()
                 if (r.id != nt->resourceId) continue;
                 if (r.ownedBy == 1u) break;                 // already ours
                 if (r.guardId != 0 && !r.guardBeaten) {
-                    // Auto-resolve like the enemy AI: only take the mine with a
-                    // healthy margin, and only shave a few % off the army — no
-                    // full real-combat battle that can kamikaze the whole hero.
+                    // Only fight a mine guard if the mine is WORTH the casualties.
+                    // Cheap/free-ish targets: our own faction resource + gold
+                    // (low guard, high value). Otherwise only bother if this
+                    // resource is currently blocking our town's build queue.
+                    // Off-resource mines we don't need aren't worth bleeding for.
+                    int myFidx = (int)hero.faction;
+                    ResourceType myKeyRes = (myFidx >= 0 && myFidx < 9)
+                                          ? kFactionResource[myFidx] : ResourceType::Gold;
+                    ResourceType blockingRes = static_cast<ResourceType>(RESOURCE_COUNT);
+                    for (auto& t : m_towns) {
+                        if (t.ownerId != 1u) continue;
+                        blockingRes = aiBlockingResource(t, kBuildOrder[std::clamp(myFidx,0,8)],
+                                                         udefs, m_playerResources);
+                        if (static_cast<int>(blockingRes) < RESOURCE_COUNT) break;
+                    }
+                    bool worthwhile = (r.type == myKeyRes)
+                                   || (r.type == ResourceType::Gold)
+                                   || (r.type == blockingRes);
+
                     int myS = heroStrength(hero, udefs);
                     int guardStr = std::min(900, 150 + m_turns.week() * 35);
-                    if (myS >= guardStr * 3 / 2) {
+                    // Gold & own faction resource are lightly guarded / high value,
+                    // so a 1.3x margin is fine; other worthwhile mines need 1.6x.
+                    bool cheap = (r.type == myKeyRes || r.type == ResourceType::Gold);
+                    int needNum = cheap ? 13 : 16;
+                    if (worthwhile && myS * 10 >= guardStr * needNum) {
                         r.guardBeaten = true;
                         r.ownedBy     = 1u;
+                        // Casualties scale INVERSELY with how outmatched the guard
+                        // is: a huge margin costs almost nothing; a marginal fight
+                        // costs more. Cheap mines cost even less.
+                        float margin = guardStr > 0 ? (float)myS / guardStr : 9.f;
+                        int divisor = cheap ? 40 : (margin >= 3.f ? 30 : margin >= 2.f ? 20 : 12);
                         int bigIdx = 0;
                         for (int i = 1; i < (int)hero.army.size(); ++i)
                             if (hero.army[i].count > hero.army[bigIdx].count) bigIdx = i;
                         if (!hero.army.empty())
                             hero.army[bigIdx].count =
-                                std::max(1, hero.army[bigIdx].count - hero.army[bigIdx].count / 14);
+                                std::max(1, hero.army[bigIdx].count - hero.army[bigIdx].count / divisor);
                         gLog("Watch hero %s cleared %s mine guard (week %d)\n",
                              hero.name.c_str(), resourceName(r.type), m_turns.week());
                     }
-                    // Too weak — leave the mine guarded; the hero will come back
-                    // once it has grown, instead of dying to it.
+                    // Not worthwhile or too weak — leave it guarded and move on
+                    // instead of bleeding troops for a mine we don't need.
                     break;
                 }
                 r.ownedBy = 1u;   // unguarded or already-cleared
