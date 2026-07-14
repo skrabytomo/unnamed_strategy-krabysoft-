@@ -95,6 +95,7 @@ private:
     void onConquestBattleEnd(bool victory);
     void startArenaBattle();
     void onArenaBattleEnd(bool victory);
+    void conquestUnitIcon(int defId, float size = 32.f);
     // Draw a full-screen loading frame (backdrop + progress bar) during init().
     void renderLoadingScreen(float progress, const char* label);
     // Draw the menu backdrop aspect-correct "cover" (fills any resolution without

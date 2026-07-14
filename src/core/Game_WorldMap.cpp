@@ -1021,6 +1021,8 @@ void Game::updateWorldMap(float dt)
                     for (size_t fi = 1; fi < m_heroes.size(); ++fi) {
                         Hero& feeder = m_heroes[fi];
                         if (HexGrid::distance(feeder.pos, main.pos) > 1) continue;
+                        std::sort(feeder.army.begin(), feeder.army.end(),
+                                  [](const UnitStack& a, const UnitStack& b){ return a.count > b.count; });
                         for (auto it = feeder.army.begin(); it != feeder.army.end();) {
                             bool merged = false;
                             for (auto& s : main.army)
@@ -1762,7 +1764,12 @@ void Game::doEndTurn()
                         if (feeder.ownerId != raider.ownerId) continue;
                         int d = HexGrid::distance(feeder.pos, raider.pos);
                         if (d > 1) continue;   // must be adjacent or same tile
-                        // Merge feeder's army into the raider (cap 7 slots).
+                        // Merge feeder's army into the raider, LARGEST stacks
+                        // first, so the best troops make it in before the 7-slot
+                        // cap fills (was insertion-order, could strand the big
+                        // stack behind fodder).
+                        std::sort(feeder.army.begin(), feeder.army.end(),
+                                  [](const UnitStack& a, const UnitStack& b){ return a.count > b.count; });
                         for (auto it = feeder.army.begin(); it != feeder.army.end();) {
                             bool merged = false;
                             for (auto& s : raider.army)

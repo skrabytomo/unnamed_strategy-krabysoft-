@@ -32,6 +32,35 @@ static ImU32 nodeColor(const ConquestNode& n)
     return IM_COL32(120, 120, 120, 255);
 }
 
+// Draws the first animation frame of a unit's sprite sheet inline as an icon.
+// Falls back to a coloured dot if the sheet is missing. Advances the ImGui
+// cursor like a widget so callers can SameLine() after it.
+void Game::conquestUnitIcon(int defId, float size)
+{
+    const UnitDef* d = m_registry.getUnitDef(defId);
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    bool drawn = false;
+    if (d) {
+        int fi = (int)d->faction;
+        int ti = std::max(0, std::min(NUM_UNIT_TIERS - 1, d->tier - 1));
+        if (fi >= 0 && fi < NUM_FACTIONS && m_unitTex[fi][ti].ok()) {
+            int cols = std::max(1, m_unitTexCols[fi][ti]);
+            ImTextureID tid = (ImTextureID)(uintptr_t)m_unitTex[fi][ti].id();
+            // First frame = left 1/cols of the sheet
+            ImVec2 uv0(0.f, 0.f), uv1(1.f / cols, 1.f);
+            dl->AddImage(tid, p, {p.x + size, p.y + size}, uv0, uv1);
+            drawn = true;
+        }
+    }
+    if (!drawn) {
+        ImU32 col = d ? IM_COL32(120 + (d->tier * 20) % 135, 120, 200, 255)
+                      : IM_COL32(100, 100, 100, 255);
+        dl->AddRectFilled(p, {p.x + size, p.y + size}, col, 4.f);
+    }
+    ImGui::Dummy({size, size});
+}
+
 void Game::updateConquest(float dt)
 {
     (void)dt;
@@ -227,8 +256,11 @@ void Game::renderConquest()
         ImGui::SetNextWindowSize({360, 0}, ImGuiCond_Always);
         ImGui::Begin("Chest Opened!", nullptr,
                      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-        for (const auto& d : m_conquestChestResult.units)
+        for (const auto& d : m_conquestChestResult.units) {
+            conquestUnitIcon(d.defId, 24.f);
+            ImGui::SameLine();
             ImGui::Text("+%d  %s (T%d)", d.count, d.name.c_str(), d.tier);
+        }
         if (m_conquestChestResult.keysGained > 0) {
             static const char* kF[] = {"Holy Order","Crimson Wardens","Thornkin",
                 "Eternal Empire","Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"};
@@ -278,12 +310,14 @@ void Game::renderConquest()
             const UnitDef* d = m_registry.getUnitDef(defId);
             if (!d) continue;
             int freeCount = count - reservedOf(defId);
+            conquestUnitIcon(defId, 28.f);
+            ImGui::SameLine();
             char row[96];
             std::snprintf(row, sizeof(row), "%s (T%d)  x%d free##p%d",
                           d->name.c_str(), d->tier, freeCount, defId);
             bool canAdd = freeCount > 0 && (int)team.size() < 6;
             if (!canAdd) ImGui::BeginDisabled();
-            if (ImGui::Button(row, ImVec2(-1, 26))) {
+            if (ImGui::Button(row, ImVec2(-1, 28))) {
                 // Merge into an existing slot of the same unit, else new slot
                 bool merged = false;
                 for (auto& [td, tc] : team)
@@ -304,6 +338,8 @@ void Game::renderConquest()
             const UnitDef* d = m_registry.getUnitDef(team[i].first);
             if (!d) continue;
             ImGui::PushID(i);
+            conquestUnitIcon(team[i].first, 26.f);
+            ImGui::SameLine();
             ImGui::Text("%d. %s (T%d)", i + 1, d->name.c_str(), d->tier);
             ImGui::SameLine(240);
             int c = team[i].second;
