@@ -1,24 +1,19 @@
 #!/usr/bin/env bash
-# Pull (non-fatal), build, run. Log capture/push is best-effort and never
-# blocks building or running the game.
+# Pull (non-fatal), build, run. Writes session.log locally but does NOT commit
+# it — that auto-commit kept diverging the branch and dropping you into a merge
+# editor. To share a log with Claude, push it manually:
+#     git add -f session.log && git commit -m log && git push
 
-# Pull latest — don't abort the build if pull fails (offline / auth / diverged).
-git pull --no-edit || echo "(git pull skipped/failed — building current tree)"
+# Pull latest — never abort the build if pull fails (offline / auth / diverged).
+git pull --no-edit --ff-only 2>/dev/null || echo "(git pull skipped — building current tree)"
 
 # Configure the build dir if missing (e.g. after rm -rf build).
 if [ ! -d build ]; then
     cmake -B build -G Ninja || { echo "CMake configure failed"; exit 1; }
 fi
 
-# Build — this is the only step that SHOULD stop the script on failure.
+# Build — the only step that stops the script on failure.
 cmake --build build -j4 || { echo "Build failed"; exit 1; }
 
-# Run, capturing output to session.log (shown live via tee).
+# Run, capturing output to session.log (shown live via tee, kept local only).
 build/bin/unnamed_strategy 2>&1 | tee session.log
-
-# Best-effort log push — never fails the script.
-if [ -s session.log ]; then
-    git add session.log 2>/dev/null
-    git commit -m "session log $(date '+%Y-%m-%d %H:%M')" 2>/dev/null || true
-    git push 2>/dev/null || echo "(log not pushed — configure git credentials to enable)"
-fi

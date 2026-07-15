@@ -14,3 +14,4 @@ _gen_src*.png
 unnamed_strategy-krabysoft-/
 dist/
 packaging/Output/
+session.log
