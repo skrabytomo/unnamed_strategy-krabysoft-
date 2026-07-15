@@ -5315,6 +5315,8 @@ void Game::renderWorldOverlay()
         }
     }
 
+    // BloodScent: any player hero with this specialty reveals Bloodsworn enemies
+    bool playerHasBloodScent = false;
     for (const auto& ph : m_heroes) {
         if (ph.bloodScentSpecialty) { playerHasBloodScent = true; break; }
     }
