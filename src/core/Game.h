@@ -533,6 +533,9 @@ private:
     // Phase 5: arena
     bool         m_conquestShowArena = false;
     bool         m_conquestInArena   = false;   // true while an arena fight is active
+    // Phase 2 revised: cheap recruit shop
+    bool         m_conquestShowRecruit    = false;
+    int          m_conquestRecruitFaction = 0;
 
     // ── Level-up flow ──────────────────────────────────────────────────────────
     HeroClassRegistry          m_classRegistry;

@@ -138,6 +138,17 @@ public:
     // Ghost opponent power for the player's next arena fight (0.95-1.15× team).
     int  arenaOpponentPower(const class BuildingRegistry& reg) const;
 
+    // ── Cheap recruits (rebuild after a wipe) ─────────────────────────────────
+    // Buy basic units (T1-T3) with gold so a bottomed-out player can always get
+    // back in the game within a round or two. Price scales with tier.
+    static int recruitGoldPrice(int tier) {
+        switch (tier) { case 1: return 40; case 2: return 90; case 3: return 180; }
+        return 999999;   // T4+ not buyable here
+    }
+    // Buys `count` of a faction+tier basic unit into the collection. Returns
+    // how many were actually afforded/bought.
+    int buyRecruits(FactionId faction, int tier, int count, const class BuildingRegistry& reg);
+
     ConquestDB& db() { return m_db; }
 
 private:

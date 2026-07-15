@@ -647,3 +647,18 @@ int ConquestMode::arenaOpponentPower(const BuildingRegistry& reg) const
     float mult = 0.95f + std::uniform_real_distribution<float>(0.f, 0.20f)(rng);
     return (int)(base * mult);
 }
+
+// ── Cheap recruits (Phase 2 revised) ─────────────────────────────────────────
+int ConquestMode::buyRecruits(FactionId faction, int tier, int count, const BuildingRegistry& reg)
+{
+    if (tier < 1 || tier > 3 || count <= 0) return 0;
+    const UnitDef* d = reg.getUnitDef(faction, tier, UpgradePath::None);
+    if (!d) return 0;
+    int price = recruitGoldPrice(tier);
+    int affordable = m_db.gold() / price;
+    int buy = std::min(count, affordable);
+    if (buy <= 0) return 0;
+    m_db.addGold(-buy * price);
+    m_db.collectionAdd(d->id, buy);
+    return buy;
+}

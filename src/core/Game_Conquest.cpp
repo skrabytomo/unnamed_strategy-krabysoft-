@@ -2,6 +2,7 @@
 // See CONQUEST_MODE.md. Phase 1: weekly node map, persistent hero, XP/gold.
 #include "Game.h"
 #include "DevLog.h"
+#include "../renderer/gl_includes.h"
 #include "../sim/ArmyBuilder.h"
 #include <imgui.h>
 #include <cstdio>
@@ -72,6 +73,10 @@ void Game::updateConquest(float dt)
 
 void Game::renderConquest()
 {
+    // Clear the framebuffer first — otherwise the previous frame's world-map
+    // HUD/geometry ghosts through the conquest screen ("pseudo HUD" artifact).
+    glClearColor(0.05f, 0.04f, 0.08f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     beginImGuiFrame();
     ImGuiIO& io = ImGui::GetIO();
 
@@ -267,6 +272,9 @@ void Game::renderConquest()
         ImGui::SameLine(0, 12);
         if (ImGui::Button("Arena", ImVec2(90, 40)))
             m_conquestShowArena = !m_conquestShowArena;
+        ImGui::SameLine(0, 12);
+        if (ImGui::Button("Recruit", ImVec2(90, 40)))
+            m_conquestShowRecruit = !m_conquestShowRecruit;
         ImGui::SameLine(0, 20);
 
         static const char* kChestNames[] = {"Wooden", "Iron", "Golden", "Grand"};
@@ -608,6 +616,47 @@ void Game::renderConquest()
         ImGui::End();
     }
 
+    // ── Recruit shop (Phase 2 revised — cheap rebuild after a wipe) ────────────
+    if (m_conquestShowRecruit) {
+        ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
+                                ImGuiCond_Always, {0.5f, 0.5f});
+        ImGui::SetNextWindowSize({460, 0}, ImGuiCond_Always);
+        ImGui::Begin("Recruit Basic Units", &m_conquestShowRecruit,
+                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+        ImGui::Text("Gold: %d", m_conquest.gold());
+        ImGui::TextDisabled("Cheap basic units so you can always rebuild.");
+        ImGui::Separator();
+
+        static const char* kF[] = {"Holy Order","Crimson Wardens","Thornkin",
+            "Eternal Empire","Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"};
+        ImGui::SetNextItemWidth(200);
+        ImGui::Combo("Faction##rec", &m_conquestRecruitFaction, kF, 9);
+        FactionId rf = (FactionId)m_conquestRecruitFaction;
+        ImGui::Spacing();
+
+        for (int tier = 1; tier <= 3; ++tier) {
+            const UnitDef* d = m_registry.getUnitDef(rf, tier, UpgradePath::None);
+            if (!d) continue;
+            int price = ConquestMode::recruitGoldPrice(tier);
+            conquestUnitIcon(d->id, 28.f);
+            ImGui::SameLine();
+            ImGui::Text("%s (T%d) — %d gold each", d->name.c_str(), tier, price);
+            ImGui::SameLine(330);
+            ImGui::PushID(tier);
+            bool canBuy1  = m_conquest.gold() >= price;
+            bool canBuy5  = m_conquest.gold() >= price * 5;
+            if (!canBuy1) ImGui::BeginDisabled();
+            if (ImGui::SmallButton("+1")) m_conquest.buyRecruits(rf, tier, 1, m_registry);
+            if (!canBuy1) ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (!canBuy5) ImGui::BeginDisabled();
+            if (ImGui::SmallButton("+5")) m_conquest.buyRecruits(rf, tier, 5, m_registry);
+            if (!canBuy5) ImGui::EndDisabled();
+            ImGui::PopID();
+        }
+        ImGui::End();
+    }
+
     endImGuiFrame();
 }
 
@@ -732,20 +781,25 @@ void Game::onArenaBattleEnd(bool victory)
 
 void Game::onConquestBattleEnd(bool victory)
 {
-    // ── Casualties (Phase 2): units that didn't survive leave the collection.
-    // Survivors (including after a retreat) return to the pool untouched.
+    // ── Casualties (Phase 2, revised): only a VICTORY costs you your dead.
+    // A defeat/retreat restores everything — you lose the battle, not your
+    // collection — so a wipe can never brick the save. Winning still bleeds
+    // your real losses, keeping wins meaningful.
     if (!m_conquestDeployed.empty()) {
-        for (auto& [baseId, sent] : m_conquestDeployed) {
-            // Survivors carry the resolved variant defId; map back to base.
-            int variantId = m_conquest.resolveVariant(baseId, m_registry);
-            int survived = 0;
-            for (const auto& cu : m_combat.grid().units())
-                if (cu.isPlayer && cu.alive &&
-                    (cu.defId == baseId || cu.defId == variantId))
-                    survived += cu.count;
-            int losses = sent - std::min(survived, sent);
-            if (losses > 0) m_conquest.addUnits(baseId, -losses);
+        if (victory) {
+            for (auto& [baseId, sent] : m_conquestDeployed) {
+                // Survivors carry the resolved variant defId; map back to base.
+                int variantId = m_conquest.resolveVariant(baseId, m_registry);
+                int survived = 0;
+                for (const auto& cu : m_combat.grid().units())
+                    if (cu.isPlayer && cu.alive &&
+                        (cu.defId == baseId || cu.defId == variantId))
+                        survived += cu.count;
+                int losses = sent - std::min(survived, sent);
+                if (losses > 0) m_conquest.addUnits(baseId, -losses);
+            }
         }
+        // (defeat: no deduction — collection untouched)
         m_conquestDeployed.clear();
         // Clamp team counts to what's still owned so the next fight is valid
         auto team = m_conquest.team();

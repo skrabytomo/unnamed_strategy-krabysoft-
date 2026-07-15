@@ -209,18 +209,17 @@ void Game::renderMainMenu()
                     ImGui::PopStyleColor();
                 }
 
-                // ── Faction: crest icon + combo ───────────────────────────────
+                // ── Faction: town-art crest + combo ───────────────────────────
                 ImGui::SameLine(0, 4);
                 {
                     int fsel = std::clamp(m_slotFaction[s], 0, 9);
-                    // crest = T1 unit sprite (fallback colored box)
                     ImVec2 cur = ImGui::GetCursorScreenPos();
                     float ic = rowH;
-                    if (fsel < 9 && m_unitTex[fsel][0].ok()) {
-                        int cols = std::max(1, m_unitTexCols[fsel][0]);
+                    // Crest = the faction's TOWN art (not a unit sprite).
+                    if (fsel < 9 && m_townTex[fsel].ok()) {
                         ImGui::GetWindowDrawList()->AddImage(
-                            (ImTextureID)(uintptr_t)m_unitTex[fsel][0].id(),
-                            {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, {0,0}, {1.f/cols, 1.f});
+                            (ImTextureID)(uintptr_t)m_townTex[fsel].id(),
+                            {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, {0,0}, {1,1});
                     } else {
                         ImGui::GetWindowDrawList()->AddRectFilled(
                             {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, IM_COL32(70,70,80,255), 3.f);
@@ -246,14 +245,13 @@ void Game::renderMainMenu()
                 {
                     int fsel = std::clamp(m_slotFaction[s], 0, 8);
                     auto classes = m_classRegistry.getClassesForFaction((FactionId)fsel);
-                    // portrait = faction hero figure
+                    // portrait = the faction's HERO PORTRAIT (not the world figure)
                     ImVec2 cur = ImGui::GetCursorScreenPos();
                     float ic = rowH;
-                    if (m_slotFaction[s] < 9 && m_heroTex[fsel].ok()) {
-                        int cols = std::max(1, m_heroTexCols[fsel]);
+                    if (m_slotFaction[s] < 9 && m_portraitTex[fsel].ok()) {
                         ImGui::GetWindowDrawList()->AddImage(
-                            (ImTextureID)(uintptr_t)m_heroTex[fsel].id(),
-                            {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, {0,0}, {1.f/cols, 1.f});
+                            (ImTextureID)(uintptr_t)m_portraitTex[fsel].id(),
+                            {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, {0,0}, {1,1});
                     } else {
                         ImGui::GetWindowDrawList()->AddRectFilled(
                             {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, IM_COL32(60,70,60,255), 3.f);
