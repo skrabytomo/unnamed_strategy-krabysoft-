@@ -4940,6 +4940,10 @@ void Game::renderWorldOverlay()
             {255, 150,  70},  // 7 orange
             {240, 130, 200},  // 8 pink
         };
+        if (owner == 0) return IM_COL32(255, 210, 60, alpha);   // neutral — gold
+        int i = (int)((owner - 1) % 8);
+        return IM_COL32(pal[i][0], pal[i][1], pal[i][2], alpha);
+    };
 
     // ── Road network ──────────────────────────────────────────────────────────
     // Draw dirt-road paths connecting towns — render before towns/icons so they
@@ -5310,11 +5314,6 @@ void Game::renderWorldOverlay()
                         label);
         }
     }
-
-        if (owner == 0) return IM_COL32(255, 210, 60, alpha);   // neutral — gold
-        int i = (int)((owner - 1) % 8);
-        return IM_COL32(pal[i][0], pal[i][1], pal[i][2], alpha);
-    };
 
     for (const auto& ph : m_heroes) {
         if (ph.bloodScentSpecialty) { playerHasBloodScent = true; break; }
