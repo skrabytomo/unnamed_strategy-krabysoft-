@@ -802,6 +802,8 @@ private:
     // 0 = free agent (default, everyone is their own team — current FFA
     // behaviour). >0 = team number; slots sharing a team number are allies.
     int m_slotTeam[MAX_SETUP_SLOTS]    = {0, 0, 0, 0, 0, 0, 0, 0};
+    // Per-slot hero class id (0 = first/default class for that faction).
+    int m_slotClassId[MAX_SETUP_SLOTS] = {0, 0, 0, 0, 0, 0, 0, 0};
 
     // ── Alliances ──────────────────────────────────────────────────────────
     // Live-game team per player slot, index = ownerId - 1 (slot s -> ownerId

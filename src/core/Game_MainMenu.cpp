@@ -127,52 +127,6 @@ void Game::renderMainMenu()
         }
         ImGui::Spacing();
 
-        // Faction
-        ImGui::Text("Faction:");
-        static const char* kFacNames[] = {
-            "Holy Order","Crimson Wardens","Thornkin","Eternal Empire",
-            "Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"
-        };
-        for (int i = 0; i < 9; ++i) {
-            if (i % 3 != 0) ImGui::SameLine();
-            bool sel = (m_newGameFaction == i);
-            if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.3f, 0.1f, 1.f));
-            char fLbl[40]; std::snprintf(fLbl, sizeof(fLbl), "%s##fc%d", kFacNames[i], i);
-            if (ImGui::Button(fLbl, ImVec2((bw - 4) / 3.f, 26))) {
-                m_newGameFaction = i;
-                m_newGameClassId = 0;  // reset class selection on faction change
-            }
-            if (sel) ImGui::PopStyleColor();
-        }
-        ImGui::Spacing();
-
-        // Hero class selection for chosen faction
-        {
-            FactionId f = static_cast<FactionId>(m_newGameFaction);
-            auto classes = m_classRegistry.getClassesForFaction(f);
-            if (!classes.empty()) {
-                ImGui::Text("Hero Class:");
-                // Ensure m_newGameClassId is valid
-                bool classValid = false;
-                for (auto* c : classes) if (c->id == m_newGameClassId) { classValid = true; break; }
-                if (!classValid) m_newGameClassId = classes[0]->id;
-
-                for (int ci = 0; ci < static_cast<int>(classes.size()); ++ci) {
-                    const HeroClassDef* cls = classes[ci];
-                    if (ci % 2 != 0) ImGui::SameLine();
-                    bool sel = (m_newGameClassId == cls->id);
-                    if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.2f, 1.f));
-                    char clbl[48]; std::snprintf(clbl, sizeof(clbl), "%s##cl%d", cls->name.c_str(), cls->id);
-                    if (ImGui::Button(clbl, ImVec2((bw - 4) / 2.f, 26)))
-                        m_newGameClassId = cls->id;
-                    if (ImGui::IsItemHovered() && !cls->specialtyDesc.empty())
-                        ImGui::SetTooltip("Specialty: %s", cls->specialtyDesc.c_str());
-                    if (sel) ImGui::PopStyleColor();
-                }
-            }
-        }
-        ImGui::Spacing();
-
         // Difficulty
         ImGui::Text("Difficulty:");
         static const char* kDiffNames[]    = { "Easy", "Normal", "Hard" };
@@ -217,57 +171,128 @@ void Game::renderMainMenu()
             static const char* kBonusNames[] = {
                 "Artifact", "+5 Resource", "+1500 Gold"
             };
-            static const char* kTeamNames[] = {
-                "FFA", "Team 1", "Team 2", "Team 3", "Team 4"
-            };
             m_slotType[0]    = 0;                    // slot 0 is always you
-            m_slotFaction[0] = m_newGameFaction;     // driven by the picker above
-            float thirdW = (bw - 12) / 4.f;
+            m_slotFaction[0] = m_newGameFaction;     // kept in sync for startNewGame
+            // Column layout: [type] [faction] [hero] [bonus] [team swatch]
+            float rowH   = 34.f;
+            float typeW  = (bw - 16) * 0.14f;
+            float facW   = (bw - 16) * 0.26f;
+            float heroW  = (bw - 16) * 0.26f;
+            float bonW   = (bw - 16) * 0.24f;
+            float teamW  = (bw - 16) * 0.10f;
+
+            // Header row
+            ImGui::TextDisabled("%-*s", 0, "");
+            {
+                ImGui::Dummy(ImVec2(typeW, 1)); ImGui::SameLine(0,4);
+                ImGui::TextDisabled("Faction"); ImGui::SameLine(typeW + facW * 0.5f);
+                ImGui::TextDisabled("Hero");    ImGui::SameLine(typeW + facW + heroW * 0.5f);
+                ImGui::TextDisabled("Bonus");   ImGui::SameLine(typeW + facW + heroW + bonW * 0.5f);
+                ImGui::TextDisabled("Ally");
+            }
+
             for (int s = 0; s < m_setupPlayerCount; ++s) {
                 ImGui::PushID(s);
-                // Human / Bot toggle (slot 0 fixed)
+                uint32_t ownerId = (uint32_t)(s + 1);
+
+                // ── Human / Bot / You ─────────────────────────────────────────
                 if (s == 0) {
-                    ImGui::Button("You", ImVec2(thirdW, 26));
+                    ImGui::Button("You", ImVec2(typeW, rowH));
                 } else {
                     bool isHuman = (m_slotType[s] == 0);
                     ImGui::PushStyleColor(ImGuiCol_Button,
                         isHuman ? ImVec4(0.1f, 0.3f, 0.6f, 1.f) : ImVec4(0.45f, 0.2f, 0.1f, 1.f));
-                    if (ImGui::Button(isHuman ? "Human" : "Bot", ImVec2(thirdW, 26)))
+                    if (ImGui::Button(isHuman ? "Human" : "Bot", ImVec2(typeW, rowH)))
                         m_slotType[s] = isHuman ? 1 : 0;
                     if (ImGui::IsItemHovered())
-                        ImGui::SetTooltip("Click to switch. Humans play hot-seat on this screen.");
+                        ImGui::SetTooltip("Click to switch Human/Bot. Humans play hot-seat.");
                     ImGui::PopStyleColor();
                 }
-                // Faction picker (slot 0 read-only — set by the grid above).
-                // Full-list combo instead of a click-to-cycle button.
+
+                // ── Faction: crest icon + combo ───────────────────────────────
                 ImGui::SameLine(0, 4);
-                if (s == 0) {
-                    char flbl[40];
-                    std::snprintf(flbl, sizeof(flbl), "%s##fac0", kSlotFacNames[std::clamp(m_newGameFaction, 0, 8)]);
-                    ImGui::Button(flbl, ImVec2(thirdW, 26));
-                } else {
-                    ImGui::SetNextItemWidth(thirdW);
+                {
                     int fsel = std::clamp(m_slotFaction[s], 0, 9);
+                    // crest = T1 unit sprite (fallback colored box)
+                    ImVec2 cur = ImGui::GetCursorScreenPos();
+                    float ic = rowH;
+                    if (fsel < 9 && m_unitTex[fsel][0].ok()) {
+                        int cols = std::max(1, m_unitTexCols[fsel][0]);
+                        ImGui::GetWindowDrawList()->AddImage(
+                            (ImTextureID)(uintptr_t)m_unitTex[fsel][0].id(),
+                            {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, {0,0}, {1.f/cols, 1.f});
+                    } else {
+                        ImGui::GetWindowDrawList()->AddRectFilled(
+                            {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, IM_COL32(70,70,80,255), 3.f);
+                    }
+                    ImGui::Dummy(ImVec2(ic, rowH)); ImGui::SameLine(0, 3);
+                    ImGui::SetNextItemWidth(facW - ic - 3);
                     if (ImGui::BeginCombo("##fac", kSlotFacNames[fsel])) {
-                        for (int fi = 0; fi < 10; ++fi) {  // 0-8 factions + 9 = Random
+                        for (int fi = 0; fi < 10; ++fi) {
                             bool chosen = (fsel == fi);
-                            if (ImGui::Selectable(kSlotFacNames[fi], chosen))
+                            if (ImGui::Selectable(kSlotFacNames[fi], chosen)) {
                                 m_slotFaction[s] = fi;
+                                m_slotClassId[s] = 0;               // reset hero on faction change
+                                if (s == 0) { m_newGameFaction = fi; m_newGameClassId = 0; }
+                            }
                             if (chosen) ImGui::SetItemDefaultFocus();
                         }
                         ImGui::EndCombo();
                     }
                 }
-                // Starting bonus picker (full-list combo)
+
+                // ── Hero: portrait + class combo ──────────────────────────────
                 ImGui::SameLine(0, 4);
                 {
-                    ImGui::SetNextItemWidth(thirdW);
+                    int fsel = std::clamp(m_slotFaction[s], 0, 8);
+                    auto classes = m_classRegistry.getClassesForFaction((FactionId)fsel);
+                    // portrait = faction hero figure
+                    ImVec2 cur = ImGui::GetCursorScreenPos();
+                    float ic = rowH;
+                    if (m_slotFaction[s] < 9 && m_heroTex[fsel].ok()) {
+                        int cols = std::max(1, m_heroTexCols[fsel]);
+                        ImGui::GetWindowDrawList()->AddImage(
+                            (ImTextureID)(uintptr_t)m_heroTex[fsel].id(),
+                            {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, {0,0}, {1.f/cols, 1.f});
+                    } else {
+                        ImGui::GetWindowDrawList()->AddRectFilled(
+                            {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, IM_COL32(60,70,60,255), 3.f);
+                    }
+                    ImGui::Dummy(ImVec2(ic, rowH)); ImGui::SameLine(0, 3);
+                    ImGui::SetNextItemWidth(heroW - ic - 3);
+                    if (classes.empty()) {
+                        ImGui::TextDisabled("(random)");
+                    } else {
+                        bool ok = false;
+                        for (auto* c : classes) if (c->id == m_slotClassId[s]) ok = true;
+                        if (!ok) m_slotClassId[s] = classes[0]->id;
+                        const char* curName = "?";
+                        for (auto* c : classes) if (c->id == m_slotClassId[s]) curName = c->name.c_str();
+                        if (ImGui::BeginCombo("##hero", curName)) {
+                            for (auto* c : classes) {
+                                bool chosen = (m_slotClassId[s] == c->id);
+                                if (ImGui::Selectable(c->name.c_str(), chosen)) {
+                                    m_slotClassId[s] = c->id;
+                                    if (s == 0) m_newGameClassId = c->id;
+                                }
+                                if (ImGui::IsItemHovered() && !c->specialtyDesc.empty())
+                                    ImGui::SetTooltip("Specialty: %s", c->specialtyDesc.c_str());
+                                if (chosen) ImGui::SetItemDefaultFocus();
+                            }
+                            ImGui::EndCombo();
+                        }
+                    }
+                }
+
+                // ── Starting bonus combo ──────────────────────────────────────
+                ImGui::SameLine(0, 4);
+                {
+                    ImGui::SetNextItemWidth(bonW);
                     int bsel = std::clamp(m_slotBonus[s], 0, 2);
                     if (ImGui::BeginCombo("##bon", kBonusNames[bsel])) {
                         for (int bi = 0; bi < 3; ++bi) {
                             bool chosen = (bsel == bi);
-                            if (ImGui::Selectable(kBonusNames[bi], chosen))
-                                m_slotBonus[s] = bi;
+                            if (ImGui::Selectable(kBonusNames[bi], chosen)) m_slotBonus[s] = bi;
                             if (chosen) ImGui::SetItemDefaultFocus();
                         }
                         ImGui::EndCombo();
@@ -275,23 +300,38 @@ void Game::renderMainMenu()
                     if (ImGui::IsItemHovered())
                         ImGui::SetTooltip("Starting bonus: random artifact, +5 key resource, or +1500 gold.");
                 }
-                // Team picker (full-list combo)
+
+                // ── Alliance: colored swatch (click to cycle FFA / Team 1-4) ──
                 ImGui::SameLine(0, 4);
                 {
-                    ImGui::SetNextItemWidth(thirdW);
+                    // Team 0 (FFA) = this player's own owner color (no alliance).
+                    // Team 1-4 = a shared alliance color.
+                    static const ImU32 teamCols[5] = {
+                        IM_COL32(90, 90, 90, 255),    // FFA — grey (no ally)
+                        IM_COL32(90, 160, 255, 255),  // Team 1 — blue
+                        IM_COL32(255, 110, 90, 255),  // Team 2 — red
+                        IM_COL32(110, 220, 120, 255), // Team 3 — green
+                        IM_COL32(230, 200, 70, 255),  // Team 4 — gold
+                    };
                     int tsel = std::clamp(m_slotTeam[s], 0, 4);
-                    if (ImGui::BeginCombo("##team", kTeamNames[tsel])) {
-                        for (int ti = 0; ti < 5; ++ti) {
-                            bool chosen = (tsel == ti);
-                            if (ImGui::Selectable(kTeamNames[ti], chosen))
-                                m_slotTeam[s] = ti;
-                            if (chosen) ImGui::SetItemDefaultFocus();
-                        }
-                        ImGui::EndCombo();
-                    }
+                    ImVec2 cur = ImGui::GetCursorScreenPos();
+                    ImGui::GetWindowDrawList()->AddRectFilled(
+                        {cur.x, cur.y}, {cur.x + teamW, cur.y + rowH}, teamCols[tsel], 4.f);
+                    ImGui::GetWindowDrawList()->AddRect(
+                        {cur.x, cur.y}, {cur.x + teamW, cur.y + rowH}, IM_COL32(220,220,220,180), 4.f, 0, 1.5f);
+                    // Label inside the swatch
+                    const char* tlabel = (tsel == 0) ? "FFA" : (tsel==1?"A":tsel==2?"B":tsel==3?"C":"D");
+                    ImVec2 ts = ImGui::CalcTextSize(tlabel);
+                    ImGui::GetWindowDrawList()->AddText(
+                        {cur.x + (teamW - ts.x)*0.5f, cur.y + (rowH - ts.y)*0.5f},
+                        IM_COL32(20,20,20,255), tlabel);
+                    if (ImGui::InvisibleButton("##team", ImVec2(teamW, rowH)))
+                        m_slotTeam[s] = (tsel + 1) % 5;
                     if (ImGui::IsItemHovered())
-                        ImGui::SetTooltip("Slots on the same team are allies and never fight each other.");
+                        ImGui::SetTooltip("Alliance: FFA = no allies. Same letter = allied team (never fight each other). Click to cycle.");
+                    (void)ownerId;
                 }
+
                 ImGui::PopID();
             }
         }
