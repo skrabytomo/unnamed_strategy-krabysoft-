@@ -4925,6 +4925,22 @@ void Game::renderWorldOverlay()
         ICO_XP_WELL      = 37,
     };
 
+    // ── Per-owner colors ──────────────────────────────────────────────────────
+    // Every player (ownerId) gets a distinct hue so an 8-player map isn't a sea
+    // of identical red dots. ownerId 0 = neutral. The watched/current player is
+    // always the first (blue) slot for consistency.
+    auto ownerColor = [&](uint32_t owner, int alpha) -> ImU32 {
+        static const int pal[8][3] = {
+            {120, 190, 255},  // 1 blue
+            {255, 100, 100},  // 2 red
+            {110, 220, 120},  // 3 green
+            {235, 200,  70},  // 4 gold
+            {200, 120, 255},  // 5 purple
+            {120, 230, 230},  // 6 cyan
+            {255, 150,  70},  // 7 orange
+            {240, 130, 200},  // 8 pink
+        };
+
     // ── Road network ──────────────────────────────────────────────────────────
     // Draw dirt-road paths connecting towns — render before towns/icons so they
     // appear underneath map objects
@@ -4980,12 +4996,12 @@ void Game::renderWorldOverlay()
         int  fid      = std::clamp(static_cast<int>(town.faction), 0, NUM_FACTIONS - 1);
 
         ImU32 ringCol = isPlayer     ? IM_COL32(120, 180, 255, 255)
-                      : isOtherHuman ? IM_COL32( 80, 200, 120, 255)
-                      : isEnemy      ? IM_COL32(255,  90,  90, 255)
+                      : isEnemy      ? ownerColor(town.ownerId, 255)
+                      : isOtherHuman ? ownerColor(town.ownerId, 255)
                                      : IM_COL32(210, 165,  50, 255);
         ImU32 flagCol = isPlayer     ? IM_COL32( 80, 140, 255, 230)
-                      : isOtherHuman ? IM_COL32( 50, 160,  90, 230)
-                      : isEnemy      ? IM_COL32(220,  60,  60, 230)
+                      : isEnemy      ? ownerColor(town.ownerId, 230)
+                      : isOtherHuman ? ownerColor(town.ownerId, 230)
                                      : IM_COL32(190, 145,  30, 230);
 
         ImTextureID townArt = m_townTex[fid].ok()
@@ -5270,16 +5286,12 @@ void Game::renderWorldOverlay()
         ImU32 bgGlow = IM_COL32(0, 0, 0, 150);
         dl->AddCircleFilled({sx, sy}, mineGlow, bgGlow);
         addIcon(ico, sx, sy, mineR);
-        // Ownership ring
-        uint32_t cid2p = (m_numHumanPlayers >= 2)
-            ? static_cast<uint32_t>((m_currentPlayerIdx == 0) ? 2 : 1) : 0u;
+        // Ownership ring — per-owner color (blue=you, unique hue per rival)
         ImU32 ring;
         if (r.ownedBy == static_cast<uint32_t>(currentPlayerId()))
-            ring = IM_COL32(120, 200, 255, 255);     // owned — blue
-        else if (m_numHumanPlayers >= 2 && r.ownedBy == cid2p)
-            ring = IM_COL32(80, 200, 120, 255);      // opponent human — green
+            ring = ownerColor(1, 255);               // you — always blue
         else if (r.ownedBy != 0)
-            ring = IM_COL32(255, 100, 100, 255);     // AI — red
+            ring = ownerColor(r.ownedBy, 255);       // rival — unique hue
         else
             ring = IM_COL32(255, 210, 60, 200);      // neutral — gold
         dl->AddCircle({sx, sy}, mineGlow, ring, 0, 2.0f);
@@ -5299,8 +5311,11 @@ void Game::renderWorldOverlay()
         }
     }
 
-    // BloodScent: any player hero with this specialty reveals Bloodsworn enemies
-    bool playerHasBloodScent = false;
+        if (owner == 0) return IM_COL32(255, 210, 60, alpha);   // neutral — gold
+        int i = (int)((owner - 1) % 8);
+        return IM_COL32(pal[i][0], pal[i][1], pal[i][2], alpha);
+    };
+
     for (const auto& ph : m_heroes) {
         if (ph.bloodScentSpecialty) { playerHasBloodScent = true; break; }
     }
@@ -5328,14 +5343,14 @@ void Game::renderWorldOverlay()
         } else {
             addIcon(ICO_HERO_ENEMY, sx, sy, 13.0f);
         }
-        dl->AddCircle({sx, sy}, 14.0f, IM_COL32(255, 140, 140, 180), 0, 1.5f);
+        dl->AddCircle({sx, sy}, 14.0f, ownerColor(hero.ownerId, 210), 0, 2.0f);
         {
             float lx = sx - (float)hero.name.size() * 3.0f;
             if (labelOK(lx, sy + 15, hero.name.size() * 6.0f))
-                dl->AddText({lx, sy + 15}, IM_COL32(255, 160, 160, 200), hero.name.c_str());
+                dl->AddText({lx, sy + 15}, ownerColor(hero.ownerId, 230), hero.name.c_str());
         }
         if (hero.isGarrisoned && labelOK(sx - 10.0f, sy - 30.0f))
-            dl->AddText({sx - 10.0f, sy - 30.0f}, IM_COL32(255, 80, 80, 255), "[G]");
+            dl->AddText({sx - 10.0f, sy - 30.0f}, ownerColor(hero.ownerId, 255), "[G]");
     }
 
     // ── Other human player heroes (hotseat N-player) ──────────────────────────
