@@ -15,9 +15,23 @@ This:
 2. assembles `dist/` — a **self-contained folder** with the exe, every runtime
    DLL (SDL2, sqlite3, lua, glew, gcc/stdc++ runtime), and all assets. This
    folder runs on a clean Windows machine with **no msys2 installed**.
-3. if Inno Setup (`iscc`) is on PATH → produces
-   `packaging/Output/UnnamedStrategy-Setup.exe` (the one-click installer).
-   Otherwise → a portable ZIP via CPack.
+3. builds a **one-click `Setup.exe`** installer.
+
+## Getting the Setup.exe (one-time tool install)
+
+You need an installer compiler. Easiest is NSIS straight from msys2:
+
+```bash
+pacman -S mingw-w64-ucrt-x86_64-nsis
+```
+
+Then `build_installer.sh` auto-produces `build/UnnamedStrategy-<ver>-win64.exe`
+— a proper one-click installer with Start Menu + desktop shortcuts and an
+uninstaller.
+
+(Alternatively, Inno Setup — https://jrsoftware.org/isdl.php — also works and
+gives `packaging/Output/UnnamedStrategy-Setup.exe`. If neither tool is present
+you still get a portable ZIP.)
 
 ## Testing on a fresh machine / VM
 

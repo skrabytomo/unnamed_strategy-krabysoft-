@@ -248,9 +248,20 @@ set(CPACK_PACKAGE_VERSION "0.1.0")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "HoMM3-style hex strategy game")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "UnnamedStrategy")
 if(WIN32)
-    set(CPACK_GENERATOR "ZIP")   # default: portable zip. NSIS if makensis present.
+    # NSIS produces a real one-click Setup.exe. Install it once from msys2:
+    #   pacman -S mingw-w64-ucrt-x86_64-nsis
+    # Falls back to ZIP only if makensis isn't found at package time.
+    find_program(MAKENSIS_EXE makensis)
+    if(MAKENSIS_EXE)
+        set(CPACK_GENERATOR "NSIS")
+    else()
+        set(CPACK_GENERATOR "ZIP")
+    endif()
     set(CPACK_NSIS_MODIFY_PATH OFF)
     set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    set(CPACK_NSIS_INSTALLED_ICON_NAME "${PROJECT_NAME}.exe")
+    set(CPACK_NSIS_DISPLAY_NAME "Unnamed Strategy")
+    set(CPACK_NSIS_PACKAGE_NAME "Unnamed Strategy")
     set(CPACK_PACKAGE_EXECUTABLES "${PROJECT_NAME}" "Unnamed Strategy")
     set(CPACK_CREATE_DESKTOP_LINKS "${PROJECT_NAME}")
 endif()
