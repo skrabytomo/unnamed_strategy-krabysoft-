@@ -84,7 +84,7 @@ void Game::renderConquest()
     if (!m_conquest.hasHero()) {
         ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
                                 ImGuiCond_Always, {0.5f, 0.5f});
-        ImGui::SetNextWindowSize({420, 0}, ImGuiCond_Always);
+        ImGui::SetNextWindowSize({480, 0}, ImGuiCond_Always);
         ImGui::Begin("Create Conquest Hero", nullptr,
                      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         ImGui::TextWrapped("Your Conquest hero is permanent: XP, levels, and "
@@ -98,14 +98,51 @@ void Game::renderConquest()
             if (i % 3 != 0) ImGui::SameLine();
             bool sel = (m_conquestSetupFaction == i);
             if (sel) ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(160, 120, 20, 255));
-            if (ImGui::Button(kF[i], ImVec2(128, 26))) m_conquestSetupFaction = i;
+            // Faction icon (T1 unit sprite) + name in one clickable group.
+            ImGui::BeginGroup();
+            ImVec2 cursor = ImGui::GetCursorScreenPos();
+            if (ImGui::Button(kF[i], ImVec2(142, 34))) m_conquestSetupFaction = i;
+            // Draw the faction's T1 sprite on the left edge of the button
+            if (m_unitTex[i][0].ok()) {
+                int cols = std::max(1, m_unitTexCols[i][0]);
+                ImGui::GetWindowDrawList()->AddImage(
+                    (ImTextureID)(uintptr_t)m_unitTex[i][0].id(),
+                    {cursor.x + 3, cursor.y + 3}, {cursor.x + 31, cursor.y + 31},
+                    {0.f, 0.f}, {1.f / cols, 1.f});
+            }
+            ImGui::EndGroup();
             if (sel) ImGui::PopStyleColor();
+        }
+        ImGui::Spacing();
+
+        // Class picker for the chosen faction
+        {
+            FactionId f = static_cast<FactionId>(m_conquestSetupFaction);
+            auto classes = m_classRegistry.getClassesForFaction(f);
+            if (!classes.empty()) {
+                bool valid = false;
+                for (auto* c : classes) if (c->id == m_conquestSetupClassId) valid = true;
+                if (!valid) m_conquestSetupClassId = classes[0]->id;
+                ImGui::Text("Class:");
+                for (int ci = 0; ci < (int)classes.size(); ++ci) {
+                    const HeroClassDef* cls = classes[ci];
+                    if (ci % 2 != 0) ImGui::SameLine();
+                    bool csel = (m_conquestSetupClassId == cls->id);
+                    if (csel) ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(40, 110, 60, 255));
+                    char clbl[48]; std::snprintf(clbl, sizeof(clbl), "%s##ccl%d", cls->name.c_str(), cls->id);
+                    if (ImGui::Button(clbl, ImVec2(220, 26))) m_conquestSetupClassId = cls->id;
+                    if (ImGui::IsItemHovered() && !cls->specialtyDesc.empty())
+                        ImGui::SetTooltip("Specialty: %s", cls->specialtyDesc.c_str());
+                    if (csel) ImGui::PopStyleColor();
+                }
+            }
         }
         ImGui::Spacing();
         if (ImGui::Button("Begin", ImVec2(-1, 36))) {
             FactionId f = static_cast<FactionId>(m_conquestSetupFaction);
             auto classes = m_classRegistry.getClassesForFaction(f);
-            int classId = classes.empty() ? 0 : classes[0]->id;
+            int classId = m_conquestSetupClassId;
+            if (classId == 0 && !classes.empty()) classId = classes[0]->id;
             m_conquest.createHero(m_conquestSetupName, f, classId);
             m_conquest.grantChest(ConquestMode::ChestType::Wooden, 2); // starter units
         }

@@ -238,37 +238,60 @@ void Game::renderMainMenu()
                         ImGui::SetTooltip("Click to switch. Humans play hot-seat on this screen.");
                     ImGui::PopStyleColor();
                 }
-                // Faction cycle (slot 0 shown read-only — set by the picker above)
+                // Faction picker (slot 0 read-only — set by the grid above).
+                // Full-list combo instead of a click-to-cycle button.
                 ImGui::SameLine(0, 4);
                 if (s == 0) {
                     char flbl[40];
                     std::snprintf(flbl, sizeof(flbl), "%s##fac0", kSlotFacNames[std::clamp(m_newGameFaction, 0, 8)]);
                     ImGui::Button(flbl, ImVec2(thirdW, 26));
                 } else {
-                    char flbl[40];
-                    std::snprintf(flbl, sizeof(flbl), "%s##fac", kSlotFacNames[std::clamp(m_slotFaction[s], 0, 9)]);
-                    if (ImGui::Button(flbl, ImVec2(thirdW, 26)))
-                        m_slotFaction[s] = (m_slotFaction[s] + 1) % 10;
-                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Click to cycle faction (Random rolls at start).");
+                    ImGui::SetNextItemWidth(thirdW);
+                    int fsel = std::clamp(m_slotFaction[s], 0, 9);
+                    if (ImGui::BeginCombo("##fac", kSlotFacNames[fsel])) {
+                        for (int fi = 0; fi < 10; ++fi) {  // 0-8 factions + 9 = Random
+                            bool chosen = (fsel == fi);
+                            if (ImGui::Selectable(kSlotFacNames[fi], chosen))
+                                m_slotFaction[s] = fi;
+                            if (chosen) ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::EndCombo();
+                    }
                 }
-                // Starting bonus cycle
+                // Starting bonus picker (full-list combo)
                 ImGui::SameLine(0, 4);
-                char blbl[32];
-                std::snprintf(blbl, sizeof(blbl), "%s##bon", kBonusNames[std::clamp(m_slotBonus[s], 0, 2)]);
-                if (ImGui::Button(blbl, ImVec2(thirdW, 26)))
-                    m_slotBonus[s] = (m_slotBonus[s] + 1) % 3;
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Starting bonus: random artifact, +5 of the faction's key resource, or +1500 gold.");
-                // Team cycle: FFA (no alliance) or Team 1-4. Slots sharing a
-                // team fight side by side — AI hostility/targeting and combat
-                // triggers all respect this.
+                {
+                    ImGui::SetNextItemWidth(thirdW);
+                    int bsel = std::clamp(m_slotBonus[s], 0, 2);
+                    if (ImGui::BeginCombo("##bon", kBonusNames[bsel])) {
+                        for (int bi = 0; bi < 3; ++bi) {
+                            bool chosen = (bsel == bi);
+                            if (ImGui::Selectable(kBonusNames[bi], chosen))
+                                m_slotBonus[s] = bi;
+                            if (chosen) ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::EndCombo();
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Starting bonus: random artifact, +5 key resource, or +1500 gold.");
+                }
+                // Team picker (full-list combo)
                 ImGui::SameLine(0, 4);
-                char tlbl[24];
-                std::snprintf(tlbl, sizeof(tlbl), "%s##team", kTeamNames[std::clamp(m_slotTeam[s], 0, 4)]);
-                if (ImGui::Button(tlbl, ImVec2(thirdW, 26)))
-                    m_slotTeam[s] = (m_slotTeam[s] + 1) % 5;
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Click to cycle. Slots on the same team are allies and never fight each other.");
+                {
+                    ImGui::SetNextItemWidth(thirdW);
+                    int tsel = std::clamp(m_slotTeam[s], 0, 4);
+                    if (ImGui::BeginCombo("##team", kTeamNames[tsel])) {
+                        for (int ti = 0; ti < 5; ++ti) {
+                            bool chosen = (tsel == ti);
+                            if (ImGui::Selectable(kTeamNames[ti], chosen))
+                                m_slotTeam[s] = ti;
+                            if (chosen) ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::EndCombo();
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Slots on the same team are allies and never fight each other.");
+                }
                 ImGui::PopID();
             }
         }

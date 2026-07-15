@@ -515,6 +515,7 @@ private:
     int          m_conquestActiveNode = -1;   // node currently being fought
     bool         m_conquestHeroSetup  = false; // hero-creation sub-screen open
     int          m_conquestSetupFaction = 0;
+    int          m_conquestSetupClassId = 0;
     char         m_conquestSetupName[48] = "Wanderer";
     // Phase 2: army screen + chest popup + casualty tracking
     bool         m_conquestShowArmy = false;
