@@ -12,3 +12,5 @@ saves/*.db-wal
 compile_commands.json
 _gen_src*.png
 unnamed_strategy-krabysoft-/
+dist/
+packaging/Output/

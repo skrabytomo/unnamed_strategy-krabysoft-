@@ -197,3 +197,61 @@ add_executable(fullgame_sim ${FULLGAME_SOURCES})
 target_include_directories(fullgame_sim PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(fullgame_sim PRIVATE ${SQLITE_TARGET})
 target_compile_features(fullgame_sim PRIVATE cxx_std_20)
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PACKAGING — self-contained install + one-click installer
+# ══════════════════════════════════════════════════════════════════════════════
+# Produces a folder with the exe, all runtime DLLs, and assets that runs on a
+# clean machine (no msys2 required). `cmake --install build --prefix dist`
+# assembles it; CPack (or the Inno Setup script in packaging/) wraps it.
+
+# 1. The executable
+install(TARGETS ${PROJECT_NAME}
+        RUNTIME DESTINATION .)
+
+# 2. Assets, maps, scripts (campaigns optional)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets   DESTINATION .)
+if(EXISTS ${CMAKE_SOURCE_DIR}/maps)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/maps      DESTINATION .)
+endif()
+if(EXISTS ${CMAKE_SOURCE_DIR}/scripts)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/scripts   DESTINATION .)
+endif()
+
+# 3. Bundle the runtime DLLs the exe depends on (SDL2, sqlite3, lua, glew,
+#    plus the gcc/stdc++ runtime from ucrt64). GET_RUNTIME_DEPENDENCIES walks
+#    the actual import table so we don't have to hand-list every DLL.
+if(WIN32)
+    install(CODE "
+        include(BundleUtilities)
+        set(exe \"\${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.exe\")
+        file(GET_RUNTIME_DEPENDENCIES
+             EXECUTABLES \"\${exe}\"
+             RESOLVED_DEPENDENCIES_VAR deps
+             UNRESOLVED_DEPENDENCIES_VAR unresolved
+             DIRECTORIES \"C:/msys64/ucrt64/bin\"
+             PRE_EXCLUDE_REGEXES \"api-ms-.*\" \"ext-ms-.*\"
+             POST_EXCLUDE_REGEXES \".*system32.*\" \".*SysWOW64.*\")
+        foreach(dep \${deps})
+            file(INSTALL \"\${dep}\" DESTINATION \"\${CMAKE_INSTALL_PREFIX}\")
+        endforeach()
+        if(unresolved)
+            message(STATUS \"Bundled DLLs; system libs skipped: \${unresolved}\")
+        endif()
+    ")
+endif()
+
+# 4. CPack — `cpack -G ZIP` (portable) or `-G NSIS`/`-G INNOSETUP` for installers.
+set(CPACK_PACKAGE_NAME "UnnamedStrategy")
+set(CPACK_PACKAGE_VENDOR "krabysoft")
+set(CPACK_PACKAGE_VERSION "0.1.0")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "HoMM3-style hex strategy game")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "UnnamedStrategy")
+if(WIN32)
+    set(CPACK_GENERATOR "ZIP")   # default: portable zip. NSIS if makensis present.
+    set(CPACK_NSIS_MODIFY_PATH OFF)
+    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    set(CPACK_PACKAGE_EXECUTABLES "${PROJECT_NAME}" "Unnamed Strategy")
+    set(CPACK_CREATE_DESKTOP_LINKS "${PROJECT_NAME}")
+endif()
+include(CPack)
