@@ -96,6 +96,8 @@ private:
     void startArenaBattle();
     void onArenaBattleEnd(bool victory);
     void conquestUnitIcon(int defId, float size = 32.f);
+    // Absolute, rebuild-proof path to the shared meta DB (hideout + conquest).
+    std::string metaDbPath() const;
     // Draw a full-screen loading frame (backdrop + progress bar) during init().
     void renderLoadingScreen(float progress, const char* label);
     // Draw the menu backdrop aspect-correct "cover" (fills any resolution without

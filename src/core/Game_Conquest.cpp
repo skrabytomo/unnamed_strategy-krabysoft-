@@ -77,7 +77,7 @@ void Game::renderConquest()
 
     // Lazy init on first entry
     if (!m_conquest.active())
-        m_conquest.init("hideout.db");
+        m_conquest.init(metaDbPath());
     m_conquest.refreshQuests();   // regenerate daily/weekly sets if elapsed
 
     // ── Hero setup gate ───────────────────────────────────────────────────────

@@ -22,7 +22,29 @@ extern "C" {
 #include <lauxlib.h>
 }
 
-static constexpr const char* HIDEOUT_PATH = "saves/hideout.db";
+// Returns the per-user data directory (OS-standard, persistent across rebuilds
+// and reinstalls): %APPDATA%/krabysoft/unnamed_strategy on Windows,
+// ~/.local/share/... on Linux, ~/Library/Application Support/... on macOS.
+// Falls back to a local "saves/" dir if SDL can't resolve a pref path.
+static std::string userDataDir()
+{
+    static std::string cached;
+    if (!cached.empty()) return cached;
+    char* pref = SDL_GetPrefPath("krabysoft", "unnamed_strategy");
+    if (pref) {
+        cached = pref;               // already ends with a path separator
+        SDL_free(pref);
+    } else {
+        cached = "saves/";
+    }
+    return cached;
+}
+
+// Absolute path to the shared meta database (hideout + conquest live together).
+static std::string hideoutDbPath() { return userDataDir() + "hideout.db"; }
+static std::string savesDbPath()   { return userDataDir() + "saves.db"; }
+
+std::string Game::metaDbPath() const { return hideoutDbPath(); }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 bool Game::init(const std::string& title, int width, int height, bool hidden)
@@ -599,10 +621,10 @@ bool Game::init(const std::string& title, int width, int height, bool hidden)
     m_combatHUD.onSpells    = [this]() { m_showSpellPanel = !m_showSpellPanel; };
 
     // Open hideout DB (non-fatal if it fails)
-    m_hideout.open(HIDEOUT_PATH);
+    m_hideout.open(hideoutDbPath());
 
     // Open save DB
-    m_saveDB.open("saves/saves.db");
+    m_saveDB.open(savesDbPath());
 
     // Scripting
     if (m_lua.init()) {
