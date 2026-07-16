@@ -5669,11 +5669,9 @@ void Game::renderWorldOverlay()
             float my = mm_cy + (static_cast<float>(town.pos.r) + static_cast<float>(town.pos.q) * 0.5f) * scaleY;
             ImU32 col;
             if (town.ownerId == static_cast<uint32_t>(currentPlayerId()))
-                col = IM_COL32(90, 150, 255, 255);    // current player — blue
-            else if (m_numHumanPlayers >= 2 && town.ownerId == otherHumanId)
-                col = IM_COL32(80, 210, 120, 255);    // other human — green
+                col = ownerColor(1, 255);             // current player — blue
             else if (town.ownerId != 0)
-                col = IM_COL32(255, 70, 70, 255);     // AI — red
+                col = ownerColor(town.ownerId, 255);  // rival — unique hue
             else
                 col = IM_COL32(210, 165, 45, 255);    // neutral — gold
             dl->AddRectFilled({mx-2.f, my-2.f}, {mx+2.f, my+2.f}, col);
@@ -5688,11 +5686,9 @@ void Game::renderWorldOverlay()
             float my = mm_cy + (static_cast<float>(r.pos.r) + static_cast<float>(r.pos.q) * 0.5f) * scaleY;
             ImU32 col;
             if (r.ownedBy == static_cast<uint32_t>(currentPlayerId()))
-                col = IM_COL32(80, 220, 80, 200);
-            else if (m_numHumanPlayers >= 2 && r.ownedBy == otherHumanId)
-                col = IM_COL32(80, 160, 255, 200);   // other human's mine — blue
+                col = ownerColor(1, 200);
             else if (r.ownedBy != 0)
-                col = IM_COL32(220, 80, 80, 200);    // AI mine — red
+                col = ownerColor(r.ownedBy, 200);    // rival mine — unique hue
             else
                 col = IM_COL32(200, 180, 80, 150);   // unclaimed — gold
             dl->AddCircleFilled({mx, my}, 1.5f, col);
@@ -5704,7 +5700,7 @@ void Game::renderWorldOverlay()
             if (!ht2 || (!m_fogDisabled && !ht2->visible)) continue;
             float mx = mm_cx + static_cast<float>(hero.pos.q) * scaleX;
             float my = mm_cy + (static_cast<float>(hero.pos.r) + static_cast<float>(hero.pos.q) * 0.5f) * scaleY;
-            dl->AddCircleFilled({mx, my}, 2.5f, IM_COL32(255, 60, 60, 255));
+            dl->AddCircleFilled({mx, my}, 2.5f, ownerColor(hero.ownerId, 255));
         }
 
         // Other human player heroes: blue circle

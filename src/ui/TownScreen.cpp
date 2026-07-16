@@ -329,7 +329,7 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
 
         std::string label;
         if (built) {
-            label = "[BUILT] " + def.name;
+            label = "[\xE2\x9C\x93] " + def.name;   // check mark — clearly built
         } else if (limitReach && prereqMet) {
             label = "[1/day] " + def.name + "  [" + costStr(def.cost) + "]";
         } else if (!prereqMet && m_currentWeek > 0 && def.minWeek > 0) {
