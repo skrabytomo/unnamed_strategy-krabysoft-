@@ -2090,19 +2090,31 @@ void Game::doEndTurn()
                         // eliminated — previously only human towns were targeted
                         // (ownerId <= numHumanPlayers), so AI-vs-AI games never
                         // resolved: nobody ever took anyone's town.
+                        //
+                        // Key fix: town value scales with THIS hero's strength and
+                        // uses a gentler distance falloff (applied via addTownGoal
+                        // below), so a strong army commits to the long march to an
+                        // enemy capital instead of forever re-grabbing the nearest
+                        // mine (score = val/dist buried distant towns under swarms
+                        // of adjacent mines — the "everyone stuck at 1 town, no
+                        // eliminations at week 49 despite million-str armies" bug).
+                        long long myStr = heroStrength(eHero, unitDefs);
+                        float strBoost = 1.f + std::min(8.f, (float)myStr / 60000.f);
                         for (const auto& t : m_towns) {
                             if (t.ownerId == 0) {
                                 addAttack(t.pos, 150.f);       // neutral town
                             } else if (!isAllied(t.ownerId, eHero.ownerId)) {
-                                // Rival town — higher value if we can likely
-                                // take it, and a KILL SHOT if it's the rival's
-                                // last town (eliminates a player).
                                 int rivalTowns = 0;
                                 for (const auto& t2 : m_towns)
                                     if (t2.ownerId == t.ownerId) ++rivalTowns;
-                                float val = 220.f;
-                                if (rivalTowns == 1) val = 500.f;   // last town = elimination
-                                addAttack(t.pos, val);
+                                float val = 600.f * strBoost;
+                                if (rivalTowns == 1) val = 1200.f * strBoost; // elimination kill shot
+                                // Gentler distance penalty for towns: use sqrt(dist)
+                                // instead of dist so a strong army will cross the
+                                // map for the kill. add() divides by dist, so we
+                                // pre-multiply by sqrt(dist) to soften it.
+                                int d = std::max(1, HexGrid::distance(eHero.pos, t.pos));
+                                addAttack(t.pos, val * std::sqrt((float)d));
                             }
                         }
                         // Resources — deny player's key resource and favour own faction's
