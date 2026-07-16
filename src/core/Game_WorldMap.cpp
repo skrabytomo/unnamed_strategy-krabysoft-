@@ -2695,13 +2695,18 @@ void Game::doEndTurn()
                     const auto& udl = m_registry.units();
                     for (uint32_t o : owners) {
                         long long str=0; int heroes=0, towns=0, mines=0;
-                        for (const auto& h : m_enemyHeroes) if (h.ownerId==o){ str+=heroStrength(h,udl); heroes++; }
+                        if (o == 1u) {
+                            for (const auto& h : m_heroes) { str += heroStrength(h, udl); heroes++; }
+                        } else {
+                            for (const auto& h : m_enemyHeroes) if (h.ownerId==o){ str+=heroStrength(h,udl); heroes++; }
+                        }
                         for (const auto& t : m_towns)     if (t.ownerId==o) towns++;
                         for (const auto& r : m_resources) if (r.ownedBy==o) mines++;
+                        int gold = (o == 1u) ? m_playerResources.get(ResourceType::Gold)
+                                             : aiResources(o).get(ResourceType::Gold);
                         gLog("  P%u %-8s str=%lld heroes=%d towns=%d mines=%d gold=%d\n",
                              o, aiPersonalityName(m_aiPersonality[std::min<uint32_t>(o,9)]),
-                             str, heroes, towns, mines,
-                             aiResources(o).get(ResourceType::Gold));
+                             str, heroes, towns, mines, gold);
                     }
                 }
             }
