@@ -2115,6 +2115,13 @@ void Game::doEndTurn()
                                 // pre-multiply by sqrt(dist) to soften it.
                                 int d = std::max(1, HexGrid::distance(eHero.pos, t.pos));
                                 addAttack(t.pos, val * std::sqrt((float)d));
+                                // Diagnostic: is this town the hero's top pick?
+                                // Logged sparsely (rival's last town only) so we
+                                // can confirm elimination targeting in the log.
+                                if (rivalTowns == 1 && (m_turns.week() % 4 == 0))
+                                    gLog("  P%u %s eyeing kill on P%u last town %s (str %lld, dist %d)\n",
+                                         eHero.ownerId, eHero.name.c_str(), t.ownerId,
+                                         t.name.c_str(), myStr, d);
                             }
                         }
                         // Resources — deny player's key resource and favour own faction's
