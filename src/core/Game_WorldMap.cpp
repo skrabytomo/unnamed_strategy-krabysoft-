@@ -2029,29 +2029,51 @@ void Game::doEndTurn()
                             }
                         }
                     } else {
-                        // Army-shuttle: a non-raider hero carrying troops heads
-                        // for its player's raider to hand them over (the merge
-                        // above fires once adjacent). Strongly weighted so extra
-                        // heroes concentrate force instead of scattering.
+                        // ── Supply-chain shuttle for non-raider heroes ──────────
+                        // A clean two-state ferry: carrying troops → deliver to
+                        // the raider (dominant pull, no detours); empty-handed →
+                        // go to own town and grab the piled-up garrison. This is
+                        // the HoMM scout-chain that keeps the raider on the front
+                        // line instead of breaking off to collect units itself.
+                        bool didShuttle = false;
                         if (!isRaider) {
                             int carried = 0;
                             for (const auto& s : eHero.army) carried += s.count;
-                            if (carried > 0) {
-                                for (int rj = 0; rj < (int)m_enemyHeroes.size(); ++rj) {
-                                    if (heroRank[rj] != 0) continue;
-                                    const Hero& raider = m_enemyHeroes[rj];
-                                    if (raider.eliminated || raider.ownerId != eHero.ownerId) continue;
-                                    add(raider.pos, 400.f);
-                                    break;
+
+                            // Find this player's raider.
+                            const Hero* raider = nullptr;
+                            for (int rj = 0; rj < (int)m_enemyHeroes.size(); ++rj) {
+                                if (heroRank[rj] != 0) continue;
+                                const Hero& r = m_enemyHeroes[rj];
+                                if (!r.eliminated && r.ownerId == eHero.ownerId) { raider = &r; break; }
+                            }
+
+                            if (carried > 0 && raider) {
+                                // Deliver: head straight for the raider. Weight
+                                // scales with cargo so a full ferry is urgent.
+                                add(raider->pos, 500.f + std::min(500.f, carried * 4.f));
+                                didShuttle = true;
+                            } else {
+                                // Empty: go to the OWN town with the most garrison
+                                // waiting to be picked up.
+                                const Town* bestTown = nullptr; int bestG = 0;
+                                for (const auto& t : m_towns) {
+                                    if (t.ownerId != eHero.ownerId) continue;
+                                    int g = 0;
+                                    for (const auto& gs : t.garrison) g += gs.count;
+                                    for (const auto& dw : t.dwellings) if (dw.available > 0) g += dw.available;
+                                    if (g > bestG) { bestG = g; bestTown = &t; }
+                                }
+                                if (bestTown && bestG > 0) {
+                                    add(bestTown->pos, 350.f + std::min(400.f, bestG * 4.f));
+                                    didShuttle = true;
                                 }
                             }
                         }
-                        // Own town to recruit / collect garrison. Pull the hero
-                        // back when there are units to grab — either fresh
-                        // dwelling units OR a garrison that's been piling up
-                        // while the hero was off mining. Garrison size scales
-                        // the pull so a big stockpile strongly attracts the
-                        // raider (fixes "tiny army while town garrison balloons").
+
+                        // Own town to recruit / collect garrison (raiders + any
+                        // hero not already committed to a shuttle run).
+                        if (!didShuttle)
                         for (const auto& t : m_towns) {
                             if (t.ownerId != eHero.ownerId) continue;
                             int garrisonUnits = 0;
