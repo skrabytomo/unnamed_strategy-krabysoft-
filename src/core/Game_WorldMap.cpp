@@ -2920,6 +2920,34 @@ void Game::doEndTurn()
                         }
                     }
 
+                    // Coastal towns build a Shipyard as an EARLY priority (from
+                    // ~week 3, once the Hall is up) — it is NOT in any faction's
+                    // kBuildOrder, and the post-priority fallback further below
+                    // only fires on weeks when nothing else is buildable, so it
+                    // was starved for the entire early/mid game (verified: 0
+                    // shipyards + 0 boats built across a full AI-vs-AI game).
+                    // Without a dock the AI can never board a boat, so any
+                    // island- or water-separated rival is permanently
+                    // unreachable and can never be eliminated — the confirmed
+                    // root cause of the week-50 multi-player no-elimination
+                    // stalemate (heroes just oscillate on a local mine forever
+                    // "eyeing" an enemy capital they can't path to). A shipyard
+                    // is cheap and one-time; delaying a single dwelling on a
+                    // coastal town once is a trivial price for naval reach.
+                    if (!built && m_turns.week() >= 3
+                        && !town.hasBuilding(BID::TOWN_SHIPYARD)) {
+                        bool coastalEarly = false;
+                        for (const auto& nb : HexGrid::neighbors(town.pos)) {
+                            const HexTile* nt = m_map.getTile(nb);
+                            if (nt && nt->terrain == Terrain::Water) { coastalEarly = true; break; }
+                        }
+                        if (coastalEarly
+                            && town.build(BID::TOWN_SHIPYARD, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
+                            gLog("AI %s built Shipyard (coastal, early priority)\n", town.name.c_str());
+                            built = true;
+                        }
+                    }
+
                     // Try faction priority list first
                     if (fIdx >= 0 && fIdx < 9) {
                         for (int bid : kBuildOrder[fIdx]) {

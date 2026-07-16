@@ -32,8 +32,8 @@ lot has shipped since it was written. Current reality:
 **Known open issues (from playtest, not yet fixed):**
 - Siege: units render on/fight atop castle walls; walls take too much damage
   from normal units (siege engines should breach).
-- AI: some players idle; not trading gold / buying creatures when rich; AI-vs-AI
-  attacks rare; naval — shipyards built but ships unused.
+- AI: some players idle; not trading gold / buying creatures when rich.
+  (AI-vs-AI attacks now common; naval invasion now works — see below.)
 - UI: no "already built" indicator in town; kingdom overview is text not visual;
   hero right-click artifact sheet not built; town/hero pickers need icons.
 
