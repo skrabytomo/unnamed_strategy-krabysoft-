@@ -5077,8 +5077,9 @@ void Game::renderWorldOverlay()
                       : isOtherHuman ? ownerColor(town.ownerId, 230)
                                      : IM_COL32(190, 145,  30, 230);
 
-        ImTextureID townArt = m_townTex[fid].ok()
-            ? (ImTextureID)(uintptr_t)m_townTex[fid].id() : nullptr;
+        unsigned int townTexId = townStageTexId(fid, townFortStage(town));
+        ImTextureID townArt = townTexId
+            ? (ImTextureID)(uintptr_t)townTexId : nullptr;
 
         // Scale icon with zoom but cap at half a tile so it never overflows the hex
         const float tileR = m_hexRenderer.grid().hexSize() * m_camera.zoom() * 0.5f;

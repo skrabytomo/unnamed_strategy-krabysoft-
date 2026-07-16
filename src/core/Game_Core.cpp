@@ -46,6 +46,33 @@ static std::string savesDbPath()   { return userDataDir() + "saves.db"; }
 
 std::string Game::metaDbPath() const { return hideoutDbPath(); }
 
+// Fort stage from a town's built fortification buildings.
+// 0 = none, 1 = Fort, 2 = Citadel, 3 = Castle, 4 = Castle + Bastion.
+int Game::townFortStage(const Town& t) const
+{
+    bool fort    = t.hasBuilding(BID::FORT);
+    bool citadel = t.hasBuilding(BID::CITADEL);
+    bool castle  = t.hasBuilding(BID::CASTLE);
+    bool bastion = t.hasBuilding(BID::BASTION);
+    if (castle && bastion) return 4;
+    if (castle)            return 3;
+    if (citadel)           return 2;
+    if (fort)              return 1;
+    return 0;
+}
+
+// Best available town texture id for a faction + desired stage. Falls back down
+// the stages (4->3->2->1->0), then to the base m_townTex, then 0 (none).
+unsigned int Game::townStageTexId(int faction, int stage) const
+{
+    if (faction < 0 || faction >= NUM_FACTIONS) return 0;
+    for (int s = std::min(stage, NUM_TOWN_STAGES - 1); s >= 0; --s)
+        if (m_townTexStage[faction][s].ok())
+            return m_townTexStage[faction][s].id();
+    if (m_townTex[faction].ok()) return m_townTex[faction].id();
+    return 0;
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 bool Game::init(const std::string& title, int width, int height, bool hidden)
 {
@@ -286,6 +313,14 @@ bool Game::init(const std::string& title, int width, int height, bool hidden)
         char rel[80];
         std::snprintf(rel, sizeof(rel), "assets/towns/faction_%d.png", i);
         m_townTex[i].load(m_basePath + rel, false, false);
+        // Optional fortification-stage art (faction_<F>_<stage>.png). Quiet
+        // load — these mostly don't exist yet; the game falls back to the base
+        // town art. Wired now so Gemini output drops in with no code change.
+        for (int st = 0; st < NUM_TOWN_STAGES; ++st) {
+            char sp[96];
+            std::snprintf(sp, sizeof(sp), "assets/towns/faction_%d_%d.png", i, st);
+            m_townTexStage[i][st].load(m_basePath + sp, false, false, false, false, /*quiet*/true);
+        }
     }
 
     renderLoadingScreen(0.70f, "Loading towns");

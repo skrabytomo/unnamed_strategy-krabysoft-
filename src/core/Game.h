@@ -370,6 +370,18 @@ private:
     // ── Faction town art (world map + town screen banner) ─────────────────────
     // File: assets/towns/faction_N.png  (N=0-8)
     Texture           m_townTex[NUM_FACTIONS];
+    // Fortification-stage town art (HoMM3-style: town grows walls as you build
+    // Fort->Citadel->Castle[+Bastion]). Stage 0 = basic (no fort), 1 = Fort,
+    // 2 = Citadel, 3 = Castle, 4 = Castle+Bastion. Loaded from
+    // assets/towns/faction_<F>_<stage>.png; any missing stage falls back to the
+    // nearest lower stage, ultimately to m_townTex[faction].
+    static constexpr int NUM_TOWN_STAGES = 5;
+    Texture           m_townTexStage[NUM_FACTIONS][NUM_TOWN_STAGES];
+    // Returns the fort stage (0-4) for a town from its built fort buildings.
+    int townFortStage(const Town& t) const;
+    // Returns the best available town texture id for a faction+stage (with
+    // fallback), or 0 if none. Defined in Game_Core.cpp.
+    unsigned int townStageTexId(int faction, int stage) const;
 
     // ── Building category icon atlas ───────────────────────────────────────────
     // File: assets/buildings/icons_buildings.png  (384×64, 6 cols × 1 row)
