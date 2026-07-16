@@ -1,4 +1,9 @@
-# SPRITE HANDOFF — reframe + unit visibility (read this first next session)
+# SPRITE HANDOFF — combat unit readability (mostly landed)
+
+> STATUS 2026-07: the readability pass (drawUnitReadabilityPass in
+> Game_Combat.cpp) and the sprite reframing DID land. The only still-open
+> item is the "unit design-match check" near the bottom (verify intended
+> ranged/melee roles against the sprite sheet). Everything above that is done.
 
 ## Update (this session) — renderer-side readability fix landed
 Implemented option 3 from "Recommended fix next session" below instead of more

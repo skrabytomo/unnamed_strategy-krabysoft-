@@ -1,6 +1,17 @@
 # Missing-Art Manifest #2 — Town Screens & Upgrade-Path Sprites
 
-Companion to `ART_MISSING.md` (icons/summons/heroes) and `ART_SIEGE.md` (siege).
+## STATUS (verified against assets/ — updated 2026-07)
+
+- DONE: Dwelling portrait art now exists for ALL 9 factions
+  (`assets/units/<faction>/*.png`, 18-21 files each). The earlier "6 factions
+  have none" gap is CLOSED — ignore section 0 below.
+- STILL MISSING: Upgrade-path (A/B) unit sprites — 0 of 108 exist. Every
+  PathA/PathB unit renders using its faction's base tier sprite. This is the
+  real remaining unit-art gap (section 1).
+- NOT BUILT: true HoMM3-style painted town scene with clickable buildings.
+
+
+Companion to `ART_SIEGE.md` (siege) and `ART_DROPIN_MANIFEST.md` (portraits).
 This covers two gaps found during the sprite_brief.md audit:
 
 1. **Unit upgrade-path (A/B) sprites don't exist** — every PathA/PathB unit

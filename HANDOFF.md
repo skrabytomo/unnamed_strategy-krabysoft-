@@ -3,6 +3,49 @@
 
 ---
 
+## CURRENT STATE ADDENDUM (2026-07 — read first)
+
+Everything below the addendum is still broadly accurate for architecture, but a
+lot has shipped since it was written. Current reality:
+
+**Shipped since original handoff:**
+- **Conquest mode** — full 5-phase persistent progression mode (SQLite-backed):
+  permanent hero, weekly seeded node maps, chests + collection pool, 6-slot
+  team assembly, daily/weekly quests + gem shop, faction keys + Path A/B unit
+  upgrades, Arena ladder. See `CONQUEST_MODE.md`. Defeat costs no casualties;
+  only victories bleed losses; cheap gold recruit shop for rebuilds.
+- **AI overhaul** — per-player raider/economic/defender roles, army-consolidation
+  shuttles (largest-stack-first), bot personalities (Explorer/Builder/Warrior/
+  Mage), mine-guard economy (guards assigned, value-gated fights), map-content
+  grabbing (dwellings/outposts/chests/resources), pathfinding horizon cap.
+  See `AI_ROADMAP.md` for the triaged "Project Omniscient" plan.
+- **Data unified** — `SimUnitData.h` deleted; `ArmyBuilder` pulls all unit stats
+  from `BuildingRegistry` (single source of truth).
+- **Per-owner map colors** — 8-color palette; each player a distinct hue.
+- **Visual setup lobby** — per-player row with faction crest (town art), hero
+  portrait, class combo, bonus combo, alliance color swatch.
+- **Persistent saves** — hideout/conquest/saves DBs in OS per-user dir
+  (`SDL_GetPrefPath`), rebuild-proof.
+- **One-click installer** — CMake install() + NSIS Setup.exe. See
+  `packaging/README.md`. Run `./packaging/build_installer.sh`.
+
+**Known open issues (from playtest, not yet fixed):**
+- Siege: units render on/fight atop castle walls; walls take too much damage
+  from normal units (siege engines should breach).
+- AI: some players idle; not trading gold / buying creatures when rich; AI-vs-AI
+  attacks rare; naval — shipyards built but ships unused.
+- UI: no "already built" indicator in town; kingdom overview is text not visual;
+  hero right-click artifact sheet not built; town/hero pickers need icons.
+
+**Art gaps (Gemini work):** only 1 hero portrait per faction (all heroes look
+same); upgrade-path A/B unit sprites (0/108). See `ART_DROPIN_MANIFEST.md`,
+`ART_MISSING_TOWNS.md`.
+
+**Build/run:** `./run.sh` (auto-configures build dir, pulls, builds, runs, logs
+to session.log). Push logs manually to share.
+
+---
+
 ## What this is
 HoMM3-style turn-based strategy game. C++20 / SDL2 / OpenGL 3.3 Core / ImGui 1.90.8.
 9 factions, hex-grid world map, turn-based combat, town building, campaign system.

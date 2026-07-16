@@ -1,6 +1,6 @@
 # CONQUEST MODE — persistent hideout progression game mode
 
-Status: design LOCKED (2026-07). Phase 1 in progress.
+Status: design LOCKED. All 5 phases IMPLEMENTED (2026-07).
 
 Core loop: pick hero → fight through a generated near-linear map → win battles →
 earn XP/gold/gems/chests → build a persistent unit collection → upgrade units via
