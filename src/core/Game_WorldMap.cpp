@@ -2085,13 +2085,25 @@ void Game::doEndTurn()
                             else if (dwellUnits && (int)eHero.army.size() < 7) pull = 250.f;
                             if (pull > 0.f) add(t.pos, pull);
                         }
-                        // Towns — any human-owned town is a capture target (ownerId
-                        // 1..numHumanPlayers), neutral towns a lesser one.
+                        // Towns — capture ANY rival town (enemy AI or human).
+                        // Neutral towns a lesser target. This is how players get
+                        // eliminated — previously only human towns were targeted
+                        // (ownerId <= numHumanPlayers), so AI-vs-AI games never
+                        // resolved: nobody ever took anyone's town.
                         for (const auto& t : m_towns) {
-                            if (t.ownerId == 0)  addAttack(t.pos, 150.f);
-                            else if (t.ownerId >= 1
-                                     && t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers))
-                                addAttack(t.pos, 200.f);
+                            if (t.ownerId == 0) {
+                                addAttack(t.pos, 150.f);       // neutral town
+                            } else if (!isAllied(t.ownerId, eHero.ownerId)) {
+                                // Rival town — higher value if we can likely
+                                // take it, and a KILL SHOT if it's the rival's
+                                // last town (eliminates a player).
+                                int rivalTowns = 0;
+                                for (const auto& t2 : m_towns)
+                                    if (t2.ownerId == t.ownerId) ++rivalTowns;
+                                float val = 220.f;
+                                if (rivalTowns == 1) val = 500.f;   // last town = elimination
+                                addAttack(t.pos, val);
+                            }
                         }
                         // Resources — deny player's key resource and favour own faction's
                         {
@@ -2672,6 +2684,26 @@ void Game::doEndTurn()
                 }
                 gLog("AI economy: %d towns + %d mines across %zu players -> %dg %di combined\n",
                      aiTowns, aiMines, m_aiResources.size(), totalGold, totalIron);
+                // Per-player breakdown (every ~4 weeks) so we can see who is
+                // active vs idle across the whole game.
+                if (m_turns.week() % 4 == 0) {
+                    std::vector<uint32_t> owners;
+                    auto note=[&](uint32_t o){ if(o&&std::find(owners.begin(),owners.end(),o)==owners.end()) owners.push_back(o); };
+                    for (const auto& t : m_towns) note(t.ownerId);
+                    for (const auto& h : m_enemyHeroes) note(h.ownerId);
+                    std::sort(owners.begin(), owners.end());
+                    const auto& udl = m_registry.units();
+                    for (uint32_t o : owners) {
+                        long long str=0; int heroes=0, towns=0, mines=0;
+                        for (const auto& h : m_enemyHeroes) if (h.ownerId==o){ str+=heroStrength(h,udl); heroes++; }
+                        for (const auto& t : m_towns)     if (t.ownerId==o) towns++;
+                        for (const auto& r : m_resources) if (r.ownedBy==o) mines++;
+                        gLog("  P%u %-8s str=%lld heroes=%d towns=%d mines=%d gold=%d\n",
+                             o, aiPersonalityName(m_aiPersonality[std::min<uint32_t>(o,9)]),
+                             str, heroes, towns, mines,
+                             aiResources(o).get(ResourceType::Gold));
+                    }
+                }
             }
 
             // Garrison upkeep — 350 gold/week per garrisoned player hero
@@ -2909,7 +2941,7 @@ void Game::doEndTurn()
             {
                 // Hard fields more heroes than Easy/Normal (more map pressure).
                 // The cap is behavioral: every hire costs real gold now.
-                static const int kHeroCap[3] = { 5, 6, 8 };
+                static const int kHeroCap[3] = { 5, 6, 7 };
                 const int AI_HERO_CAP = kHeroCap[std::clamp(m_newGameDifficulty, 0, 2)];
                 constexpr int AI_HIRE_COST = 2500;  // same as the human tavern
                 {
@@ -2991,7 +3023,7 @@ void Game::doEndTurn()
             // hero; both sides now field a real roster and fight for the map.)
             if (m_watchingAI) {
                 constexpr int WATCH_HIRE_COST = 2500;
-                static const int kHeroCap[3] = { 5, 6, 8 };
+                static const int kHeroCap[3] = { 5, 6, 7 };
                 const int WATCH_HERO_CAP = kHeroCap[std::clamp(m_newGameDifficulty, 0, 2)];
                 const auto& unitDefs = m_registry.units();
 
@@ -3765,14 +3797,41 @@ void Game::renderWorldMapImGui()
                 int pStr = heroStrength(ph, udefs);
                 int eStr = heroStrength(eh, udefs);
                 ImGui::Separator();
-                ImGui::TextColored({0.4f,0.7f,1.f,1.f}, "%s  (%s)  Str:%d  Army:%zu",
-                    ph.name.c_str(), kFacNames[static_cast<int>(ph.faction)],
-                    pStr, ph.army.size());
-                ImGui::TextColored({1.f,0.45f,0.4f,1.f}, "%s  (%s)  Str:%d  Army:%zu",
-                    eh.name.c_str(), kFacNames[static_cast<int>(eh.faction)],
-                    eStr, eh.army.size());
-                ImGui::TextDisabled("Player Gold: %d",
-                    m_playerResources.get(ResourceType::Gold));
+                // Per-player summary — one line each so you can see who's active
+                // vs idle. Colored to match the map's owner palette.
+                static const int pal[8][3] = {
+                    {120,190,255},{255,100,100},{110,220,120},{235,200,70},
+                    {200,120,255},{120,230,230},{255,150,70},{240,130,200}};
+                auto rowColor = [&](uint32_t owner)->ImVec4{
+                    int i=(int)((owner-1)%8);
+                    return ImVec4(pal[i][0]/255.f,pal[i][1]/255.f,pal[i][2]/255.f,1.f);
+                };
+                // Gather every owner id present.
+                std::vector<uint32_t> owners;
+                auto note=[&](uint32_t o){ if(o&&std::find(owners.begin(),owners.end(),o)==owners.end()) owners.push_back(o); };
+                note(1u);
+                for (const auto& h : m_enemyHeroes) note(h.ownerId);
+                for (const auto& t : m_towns) note(t.ownerId);
+                std::sort(owners.begin(), owners.end());
+
+                for (uint32_t o : owners) {
+                    long long str = 0; int heroes = 0, towns = 0, mines = 0;
+                    if (o == 1u) {
+                        for (const auto& h : m_heroes) { str += heroStrength(h, udefs); heroes++; }
+                    } else {
+                        for (const auto& h : m_enemyHeroes)
+                            if (h.ownerId == o) { str += heroStrength(h, udefs); heroes++; }
+                    }
+                    for (const auto& t : m_towns) if (t.ownerId == o) towns++;
+                    for (const auto& r : m_resources) if (r.ownedBy == o) mines++;
+                    int gold = (o == 1u) ? m_playerResources.get(ResourceType::Gold)
+                                         : aiResources(o).get(ResourceType::Gold);
+                    const char* pers = (o == 1u) ? "Watched"
+                                     : aiPersonalityName(m_aiPersonality[std::min<uint32_t>(o,9)]);
+                    ImGui::TextColored(rowColor(o),
+                        "P%u %-8s  Str:%lld  H:%d T:%d M:%d  Gold:%d",
+                        o, pers, str, heroes, towns, mines, gold);
+                }
             }
         }
         ImGui::End();

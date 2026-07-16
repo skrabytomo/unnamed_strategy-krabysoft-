@@ -206,7 +206,11 @@ void WorldMapHUD::drawHeroPanel(UIRenderer& rdr,
                                   const std::vector<Hero>& heroes, int sel)
 {
     m_heroCount = static_cast<int>(heroes.size());
-    m_heroPanel.bounds.h = 28.0f + m_heroCount * 64.0f;
+    // Cap the panel so a full roster doesn't overflow the screen and shove the
+    // Towns panel out of bounds. Show at most kMaxVisible portraits.
+    const int kMaxVisible = 4;
+    int shown = std::min(m_heroCount, kMaxVisible);
+    m_heroPanel.bounds.h = 28.0f + shown * 64.0f + (m_heroCount > kMaxVisible ? 14.0f : 0.0f);
     m_heroPanel.draw(rdr);
 
     rdr.drawText("Click hero / F8 = details",
@@ -218,7 +222,7 @@ void WorldMapHUD::drawHeroPanel(UIRenderer& rdr,
     float w = m_heroPanel.bounds.w - 8.0f;
 
     auto* dl = ImGui::GetBackgroundDrawList();
-    for (int i = 0; i < static_cast<int>(heroes.size()); ++i) {
+    for (int i = 0; i < static_cast<int>(heroes.size()) && i < kMaxVisible; ++i) {
         auto& h = heroes[i];
         float portSz = 52.0f;
         Rect btn{x, y, w, portSz + 8.0f};
@@ -271,6 +275,13 @@ void WorldMapHUD::drawHeroPanel(UIRenderer& rdr,
                     UIColor::hex(UITheme::BORDER));
 
         y += portSz + 12.0f;
+    }
+    // Overflow indicator when the roster is larger than what we show.
+    if (m_heroCount > kMaxVisible) {
+        char more[32];
+        std::snprintf(more, sizeof(more), "+%d more", m_heroCount - kMaxVisible);
+        rdr.drawText(more, x + 4.0f, y + 1.0f,
+                     UIColor::rgba(0.7f, 0.7f, 0.5f, 0.9f), 10.0f);
     }
 }
 
