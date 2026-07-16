@@ -2250,8 +2250,21 @@ void Game::doEndTurn()
                     // extra pathfind (the old extra A* per hero per turn was a
                     // major CPU cost on XL maps).
                     bool bestReachable = false;
+                    // Path to the best reachable candidate. Use a generous
+                    // horizon ONLY when the top target is an enemy town (worth a
+                    // long cross-map march — the 60-hex cap made distant enemy
+                    // capitals permanently unreachable, why towns were never
+                    // captured even 1v1). Everything else keeps the cheap horizon
+                    // so per-hero pathfinding cost stays low.
+                    bool topIsEnemyTown = false;
+                    if (!cands.empty()) {
+                        for (const auto& t : m_towns)
+                            if (t.pos == cands[0].pos && t.ownerId != 0
+                                && !isAllied(t.ownerId, eHero.ownerId)) { topIsEnemyTown = true; break; }
+                    }
                     for (size_t ci = 0; ci < cands.size() && ci < 10; ++ci) {
-                        path = Pathfinder::find(m_map, eHero.pos, cands[ci].pos, costFn, kAiPathHorizon);
+                        int horizon = (ci == 0 && topIsEnemyTown) ? 400 : kAiPathHorizon;
+                        path = Pathfinder::find(m_map, eHero.pos, cands[ci].pos, costFn, horizon);
                         if (!path.empty()) { if (ci == 0) bestReachable = true; break; }
                     }
                     bool wantBoatForBestTarget =

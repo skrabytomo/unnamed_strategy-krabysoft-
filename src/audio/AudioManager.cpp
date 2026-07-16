@@ -39,6 +39,7 @@ void AudioManager::shutdown()
     for (auto& kv : m_wavs)
         if (kv.second.buf) SDL_FreeWAV(kv.second.buf);
     m_wavs.clear();
+    if (m_musicWav.buf) { SDL_FreeWAV(m_musicWav.buf); m_musicWav = Wav{}; }
 }
 
 void AudioManager::convertToDevice(Wav& w, const SDL_AudioSpec& target)
@@ -96,23 +97,53 @@ void AudioManager::playSound(const char* name)
     SDL_free(mixed);
 }
 
+void AudioManager::registerMusic(const char* name, const char* path)
+{
+    // Path-only registration — no RAM cost. Loaded on demand in playMusic.
+    m_musicPaths[name] = path;
+}
+
 void AudioManager::playMusic(const char* name)
 {
     if (!m_musDev) return;
-    auto it = m_wavs.find(name);
-    if (it == m_wavs.end() || !it->second.buf) {
-        m_currentMusic.clear();
-        return;
+
+    // On-demand streaming-style load: if this track isn't the resident one,
+    // free the old one and load the new from disk. Only ONE music track is ever
+    // in RAM (previously all ~15 tracks were preloaded ~= 500MB).
+    if (m_loadedMusicName != name) {
+        auto pit = m_musicPaths.find(name);
+        if (pit == m_musicPaths.end()) {
+            // Fall back to a preloaded m_wavs entry (SFX-style) if present.
+            auto it = m_wavs.find(name);
+            if (it == m_wavs.end() || !it->second.buf) { m_currentMusic.clear(); return; }
+        } else {
+            if (m_musicWav.buf) { SDL_FreeWAV(m_musicWav.buf); m_musicWav = Wav{}; }
+            SDL_AudioSpec spec;
+            if (!SDL_LoadWAV(pit->second.c_str(), &spec, &m_musicWav.buf, &m_musicWav.len)) {
+                fprintf(stderr, "AudioManager: failed to stream %s: %s\n",
+                        pit->second.c_str(), SDL_GetError());
+                m_currentMusic.clear();
+                return;
+            }
+            m_musicWav.spec = spec;
+            m_loadedMusicName = name;
+        }
     }
-    // Clear queue and start fresh
+
+    // Pick the buffer: streamed track if we have one, else the m_wavs fallback.
+    const Wav* src = (m_loadedMusicName == name && m_musicWav.buf)
+                   ? &m_musicWav : nullptr;
+    if (!src) { auto it = m_wavs.find(name); if (it != m_wavs.end()) src = &it->second; }
+    if (!src || !src->buf) { m_currentMusic.clear(); return; }
+
     SDL_ClearQueuedAudio(m_musDev);
     m_currentMusic = name;
 
-    uint32_t len = it->second.len;
+    uint32_t len = src->len;
     uint8_t* mixed = static_cast<uint8_t*>(SDL_malloc(len));
     if (!mixed) return;
     std::memset(mixed, 0, len);
-    SDL_MixAudioFormat(mixed, it->second.buf, m_musSpec.format, len,
+    SDL_MixAudioFormat(mixed, src->buf, m_musSpec.format, len,
                        static_cast<int>(m_musVol * SDL_MIX_MAXVOLUME));
     SDL_QueueAudio(m_musDev, mixed, len);
     SDL_free(mixed);

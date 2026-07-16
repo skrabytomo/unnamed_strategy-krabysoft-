@@ -184,20 +184,19 @@ bool Game::init(const std::string& title, int width, int height, bool hidden)
         m_audio.loadWav("hit",     "assets/sounds/hit.wav");
         m_audio.loadWav("spell",   "assets/sounds/spell.wav");
         m_audio.loadWav("buy",     "assets/sounds/buy.wav");
-        m_audio.loadWav("worldmap_music", "assets/sounds/worldmap_music.wav");
+        m_audio.registerMusic("worldmap_music", "assets/sounds/worldmap_music.wav");
         m_audio.playMusic("worldmap_music");          // start ASAP, over the bar
         renderLoadingScreen(0.16f, "Loading music");
-        m_audio.loadWav("combat_music_1", "assets/sounds/combat_music.wav");
-        m_audio.loadWav("combat_music_2", "assets/sounds/combat_music_2.wav");
-        m_audio.loadWav("combat_music_3", "assets/sounds/combat_music_3.wav");
-        m_audio.loadWav("combat_music_4", "assets/sounds/combat_music_4.wav");
-        m_audio.loadWav("town_music",     "assets/sounds/town_music.wav");
+        m_audio.registerMusic("combat_music_1", "assets/sounds/combat_music.wav");
+        m_audio.registerMusic("combat_music_2", "assets/sounds/combat_music_2.wav");
+        m_audio.registerMusic("combat_music_3", "assets/sounds/combat_music_3.wav");
+        m_audio.registerMusic("combat_music_4", "assets/sounds/combat_music_4.wav");
+        m_audio.registerMusic("town_music",     "assets/sounds/town_music.wav");
         for (int fi = 0; fi < 9; ++fi) {
             char key[32], path[64];
             std::snprintf(key,  sizeof(key),  "faction_music_%d", fi);
             std::snprintf(path, sizeof(path), "assets/sounds/faction_music_%d.wav", fi);
-            m_audio.loadWav(key, path);
-            renderLoadingScreen(0.18f + 0.26f * (fi + 1) / 9.0f, "Loading music");
+            m_audio.registerMusic(key, path);
         }
     }
 
