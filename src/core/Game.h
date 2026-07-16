@@ -544,6 +544,12 @@ private:
     int          m_conquestUpgradeFaction = 0;
     // Phase 5: arena
     bool         m_conquestShowArena = false;
+    // Cached per-player watch summary (rebuilt once per week, not per frame —
+    // the per-frame version looped 8 players × 4158 resources ≈ 2M ops/sec,
+    // which pegged low-end CPUs).
+    struct WatchPlayerRow { uint32_t owner; long long str; int heroes, towns, mines, gold; };
+    std::vector<WatchPlayerRow> m_watchSummary;
+    int          m_watchSummaryWeek = -1;
     bool         m_conquestInArena   = false;   // true while an arena fight is active
     // Phase 2 revised: cheap recruit shop
     bool         m_conquestShowRecruit    = false;

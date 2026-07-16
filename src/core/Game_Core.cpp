@@ -2121,7 +2121,7 @@ void Game::autoStartWatchAI(int playerCount, int shape, int size)
     startNewGame();
     m_watchingAI   = true;
     m_fogDisabled  = true;
-    m_watchAISpeed = 8.0f;   // fastest — this run only cares about gLog output
+    m_watchAISpeed = 2.0f;   // sane default; user can slide up to 8x if the CPU keeps up
     m_watchAITimer = 1.0f / m_watchAISpeed;
     m_state    = GameState::WorldMap;
     m_menuMode = 0;

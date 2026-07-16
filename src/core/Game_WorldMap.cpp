@@ -2226,16 +2226,18 @@ void Game::doEndTurn()
                     // buying a boat to reach it over settling for lesser land
                     // grabs — otherwise ships never get used on maps that always
                     // have some nearby land mine.
-                    bool wantBoatForBestTarget = false;
-                    if (!cands.empty() && !eHero.onBoat) {
-                        auto bestPath = Pathfinder::find(m_map, eHero.pos, cands[0].pos, costFn, kAiPathHorizon);
-                        if (bestPath.empty() && cands[0].score >= 150.f)
-                            wantBoatForBestTarget = true;
-                    }
+                    // Track whether the single best target (cands[0]) was
+                    // reachable. We get this for free from the loop below — no
+                    // extra pathfind (the old extra A* per hero per turn was a
+                    // major CPU cost on XL maps).
+                    bool bestReachable = false;
                     for (size_t ci = 0; ci < cands.size() && ci < 10; ++ci) {
                         path = Pathfinder::find(m_map, eHero.pos, cands[ci].pos, costFn, kAiPathHorizon);
-                        if (!path.empty()) break;
+                        if (!path.empty()) { if (ci == 0) bestReachable = true; break; }
                     }
+                    bool wantBoatForBestTarget =
+                        (!cands.empty() && !eHero.onBoat && !bestReachable
+                         && cands[0].score >= 150.f);
                     // Everything unreachable by land, OR the best target needs a
                     // boat: buy passage across the water.
                     if (path.empty() || wantBoatForBestTarget) {
@@ -3803,7 +3805,9 @@ void Game::renderWorldMapImGui()
                 int eStr = heroStrength(eh, udefs);
                 ImGui::Separator();
                 // Per-player summary — one line each so you can see who's active
-                // vs idle. Colored to match the map's owner palette.
+                // vs idle. Rebuilt ONCE PER WEEK (cached) — computing it every
+                // frame looped 8 players over all 4158 map resources and pegged
+                // low-end CPUs.
                 static const int pal[8][3] = {
                     {120,190,255},{255,100,100},{110,220,120},{235,200,70},
                     {200,120,255},{120,230,230},{255,150,70},{240,130,200}};
@@ -3811,31 +3815,32 @@ void Game::renderWorldMapImGui()
                     int i=(int)((owner-1)%8);
                     return ImVec4(pal[i][0]/255.f,pal[i][1]/255.f,pal[i][2]/255.f,1.f);
                 };
-                // Gather every owner id present.
-                std::vector<uint32_t> owners;
-                auto note=[&](uint32_t o){ if(o&&std::find(owners.begin(),owners.end(),o)==owners.end()) owners.push_back(o); };
-                note(1u);
-                for (const auto& h : m_enemyHeroes) note(h.ownerId);
-                for (const auto& t : m_towns) note(t.ownerId);
-                std::sort(owners.begin(), owners.end());
-
-                for (uint32_t o : owners) {
-                    long long str = 0; int heroes = 0, towns = 0, mines = 0;
-                    if (o == 1u) {
-                        for (const auto& h : m_heroes) { str += heroStrength(h, udefs); heroes++; }
-                    } else {
-                        for (const auto& h : m_enemyHeroes)
-                            if (h.ownerId == o) { str += heroStrength(h, udefs); heroes++; }
+                if (m_watchSummaryWeek != m_turns.week()) {
+                    m_watchSummaryWeek = m_turns.week();
+                    m_watchSummary.clear();
+                    std::vector<uint32_t> owners;
+                    auto note=[&](uint32_t o){ if(o&&std::find(owners.begin(),owners.end(),o)==owners.end()) owners.push_back(o); };
+                    note(1u);
+                    for (const auto& h : m_enemyHeroes) note(h.ownerId);
+                    for (const auto& t : m_towns) note(t.ownerId);
+                    std::sort(owners.begin(), owners.end());
+                    for (uint32_t o : owners) {
+                        WatchPlayerRow row{o,0,0,0,0,0};
+                        if (o == 1u) { for (const auto& h : m_heroes) { row.str+=heroStrength(h,udefs); row.heroes++; } }
+                        else { for (const auto& h : m_enemyHeroes) if (h.ownerId==o){ row.str+=heroStrength(h,udefs); row.heroes++; } }
+                        for (const auto& t : m_towns) if (t.ownerId==o) row.towns++;
+                        for (const auto& r : m_resources) if (r.ownedBy==o) row.mines++;
+                        row.gold = (o==1u)? m_playerResources.get(ResourceType::Gold)
+                                          : aiResources(o).get(ResourceType::Gold);
+                        m_watchSummary.push_back(row);
                     }
-                    for (const auto& t : m_towns) if (t.ownerId == o) towns++;
-                    for (const auto& r : m_resources) if (r.ownedBy == o) mines++;
-                    int gold = (o == 1u) ? m_playerResources.get(ResourceType::Gold)
-                                         : aiResources(o).get(ResourceType::Gold);
-                    const char* pers = (o == 1u) ? "Watched"
-                                     : aiPersonalityName(m_aiPersonality[std::min<uint32_t>(o,9)]);
-                    ImGui::TextColored(rowColor(o),
+                }
+                for (const auto& row : m_watchSummary) {
+                    const char* pers = (row.owner==1u) ? "Watched"
+                                     : aiPersonalityName(m_aiPersonality[std::min<uint32_t>(row.owner,9)]);
+                    ImGui::TextColored(rowColor(row.owner),
                         "P%u %-8s  Str:%lld  H:%d T:%d M:%d  Gold:%d",
-                        o, pers, str, heroes, towns, mines, gold);
+                        row.owner, pers, row.str, row.heroes, row.towns, row.mines, row.gold);
                 }
             }
         }
@@ -5404,8 +5409,11 @@ void Game::renderWorldOverlay()
         if (!m_fogDisabled && (!rtile || !rtile->explored)) continue;
         float sx, sy;
         project(r.pos, sx, sy);
-        // Clip icon against HUD zones
-        if (sy < 68.0f || sy > static_cast<float>(m_height) - 52.0f
+        // Full screen-bounds cull: skip anything off-screen (any edge) or inside
+        // a HUD zone. On XL maps this is the difference between drawing ~40
+        // visible mines vs all 4158 every frame.
+        if (sx < -40.0f || sx > static_cast<float>(m_width) + 40.0f
+            || sy < 68.0f || sy > static_cast<float>(m_height) - 52.0f
             || sx > static_cast<float>(m_width) - 185.0f) continue;
         int ico;
         switch (r.type) {
