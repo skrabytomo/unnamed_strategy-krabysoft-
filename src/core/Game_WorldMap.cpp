@@ -1915,9 +1915,23 @@ void Game::doEndTurn()
                 ownerAggr    = std::max(2, ownerAggr);
                 ownerRetreat = std::max(1, ownerRetreat);
 
+                // Rich-economy override: a bot sitting on a big treasury has
+                // already "won" economically and should convert that lead into
+                // military pressure instead of hoarding. The more gold banked,
+                // the more aggressive — this fixes the "3M gold, tiny army,
+                // never attacks, game drags to week 43" failure.
+                int ownerGold = (int)aiResources(eHero.ownerId).get(ResourceType::Gold);
+                if (ownerGold > 100000)      ownerAggr = std::max(2, ownerAggr - 5);
+                else if (ownerGold > 40000)  ownerAggr = std::max(2, ownerAggr - 3);
+                else if (ownerGold > 15000)  ownerAggr = std::max(2, ownerAggr - 1);
+
                 bool aggressive = isDefender ? false
                                 : isRaider   ? (playerIsWeak || eiStr * 10 >= nearHumanStr * ownerAggr)
                                 :              (eiStr * 10 >= nearHumanStr * 15);
+                // A very rich player commits even its non-raider heroes.
+                if (ownerGold > 40000 && !isDefender
+                    && eiStr * 10 >= nearHumanStr * 9)
+                    aggressive = true;
                 // Late-game escalation: past week 20 any non-defender at >=80%
                 // relative strength commits — prevents the endless "both sides farm
                 // mines and never engage" stalemate once the map is exhausted.
@@ -2032,12 +2046,22 @@ void Game::doEndTurn()
                                 }
                             }
                         }
-                        // Own town to recruit
+                        // Own town to recruit / collect garrison. Pull the hero
+                        // back when there are units to grab — either fresh
+                        // dwelling units OR a garrison that's been piling up
+                        // while the hero was off mining. Garrison size scales
+                        // the pull so a big stockpile strongly attracts the
+                        // raider (fixes "tiny army while town garrison balloons").
                         for (const auto& t : m_towns) {
                             if (t.ownerId != eHero.ownerId) continue;
-                            bool hasU = false;
-                            for (const auto& dw : t.dwellings) if (dw.available > 0) { hasU = true; break; }
-                            if (hasU && (int)eHero.army.size() < 7) add(t.pos, 250.f);
+                            int garrisonUnits = 0;
+                            for (const auto& gs : t.garrison) garrisonUnits += gs.count;
+                            bool dwellUnits = false;
+                            for (const auto& dw : t.dwellings) if (dw.available > 0) { dwellUnits = true; break; }
+                            float pull = 0.f;
+                            if (garrisonUnits > 0) pull = 200.f + std::min(600.f, garrisonUnits * 4.f);
+                            else if (dwellUnits && (int)eHero.army.size() < 7) pull = 250.f;
+                            if (pull > 0.f) add(t.pos, pull);
                         }
                         // Towns — any human-owned town is a capture target (ownerId
                         // 1..numHumanPlayers), neutral towns a lesser one.
@@ -2163,21 +2187,37 @@ void Game::doEndTurn()
                     // multi-hero turns from exploring the whole grid per hero.
                     constexpr int kAiPathHorizon = 60;
                     std::vector<HexCoord> path;
+                    // First: is the SINGLE best target reachable by land? If not,
+                    // and it's high-value (enemy town / strong hunt), prefer
+                    // buying a boat to reach it over settling for lesser land
+                    // grabs — otherwise ships never get used on maps that always
+                    // have some nearby land mine.
+                    bool wantBoatForBestTarget = false;
+                    if (!cands.empty() && !eHero.onBoat) {
+                        auto bestPath = Pathfinder::find(m_map, eHero.pos, cands[0].pos, costFn, kAiPathHorizon);
+                        if (bestPath.empty() && cands[0].score >= 150.f)
+                            wantBoatForBestTarget = true;
+                    }
                     for (size_t ci = 0; ci < cands.size() && ci < 10; ++ci) {
                         path = Pathfinder::find(m_map, eHero.pos, cands[ci].pos, costFn, kAiPathHorizon);
                         if (!path.empty()) break;
                     }
-                    // Everything unreachable by land: buy passage across the water
-                    if (path.empty()) {
+                    // Everything unreachable by land, OR the best target needs a
+                    // boat: buy passage across the water.
+                    if (path.empty() || wantBoatForBestTarget) {
                         std::vector<HexCoord> docks;
                         for (const auto& t : m_towns)
                             // Own docks only — a rival AI player's shipyard
                             // isn't this hero's to use.
                             if (t.ownerId == eHero.ownerId && t.hasBuilding(BID::TOWN_SHIPYARD))
                                 docks.push_back(t.pos);
-                        if (!aiTryBoat(m_map, m_worldObjects, docks, eHero,
-                                       aiResources(eHero.ownerId), costFn, path))
-                            break;
+                        std::vector<HexCoord> boatPath;
+                        if (aiTryBoat(m_map, m_worldObjects, docks, eHero,
+                                       aiResources(eHero.ownerId), costFn, boatPath)) {
+                            path = boatPath;   // head to the dock
+                        } else if (path.empty()) {
+                            break;             // no boat and nothing on land
+                        }
                     }
                     if (path.empty()) break;
 
@@ -2669,7 +2709,14 @@ void Game::doEndTurn()
                     if (!watchPlayerTown && !aiTown) continue;
                     Resources& pool = watchPlayerTown ? m_playerResources : aiResources(t.ownerId);
                     Resources budget = pool;
-                    budget.set(ResourceType::Gold, pool.get(ResourceType::Gold) / 2);
+                    // Normally spend at most half the pool's gold on troops so
+                    // construction isn't starved. But once the economy is
+                    // clearly solved (rich pool), pour it into army — a bot
+                    // sitting on hundreds of thousands of unspent gold with a
+                    // tiny army is the #1 AI failure. Rich = spend it all.
+                    int poolGold = pool.get(ResourceType::Gold);
+                    if (poolGold < 50000)
+                        budget.set(ResourceType::Gold, poolGold / 2);
                     Resources before = budget;
                     int got = aiPaidRecruit(t, t.garrison, budget, unitDefs);
                     if (got > 0) {
