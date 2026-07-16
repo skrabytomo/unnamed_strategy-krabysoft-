@@ -35,7 +35,13 @@ struct BuildingDef
     int               weeklyGrowth = 0; // base units added per week
     int               growthA     = 0;  // growth for path A upgrade
     int               growthB     = 0;  // growth for path B upgrade
-    int               growthBonus = 0;  // bonus units/week added to ALL dwellings when this is built
+    int               growthBonus = 0;  // FLAT bonus units/week added to ALL dwellings (Horde-style)
+    // HoMM3-style percentage growth multiplier from fortification (Fort/Citadel/
+    // Castle). Stored as a percent ADDED to base: 50 = +50% growth, 100 = +100%.
+    // Multipliers from multiple built forts are NOT summed — the highest wins
+    // (a Castle already includes the Fort/Citadel tier). Applied per-tier so it
+    // scales correctly (swarm tiers gain many, elite tiers stay rare).
+    int               growthMultPct = 0;
 
     // Minimum game week before this building can be constructed (0 = always available)
     int              minWeek     = 0;

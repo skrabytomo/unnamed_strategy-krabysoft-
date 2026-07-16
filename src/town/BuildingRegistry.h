@@ -35,6 +35,8 @@ namespace BID {
     constexpr int CV_NEXUS      = 21; // Convergence: Synthesis Nexus
     constexpr int TOWN_SHIPYARD = 22; // heroes can buy boats at this town
     constexpr int BASTION       = 23; // unlocks siege defense preparations
+    constexpr int CITADEL       = 24; // Fort upgrade: +75% growth (needs Fort)
+    constexpr int CASTLE        = 25; // Citadel upgrade: +100% growth (needs Citadel)
 
     // Holy Order
     constexpr int HO_HALL         = 100; // Town Hall (base income)

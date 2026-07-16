@@ -106,15 +106,23 @@ bool Town::build(int buildingId, const std::vector<BuildingDef>& defs, Resources
 
 void Town::onWeekStart(const std::vector<BuildingDef>& defs)
 {
-    // Sum growth bonuses from all built non-dwelling buildings
+    // Sum FLAT growth bonuses (Market/Horde) and find the HIGHEST fort
+    // percentage multiplier (Fort 50 < Citadel 75 < Castle 100 — a Castle
+    // already contains the lower tiers, so they don't stack).
     int globalBonus = 0;
+    int bestMultPct = 0;
     for (int bid : builtBuildings) {
         for (const auto& d : defs) {
-            if (d.id == bid && d.growthBonus > 0) { globalBonus += d.growthBonus; break; }
+            if (d.id != bid) continue;
+            if (d.growthBonus > 0)   globalBonus += d.growthBonus;
+            if (d.growthMultPct > bestMultPct) bestMultPct = d.growthMultPct;
+            break;
         }
     }
 
-    // Add weekly growth to each dwelling
+    // Add weekly growth to each dwelling. Percentage applies per-tier BEFORE the
+    // flat bonus, so it scales with the tier's base (swarm tiers gain many,
+    // elite tiers stay rare) — the HoMM3 model.
     for (auto& dwelling : dwellings) {
         const BuildingDef* def = nullptr;
         for (auto& d : defs) if (d.id == dwelling.buildingId) { def = &d; break; }
@@ -126,7 +134,9 @@ void Town::onWeekStart(const std::vector<BuildingDef>& defs)
         else if (dwelling.path == UpgradePath::PathB && def->growthB > 0)
             growth = def->growthB;
 
-        dwelling.available   += growth + globalBonus;
+        // Fort percentage: e.g. base 14 × (100+100)/100 = 28 for a Castle.
+        int boosted = growth * (100 + bestMultPct) / 100;
+        dwelling.available   += boosted + globalBonus;
         dwelling.accumulated  = dwelling.available;
     }
 }

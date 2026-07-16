@@ -20,9 +20,30 @@ void BuildingRegistry::init()
     {
         BuildingDef b;
         b.id = BID::FORT; b.name = "Fort";
-        b.description = "Adds walls and gate - enables siege defense";
+        b.description = "Walls + gate for siege defense, and +50% weekly unit growth";
         b.category = BuildingCategory::Fort;
         b.cost = goldAndRes(2000, ResourceType::Iron, 4);
+        b.growthMultPct = 50;   // HoMM3 Fort: +50% growth
+        m_buildings.push_back(b);
+    }
+    {
+        BuildingDef b;
+        b.id = BID::CITADEL; b.name = "Citadel";
+        b.description = "Upgrades the Fort — +75% weekly unit growth and stronger walls";
+        b.category = BuildingCategory::Fort;
+        b.cost = goldAndRes(2500, ResourceType::Iron, 5);
+        b.prerequisites = {BID::FORT};
+        b.growthMultPct = 75;   // HoMM3 Citadel: +75% growth
+        m_buildings.push_back(b);
+    }
+    {
+        BuildingDef b;
+        b.id = BID::CASTLE; b.name = "Castle";
+        b.description = "Upgrades the Citadel — +100% weekly unit growth (double) and a moat";
+        b.category = BuildingCategory::Fort;
+        b.cost = goldAndRes(5000, ResourceType::Iron, 10);
+        b.prerequisites = {BID::CITADEL};
+        b.growthMultPct = 100;  // HoMM3 Castle: +100% growth (double)
         m_buildings.push_back(b);
     }
     {
@@ -46,10 +67,10 @@ void BuildingRegistry::init()
     {
         BuildingDef b;
         b.id = BID::BASTION; b.name = "Bastion";
-        b.description = "Unlocks siege defense preparations: spikes, nets, shield walls, plating";
+        b.description = "Post-Castle siege defenses: spikes, nets, shield walls, plating";
         b.category = BuildingCategory::Fort;
         b.cost = goldAndRes(1800, ResourceType::Iron, 8);
-        b.prerequisites = {BID::FORT};
+        b.prerequisites = {BID::CASTLE};
         m_buildings.push_back(b);
     }
     {

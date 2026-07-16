@@ -133,3 +133,37 @@ distinctive ones; T1–T3 base dwellings follow the same naming pattern.)
   recruit/build UI.
 - Layout coordinates (x,y per building id per faction) need to be defined
   once `town_full_F.png` references exist to eyeball placement from.
+
+---
+
+## Town fortification stages (NEW 2026-07) — per-faction town art per fort tier
+
+The Fort ladder is now Fort (+50% growth) → Citadel (+75%) → Castle (+100%),
+with Bastion (siege prep) after Castle. HoMM3 shows the town visually growing
+walls as you climb this ladder. We need town art per stage, per faction.
+
+**Naming (drop-in — the loader can pick by stage):**
+`assets/towns/faction_<F>_<stage>.png`  where stage =
+- `0` = basic (no fort) — the current `faction_<F>.png` can serve as stage 0
+- `1` = with Fort (basic walls + gate)
+- `2` = with Citadel (taller walls, towers)
+- `3` = with Castle (full walls, moat, keep)
+- `bastion` = Castle + Bastion (spikes/nets/plating added on the Castle silhouette)
+
+That's up to 5 forms × 9 factions = **45 town images** (stage 0 already exists as
+`faction_<F>.png`, so ~36 new). If that's too many, the minimum useful set is
+stage 0 + stage 3 (Castle) per faction = 9 new.
+
+**Format:** same as existing `assets/towns/faction_<F>.png` (large town scene
+illustration). Keep the same camera framing across a faction's stages so the
+walls visibly "grow" between them.
+
+**Prompt cue per stage** (append to the faction's town prompt):
+- Fort: "modest wooden-and-stone outer wall with a single gatehouse"
+- Citadel: "higher stone curtain wall with corner watchtowers"
+- Castle: "full fortified castle, thick walls, central keep, moat"
+- Bastion: "same castle bristling with siege defenses — spikes, netting, iron plating"
+
+**Also needs (map objects):** if towns render on the world map with a fort-stage
+sprite too, add matching small map icons per stage. Otherwise the world-map town
+marker can stay a single icon and only the town screen shows the staged art.
