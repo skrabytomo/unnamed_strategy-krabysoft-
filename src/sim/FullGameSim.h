@@ -28,6 +28,13 @@ public:
         bool      combatDecided = false; // true = winner decided by actual combat
         FactionId winFaction    = FactionId::None;
         std::vector<TurnSnapshot> snapshots;
+
+        // Fingerprint of the final game state (heroes, towns, mines, treasuries).
+        // A given seed must produce the same hash no matter how many threads the
+        // sim ran on — that equality is what makes data races testable on
+        // Windows, where ThreadSanitizer does not exist (MinGW ships no
+        // sanitizer runtimes). See --state-hash in fullgame_main.cpp.
+        uint64_t  stateHash     = 0;
     };
 
     Result run(const Config& cfg);

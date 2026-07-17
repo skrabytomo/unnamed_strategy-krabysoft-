@@ -29,6 +29,25 @@ lot has shipped since it was written. Current reality:
 - **One-click installer** — CMake install() + NSIS Setup.exe. See
   `packaging/README.md`. Run `./packaging/build_installer.sh`.
 
+**Threading / performance (2026-07-17 — see `THREADING.md`):**
+- **XL + 8 players freezes to 0 FPS while watching AI.** Cause is structural:
+  `updateWorldMap()` calls `doEndTurn()` synchronously from the frame loop, so
+  the render thread sits *inside* the AI for the whole turn (15% CPU during the
+  freeze = one core busy, seven idle). Fix is to get the AI off the render
+  thread — parallelism alone does not fix a freeze, it only shortens it.
+- **Landed:** `fullgame_sim` gained `--threads N` / `--state-hash` (determinism
+  digest — the only race check available on Windows); `MCTSHero` now takes
+  `const HexMap&` (its rollouts were corrupting the caller's live map with
+  `heroId` writes nothing ever read); the sim now seeds its combat RNGs.
+- **⚠ `fullgame_sim` was never reproducible** until 2026-07-17 — it seeded no
+  RNG at all, so `--seed` controlled worldgen but not one damage roll. Old
+  balance numbers, including `*** IMBALANCED` flags, are suspect. Re-run them.
+- **No ThreadSanitizer on MinGW** — the ucrt64 toolchain ships zero sanitizer
+  runtimes. Race detection means building `fullgame_sim` (deliberately
+  SDL-free) under WSL/Linux with clang: `-DSIM_TSAN=ON`.
+- **Known race to fix before threading:** `DevLog::lines()` hands out a
+  reference to the shared vector with no lock while `gLog()` appends under one.
+
 **Known open issues (from playtest, not yet fixed):**
 - Siege: units render on/fight atop castle walls; walls take too much damage
   from normal units (siege engines should breach).

@@ -29,7 +29,13 @@ static int heroStrength(const Hero& h, const std::vector<UnitDef>& udefs) {
     return s;
 }
 
-static void moveToward(Hero& hero, HexCoord goal, HexMap& map) {
+// The map is READ-ONLY here, and must stay that way: a rollout is a hypothetical
+// ("what if the hero went there?"), so it may not leave a mark on the real world.
+// This function used to write hero.id into the live map's tiles as it stepped —
+// state that no rollout ever read back (nothing below consults HexTile::heroId)
+// and that was never restored, so every rollout silently corrupted the caller's
+// map. Rollout-local state lives in GameSnapshot; the map stays const.
+static void moveToward(Hero& hero, HexCoord goal, const HexMap& map) {
     auto costFn = [&](HexCoord c) -> int {
         const HexTile* t = map.getTile(c);
         if (!t || !hero.canEnter(t->terrain) || t->blocked) return 999;
@@ -41,14 +47,12 @@ static void moveToward(Hero& hero, HexCoord goal, HexMap& map) {
         if (!t) break;
         int cost = hero.moveCost(t->terrain);
         if (hero.movePool < cost) break;
-        if (HexTile* old = map.getTile(hero.pos)) old->heroId = 0;
         hero.pos = step;
         hero.movePool -= cost;
-        if (HexTile* nt = map.getTile(hero.pos)) nt->heroId = hero.id;
     }
 }
 
-static void collectAt(Hero& hero, GameSnapshot& s, HexMap& /*map*/) {
+static void collectAt(Hero& hero, GameSnapshot& s, const HexMap& /*map*/) {
     for (auto& r : s.resources)
         if (r.pos == hero.pos && r.ownedBy != hero.id) r.ownedBy = hero.id;
     for (auto& obj : s.objects) {
@@ -85,7 +89,7 @@ static void recruitAt(Hero& hero, GameSnapshot& s, const std::vector<UnitDef>& u
 }
 
 // Move hero toward best scored target for rolloutWeeks.
-static void simHero(Hero& hero, Hero& opp, GameSnapshot& snap, HexMap& map,
+static void simHero(Hero& hero, Hero& opp, GameSnapshot& snap, const HexMap& map,
                     const std::vector<UnitDef>& udefs, HexCoord fixedGoal,
                     bool useFixedGoal, int weeks)
 {
@@ -183,7 +187,7 @@ static bool resolveCombat(Hero& h1, Hero& h2,
 float MCTSHero::rollout(
     HexCoord             goal,
     GameSnapshot         snap,
-    HexMap&              map,
+    const HexMap&        map,
     const std::vector<UnitDef>& udefs,
     const BuildingRegistry& /*reg*/,
     const HeroClassRegistry& /*classReg*/,
@@ -220,7 +224,7 @@ float MCTSHero::rollout(
 HexCoord MCTSHero::selectGoal(
     const std::vector<HexCoord>& candidates,
     const GameSnapshot&          snap,
-    HexMap&                      map,
+    const HexMap&                map,
     const std::vector<UnitDef>&  udefs,
     const BuildingRegistry&      reg,
     const HeroClassRegistry&     classReg,

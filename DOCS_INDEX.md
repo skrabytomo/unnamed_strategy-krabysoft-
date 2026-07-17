@@ -13,6 +13,7 @@ rest with real state).
 | `CLAUDE.md` | Claude Code project instructions (build, branch rules). |
 | `CONQUEST_MODE.md` | Conquest mode design — all 5 phases IMPLEMENTED. |
 | `AI_ROADMAP.md` | Triaged "Project Omniscient" AI plan (DONE/FITS/NO-FIT tiers). |
+| `THREADING.md` | Plan for getting the AI off the render thread and onto many cores (fixes the XL/8-player 0 FPS freeze). Phases 0–1 landed; 2–4 designed. Read before touching `doEndTurn()` or adding threads. |
 | `packaging/README.md` | One-click installer / packaging instructions. |
 
 ## Art references (art gaps, for Gemini generation)
@@ -35,3 +36,5 @@ rest with real state).
 Tracked in `HANDOFF.md` addendum: siege walls, AI idle/no-trade/no-attack,
 naval (ships unused), town "already built" indicator, visual kingdom overview,
 hero right-click artifact sheet, icon-based town/hero pickers.
+
+Performance / threading work is tracked in `THREADING.md` (XL 8-player freeze).

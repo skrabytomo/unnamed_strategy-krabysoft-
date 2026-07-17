@@ -25,6 +25,21 @@ losing to a "corrupt banker" today.
 
 ---
 
+## ⚠ The sim was never reproducible (fixed 2026-07-17)
+
+Anything this roadmap or past balance passes concluded from `fullgame_sim`
+numbers deserves a re-run. `FullGameSim` called neither `DamageCalc::seedRng`
+nor `CombatEngine::seedTurnRng`, and `DamageCalc`'s generator defaults to
+`std::random_device{}()` — so `--seed` controlled worldgen but **not a single
+damage roll**. The same seed produced different results every run, and every
+win-rate it printed (including the `*** IMBALANCED` >65% flags) carried
+unmeasured run-to-run variance.
+
+Both streams are now seeded from `cfg.seed`. Re-run any balance conclusion you
+still rely on. See `THREADING.md`.
+
+---
+
 ## Already implemented (doc features we shipped earlier)
 
 | Doc feature | Status | Where |
@@ -70,9 +85,30 @@ lag/refactor traps. Recommended build order:
 
 | Doc feature | Why it doesn't fit |
 |---|---|
-| **MCTS in the live game, 500 sims/hero/turn** | NO-FIT. MCTSHero exists only in the offline sim. 500 full-game rollouts per hero per turn would freeze the real-time-rendered game for minutes. We just fixed lag; this reintroduces it catastrophically. (Offline sim can keep using MCTS.) |
+| **MCTS in the live game, 500 sims/hero/turn** | ~~NO-FIT~~ → **RECONSIDERED, see below.** |
 | **PublicState / AbsoluteState client-server split** | NO-FIT. Engine has one shared game state; AI already sees everything. Formal split is a large refactor for a property we already have by default. |
 | **Height / high-ground vision system** | NO-FIT (for now). Hex model has no elevation. Large terrain-system addition. |
+
+### Live MCTS — the NO-FIT is being retired (2026-07-17)
+
+The original verdict was *"500 full-game rollouts per hero per turn would freeze
+the real-time-rendered game for minutes."* That reasoning was sound but it
+assumed the AI runs synchronously on the render thread, one core, with rollouts
+that scribble on the live map. All three assumptions are being removed:
+
+- rollouts are now **pure** (`MCTSHero` takes `const HexMap&`) — they were
+  silently corrupting the caller's map, and nothing ever read what they wrote;
+- the AI is moving **off the render thread**, so its cost stops being frame time;
+- rollouts are **embarrassingly parallel** — near-linear scaling across cores.
+
+MCTS stays NO-FIT *today* and becomes viable at Phase 4. See `THREADING.md` for
+the phases, the scheduling rule, and what still has to be true first.
+
+**Note the split in this roadmap's own goals:** the Psychic Bundle above
+(tech scouting, hoarding prediction, town abandonment) is *informational* and
+costs ~no CPU — it needs no threading at all and delivers the "how did it know?"
+payoff on its own. Cores buy **search depth**, which is a different axis. Both
+are wanted; conflating them is the main scoping risk.
 
 ---
 

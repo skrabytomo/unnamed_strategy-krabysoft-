@@ -193,10 +193,34 @@ set(FULLGAME_SOURCES
 )
 
 
+find_package(Threads REQUIRED)
+
 add_executable(fullgame_sim ${FULLGAME_SOURCES})
 target_include_directories(fullgame_sim PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(fullgame_sim PRIVATE ${SQLITE_TARGET})
+target_link_libraries(fullgame_sim PRIVATE ${SQLITE_TARGET} Threads::Threads)
 target_compile_features(fullgame_sim PRIVATE cxx_std_20)
+
+# ── Race detection (Linux/Clang only — see AI_ROADMAP / threading plan) ───────
+# ThreadSanitizer does not exist on MinGW: the ucrt64 toolchain ships no
+# sanitizer runtimes, and upstream TSan supports Linux/macOS/BSD only. But
+# fullgame_sim is deliberately free of SDL/ImGui/OpenGL and contains the whole
+# AI kernel, so it builds and runs clean under Linux where TSan does exist:
+#
+#   cmake -B build-tsan -DCMAKE_CXX_COMPILER=clang++ -DSIM_TSAN=ON
+#   cmake --build build-tsan --target fullgame_sim
+#   ./build-tsan/bin/fullgame_sim --games 20 --threads 8 --state-hash
+#
+# On Windows the --state-hash determinism check is the substitute net.
+option(SIM_TSAN "Build fullgame_sim with ThreadSanitizer (Linux/Clang only)" OFF)
+if(SIM_TSAN)
+    if(WIN32)
+        message(FATAL_ERROR
+            "SIM_TSAN=ON is not supported on Windows: no sanitizer runtime exists "
+            "for MinGW. Build the sim under WSL/Linux with clang++ instead.")
+    endif()
+    target_compile_options(fullgame_sim PRIVATE -fsanitize=thread -g -O1 -fno-omit-frame-pointer)
+    target_link_options(fullgame_sim    PRIVATE -fsanitize=thread)
+endif()
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PACKAGING — self-contained install + one-click installer

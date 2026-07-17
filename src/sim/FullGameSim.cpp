@@ -5,6 +5,7 @@
 #include "../world/HexGrid.h"
 #include "../town/BuildingRegistry.h"
 #include "../combat/CombatEngine.h"
+#include "../combat/DamageCalc.h"
 #include "../hero/Hero.h"
 #include "../hero/HeroClass.h"
 #include "../hero/SkillRegistry.h"
@@ -401,12 +402,70 @@ static void aiHeroTurn(Hero& hero, Hero& opponent,
     }
 }
 
+// ── Deterministic end-state fingerprint (FNV-1a 64) ──────────────────────────
+// Hashes every field the AI can move. Field order is fixed and every value is
+// serialised little-endian byte by byte, so the digest never depends on struct
+// padding or on the order threads happened to finish in.
+struct StateHasher
+{
+    uint64_t h = 1469598103934665603ull;          // FNV-1a 64 offset basis
+
+    void byte(uint8_t b) { h ^= b; h *= 1099511628211ull; }
+    void i32(int32_t v)
+    {
+        uint32_t u = static_cast<uint32_t>(v);
+        for (int i = 0; i < 4; ++i) byte(static_cast<uint8_t>((u >> (i * 8)) & 0xFFu));
+    }
+    void u32(uint32_t v) { i32(static_cast<int32_t>(v)); }
+
+    void hero(const Hero& x)
+    {
+        u32(x.id); u32(x.ownerId);
+        i32(x.pos.q); i32(x.pos.r);
+        i32(x.level); i32(x.xp); i32(x.attack); i32(x.defense);
+        i32(x.mana); i32(x.movePool); i32(x.heroHp);
+        byte(x.eliminated ? 1 : 0);
+        i32(static_cast<int32_t>(x.army.size()));
+        for (const auto& s : x.army) { i32(s.defId); i32(s.count); }
+    }
+
+    void town(const Town& t)
+    {
+        u32(t.id); u32(t.ownerId);
+        i32(static_cast<int32_t>(t.faction));
+        i32(t.pos.q); i32(t.pos.r); i32(t.fortHP);
+        i32(static_cast<int32_t>(t.builtBuildings.size()));
+        for (int b : t.builtBuildings) i32(b);
+        i32(static_cast<int32_t>(t.garrison.size()));
+        for (const auto& g : t.garrison) { i32(g.defId); i32(g.count); }
+        for (int i = 0; i < RESOURCE_COUNT; ++i) i32(t.weeklyIncome.amounts[i]);
+    }
+
+    void res(const Resources& r)
+    {
+        for (int i = 0; i < RESOURCE_COUNT; ++i) i32(r.amounts[i]);
+    }
+};
+
 } // anonymous namespace
 
 // ── FullGameSim::run ──────────────────────────────────────────────────────────
 FullGameSim::Result FullGameSim::run(const Config& cfg)
 {
     Result result;
+
+    // Seed the combat RNGs from the game seed. Without this the sim never
+    // seeded them at all: DamageCalc's generator defaults to
+    // std::random_device, so --seed governed worldgen but not one damage roll
+    // and the same seed gave different balance numbers every run.
+    //
+    // These generators are thread_local, which stays correct here precisely
+    // because a game runs start to finish on a single worker — it seeds the
+    // stream it is about to use, and no other game on that thread can
+    // interleave. Splitting one game's work across threads (parallel AI) would
+    // break that assumption and needs the RNG passed in explicitly instead.
+    DamageCalc::seedRng(cfg.seed);
+    CombatEngine::seedTurnRng(cfg.seed ^ 0x9E3779B9u);   // decorrelate the two streams
 
     // Build registries
     BuildingRegistry reg;
@@ -691,5 +750,27 @@ FullGameSim::Result FullGameSim::run(const Config& cfg)
     result.combatDecided = combatDecided;
 
     result.endWeek = week - 1;
+
+    // Fingerprint the final state so a 1-thread and an N-thread run of the same
+    // seed can be compared exactly. See FullGameSim::Result::stateHash.
+    {
+        StateHasher hs;
+        hs.i32(result.endWeek);
+        hs.i32(result.winner);
+        hs.byte(combatDecided ? 1 : 0);
+        hs.hero(h1);
+        hs.hero(h2);
+        hs.i32(static_cast<int32_t>(towns.size()));
+        for (const auto& t : towns) hs.town(t);
+        hs.i32(static_cast<int32_t>(resnodes.size()));
+        for (const auto& rn : resnodes) {
+            hs.u32(rn.id); hs.i32(rn.pos.q); hs.i32(rn.pos.r);
+            hs.u32(rn.ownedBy); hs.byte(rn.depleted ? 1 : 0);
+        }
+        hs.res(res1);
+        hs.res(res2);
+        result.stateHash = hs.h;
+    }
+
     return result;
 }
