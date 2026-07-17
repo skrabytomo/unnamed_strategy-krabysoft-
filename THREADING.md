@@ -233,3 +233,38 @@ If Phase 3 proves hairy: **frame-spreading** (process K heroes per frame, resume
 next frame, single-threaded) fixes the 0 FPS symptom with *zero* race risk. It
 makes the AI neither faster nor smarter, so it is a fallback rather than the
 plan — but Phase 1's plan/apply split is what makes it cheap to reach.
+
+---
+
+## Picking this up cold
+
+Everything needed is in the repo — no prior session context required.
+
+**Build note:** `cmake` and `ninja` live in `/c/msys64/ucrt64/bin`, which is
+**not** on the default MSYS2 bash PATH. Prepend it or nothing builds:
+
+```bash
+export PATH="/c/msys64/ucrt64/bin:$PATH"
+cmake --build build --target fullgame_sim -j4     # ~20s
+cmake --build build --target unnamed_strategy -j4 # the game
+```
+
+**Files for the phases still to come:**
+
+| File | Change |
+|---|---|
+| `src/ai/WorkerPool.h` *(new)* | Persistent pool, created **once** — per-turn thread creation erases the win. Mirror the `std::thread` + `std::atomic` + `std::mutex` pattern already in `src/editor/SimulatorWindow.h:47-52`. |
+| `src/ai/AiPlanner.h/.cpp` *(new)* | The pure kernel: `const` snapshot in, plans out. Workers take `const&` only — that is the whole safety argument. |
+| `src/core/Game_WorldMap.cpp` | Split the AI block of `doEndTurn()` (starts ~line 1480) into plan/apply; dispatch async from `updateWorldMap()` (~line 920). The per-hero loop and its candidate fan-out are ~line 1862-2340. |
+| `src/core/DevLog.cpp` | Fix `lines()` handing out an unlocked reference before any AI thread calls `gLog()`. |
+| `src/ai/Pathfinder.cpp` | **No change needed** — already pure, all state function-local. Verified. |
+
+**Do not re-derive these — they are settled:**
+- `Pathfinder::find` is pure. Checked.
+- `MCTSHero`'s map writes were dead (`heroId` written, never read). Removed.
+- TSan cannot exist on MinGW. Checked the lib dir directly.
+- The RNGs are `thread_local` **on purpose** and that is correct until Phase 3.
+
+**Start with:** Phase 2 (behaviour-identical, proves the pool safely), or the
+uncapped-A* fix above, which is orthogonal, race-free, and probably the larger
+raw win.
