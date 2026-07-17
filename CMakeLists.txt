@@ -105,9 +105,6 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
 )
 # Exclude per-binary mains — each has its own executable target
 list(FILTER SOURCES EXCLUDE REGEX ".*/sim/sim_main\\.cpp$")
-list(FILTER SOURCES EXCLUDE REGEX ".*/sim/fullgame_main\\.cpp$")
-list(FILTER SOURCES EXCLUDE REGEX ".*/sim/FullGameSim\\.cpp$")
-list(FILTER SOURCES EXCLUDE REGEX ".*/sim/SimDB\\.cpp$")
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
@@ -170,57 +167,9 @@ add_executable(sim_test ${SIM_SOURCES})
 target_include_directories(sim_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_compile_features(sim_test PRIVATE cxx_std_20)
 
-# ── Full AI-vs-AI game simulator (no SDL / ImGui / OpenGL) ───────────────────
-set(FULLGAME_SOURCES
-    src/sim/fullgame_main.cpp
-    src/sim/FullGameSim.cpp
-    src/sim/MCTSHero.cpp
-    src/sim/SimDB.cpp
-    src/core/DevLog.cpp
-    src/combat/CombatEngine.cpp
-    src/combat/CombatGrid.cpp
-    src/combat/CombatUnit.cpp
-    src/combat/DamageCalc.cpp
-    src/world/HexGrid.cpp
-    src/world/HexMap.cpp
-    src/world/WorldGen.cpp
-    src/hero/Hero.cpp
-    src/hero/Artifacts.cpp
-    src/hero/HeroClass.cpp
-    src/town/Town.cpp
-    src/town/BuildingRegistry.cpp
-    src/ai/Pathfinder.cpp
-)
-
-
-find_package(Threads REQUIRED)
-
-add_executable(fullgame_sim ${FULLGAME_SOURCES})
-target_include_directories(fullgame_sim PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(fullgame_sim PRIVATE ${SQLITE_TARGET} Threads::Threads)
-target_compile_features(fullgame_sim PRIVATE cxx_std_20)
-
-# ── Race detection (Linux/Clang only — see AI_ROADMAP / threading plan) ───────
-# ThreadSanitizer does not exist on MinGW: the ucrt64 toolchain ships no
-# sanitizer runtimes, and upstream TSan supports Linux/macOS/BSD only. But
-# fullgame_sim is deliberately free of SDL/ImGui/OpenGL and contains the whole
-# AI kernel, so it builds and runs clean under Linux where TSan does exist:
-#
-#   cmake -B build-tsan -DCMAKE_CXX_COMPILER=clang++ -DSIM_TSAN=ON
-#   cmake --build build-tsan --target fullgame_sim
-#   ./build-tsan/bin/fullgame_sim --games 20 --threads 8 --state-hash
-#
-# On Windows the --state-hash determinism check is the substitute net.
-option(SIM_TSAN "Build fullgame_sim with ThreadSanitizer (Linux/Clang only)" OFF)
-if(SIM_TSAN)
-    if(WIN32)
-        message(FATAL_ERROR
-            "SIM_TSAN=ON is not supported on Windows: no sanitizer runtime exists "
-            "for MinGW. Build the sim under WSL/Linux with clang++ instead.")
-    endif()
-    target_compile_options(fullgame_sim PRIVATE -fsanitize=thread -g -O1 -fno-omit-frame-pointer)
-    target_link_options(fullgame_sim    PRIVATE -fsanitize=thread)
-endif()
+# (The full AI-vs-AI game simulator `fullgame_sim` was removed 2026-07-17 — see
+#  THREADING.md. Its AI was a separate reimplementation that didn't match the
+#  real game AI, so its balance numbers measured the wrong thing.)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PACKAGING — self-contained install + one-click installer

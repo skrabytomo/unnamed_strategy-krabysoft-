@@ -35,16 +35,16 @@ lot has shipped since it was written. Current reality:
   the render thread sits *inside* the AI for the whole turn (15% CPU during the
   freeze = one core busy, seven idle). Fix is to get the AI off the render
   thread — parallelism alone does not fix a freeze, it only shortens it.
-- **Landed:** `fullgame_sim` gained `--threads N` / `--state-hash` (determinism
-  digest — the only race check available on Windows); `MCTSHero` now takes
-  `const HexMap&` (its rollouts were corrupting the caller's live map with
-  `heroId` writes nothing ever read); the sim now seeds its combat RNGs.
-- **⚠ `fullgame_sim` was never reproducible** until 2026-07-17 — it seeded no
-  RNG at all, so `--seed` controlled worldgen but not one damage roll. Old
-  balance numbers, including `*** IMBALANCED` flags, are suspect. Re-run them.
+- **`fullgame_sim` was DELETED (2026-07-17).** Its AI was a separate, simpler
+  reimplementation (`simHero`), not the real `doEndTurn`, so its balance numbers
+  measured a bot that never shipped — and it seeded no combat RNG, so it was
+  never reproducible either. Treat any past `fullgame_sim` balance conclusion
+  (incl. `*** IMBALANCED` flags) as unfounded. The combat-only `sim_test` binary
+  is untouched and still valid.
 - **No ThreadSanitizer on MinGW** — the ucrt64 toolchain ships zero sanitizer
-  runtimes. Race detection means building `fullgame_sim` (deliberately
-  SDL-free) under WSL/Linux with clang: `-DSIM_TSAN=ON`.
+  runtimes; TSan is Linux/macOS/BSD only. Race detection needs a headless,
+  SDL-free target around the *real* planner, built under WSL/Linux. That target
+  doesn't exist yet — it's built in Phase 0/3 (see `THREADING.md`).
 - **Known race to fix before threading:** `DevLog::lines()` hands out a
   reference to the shared vector with no lock while `gLog()` appends under one.
 

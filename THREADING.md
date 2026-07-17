@@ -1,6 +1,10 @@
 # THREADING — getting the AI off one core
 
-Status: **Phase 0 + Phase 1 landed** (2026-07-17). Phases 2–4 designed, not built.
+Status: **design only** — no threading in the game yet. Phases 0–1 were built on
+`fullgame_sim` and then **removed with it** (2026-07-17): that simulator ran a
+separate, simpler reimplementation of the AI, not the real `doEndTurn`, so it was
+the wrong thing to test against. The design below (Phases 2–4, the scheduling
+rule, the off-ramp) still stands and is the durable output of this work.
 
 The goal: the game freezes to 0 FPS on XL maps with 8 players while watching AI.
 The endpoint: an AI with the CPU headroom to be genuinely smarter (see
@@ -55,97 +59,59 @@ normal loop (reason about it, build, watch it happen) structurally does not work
 and never has supported Windows. Porting it is a compiler-runtime project — not
 the move.
 
-Two nets instead:
+The original plan leaned on `fullgame_sim` as the test vehicle: it was
+SDL/ImGui/OpenGL-free, so it could be built under WSL/Linux with real TSan, and
+it carried a `--state-hash` determinism differential (same seed, any thread
+count → identical digest). **That sim has been removed** (see status above), so
+both nets are gone. This is a real hole in the plan and has to be filled before
+Phase 3 lands threading — the two viable replacements:
 
-**1. Run the real TSan under WSL.** `fullgame_sim` is deliberately free of
-SDL/ImGui/OpenGL (see `CMakeLists.txt`) and contains the whole AI kernel —
-`Pathfinder`, `CombatEngine`, `HexMap`, `MCTSHero` — needing only SQLite. So it
-builds and runs under Linux, where TSan does exist:
+1. **Extract the planner into its own SDL-free test target.** Phase 3 already
+   pulls the AI planning out of `doEndTurn` into a pure `AiPlanner` kernel. Give
+   that kernel a small headless `main` (real AI, unlike the deleted sim), build
+   *it* under WSL/Linux with `-fsanitize=thread`, and drive many turns. This is
+   the honest version of the old idea — it TSan-tests the code actually being
+   threaded, not a reimplementation.
+2. **A determinism differential on the real game.** Add a seeded
+   `--watch-ai-test` run that fingerprints end-of-turn state; the digest for a
+   seed must be identical at 1 vs N planning threads. Same principle as the old
+   `--state-hash`, but measuring the shipping AI.
 
-```bash
-wsl --install                      # not installed yet
-cmake -B build-tsan -DCMAKE_CXX_COMPILER=clang++ -DSIM_TSAN=ON
-cmake --build build-tsan --target fullgame_sim
-./build-tsan/bin/fullgame_sim --games 20 --threads 8 --state-hash
-```
-
-`SIM_TSAN=ON` hard-errors on Windows rather than producing a link failure.
-
-**2. A determinism differential (the Windows net).** `--state-hash` prints an
-FNV-1a digest of the final state of every game plus a combined digest folded in
-**job order, never completion order**. The rule:
-
-> Same `--seed`, any `--threads` → **identical digest**. If it differs, threads
-> are sharing state they should not.
-
-Any race that matters perturbs state, so it trips this. It converts "reproduces
-once an hour" into a deterministic, runnable check. TSan only catches races on
-paths it actually executes; the digest catches *any* divergence. They are
-complementary — neither replaces the other.
-
-**Verified 2026-07-17** (`--factions 0 1 --games 2 --seed 42 --max-weeks 1`):
-
-| Run | Threads | Digest |
-|---|---|---|
-| A | 1 | `0e7467861b014d57` |
-| B (repeat of A) | 1 | `0e7467861b014d57` |
-| C | 2 | `0e7467861b014d57` |
-
-Per-game digests matched too (`de259e392d3a8a4a`, `9d510fbe9aa52281`). A vs B is
-the check that would have **failed** before the RNG fix below — `random_device`
-reseeded every run. A vs C is thread-independence.
-
-**Caveat — the harness is expensive, for a fixable reason.** Measured
-2026-07-17: **~38s for a single game of a single week**, one core pegged, and
-cost is roughly linear in weeks (~40-55s per simulated week, ≈3s per hero-day).
-A broad "50 seeds × 1-vs-8-threads" sweep is therefore impractical today.
-`--threads N` claws back a factor of N since games are independent, but the real
-cause is worth fixing:
-
-> `FullGameSim.cpp` and `MCTSHero.cpp` both call `Pathfinder::find(...)` with
-> the **default `maxCost = 999`**. On the sim's hardcoded Medium map (radius
-> 114, ~39k tiles) that budget reaches essentially the whole grid, so every
-> unreachable or distant goal costs a full-map A*. The live game caps this at
-> 60 / 400 (`kAiPathHorizon`) precisely because it froze the main thread; the
-> sim never got the same treatment.
-
-This is the same pathology as the in-game freeze, in the offline tool. Capping
-it is orthogonal to threading and would make the determinism sweep cheap enough
-to run in CI. Note it will change sim results (and therefore hashes), so it is a
-deliberate behaviour change to make on its own, not folded into a threading
-commit.
+Design principle stands regardless: **make races impossible by construction**
+(workers take `const&` only) so the detector is a backstop, not the primary
+defence.
 
 ---
 
 ## Phases
 
-### Phase 0 — harness first ✅ LANDED
-`--threads N` (runs whole games concurrently) and `--state-hash` on
-`fullgame_sim`. Games are scheduled as jobs up front in a fixed order; each
-worker writes only the result slot it claimed into a pre-sized vector, so no two
-threads touch the same element and no reallocation occurs. Aggregation and all
-DB writes happen after the join, on the main thread.
+### Phase 0 — test harness
+**Not yet built.** The first attempt (a threaded `fullgame_sim` with
+`--state-hash`) was discarded with that sim because it tested the wrong AI. The
+replacement is option 1 above — a headless target around the real `AiPlanner`
+kernel — and it can only be built once Phase 3 has extracted that kernel. Until
+then, verification is the real game (`--watch-ai-test`, watch frames render) plus
+option 2's determinism check.
 
-### Phase 1 — purity ✅ LANDED
-- **`MCTSHero` takes `const HexMap&`.** It previously took a non-const `HexMap&`
-  and its rollouts wrote `heroId` into the **real** map, never restoring it —
-  while the header claimed the map was "read-only during rollout". `heroId`
-  appeared exactly twice in that file, both **writes, never read**: nothing in a
-  rollout consumed it. The lines did nothing but corrupt the caller's map. They
-  are gone, and `const` now propagates through the whole call chain, which is
-  what lets rollouts share one map across threads without locking.
-- **The sim now seeds its RNGs.** `FullGameSim` called neither
-  `DamageCalc::seedRng` nor `CombatEngine::seedTurnRng`. `DamageCalc`'s
-  generator defaults to `std::random_device{}()`, so `--seed` governed worldgen
-  but **not one damage roll** — the balance tool was never reproducible, and any
-  win-rate it printed (including `*** IMBALANCED` flags) carried unmeasured
-  run-to-run variance. Both streams are now seeded from `cfg.seed`.
-
-  The generators stay `thread_local`, which is *correct* while a whole game runs
-  start-to-finish on one worker: it seeds the stream it is about to use and no
-  other game on that thread can interleave. **Phase 3 breaks that assumption**
-  (one game's work split across threads) and will need the RNG passed in
-  explicitly.
+### Phase 1 — purity (was landed on the sim, reverted with it)
+Two fixes were made and then deleted along with `fullgame_sim`. Both are still
+**true and worth re-doing** wherever the equivalent code lives, so they are
+recorded here, not lost:
+- **A rollout must not mutate the shared map.** `MCTSHero::selectGoal`/`rollout`
+  took a non-const `HexMap&` and wrote `heroId` into the real map, never
+  restoring it — while the header claimed "read-only during rollout". Those
+  writes were never read back by anything; they only corrupted the caller's map.
+  Any future rollout/lookahead evaluator must take `const HexMap&`. (The file is
+  gone, so there is nothing to fix today — this is a rule for whatever replaces
+  it.)
+- **A `--seed` must reach *every* RNG.** `fullgame_sim` seeded no combat RNG at
+  all: `DamageCalc`'s generator defaults to `std::random_device{}()`, so the
+  seed governed worldgen but not one damage roll, and the tool was never
+  reproducible. Whatever headless harness Phase 0 grows must seed
+  `DamageCalc::seedRng` and `CombatEngine::seedTurnRng` from its seed. Those
+  generators are `thread_local`, which is correct only while a whole game runs on
+  one thread; **Phase 3 splits one turn across threads and must pass the RNG in
+  explicitly.**
 
 ### Phase 2 — parallel candidate A* fan-out (behaviour-identical)
 The AI tries up to 10 candidates serially, taking the first reachable. `costFn`
@@ -245,8 +211,9 @@ Everything needed is in the repo — no prior session context required.
 
 ```bash
 export PATH="/c/msys64/ucrt64/bin:$PATH"
-cmake --build build --target fullgame_sim -j4     # ~20s
-cmake --build build --target unnamed_strategy -j4 # the game
+cmake -B build -G Ninja                            # reconfigure after file changes
+cmake --build build --target unnamed_strategy -j4  # the game
+cmake --build build --target sim_test -j4          # combat-balance sim (still here)
 ```
 
 **Files for the phases still to come:**
@@ -261,10 +228,14 @@ cmake --build build --target unnamed_strategy -j4 # the game
 
 **Do not re-derive these — they are settled:**
 - `Pathfinder::find` is pure. Checked.
-- `MCTSHero`'s map writes were dead (`heroId` written, never read). Removed.
 - TSan cannot exist on MinGW. Checked the lib dir directly.
-- The RNGs are `thread_local` **on purpose** and that is correct until Phase 3.
+- `DamageCalc`/`CombatEngine` RNGs are `thread_local` — fine for whole-game-per-
+  thread, must be passed explicitly once a single turn spans threads (Phase 3).
+- `fullgame_sim` was deleted on purpose (2026-07-17): it tested a fake AI. Don't
+  resurrect it as the harness — build the Phase 0 target around the real
+  `AiPlanner` instead.
 
-**Start with:** Phase 2 (behaviour-identical, proves the pool safely), or the
-uncapped-A* fix above, which is orthogonal, race-free, and probably the larger
-raw win.
+**Start with:** Phase 3's `AiPlanner` extraction is the linchpin — it fixes the
+0 FPS freeze *and* produces the pure kernel that Phase 0's real test harness
+needs. Phase 2 (parallel A* fan-out) is a safe, behaviour-identical warm-up that
+proves the worker pool first.

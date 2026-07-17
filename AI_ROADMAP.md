@@ -20,23 +20,29 @@ gives each AI its own honest resource pool (`m_aiResources`) and builds from it;
 the mine economy was fixed so AI earns income legitimately. So no live player is
 losing to a "corrupt banker" today.
 
-- [PLANNED] Remove `richRes.add(...9999)` from `FullGameSim.cpp` (cleanliness /
-  honesty; affects only the offline sim, not gameplay).
+- ~~[PLANNED] Remove `richRes` from `FullGameSim.cpp`~~ — moot: `fullgame_sim`
+  was **deleted** 2026-07-17 (see below).
 
 ---
 
-## ⚠ The sim was never reproducible (fixed 2026-07-17)
+## ⚠ `fullgame_sim` was deleted, and its numbers were never trustworthy
 
-Anything this roadmap or past balance passes concluded from `fullgame_sim`
-numbers deserves a re-run. `FullGameSim` called neither `DamageCalc::seedRng`
-nor `CombatEngine::seedTurnRng`, and `DamageCalc`'s generator defaults to
-`std::random_device{}()` — so `--seed` controlled worldgen but **not a single
-damage roll**. The same seed produced different results every run, and every
-win-rate it printed (including the `*** IMBALANCED` >65% flags) carried
-unmeasured run-to-run variance.
+The full AI-vs-AI simulator was removed 2026-07-17. Two reasons, both damning
+for anything ever concluded from it:
 
-Both streams are now seeded from `cfg.seed`. Re-run any balance conclusion you
-still rely on. See `THREADING.md`.
+1. **It ran a different AI than the game.** `FullGameSim.cpp` had its own
+   `simHero`/`aiHeroMoveToward` — a separate, simpler reimplementation, not the
+   real `doEndTurn`. Its balance numbers measured a bot that never shipped.
+2. **It was never reproducible.** It called neither `DamageCalc::seedRng` nor
+   `CombatEngine::seedTurnRng`, and `DamageCalc`'s generator defaults to
+   `std::random_device{}()` — so `--seed` controlled worldgen but **not a single
+   damage roll**. Every win-rate it printed (including the `*** IMBALANCED` >65%
+   flags) carried unmeasured run-to-run variance.
+
+So: treat any past `fullgame_sim` balance conclusion as unfounded. The
+combat-only `sim_test` binary is untouched and still valid for its narrower job
+(headless CombatEngine matchups). See `THREADING.md` for how AI-vs-AI testing is
+meant to work going forward (a harness around the *real* planner).
 
 ---
 
@@ -93,16 +99,17 @@ lag/refactor traps. Recommended build order:
 
 The original verdict was *"500 full-game rollouts per hero per turn would freeze
 the real-time-rendered game for minutes."* That reasoning was sound but it
-assumed the AI runs synchronously on the render thread, one core, with rollouts
-that scribble on the live map. All three assumptions are being removed:
+assumed the AI runs synchronously on the render thread, one core. The threading
+plan removes that assumption — off the render thread, embarrassingly parallel
+rollouts, near-linear scaling. So MCTS becomes viable at Phase 4.
 
-- rollouts are now **pure** (`MCTSHero` takes `const HexMap&`) — they were
-  silently corrupting the caller's map, and nothing ever read what they wrote;
-- the AI is moving **off the render thread**, so its cost stops being frame time;
-- rollouts are **embarrassingly parallel** — near-linear scaling across cores.
+Caveat: the old `MCTSHero` implementation is **gone** (deleted with
+`fullgame_sim`, 2026-07-17). It was also a cautionary tale — its rollouts wrote
+into the real shared map (state nothing read back), which any re-implementation
+must not repeat: a lookahead evaluator takes `const HexMap&`. See `THREADING.md`.
 
-MCTS stays NO-FIT *today* and becomes viable at Phase 4. See `THREADING.md` for
-the phases, the scheduling rule, and what still has to be true first.
+MCTS stays NO-FIT *today* and becomes viable at Phase 4, once the planner is
+extracted and parallel.
 
 **Note the split in this roadmap's own goals:** the Psychic Bundle above
 (tech scouting, hoarding prediction, town abandonment) is *informational* and
