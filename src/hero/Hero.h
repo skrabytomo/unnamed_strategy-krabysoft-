@@ -107,6 +107,11 @@ struct Hero
     bool        hasMarchGoal = false;
     HexCoord    marchGoal{};
     int         marchGoalTurns = 0;   // turns spent committed (timeout guard)
+    // Cached path to the march goal — the long (400-hex) A* is computed ONCE
+    // when committing, then followed step by step, instead of re-running the
+    // huge search every turn (that per-hero-per-turn cost froze the main thread).
+    std::vector<HexCoord> marchPath;
+    size_t                marchPathIdx = 0;
     int  boatCount = 0;      // boats built so far (cost escalates per boat)
 
     // Specialty progression: tracked stats for specialty effects

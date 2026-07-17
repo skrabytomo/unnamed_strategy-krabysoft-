@@ -2240,6 +2240,7 @@ void Game::doEndTurn()
                     if (eHero.hasMarchGoal &&
                         (!townEnemyAt(eHero.marchGoal) || eHero.marchGoalTurns > 60)) {
                         eHero.hasMarchGoal = false; eHero.marchGoalTurns = 0;
+                        eHero.marchPath.clear(); eHero.marchPathIdx = 0;
                     }
                     // Commit to a new goal if the top candidate is an enemy town.
                     if (!eHero.hasMarchGoal && townEnemyAt(cands[0].pos)) {
@@ -2309,10 +2310,32 @@ void Game::doEndTurn()
                             if (t.pos == cands[0].pos && t.ownerId != 0
                                 && !isAllied(t.ownerId, eHero.ownerId)) { topIsEnemyTown = true; break; }
                     }
-                    for (size_t ci = 0; ci < cands.size() && ci < 10; ++ci) {
-                        int horizon = (ci == 0 && topIsEnemyTown) ? 400 : kAiPathHorizon;
-                        path = Pathfinder::find(m_map, eHero.pos, cands[ci].pos, costFn, horizon);
-                        if (!path.empty()) { if (ci == 0) bestReachable = true; break; }
+                    // Reuse a cached march path when locked onto a town goal so we
+                    // don't rerun the expensive 400-hex A* every turn (that was the
+                    // main-thread freeze). Recompute only if the cache is empty or
+                    // the hero has strayed off it.
+                    path.clear();
+                    if (eHero.hasMarchGoal && topIsEnemyTown
+                        && cands[0].pos == eHero.marchGoal
+                        && !eHero.marchPath.empty()
+                        && eHero.marchPathIdx < eHero.marchPath.size()) {
+                        // Follow the cached path from the current position.
+                        path.assign(eHero.marchPath.begin() + eHero.marchPathIdx,
+                                    eHero.marchPath.end());
+                    } else {
+                        for (size_t ci = 0; ci < cands.size() && ci < 10; ++ci) {
+                            int horizon = (ci == 0 && topIsEnemyTown) ? 400 : kAiPathHorizon;
+                            path = Pathfinder::find(m_map, eHero.pos, cands[ci].pos, costFn, horizon);
+                            if (!path.empty()) {
+                                if (ci == 0) bestReachable = true;
+                                // Cache a fresh long march path for reuse next turn.
+                                if (ci == 0 && topIsEnemyTown) {
+                                    eHero.marchPath = path;
+                                    eHero.marchPathIdx = 0;
+                                }
+                                break;
+                            }
+                        }
                     }
                     bool wantBoatForBestTarget =
                         (!cands.empty() && !eHero.onBoat && !bestReachable
@@ -2349,6 +2372,15 @@ void Game::doEndTurn()
                     if (HexTile* nT = m_map.getTile(eHero.pos)) nT->heroId = eHero.id;
                     if (eHero.onBoat && nextTile->terrain != Terrain::Water)
                         eHero.onBoat = false;  // disembark
+                    // If following the cached march path and we stepped onto its
+                    // next tile, advance the index; if we diverged, invalidate it
+                    // so it's recomputed next turn.
+                    if (eHero.hasMarchGoal && !eHero.marchPath.empty()
+                        && eHero.marchPathIdx < eHero.marchPath.size()) {
+                        if (eHero.marchPath[eHero.marchPathIdx] == eHero.pos)
+                            eHero.marchPathIdx++;
+                        else { eHero.marchPath.clear(); eHero.marchPathIdx = 0; }
+                    }
 
                     // Combat with a RIVAL AI hero? Real AI-vs-AI hostility:
                     // resolve it off-screen (no human is present to fight it
