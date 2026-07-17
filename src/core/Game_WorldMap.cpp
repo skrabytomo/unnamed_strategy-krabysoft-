@@ -3142,7 +3142,7 @@ void Game::doEndTurn()
                         // Without this the enemy fielded fodder heroes while its
                         // garrison + gold rotted in the town (223 mines / 185k gold
                         // and still losing), so the enemy hire must match exactly.
-                        takeGarrison(recruitTown, newHero, unitDefs);
+                        takeGarrison(recruitTown, newHero, m_registry.units());
                         aiPaidRecruit(recruitTown, newHero.army, aiResources(recruitTown.ownerId), m_registry.units());
                         HexCoord spawnPos = recruitTown.pos;
                         for (auto& nb : HexGrid::neighbors(recruitTown.pos)) {
