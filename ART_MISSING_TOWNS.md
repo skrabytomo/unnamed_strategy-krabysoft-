@@ -45,15 +45,50 @@ table in `BuildingRegistry.cpp` / `Game_Core.cpp` uses once wired.
 
 ---
 
-## 1. Upgrade-path unit sprites (108 files)
+## 1. Upgrade-path unit sprites (0 of 108 usable)
 
-Naming: `faction_F_tT_a.png` (Path A) / `faction_F_tT_b.png` (Path B), same
-512×64 / 8-frame format as the base sheet. **Engine does not load these yet**
-— `Game_Core.cpp:132` only requests `faction_F_tT.png`; wiring path-aware
-loading is a separate code task once files exist.
+Naming: `faction_F_tT_a.png` (Path A) / `faction_F_tT_b.png` (Path B).
 
-For every faction/tier, take the base unit's prompt from `sprite_brief.md` and
-append the Path A or Path B cue below (applies uniformly across all 6 tiers
+**SIZE (the old "512×64" here was wrong):** match the base sheet exactly —
+**2928×352 total, 8 frames of 366×352**. These are drop-in replacements at
+the base sheet's own resolution. Open the matching `assets/sprites/faction_F_tT.png`
+and match its dimensions and framing.
+
+### ⚠️ How to actually generate these (hard-won — read before starting)
+
+Two dead ends already burned, do NOT repeat them:
+1. A generic "painterly, high-contrast dark-fantasy" prompt (the house style
+   used for buildings/siege) → totally wrong; the base unit sheets are **16-bit
+   pixel art**, chunky semi-chibi proportions, blocky hard-edged shading.
+2. A *text-only* "16-bit pixel-art chibi character…" prompt → still unusable:
+   Gemini invents a **brand-new character** that doesn't match the specific
+   existing unit at all (wrong face, wrong silhouette, wrong palette). Five such
+   sprites (`faction_0_t1/t2/t3`) were generated and **deleted** — a dead loss.
+
+**The workflow that will actually work: image-to-image, not text-to-image.**
+UPLOAD the base sheet `assets/sprites/faction_F_tT.png` into Gemini as a
+reference image and ask it to produce an A/B *variant of that exact sprite* —
+"same character, same pixel-art style, same 1×8 frame layout, recolor/re-detail
+per this cue: <A or B cue>". Only by seeding the real unit image does the output
+keep the unit's identity, proportions, and palette. Without the upload the
+result cannot be used. (This is why this task is stalled: it needs the
+upload-driven flow, run interactively with the base sheets on hand.)
+
+**Layout gotcha:** for the 8 poses, the literal term **"Create a 1×8 sprite
+atlas (one row, eight columns, no other rows), canvas exactly 8× wider than
+tall"** reliably yields one row — plain "8 frames side by side" gets ignored and
+Gemini returns a 2-row grid.
+
+**Engine wiring status:** a prior session added path-aware loading
+(`m_unitTexA/B` in `Game_Core.cpp` + `combatSpriteTexture()` preferring the
+path sheet in `Game.h`) but that change was **uncommitted and got discarded** —
+it is NOT in the tree today. Grep confirms `m_unitTexA` = 0 files. So this needs
+**re-wiring** as well as art: load `faction_F_tT_a.png`/`_b.png` alongside the
+base sheet, and in `combatSpriteTexture()` prefer the path sheet when the unit's
+`UpgradePath` is PathA/PathB and the texture `.ok()`, else fall back to base.
+
+For each faction/tier, describe the base unit (match the faction palette/theme)
+and append the Path A or Path B cue below (applies uniformly across all 6 tiers
 of that faction):
 
 | Faction | Path A cue (append to base prompt) | Path B cue (append to base prompt) |
@@ -68,10 +103,24 @@ of that faction):
 | Amalgamate | faster/leaner silhouette, more visible veins pulsing | bulkier fused mass, more bone plate coverage |
 | Convergence | brighter chrome, more mirror-reflective panels | more organic tissue visible fused with chrome, bulkier |
 
-Sheet-format line to append (same as existing summon-unit convention):
-> sprite sheet 512×64, exactly 8 frames of 64×64 side by side, consistent
-> character across frames: frames 1-4 idle sway, 5-6 attack lunge, 7 damaged
-> flinch, 8 collapse/dissipate.
+Frame semantics (same across all sheets): frames 1-4 idle sway, 5-6 attack
+lunge, 7 damaged flinch, 8 collapse/dissipate.
+
+Base unit names per faction/tier (from `src/town/BuildingRegistry.cpp` — the
+authoritative source; `sprite_brief.md` no longer exists), so you know which
+unit each `faction_F_tT` sheet actually depicts:
+
+| Faction (F) | T1 | T2 | T3 | T4 | T5 | T6 |
+|---|---|---|---|---|---|---|
+| 0 Holy Order | Squire | Paladin | Crusader | Battle Cleric | Holy Champion | Archangel |
+| 1 Crimson Wardens | Scout | Ranger | Hunter | Berserker | Warden Commander | Warlord |
+| 2 Thornkin | Vine Sprite | Thornkin Warrior | Forest Guardian | Treant | Elder Thornkin | Ancient Colossus |
+| 3 Eternal Empire | Skeleton Soldier | Armoured Skeleton | Zombie Warrior | Death Knight | Lich | Eternal Emperor |
+| 4 Bloodsworn | Cultist | Blood Warrior | Berserker | Blood Champion | Oracle | Bloodsworn Avatar |
+| 5 Voidkin | Void Sprite | Void Scout | Void Stalker | Void Mage | Void Wraith | Void Herald |
+| 6 Iron Assembly | Automaton | Infantry Unit | Clockwork Warrior | Gunner | Steam Colossus | Iron Titan |
+| 7 Amalgamate | Crawler | Flesh Warrior | Brute | Behemoth | Flesh Colossus | Apex |
+| 8 Convergence | Initiate | Soldier | Mirror Warrior | Champion | Elite | Convergence Prime |
 
 ---
 

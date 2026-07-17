@@ -71,7 +71,24 @@ background, same style line.
 
 ## 5. Wiring status
 - Towers, walls, gate, moat exist as GAMEPLAY today (per-faction stats).
-- Rendering currently uses the generic tile/unit placeholders; once these
-  files exist, sprite lookup hooks go into the combat renderer (unit name →
-  engine key mapping, faction → tower/wall art). Ping Claude with "wire the
-  siege art" once the assets are in `assets/`.
+- **Base siege art IS wired and rendering** now: `Game_Combat.cpp`'s `drawRun`
+  lambda draws `m_wallTex[sf]` / `m_wallDamagedTex[sf]` / `m_moatTex[sf]` and
+  the gate overlays `m_gateTex[sf]`. (This §5 previously said "uses generic
+  placeholders" — stale; the base fort art landed.)
+
+### 5b. ⚠️ Tall wall/moat variant — ART EXISTS, WIRING REGRESSED
+`assets/siege/wall_0..8_tall.png` and `moat_0..8_tall.png` (18 files) are the
+"puzzle-fit" taller fortification art. They are present in `assets/` but the
+engine does **not** load or use them — the wiring (`m_wallTallTex` /
+`m_moatTallTex` texture arrays + a `tallTex` param on `drawRun` preferring the
+tall art for the undamaged wall state) was written in a prior session but that
+change was **uncommitted and got discarded**. Grep confirms `m_wallTallTex` = 0
+files in the tree.
+
+To restore (a code task, verify with a live siege so alignment/size is right):
+1. `Game.h`: `Texture m_wallTallTex[NUM_FACTIONS]; Texture m_moatTallTex[NUM_FACTIONS];`
+2. `Game_Core.cpp`: load `wall_%d_tall.png` / `moat_%d_tall.png` into them.
+3. `Game_Combat.cpp` `drawRun`: add a `tallTex` param; use it for the healthy
+   (non-damaged) wall/moat state when `.ok()`, else fall back to the base tex.
+Deferred deliberately: it can't be visually verified headlessly, so it should be
+done when a siege battle can be watched on screen.
