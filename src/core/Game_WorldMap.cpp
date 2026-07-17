@@ -1065,6 +1065,21 @@ void Game::updateWorldMap(float dt)
                     }
                 }
 
+                // Hard backstop for the spectator harness: if a game hasn't
+                // resolved by week 80 (naval invasion now lets island players be
+                // reached, but a big multi-player XL map can still grind on),
+                // declare the strongest survivor the winner so the watch run
+                // always terminates instead of running forever. Real (non-watch)
+                // games are unaffected — this whole block is watch-only.
+                if (!gameOver && m_turns.week() >= 80 && !alive.empty()) {
+                    long long bestStr = -1;
+                    for (uint32_t o : alive) {
+                        long long s = ownerStrength(o);
+                        if (s > bestStr) { bestStr = s; dominantOwner = o; }
+                    }
+                    gameOver = true;
+                }
+
                 if (gameOver) {
                     uint32_t winner = dominantOwner ? dominantOwner
                                     : (alive.empty() ? 0u : alive.front());
