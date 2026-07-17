@@ -99,6 +99,14 @@ struct Hero
 
     // Naval movement
     bool onBoat    = false;  // hero is aboard a boat — can traverse Water tiles
+    // AI target-lock: when an AI hero commits to marching on a distant enemy
+    // town, it stores the town position here and keeps heading there instead of
+    // re-evaluating every turn (which caused target oscillation — a strong hero
+    // "eyeing" 6 towns at 200+ hexes and marching to none). Cleared on arrival,
+    // when the town is captured/changes owner, or after a timeout.
+    bool        hasMarchGoal = false;
+    HexCoord    marchGoal{};
+    int         marchGoalTurns = 0;   // turns spent committed (timeout guard)
     int  boatCount = 0;      // boats built so far (cost escalates per boat)
 
     // Specialty progression: tracked stats for specialty effects

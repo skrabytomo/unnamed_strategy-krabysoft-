@@ -2115,13 +2115,6 @@ void Game::doEndTurn()
                                 // pre-multiply by sqrt(dist) to soften it.
                                 int d = std::max(1, HexGrid::distance(eHero.pos, t.pos));
                                 addAttack(t.pos, val * std::sqrt((float)d));
-                                // Diagnostic: is this town the hero's top pick?
-                                // Logged sparsely (rival's last town only) so we
-                                // can confirm elimination targeting in the log.
-                                if (rivalTowns == 1 && (m_turns.week() % 4 == 0))
-                                    gLog("  P%u %s eyeing kill on P%u last town %s (str %lld, dist %d)\n",
-                                         eHero.ownerId, eHero.name.c_str(), t.ownerId,
-                                         t.name.c_str(), myStr, d);
                             }
                         }
                         // Resources — deny player's key resource and favour own faction's
@@ -2217,6 +2210,46 @@ void Game::doEndTurn()
                     if (cands.empty()) break;
                     std::sort(cands.begin(), cands.end(),
                               [](const Cand& a, const Cand& b){ return a.score > b.score; });
+
+                    // ── AI target-lock ──────────────────────────────────────────
+                    // If this hero already committed to marching on an enemy town,
+                    // keep heading there rather than re-evaluating every turn (the
+                    // oscillation bug: a strong hero "eyeing" 6 towns at 200+ hexes
+                    // and committing to none). Drop the lock when the town is no
+                    // longer an enemy town, on arrival, or after a timeout.
+                    auto townEnemyAt = [&](HexCoord p)->bool{
+                        for (const auto& t : m_towns)
+                            if (t.pos == p && t.ownerId != 0 && !isAllied(t.ownerId, eHero.ownerId))
+                                return true;
+                        return false;
+                    };
+                    if (eHero.hasMarchGoal &&
+                        (!townEnemyAt(eHero.marchGoal) || eHero.marchGoalTurns > 60)) {
+                        eHero.hasMarchGoal = false; eHero.marchGoalTurns = 0;
+                    }
+                    // Commit to a new goal if the top candidate is an enemy town.
+                    if (!eHero.hasMarchGoal && townEnemyAt(cands[0].pos)) {
+                        eHero.hasMarchGoal = true;
+                        eHero.marchGoal = cands[0].pos;
+                        eHero.marchGoalTurns = 0;
+                        for (const auto& t : m_towns)
+                            if (t.pos == cands[0].pos) {
+                                gLog("P%u %s committing to march on %s (P%u) dist %d\n",
+                                     eHero.ownerId, eHero.name.c_str(), t.name.c_str(),
+                                     t.ownerId, HexGrid::distance(eHero.pos, t.pos));
+                                break;
+                            }
+                    }
+                    // While locked, force the committed town to the front so the
+                    // hero keeps marching there instead of chasing a nearer mine.
+                    if (eHero.hasMarchGoal) {
+                        eHero.marchGoalTurns++;
+                        bool present = false;
+                        for (auto& c : cands) if (c.pos == eHero.marchGoal) { c.score = 1e9f; present = true; break; }
+                        if (!present) cands.insert(cands.begin(), {eHero.marchGoal, 1e9f});
+                        std::sort(cands.begin(), cands.end(),
+                                  [](const Cand& a, const Cand& b){ return a.score > b.score; });
+                    }
 
                     auto costFn = [this, &eHero, aggressive, combatTriggered,
                                    &playerHero](HexCoord c) -> int {
