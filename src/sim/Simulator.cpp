@@ -145,10 +145,17 @@ std::string Simulator::buildReport(const SimResult& r)
             if (!m.imbalanced) continue;
             any = true;
             float pct = m.winRate1 * 100.0f;
+            // Show each side's army gold cost + the cost ratio. A lopsided win
+            // rate against a matching cost gap is "you paid for it"; a lopsided
+            // win rate at ~equal cost is a TRUE balance problem worth tuning.
+            float costRatio = (m.armyCostF2 > 0)
+                            ? static_cast<float>(m.armyCostF1) / m.armyCostF2 : 0.0f;
             ss << "  " << factionName(m.f1) << " vs " << factionName(m.f2)
                << "  →  " << std::fixed << std::setprecision(1) << pct << "% / "
                << (100.0f - pct) << "%"
-               << "  avg " << std::setprecision(1) << m.avgRounds << " rounds\n";
+               << "  avg " << std::setprecision(1) << m.avgRounds << " rounds"
+               << "  [cost " << m.armyCostF1 << "g vs " << m.armyCostF2 << "g, "
+               << std::setprecision(2) << costRatio << "x]\n";
         }
     }
     if (!any) ss << "  None — all matchups within balance range.\n";

@@ -55,6 +55,26 @@ lot has shipped since it was written. Current reality:
   (AI-vs-AI attacks now common; naval invasion now works — see below.)
 - UI: no "already built" indicator in town; kingdom overview is text not visual;
   hero right-click artifact sheet not built; town/hero pickers need icons.
+- **Faction combat balance is badly off** (found 2026-07-17 via `sim_test`,
+  the still-valid real-combat simulator — NOT the deleted fullgame_sim).
+  At a 5-week army snapshot, **34 of 36 matchups exceed ±15% win rate**;
+  several are total wipes (Crimson Wardens 100% vs Bloodsworn / Amalgamate /
+  Convergence; Bloodsworn ~1% vs Voidkin/Holy Order). Crimson Wardens reads
+  as broadly overpowered, Bloodsworn as broadly underpowered.
+  The report now prints each side's army gold cost + ratio (added 2026-07-17
+  in `src/sim/Simulator.cpp`), and the cost normalization **confirms the gap is
+  real, not just "you paid for it":**
+  - Crimson Wardens **100% vs Bloodsworn at 0.97× cost** — total wipe while
+    spending *less* gold. Holy Order **99% vs Bloodsworn at 0.80× cost**.
+  - **Bloodsworn is the most expensive 5-week army (~15.5k g) yet loses to
+    cheaper ones** — overpriced AND understatted; it's the clear #1 fix target.
+  - Crimson Wardens & Voidkin are the strongest per-gold; the mid pack
+    (Thornkin/Eternal Empire/Iron Assembly) is closer.
+  Tuning target: pull win rates toward 50% at ~equal cost. Start with
+  Bloodsworn (cut unit gold cost and/or raise stats in
+  `src/town/BuildingRegistry.cpp` — NOT an AI-thread file), re-run
+  `./build/bin/sim_test.exe`, iterate. This is a subjective design pass, left
+  for a hands-on session rather than done blindly.
 
 **Art gaps (Gemini work):** only 1 hero portrait per faction (all heroes look
 same); upgrade-path A/B unit sprites (0/108). See `ART_DROPIN_MANIFEST.md`,
