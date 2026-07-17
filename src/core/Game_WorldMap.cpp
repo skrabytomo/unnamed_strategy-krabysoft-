@@ -215,17 +215,31 @@ static int aiPaidRecruit(Town& town, std::vector<UnitStack>& into,
 
 // Move a town's garrison into a hero's army (merge; respect the 7-slot cap —
 // whatever doesn't fit stays behind as garrison).
-static void takeGarrison(Town& town, Hero& hero)
+static void takeGarrison(Town& town, Hero& hero, const std::vector<UnitDef>& defs)
 {
-    for (auto it = town.garrison.begin(); it != town.garrison.end();) {
+    // Merge same-defId stacks first (hero + garrison combined pool).
+    std::vector<UnitStack> pool = hero.army;
+    for (const auto& g : town.garrison) {
         bool merged = false;
-        for (auto& s : hero.army)
-            if (s.defId == it->defId) { s.count += it->count; merged = true; break; }
-        if (!merged && hero.army.size() < 7) {
-            hero.army.push_back(*it);
-            merged = true;
-        }
-        it = merged ? town.garrison.erase(it) : ++it;
+        for (auto& s : pool) if (s.defId == g.defId) { s.count += g.count; merged = true; break; }
+        if (!merged) pool.push_back(g);
+    }
+    // Per-unit value (hp*attack) to rank stacks — keep the strongest 7 in the
+    // hero, deposit the rest back into the garrison so nothing is wasted and a
+    // captured town's strong units bump weak fodder out of the field army.
+    auto unitVal = [&](int defId)->long long{
+        for (const auto& d : defs) if (d.id == defId) return (long long)d.hp * d.attack;
+        return 0;
+    };
+    std::sort(pool.begin(), pool.end(), [&](const UnitStack& a, const UnitStack& b){
+        return unitVal(a.defId) > unitVal(b.defId);
+    });
+    hero.army.clear();
+    town.garrison.clear();
+    for (size_t i = 0; i < pool.size(); ++i) {
+        if (pool[i].count <= 0) continue;
+        if (hero.army.size() < 7) hero.army.push_back(pool[i]);
+        else                      town.garrison.push_back(pool[i]);  // leftover defends the town
     }
 }
 
@@ -724,7 +738,7 @@ void Game::watchAiMovePlayerHero()
                 // Recruit from now-owned town — paid from the watched side's
                 // real resources, same rules as a human player
                 if (t.ownerId == 1) {
-                    takeGarrison(t, hero);
+                    takeGarrison(t, hero, udefs);
                     aiPaidRecruit(t, hero.army, m_playerResources, udefs);
                     // Upgrade base-tier stacks to PathA when PathA dwelling is built
                     for (const auto& dw : t.dwellings) {
@@ -815,7 +829,7 @@ void Game::watchAiMoveSupportHero(Hero& hero, bool isCourier)
         // recruits the side can afford (paid, same rules as a human player).
         for (auto& t : m_towns) {
             if (t.ownerId != 1 || t.pos != hero.pos) continue;
-            takeGarrison(t, hero);
+            takeGarrison(t, hero, udefs);
             aiPaidRecruit(t, hero.army, m_playerResources, udefs);
             break;
         }
@@ -1863,7 +1877,7 @@ void Game::doEndTurn()
                 for (auto& t : m_towns) {
                     if (t.ownerId != eHero.ownerId) continue;
                     if (HexGrid::distance(eHero.pos, t.pos) > 1) continue;
-                    takeGarrison(t, eHero);
+                    takeGarrison(t, eHero, unitDefs);
                     aiPaidRecruit(t, eHero.army, aiResources(eHero.ownerId), unitDefs);
                     // Field-upgrade base-tier stacks to whichever upgrade path the
                     // town has built (previously only the watch-mode player did this,
@@ -2550,7 +2564,7 @@ void Game::doEndTurn()
                             } else if (t.ownerId == eHero.ownerId) {
                                 // Stepped into one of its OWN towns — pick up
                                 // the garrison and recruit, keep moving.
-                                takeGarrison(t, eHero);
+                                takeGarrison(t, eHero, unitDefs);
                                 aiPaidRecruit(t, eHero.army, aiResources(eHero.ownerId), unitDefs);
                             } else if (t.ownerId == 0) {
                                 t.ownerId = eHero.ownerId;
@@ -2569,8 +2583,21 @@ void Game::doEndTurn()
                                 // with losses (mirrors the human-town "empty
                                 // garrison" stop-here behaviour below).
                                 int garrStr  = stacksStrength(t.garrison, unitDefs);
-                                int fortBonus = t.hasBuilding(BID::BASTION) ? garrStr / 2 : garrStr / 4;
-                                int defStr = garrStr + fortBonus + 100; // token wall/defender floor
+                                // Fort ladder gives escalating defensive strength
+                                // so a fortified town is genuinely hard to take —
+                                // defending a Castle is as valid as attacking one.
+                                float fortMul = 0.f;
+                                if (t.hasBuilding(BID::CASTLE))      fortMul = 1.5f;
+                                else if (t.hasBuilding(BID::CITADEL)) fortMul = 1.0f;
+                                else if (t.hasBuilding(BID::FORT))    fortMul = 0.6f;
+                                if (t.hasBuilding(BID::BASTION))     fortMul += 0.75f;
+                                int fortBonus = (int)(garrStr * fortMul);
+                                // Walls also give a flat floor so an empty town
+                                // still resists a token force.
+                                int wallFloor = t.hasBuilding(BID::CASTLE) ? 800
+                                              : t.hasBuilding(BID::CITADEL) ? 500
+                                              : t.hasBuilding(BID::FORT) ? 300 : 100;
+                                int defStr = garrStr + fortBonus + wallFloor;
                                 int bigIdx = 0;
                                 for (int i = 1; i < (int)eHero.army.size(); ++i)
                                     if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
@@ -2751,6 +2778,35 @@ void Game::doEndTurn()
                 }
                 gLog("AI economy: %d towns + %d mines across %zu players -> %dg %di combined\n",
                      aiTowns, aiMines, m_aiResources.size(), totalGold, totalIron);
+                // ── Townless decay ──────────────────────────────────────────
+                // An owner with no town can't sustain heroes forever. After a
+                // grace period its heroes disband (starved of a home) and the
+                // player is eliminated — this is what removes a player who lost
+                // their last town but still has a wandering army.
+                for (uint32_t o = 1; o <= 9; ++o) {
+                    int towns = 0;
+                    for (const auto& t : m_towns) if (t.ownerId == o) towns++;
+                    if (towns > 0) { m_ownerTownlessWeeks[o] = 0; continue; }
+                    // Does this owner still have any hero at all?
+                    bool hasHero = false;
+                    if (o == 1u) hasHero = !m_heroes.empty();
+                    else for (const auto& h : m_enemyHeroes)
+                        if (h.ownerId == o && !h.eliminated) { hasHero = true; break; }
+                    if (!hasHero) continue;
+                    m_ownerTownlessWeeks[o]++;
+                    if (m_ownerTownlessWeeks[o] >= 6) {
+                        // Starve out — disband this owner's heroes.
+                        int disbanded = 0;
+                        for (auto& h : m_enemyHeroes)
+                            if (h.ownerId == o && !h.eliminated) {
+                                h.eliminated = true; h.army.clear(); disbanded++;
+                            }
+                        if (o == 1u) m_heroes.clear();
+                        gLog("P%u eliminated — no town for 6 weeks, %d hero(es) starved out (week %d)\n",
+                             o, disbanded, m_turns.week());
+                        m_ownerTownlessWeeks[o] = 0;
+                    }
+                }
                 // Per-player breakdown (every ~4 weeks) so we can see who is
                 // active vs idle across the whole game.
                 if (m_turns.week() % 4 == 0) {
@@ -3086,7 +3142,7 @@ void Game::doEndTurn()
                         // Without this the enemy fielded fodder heroes while its
                         // garrison + gold rotted in the town (223 mines / 185k gold
                         // and still losing), so the enemy hire must match exactly.
-                        takeGarrison(recruitTown, newHero);
+                        takeGarrison(recruitTown, newHero, unitDefs);
                         aiPaidRecruit(recruitTown, newHero.army, aiResources(recruitTown.ownerId), m_registry.units());
                         HexCoord spawnPos = recruitTown.pos;
                         for (auto& nb : HexGrid::neighbors(recruitTown.pos)) {
@@ -3178,7 +3234,7 @@ void Game::doEndTurn()
                         if (isCamped(recruitTown, fresh)) continue;
 
                         m_playerResources.add(ResourceType::Gold, -WATCH_HIRE_COST);
-                        takeGarrison(recruitTown, newHero);
+                        takeGarrison(recruitTown, newHero, unitDefs);
                         aiPaidRecruit(recruitTown, newHero.army, m_playerResources, unitDefs);
                         newHero.pos = spawnNear(recruitTown);
                         if (HexTile* ht = m_map.getTile(newHero.pos)) ht->heroId = newHero.id;

@@ -550,6 +550,11 @@ private:
     struct WatchPlayerRow { uint32_t owner; long long str; int heroes, towns, mines, gold; };
     std::vector<WatchPlayerRow> m_watchSummary;
     int          m_watchSummaryWeek = -1;
+    // Weeks each owner (1-9) has gone without any town. A hero can't be
+    // sustained forever with no town — after a grace period the owner's heroes
+    // disband and the player is eliminated. This is what actually removes a
+    // player who lost their last town but still has a wandering army.
+    int          m_ownerTownlessWeeks[10] = {0};
     bool         m_conquestInArena   = false;   // true while an arena fight is active
     // Phase 2 revised: cheap recruit shop
     bool         m_conquestShowRecruit    = false;
