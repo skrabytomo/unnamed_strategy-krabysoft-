@@ -139,11 +139,19 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets
 )
+# Lua scripts must be COPIED, not just have an empty dir created for them.
+# scripts/autoload.lua + campaign.lua exist in the repo and install() ships
+# them, but the dev build only ever made an empty build/bin/scripts — so every
+# run logged "cannot open scripts/autoload.lua" and the whole Lua trigger /
+# campaign-scripting layer silently did nothing in any developer build.
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/scripts $<TARGET_FILE_DIR:${PROJECT_NAME}>/scripts
+)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
     $<TARGET_FILE_DIR:${PROJECT_NAME}>/saves
     $<TARGET_FILE_DIR:${PROJECT_NAME}>/maps
-    $<TARGET_FILE_DIR:${PROJECT_NAME}>/scripts
 )
 
 # (Both standalone simulators removed. `fullgame_sim` (2026-07-17) reimplemented
