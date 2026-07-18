@@ -177,7 +177,9 @@ bool Game::init(const std::string& title, int width, int height, bool hidden)
     // (background + progress bar) while the heavier sprite art streams in. The
     // world-map track + UI sounds load first and start playing immediately; the
     // larger tracks follow and drive the "Loading music" portion of the bar.
-    if (m_audio.init()) {
+    // Headless/hidden runs (e.g. --watch-ai-test) open NO audio device and play
+    // no music or SFX — a background test must never hijack the machine's sound.
+    if (!hidden && m_audio.init()) {
         m_audio.loadWav("click",   "assets/sounds/click.wav");
         m_audio.loadWav("pickup",  "assets/sounds/pickup.wav");
         m_audio.loadWav("levelup", "assets/sounds/levelup.wav");
