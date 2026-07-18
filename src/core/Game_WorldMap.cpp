@@ -2513,6 +2513,14 @@ void Game::doEndTurn()
                                 docks.push_back(t.pos);
                         std::vector<HexCoord> boatPath;
                         bool wasOnBoat = eHero.onBoat;
+                        // The target that motivated buying passage in the first
+                        // place. Must be latched BEFORE boarding, because the
+                        // moment the hero is floating offshore a fresh scoring
+                        // pass sees coastal land junk (a mine two hexes away)
+                        // and happily sends it back to the beach.
+                        HexCoord seaTarget{};
+                        bool haveSeaTarget = false;
+                        if (!cands.empty()) { seaTarget = cands[0].pos; haveSeaTarget = true; }
                         if (aiTryBoat(m_map, m_worldObjects, docks, eHero,
                                        aiResources(eHero.ownerId), costFn, boatPath)) {
                             path = boatPath;   // head to the dock
@@ -2526,6 +2534,17 @@ void Game::doEndTurn()
                             // re-score now that water is traversable so the hero
                             // actually sails toward the island target.
                             eHero.marchPath.clear(); eHero.marchPathIdx = 0;
+                            // Commit to the crossing: lock the overseas target as
+                            // the march goal so the re-score forces it to the
+                            // front of the candidates. Without this the hero
+                            // launched, immediately re-picked a nearby land
+                            // target, stepped ashore and disembarked — 6 boats
+                            // launched and 0 water tiles crossed in a real game.
+                            if (haveSeaTarget) {
+                                eHero.marchGoal      = seaTarget;
+                                eHero.hasMarchGoal   = true;
+                                eHero.marchGoalTurns = 0;
+                            }
                             continue;
                         } else if (path.empty()) {
                             break;             // no boat and nothing on land
