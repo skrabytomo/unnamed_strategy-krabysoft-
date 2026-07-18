@@ -302,7 +302,7 @@ static int dwellingPaidRecruit(WorldObject& obj, std::vector<UnitStack>& into,
 // On the shipyard tile: buy (if affordable). Otherwise: return a path to it.
 // Returns true if `outPath` was filled (caller keeps moving); buying returns
 // false so the caller re-scores candidates with water now traversable.
-static bool aiTryBoat(const HexMap& map, std::vector<WorldObject>& objs,
+static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
                       const std::vector<HexCoord>& townDocks,
                       Hero& hero, Resources& payer,
                       const Pathfinder::CostFn& costFn,
@@ -328,12 +328,29 @@ static bool aiTryBoat(const HexMap& map, std::vector<WorldObject>& objs,
     if (bestD == 0) {
         int goldCost = 2000 + hero.boatCount * 1000;
         if (payer.get(ResourceType::Gold) >= goldCost) {
+            // LAUNCH onto an adjacent water hex as part of boarding. Simply
+            // setting onBoat while the hero still stands on the land dock was
+            // the real "24 boats bought, never seen crossing water" bug: the
+            // hero's very next step was overland, which instantly disembarked
+            // it (onBoat=false), burning the boat and re-buying next turn,
+            // forever. You board a boat onto the water, not carry it inland.
+            HexCoord launch{}; bool haveLaunch = false;
+            for (const auto& nb : HexGrid::neighbors(hero.pos)) {
+                const HexTile* nt = map.getTile(nb);
+                if (nt && nt->terrain == Terrain::Water && !nt->blocked && nt->heroId == 0) {
+                    launch = nb; haveLaunch = true; break;
+                }
+            }
+            if (!haveLaunch) return false;   // dock has no free coast tile
             payer.add(ResourceType::Gold, -goldCost);
-            hero.onBoat = true;
+            if (HexTile* oldT = map.getTile(hero.pos)) oldT->heroId = 0;
+            hero.pos     = launch;
+            hero.onBoat  = true;
             hero.boatCount += 1;
-            gLog("%s bought a boat at shipyard (-%dg)\n", hero.name.c_str(), goldCost);
+            if (HexTile* nT = map.getTile(hero.pos)) nT->heroId = hero.id;
+            gLog("%s launched a boat at shipyard (-%dg)\n", hero.name.c_str(), goldCost);
         }
-        return false;  // re-score: water is open now (or we can't afford it yet)
+        return false;  // re-score: hero is afloat now
     }
     outPath = Pathfinder::find(map, hero.pos, dockPos, costFn);
     return !outPath.empty();
@@ -1915,6 +1932,101 @@ void Game::doEndTurn()
 
                 int eiStr = heroStrength(eHero, unitDefs);
 
+                // ── Owner's town count: drives desperation + world spells ────
+                int ownerTownCount = 0;
+                for (const auto& t : m_towns)
+                    if (t.ownerId == eHero.ownerId) ++ownerTownCount;
+                // A player with NO town is on a death clock — the weekly decay
+                // below starves its heroes out after 6 townless weeks. Sitting
+                // around guarantees elimination, so go all-in: max aggression
+                // and beeline the nearest enemy town. Better to die attacking
+                // than to be disbanded having never tried.
+                const bool townlessDesperate = (ownerTownCount == 0);
+
+                // ── AI world-map spells ──────────────────────────────────────
+                // The AI previously never cast ANY world spell (castWorldSpell
+                // is only reachable from the human UI panel), which is why it
+                // never founded a single Utopia city and never repositioned.
+                {
+                    Resources& spellRes = aiResources(eHero.ownerId);
+                    auto knows = [&](int sid) {
+                        for (int s : eHero.knownSpells) if (s == sid) return true;
+                        return false;
+                    };
+                    // FOUND CITY — a cleared Utopia under the hero becomes a
+                    // town. A level-10 AI hero picks the spell up here: it has
+                    // no spellbook UI to learn it from, so without this the
+                    // Utopia->town mechanic is unreachable for bots entirely.
+                    if (eHero.level >= 10 && !knows(SPL::FOUND_CITY))
+                        eHero.knownSpells.push_back(SPL::FOUND_CITY);
+                    if (eHero.level >= 10 && eHero.mana >= 15) {
+                        WorldObject* ut = nullptr;
+                        for (auto& obj : m_worldObjects)
+                            if (obj.type == WorldObjectType::Utopia
+                                && obj.pos == eHero.pos && obj.collected) { ut = &obj; break; }
+                        Resources cost;
+                        cost.set(ResourceType::Gold,         10000);
+                        cost.set(ResourceType::Iron,            10);
+                        cost.set(ResourceType::FaithStones,     10);
+                        cost.set(ResourceType::BloodEssence,    10);
+                        cost.set(ResourceType::VerdantSap,      10);
+                        cost.set(ResourceType::Mercury,         10);
+                        if (ut && spellRes.canAfford(cost)) {
+                            spellRes.spend(cost);
+                            eHero.mana -= 15;
+                            uint32_t newId = 1;
+                            for (const auto& t : m_towns) newId = std::max(newId, t.id + 1);
+                            Town nt;
+                            nt.id      = newId;
+                            nt.name    = eHero.name + "'s Settlement";
+                            nt.faction = eHero.faction;
+                            nt.pos     = eHero.pos;
+                            nt.ownerId = eHero.ownerId;
+                            if (HexTile* ht = m_map.getTile(nt.pos)) ht->townId = nt.id;
+                            m_towns.push_back(nt);
+                            uint32_t utId = ut->id;
+                            m_worldObjects.erase(
+                                std::remove_if(m_worldObjects.begin(), m_worldObjects.end(),
+                                    [utId](const WorldObject& o){ return o.id == utId; }),
+                                m_worldObjects.end());
+                            gLog("P%u %s founded a city on a cleared Utopia (week %d)\n",
+                                 eHero.ownerId, eHero.name.c_str(), m_turns.week());
+                            ++ownerTownCount;
+                        }
+                    }
+                    // TOWN PORTAL — jump home to defend a threatened town when
+                    // far away and still holding a full move.
+                    if (knows(SPL::TOWN_PORTAL) && eHero.mana >= 8
+                        && eHero.movePool >= eHero.maxMove && ownerTownCount > 0) {
+                        const Town* threatened = nullptr;
+                        for (const auto& t : m_towns) {
+                            if (t.ownerId != eHero.ownerId) continue;
+                            if (HexGrid::distance(eHero.pos, t.pos) <= 10) continue;
+                            bool underThreat = false;
+                            for (const auto& oh : m_enemyHeroes) {
+                                if (oh.eliminated || isAllied(oh.ownerId, eHero.ownerId)) continue;
+                                if (HexGrid::distance(oh.pos, t.pos) <= 6) { underThreat = true; break; }
+                            }
+                            if (!underThreat && !m_heroes.empty()
+                                && !isAllied(static_cast<uint32_t>(currentPlayerId()), eHero.ownerId)
+                                && HexGrid::distance(m_heroes[0].pos, t.pos) <= 6)
+                                underThreat = true;
+                            if (underThreat) { threatened = &t; break; }
+                        }
+                        if (threatened) {
+                            if (HexTile* oldT = m_map.getTile(eHero.pos)) oldT->heroId = 0;
+                            eHero.pos    = threatened->pos;
+                            eHero.mana  -= 8;
+                            eHero.onBoat = false;
+                            eHero.marchPath.clear(); eHero.marchPathIdx = 0;
+                            if (HexTile* nT = m_map.getTile(eHero.pos)) nT->heroId = eHero.id;
+                            gLog("P%u %s cast Town Portal to defend %s (week %d)\n",
+                                 eHero.ownerId, eHero.name.c_str(),
+                                 threatened->name.c_str(), m_turns.week());
+                        }
+                    }
+                }
+
                 // Strength gauge vs the NEAREST rival hero to this AI hero —
                 // human or bot alike (was always the single active player
                 // hero, so hot-seat/rival-AI opponents nearer by were ignored).
@@ -1967,8 +2079,12 @@ void Game::doEndTurn()
                 if (m_turns.week() >= 20 && !isDefender
                     && eiStr * 10 >= nearHumanStr * 8)
                     aggressive = true;
+                // Townless = doomed anyway: always commit, never hold back.
+                if (townlessDesperate) aggressive = true;
                 // Retreat when very weak regardless of role (difficulty + persona)
                 bool veryWeak   = (eiStr * 10 <  nearHumanStr * ownerRetreat);
+                // ...and never retreat/cower when there's no home to run to.
+                if (townlessDesperate) veryWeak = false;
 
                 // Graduated retreat thresholds
                 float strRatio = nearHumanStr > 0 ? (float)eiStr / nearHumanStr : 99.f;
@@ -2131,13 +2247,20 @@ void Game::doEndTurn()
                         float strBoost = 1.f + std::min(8.f, (float)myStr / 60000.f);
                         for (const auto& t : m_towns) {
                             if (t.ownerId == 0) {
-                                addAttack(t.pos, 150.f);       // neutral town
+                                // Homeless: an unowned town is a free home — grab
+                                // it over anything else on the map.
+                                addAttack(t.pos, townlessDesperate ? 20000.f : 150.f);
                             } else if (!isAllied(t.ownerId, eHero.ownerId)) {
                                 int rivalTowns = 0;
                                 for (const auto& t2 : m_towns)
                                     if (t2.ownerId == t.ownerId) ++rivalTowns;
                                 float val = 600.f * strBoost;
                                 if (rivalTowns == 1) val = 1200.f * strBoost; // elimination kill shot
+                                // Suicide run: with no town of our own we're dead
+                                // in 6 weeks regardless, so ANY enemy town
+                                // outweighs every mine/chest on the map. Take one
+                                // or die trying.
+                                if (townlessDesperate) val = 20000.f;
                                 // Gentler distance penalty for towns: use sqrt(dist)
                                 // instead of dist so a strong army will cross the
                                 // map for the kill. add() divides by dist, so we
@@ -2365,9 +2488,21 @@ void Game::doEndTurn()
                             if (t.ownerId == eHero.ownerId && t.hasBuilding(BID::TOWN_SHIPYARD))
                                 docks.push_back(t.pos);
                         std::vector<HexCoord> boatPath;
+                        bool wasOnBoat = eHero.onBoat;
                         if (aiTryBoat(m_map, m_worldObjects, docks, eHero,
                                        aiResources(eHero.ownerId), costFn, boatPath)) {
                             path = boatPath;   // head to the dock
+                        } else if (!wasOnBoat && eHero.onBoat) {
+                            // Just BOARDED at the dock this call. aiTryBoat returns
+                            // false here expecting a re-score, but the stale land
+                            // `path` (a fallback target) would walk the hero back
+                            // onto land and instantly disembark — wasting the boat
+                            // and re-buying every turn (the "28 boats bought, never
+                            // seen crossing water" bug). Drop the land path and
+                            // re-score now that water is traversable so the hero
+                            // actually sails toward the island target.
+                            eHero.marchPath.clear(); eHero.marchPathIdx = 0;
+                            continue;
                         } else if (path.empty()) {
                             break;             // no boat and nothing on land
                         }
@@ -2385,6 +2520,9 @@ void Game::doEndTurn()
                     eHero.pos = next;
                     eHero.movePool -= cost;
                     if (HexTile* nT = m_map.getTile(eHero.pos)) nT->heroId = eHero.id;
+                    if (eHero.onBoat && nextTile->terrain == Terrain::Water)
+                        gLog("  [SAIL] %s crossing water at (%d,%d) wk%d\n",
+                             eHero.name.c_str(), next.q, next.r, m_turns.week());
                     if (eHero.onBoat && nextTile->terrain != Terrain::Water)
                         eHero.onBoat = false;  // disembark
                     // If following the cached march path and we stepped onto its
