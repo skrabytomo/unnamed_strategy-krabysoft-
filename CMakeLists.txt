@@ -146,30 +146,13 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     $<TARGET_FILE_DIR:${PROJECT_NAME}>/scripts
 )
 
-# ── Standalone balance simulator (no SDL / ImGui / OpenGL) ───────────────────
-set(SIM_SOURCES
-    src/sim/sim_main.cpp
-    src/sim/Simulator.cpp
-    src/sim/ArmyBuilder.cpp
-    src/town/BuildingRegistry.cpp
-    src/core/DevLog.cpp
-    src/combat/CombatEngine.cpp
-    src/combat/CombatGrid.cpp
-    src/combat/CombatUnit.cpp
-    src/combat/DamageCalc.cpp
-    src/world/HexGrid.cpp
-    src/world/HexMap.cpp
-    src/hero/Hero.cpp
-    src/hero/Artifacts.cpp
-)
-
-add_executable(sim_test ${SIM_SOURCES})
-target_include_directories(sim_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_compile_features(sim_test PRIVATE cxx_std_20)
-
-# (The full AI-vs-AI game simulator `fullgame_sim` was removed 2026-07-17 — see
-#  THREADING.md. Its AI was a separate reimplementation that didn't match the
-#  real game AI, so its balance numbers measured the wrong thing.)
+# (Both standalone simulators removed. `fullgame_sim` (2026-07-17) reimplemented
+#  the AI and measured the wrong thing. `sim_test` — the combat/balance
+#  simulator — was removed too: its abstract equal-week matchups did not
+#  reflect real play and its "balance" numbers were misleading. The reusable
+#  pieces (Simulator/ArmyBuilder) stay in src/sim/ because the in-game map
+#  editor's SimulatorWindow and Conquest mode depend on them; only the
+#  standalone entry point (src/sim/sim_main.cpp) and its target are gone.)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PACKAGING — self-contained install + one-click installer
