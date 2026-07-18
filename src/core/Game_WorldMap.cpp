@@ -1943,6 +1943,48 @@ void Game::doEndTurn()
                 // than to be disbanded having never tried.
                 const bool townlessDesperate = (ownerTownCount == 0);
 
+                // Found City, as a callable: a bot clears a Utopia mid-move and
+                // has walked on by the next turn, so a turn-start-only check
+                // never fired. This runs BOTH at turn start and immediately
+                // after a Utopia is cleared, while the hero is still stood on it.
+                auto tryFoundCity = [&]() -> bool {
+                    if (eHero.level < 10 || eHero.mana < 15) return false;
+                    WorldObject* ut = nullptr;
+                    for (auto& obj : m_worldObjects)
+                        if (obj.type == WorldObjectType::Utopia
+                            && obj.pos == eHero.pos && obj.collected) { ut = &obj; break; }
+                    if (!ut) return false;
+                    Resources cost;
+                    cost.set(ResourceType::Gold,         10000);
+                    cost.set(ResourceType::Iron,            10);
+                    cost.set(ResourceType::FaithStones,     10);
+                    cost.set(ResourceType::BloodEssence,    10);
+                    cost.set(ResourceType::VerdantSap,      10);
+                    cost.set(ResourceType::Mercury,         10);
+                    Resources& res = aiResources(eHero.ownerId);
+                    if (!res.canAfford(cost)) return false;
+                    res.spend(cost);
+                    eHero.mana -= 15;
+                    uint32_t newId = 1;
+                    for (const auto& t : m_towns) newId = std::max(newId, t.id + 1);
+                    Town nt;
+                    nt.id      = newId;
+                    nt.name    = eHero.name + "'s Settlement";
+                    nt.faction = eHero.faction;
+                    nt.pos     = eHero.pos;
+                    nt.ownerId = eHero.ownerId;
+                    if (HexTile* ht = m_map.getTile(nt.pos)) ht->townId = nt.id;
+                    m_towns.push_back(nt);
+                    uint32_t utId = ut->id;
+                    m_worldObjects.erase(
+                        std::remove_if(m_worldObjects.begin(), m_worldObjects.end(),
+                            [utId](const WorldObject& o){ return o.id == utId; }),
+                        m_worldObjects.end());
+                    gLog("P%u %s founded a city on a cleared Utopia (week %d)\n",
+                         eHero.ownerId, eHero.name.c_str(), m_turns.week());
+                    return true;
+                };
+
                 // ── AI world-map spells ──────────────────────────────────────
                 // The AI previously never cast ANY world spell (castWorldSpell
                 // is only reachable from the human UI panel), which is why it
@@ -1957,43 +1999,18 @@ void Game::doEndTurn()
                     // town. A level-10 AI hero picks the spell up here: it has
                     // no spellbook UI to learn it from, so without this the
                     // Utopia->town mechanic is unreachable for bots entirely.
-                    if (eHero.level >= 10 && !knows(SPL::FOUND_CITY))
+                    // Base heroes cap at maxMana=10 but Found City costs 15, so
+                    // the precondition was literally unsatisfiable — lift the
+                    // ceiling along with the grant.
+                    if (eHero.level >= 10 && !knows(SPL::FOUND_CITY)) {
                         eHero.knownSpells.push_back(SPL::FOUND_CITY);
-                    if (eHero.level >= 10 && eHero.mana >= 15) {
-                        WorldObject* ut = nullptr;
-                        for (auto& obj : m_worldObjects)
-                            if (obj.type == WorldObjectType::Utopia
-                                && obj.pos == eHero.pos && obj.collected) { ut = &obj; break; }
-                        Resources cost;
-                        cost.set(ResourceType::Gold,         10000);
-                        cost.set(ResourceType::Iron,            10);
-                        cost.set(ResourceType::FaithStones,     10);
-                        cost.set(ResourceType::BloodEssence,    10);
-                        cost.set(ResourceType::VerdantSap,      10);
-                        cost.set(ResourceType::Mercury,         10);
-                        if (ut && spellRes.canAfford(cost)) {
-                            spellRes.spend(cost);
-                            eHero.mana -= 15;
-                            uint32_t newId = 1;
-                            for (const auto& t : m_towns) newId = std::max(newId, t.id + 1);
-                            Town nt;
-                            nt.id      = newId;
-                            nt.name    = eHero.name + "'s Settlement";
-                            nt.faction = eHero.faction;
-                            nt.pos     = eHero.pos;
-                            nt.ownerId = eHero.ownerId;
-                            if (HexTile* ht = m_map.getTile(nt.pos)) ht->townId = nt.id;
-                            m_towns.push_back(nt);
-                            uint32_t utId = ut->id;
-                            m_worldObjects.erase(
-                                std::remove_if(m_worldObjects.begin(), m_worldObjects.end(),
-                                    [utId](const WorldObject& o){ return o.id == utId; }),
-                                m_worldObjects.end());
-                            gLog("P%u %s founded a city on a cleared Utopia (week %d)\n",
-                                 eHero.ownerId, eHero.name.c_str(), m_turns.week());
-                            ++ownerTownCount;
-                        }
+                        if (eHero.maxMana < 20) eHero.maxMana = 20;
                     }
+                    // Town Portal is cheap (8 mana) and within a mid-level bot's
+                    // reach, but bots only ever learned spells from rare scrolls.
+                    if (eHero.level >= 5 && !knows(SPL::TOWN_PORTAL))
+                        eHero.knownSpells.push_back(SPL::TOWN_PORTAL);
+                    if (tryFoundCity()) ++ownerTownCount;
                     // TOWN PORTAL — jump home to defend a threatened town when
                     // far away and still holding a full move.
                     if (knows(SPL::TOWN_PORTAL) && eHero.mana >= 8
@@ -2573,6 +2590,8 @@ void Game::doEndTurn()
                             loser.army.clear();
                             loser.eliminated = true;
                             if (HexTile* ct = m_map.getTile(eHero.pos)) ct->heroId = winner.id;
+                            // Killing a rival hero awarded nothing either.
+                            aiHeroAwardXp(winner, 200 + loserStr / 8);
                             gLog("%s defeated rival %s in the field (week %d)\n",
                                  winner.name.c_str(), loser.name.c_str(), m_turns.week());
                             fought = true;
@@ -2626,6 +2645,12 @@ void Game::doEndTurn()
                             aiHeroAwardXp(eHero, siteStr / 4);
                             if (utopia && obj.value > 0)
                                 aiEquipOrStashArtifact(eHero, obj.value);
+                            // Just cleared a Utopia and standing on it — this is
+                            // the only moment the Found City precondition holds,
+                            // since the hero walks on before its next turn.
+                            // (tryFoundCity erases the object, so bail out of
+                            // this loop rather than keep iterating it.)
+                            if (utopia && tryFoundCity()) break;
                             if (pandora) {
                                 // Same reward table as the player, seed-rolled
                                 uint32_t seed = static_cast<uint32_t>(obj.value);
@@ -2721,6 +2746,13 @@ void Game::doEndTurn()
                                         eHero.army[bigIdx].count =
                                             std::max(1, eHero.army[bigIdx].count -
                                                      eHero.army[bigIdx].count / 14);
+                                    // Mine guards are the AI's most common fight
+                                    // (~1000 a game) and awarded ZERO xp, which
+                                    // is why bot heroes sat at level 2 all game
+                                    // — gating Town Portal (L5), Found City
+                                    // (L10) and every level-up stat behind a
+                                    // bar they could never reach.
+                                    aiHeroAwardXp(eHero, 40 + m_turns.week() * 8);
                                     gLog("Enemy %s beat mine guard (week %d)\n",
                                          eHero.name.c_str(), m_turns.week());
                                 }
@@ -2799,6 +2831,9 @@ void Game::doEndTurn()
                                                                     - eHero.army[bigIdx].count / 10);
                                     t.garrison.clear();
                                     t.ownerId = eHero.ownerId;
+                                    // Taking a defended town is the biggest feat
+                                    // on the map — it awarded no xp at all.
+                                    aiHeroAwardXp(eHero, 400 + defStr / 4);
                                     gLog("Enemy %s stormed rival town %s (week %d)\n",
                                          eHero.name.c_str(), t.name.c_str(), m_turns.week());
                                 } else {
