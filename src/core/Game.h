@@ -171,6 +171,9 @@ private:
     void renderTownPortalPopup();
     void renderFoundCityPopup();
     void castWorldSpell(int spellId);
+    // Re-apply the Lighthouse sea-speed bonus to every hero, based on which
+    // side currently owns each Lighthouse. Call after a beacon changes hands.
+    void refreshLighthouseBoosts();
 
     // ── Combat board (hex grid with units) ────────────────────────────────────
     void renderCombatBoard();

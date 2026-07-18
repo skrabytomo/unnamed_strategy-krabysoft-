@@ -6,6 +6,17 @@
 #include "Skills.h"
 #include "Artifacts.h"
 
+// Hull types sold at a Shipyard. Trade-off is speed vs. price vs. teeth:
+//   Travel  — fastest crossing, no other perks (the default ferry)
+//   Fishing — cheapest and slowest, but earns gold each day spent at sea
+//   War     — armed; rams and sinks any other boat it meets on the water
+enum class BoatType : uint8_t { Travel = 0, Fishing = 1, War = 2 };
+
+// Base gold price per hull (a hero's Nth boat costs +1000 on top, as before)
+static constexpr int BOAT_BASE_COST[3] = { 2000, 1200, 3500 };
+// Movement cost per water hex per hull (lower = faster)
+static constexpr int BOAT_SEA_COST[3]  = { 1, 3, 2 };
+
 // Movement cost per terrain (indexed by Terrain enum)
 static constexpr int BASE_MOVE_COST[] = {
     2,  // Plains
@@ -99,6 +110,11 @@ struct Hero
 
     // Naval movement
     bool onBoat    = false;  // hero is aboard a boat — can traverse Water tiles
+    // Which hull the hero is sailing. Set when the boat is bought; only
+    // meaningful while onBoat. Travel = fast ferry, Fishing = cheap and slow
+    // but earns while at sea, War = armed, sinks other boats on contact.
+    BoatType boatType = BoatType::Travel;
+    bool lighthouseBoost = false;  // owner holds a Lighthouse: +1 sea speed, +vision
     // AI target-lock: when an AI hero commits to marching on a distant enemy
     // town, it stores the town position here and keeps heading there instead of
     // re-evaluating every turn (which caused target oscillation — a strong hero

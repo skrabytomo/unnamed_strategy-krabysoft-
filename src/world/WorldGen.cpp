@@ -194,6 +194,63 @@ WorldGenResult WorldGen::generate(HexMap& map, const WorldGenParams& p)
         }
     }
 
+    // ── 10. Naval objects: give the sea a reason to be sailed ────────────────
+    // Water used to be empty space you crossed to get somewhere. Scatter
+    // salvage and hazards across open water, plus Lighthouses on coastal water
+    // that a fleet can capture for a permanent speed/vision edge.
+    {
+        uint32_t navId = 90000;
+        for (auto& wo : result.worldObjects) navId = std::max(navId, wo.id + 1);
+
+        std::vector<HexCoord> openWater, coastalWater;
+        for (const HexCoord& coord : map.coords()) {
+            const HexTile* tile = map.getTile(coord);
+            if (!tile || tile->terrain != Terrain::Water || tile->blocked) continue;
+            bool taken = false;
+            for (const auto& wo : result.worldObjects)
+                if (wo.pos == coord) { taken = true; break; }
+            if (taken) continue;
+            int landNb = 0;
+            for (const HexCoord& nb : HexGrid::range(coord, 1)) {
+                const HexTile* nt = map.getTile(nb);
+                if (nt && nt->terrain != Terrain::Water) ++landNb;
+            }
+            if (landNb > 0) coastalWater.push_back(coord);
+            else            openWater.push_back(coord);
+        }
+
+        auto placeAt = [&](std::vector<HexCoord>& pool, WorldObjectType type,
+                           int count, int value) {
+            for (int i = 0; i < count && !pool.empty(); ++i) {
+                size_t pick = static_cast<size_t>(lcg(rng)) % pool.size();
+                WorldObject o;
+                o.id    = navId++;
+                o.type  = type;
+                o.pos   = pool[pick];
+                o.value = value ? value : static_cast<int>(lcg(rng) % 1000);
+                result.worldObjects.push_back(o);
+                pool[pick] = pool.back();
+                pool.pop_back();
+            }
+        };
+
+        // Scale with how much sea there actually is.
+        int seaTiles  = static_cast<int>(openWater.size() + coastalWater.size());
+        int flotsam   = std::clamp(seaTiles / 40, 0, 25);
+        int wrecks    = std::clamp(seaTiles / 90, 0, 10);
+        int monsters  = std::clamp(seaTiles / 120, 0, 8);
+        int beacons   = std::clamp(seaTiles / 150, 0, 6);
+
+        placeAt(openWater,    WorldObjectType::Flotsam,        flotsam,  0);
+        placeAt(openWater,    WorldObjectType::Shipwreck,      wrecks,   0);
+        placeAt(openWater,    WorldObjectType::SeaMonsterLair, monsters, 0);
+        placeAt(coastalWater, WorldObjectType::Lighthouse,     beacons,  0);
+
+        if (seaTiles > 0)
+            gLog("WorldGen: %d sea tiles -> %d flotsam, %d wrecks, %d lairs, %d lighthouses\n",
+                 seaTiles, flotsam, wrecks, monsters, beacons);
+    }
+
     gLog("WorldGen: %zu towns, %zu resources, %zu world objects\n",
            result.towns.size(), result.resources.size(), result.worldObjects.size());
     return result;

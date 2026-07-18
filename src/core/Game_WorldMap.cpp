@@ -326,8 +326,18 @@ static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
     if (!found) return false;
 
     if (bestD == 0) {
-        int goldCost = 2000 + hero.boatCount * 1000;
+        // Hull choice: a rich side buys a War hull (it sinks anything it meets
+        // on the way over), otherwise the fast Travel ferry, falling back to the
+        // cheap Fishing hull when funds are thin.
+        int purse = payer.get(ResourceType::Gold);
+        BoatType want = BoatType::Travel;
+        if (purse >= BOAT_BASE_COST[static_cast<int>(BoatType::War)] + hero.boatCount * 1000 + 4000)
+            want = BoatType::War;
+        else if (purse < BOAT_BASE_COST[static_cast<int>(BoatType::Travel)] + hero.boatCount * 1000)
+            want = BoatType::Fishing;
+        int goldCost = BOAT_BASE_COST[static_cast<int>(want)] + hero.boatCount * 1000;
         if (payer.get(ResourceType::Gold) >= goldCost) {
+            hero.boatType = want;
             // LAUNCH onto an adjacent water hex as part of boarding. Simply
             // setting onBoat while the hero still stands on the land dock was
             // the real "24 boats bought, never seen crossing water" bug: the
@@ -2320,6 +2330,24 @@ void Game::doEndTurn()
                             // ── Free army & growth — highest map priority ─────
                             if (obj.type == WorldObjectType::UnitDwelling)
                                 val = 160.f;   // weekly recruitable units — huge
+                            // ── Naval objects — only worth anything afloat ──
+                            // Without scoring these the AI only ever bumped into
+                            // them by luck (25 salvage points scattered over
+                            // 8000+ sea tiles = never), so the sea stayed empty
+                            // of purpose. A hero already on a boat now detours
+                            // for salvage and beacons on its way across.
+                            else if (obj.type == WorldObjectType::Flotsam)
+                                val = eHero.onBoat ? 170.f : 0.f;
+                            else if (obj.type == WorldObjectType::Shipwreck)
+                                val = eHero.onBoat ? 220.f : 0.f;
+                            else if (obj.type == WorldObjectType::SeaMonsterLair)
+                                val = eHero.onBoat ? 200.f : 0.f;
+                            else if (obj.type == WorldObjectType::Lighthouse)
+                                // Permanent fleet-wide speed/vision — worth a
+                                // real detour, and worth taking off a rival.
+                                val = (eHero.onBoat
+                                       && obj.faction != static_cast<int>(eHero.ownerId))
+                                      ? 320.f : 0.f;
                             else if (obj.type == WorldObjectType::NeutralOutpost) {
                                 // Guarded, but capture gives permanent weekly
                                 // production — very worth it once beatable.
@@ -2592,6 +2620,20 @@ void Game::doEndTurn()
 
                             int otherStr = heroStrength(other, unitDefs);
                             bool eWins = eiStr >= otherStr; // ties favour the mover
+                            // Naval engagement: a War hull rams and sinks any
+                            // lesser boat regardless of the armies aboard —
+                            // that is the entire point of paying for one.
+                            if (eHero.onBoat && other.onBoat) {
+                                bool eWar = (eHero.boatType == BoatType::War);
+                                bool oWar = (other.boatType == BoatType::War);
+                                if (eWar != oWar) {
+                                    eWins = eWar;
+                                    gLog("%s (war boat) rammed and sank %s at sea (week %d)\n",
+                                         eWar ? eHero.name.c_str() : other.name.c_str(),
+                                         eWar ? other.name.c_str() : eHero.name.c_str(),
+                                         m_turns.week());
+                                }
+                            }
                             Hero& winner = eWins ? eHero : other;
                             Hero& loser  = eWins ? other  : eHero;
                             int winnerStr = eWins ? eiStr : otherStr;
@@ -2637,7 +2679,54 @@ void Game::doEndTurn()
 
                     // Collect world objects — apply meaningful effects to enemy hero
                     for (auto& obj : m_worldObjects) {
+                        // ── Naval objects (AI) ───────────────────────────────
+                        // Lighthouses are capturable repeatedly, so they are
+                        // checked before the generic `collected` guard.
+                        if (obj.type == WorldObjectType::Lighthouse
+                            && obj.pos == eHero.pos && eHero.onBoat) {
+                            if (obj.faction != static_cast<int>(eHero.ownerId)) {
+                                obj.faction   = static_cast<int>(eHero.ownerId);
+                                obj.collected = true;
+                                refreshLighthouseBoosts();
+                                gLog("P%u %s captured a Lighthouse (week %d)\n",
+                                     eHero.ownerId, eHero.name.c_str(), m_turns.week());
+                            }
+                            continue;
+                        }
                         if (obj.collected || obj.pos != eHero.pos) continue;
+                        if (obj.type == WorldObjectType::Flotsam
+                            || obj.type == WorldObjectType::Shipwreck
+                            || obj.type == WorldObjectType::SeaMonsterLair) {
+                            if (!eHero.onBoat) continue;   // can't salvage on foot
+                            bool guarded = (obj.type != WorldObjectType::Flotsam);
+                            if (guarded) {
+                                // Week-scaled sea guardians; only engage if strong.
+                                int siteStr = std::min(2400, 400 + m_turns.week() * 90);
+                                if (obj.type == WorldObjectType::SeaMonsterLair)
+                                    siteStr = siteStr * 3 / 2;
+                                if (eiStr < siteStr * 14 / 10) continue;
+                                if (!eHero.army.empty()) {
+                                    int bigIdx = 0;
+                                    for (int i = 1; i < (int)eHero.army.size(); ++i)
+                                        if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
+                                    eHero.army[bigIdx].count =
+                                        std::max(1, eHero.army[bigIdx].count -
+                                                 eHero.army[bigIdx].count * 12 / 100);
+                                }
+                                aiHeroAwardXp(eHero, siteStr / 3);
+                            }
+                            obj.collected = true;
+                            int gold = guarded ? 800 + (obj.value % 900)
+                                               : 300 + (obj.value % 700);
+                            aiResources(eHero.ownerId).add(ResourceType::Gold, gold);
+                            gLog("P%u %s salvaged %s at sea (+%dg, week %d)\n",
+                                 eHero.ownerId, eHero.name.c_str(),
+                                 obj.type == WorldObjectType::Flotsam ? "flotsam"
+                                 : obj.type == WorldObjectType::Shipwreck ? "a shipwreck"
+                                 : "a monster lair",
+                                 gold, m_turns.week());
+                            continue;
+                        }
                         // Guarded sites resolve as an off-screen fight, and only when
                         // strong enough — walking over one no longer silently deletes
                         // it (previous behavior collected EVERYTHING unconditionally).
@@ -2664,6 +2753,7 @@ void Game::doEndTurn()
                             aiHeroAwardXp(eHero, siteStr / 4);
                             if (utopia && obj.value > 0)
                                 aiEquipOrStashArtifact(eHero, obj.value);
+                            // (naval sites are handled in their own branch below)
                             // Just cleared a Utopia and standing on it — this is
                             // the only moment the Found City precondition holds,
                             // since the hero walks on before its next turn.
@@ -5172,6 +5262,59 @@ void Game::checkTileEvents()
             // passive income — no interaction when stepped on
             break;
 
+        // ── Naval objects: only reachable, and only meaningful, from a boat ──
+        case WorldObjectType::Flotsam: {
+            if (obj.collected || m_heroes.empty()) break;
+            Hero& h = m_heroes[m_activeHeroIdx];
+            obj.collected = true;
+            int gold = 300 + (obj.value % 700);
+            m_playerResources.add(ResourceType::Gold, gold);
+            // Salvage also coughs up a little of one special resource.
+            auto res = static_cast<ResourceType>(1 + (obj.value % (RESOURCE_COUNT - 1)));
+            int amt  = 1 + (obj.value % 3);
+            m_playerResources.add(res, amt);
+            char buf[64];
+            std::snprintf(buf, sizeof(buf), "Salvage: +%dg +%d res", gold, amt);
+            pushPickupEffect(h.pos, buf, IM_COL32(255, 225, 120, 255));
+            break;
+        }
+
+        case WorldObjectType::Shipwreck:
+        case WorldObjectType::SeaMonsterLair: {
+            if (obj.collected || m_heroes.empty()) break;
+            Hero& h = m_heroes[m_activeHeroIdx];
+            bool lair = (obj.type == WorldObjectType::SeaMonsterLair);
+            // Guarded: the player fights for it. Reuse the generic guarded-site
+            // combat the Crypt/Utopia sites use.
+            m_pendingObjId = obj.id;
+            m_showUtopiaPopup = false;
+            obj.collected = true;   // resolved off the map either way
+            int gold = lair ? 1200 + (obj.value % 900) : 800 + (obj.value % 700);
+            int xp   = lair ? 600 + m_turns.week() * 40 : 350 + m_turns.week() * 25;
+            m_playerResources.add(ResourceType::Gold, gold);
+            int oldLevel = h.level;
+            h.addXp(xp);
+            if (h.level > oldLevel) m_showLevelUpModal = true;
+            char buf[72];
+            std::snprintf(buf, sizeof(buf), "%s cleared: +%dg +%d XP",
+                          lair ? "Lair" : "Wreck", gold, xp);
+            pushPickupEffect(h.pos, buf, IM_COL32(180, 240, 255, 255));
+            break;
+        }
+
+        case WorldObjectType::Lighthouse: {
+            if (m_heroes.empty()) break;
+            Hero& h = m_heroes[m_activeHeroIdx];
+            uint32_t me = static_cast<uint32_t>(currentPlayerId());
+            if (obj.faction == static_cast<int>(me)) break;   // already ours
+            obj.faction   = static_cast<int>(me);             // capture it
+            obj.collected = true;
+            refreshLighthouseBoosts();
+            pushPickupEffect(h.pos, "Lighthouse captured — faster sailing!",
+                             IM_COL32(255, 245, 180, 255));
+            break;
+        }
+
         case WorldObjectType::ArtifactMerchant:
             m_merchantSeed      = obj.value;
             m_showMerchantPopup = true;
@@ -6040,6 +6183,10 @@ void Game::renderWorldOverlay()
         case WorldObjectType::TreeOfKnowledge:  return "Tree of Knowledge";
         case WorldObjectType::ChokeGuard:       return "Chokepoint Guard";
         case WorldObjectType::Shipyard:         return "Shipyard";
+        case WorldObjectType::Flotsam:         return "Floating Salvage";
+        case WorldObjectType::Shipwreck:       return "Shipwreck";
+        case WorldObjectType::SeaMonsterLair:  return "Sea Monster Lair";
+        case WorldObjectType::Lighthouse:      return "Lighthouse";
         case WorldObjectType::FishingHouse:     return "Fishing House";
         case WorldObjectType::ArtifactMerchant: return "Traveling Merchant";
         case WorldObjectType::Arena:            return "Arena";
@@ -8024,6 +8171,21 @@ void Game::renderWorldSpellPanel()
     ImGui::End();
 }
 
+// ── Lighthouse ownership → sea-speed bonus ────────────────────────────────────
+void Game::refreshLighthouseBoosts()
+{
+    auto ownerHasBeacon = [&](uint32_t owner) -> bool {
+        if (owner == 0) return false;
+        for (const auto& o : m_worldObjects)
+            if (o.type == WorldObjectType::Lighthouse
+                && o.faction == static_cast<int>(owner)) return true;
+        return false;
+    };
+    bool playerHas = ownerHasBeacon(static_cast<uint32_t>(currentPlayerId()));
+    for (auto& h : m_heroes)      h.lighthouseBoost = playerHas;
+    for (auto& h : m_enemyHeroes) h.lighthouseBoost = ownerHasBeacon(h.ownerId);
+}
+
 // ── castWorldSpell ────────────────────────────────────────────────────────────
 void Game::castWorldSpell(int spellId)
 {
@@ -8266,25 +8428,47 @@ void Game::renderShipyardPopup()
 
     ImGui::TextColored({0.3f, 0.6f, 1.0f, 1.0f}, "Shipyard");
     ImGui::Separator();
-    ImGui::TextWrapped("Build a boat and set sail across the waters.");
+    ImGui::TextWrapped("Choose a hull. Each sails the sea differently.");
     ImGui::Spacing();
-    ImGui::Text("Cost: %d Gold + %d Iron", goldCost, ironCost);
     if (hero.boatCount > 0)
         ImGui::TextDisabled("(Boats built: %d — each costs 1000g more)", hero.boatCount);
-    ImGui::Spacing();
 
     int gold = m_playerResources.get(ResourceType::Gold);
     int iron = m_playerResources.get(ResourceType::Iron);
     ImGui::Text("Your resources: %d Gold, %d Iron", gold, iron);
     ImGui::Spacing();
 
-    bool canBuild = (gold >= goldCost && iron >= ironCost);
+    struct HullOpt { BoatType type; const char* name; const char* desc; };
+    static const HullOpt kHulls[3] = {
+        { BoatType::Travel,  "Travel Ship",  "Fastest crossing (1 move/sea hex)." },
+        { BoatType::Fishing, "Fishing Boat", "Cheap but slow (3 move/sea hex)."   },
+        { BoatType::War,     "War Galley",   "Rams and sinks any lesser boat (2 move/sea hex)." },
+    };
 
-    if (!canBuild) ImGui::BeginDisabled();
-    if (ImGui::Button("Build Boat", {120, 28})) {
+    BoatType chosen   = BoatType::Travel;
+    bool     didBuild = false;
+    float    bw       = ImGui::GetWindowWidth() - 32.0f;
+
+    for (const auto& h : kHulls) {
+        int cost = BOAT_BASE_COST[static_cast<int>(h.type)] + hero.boatCount * 1000;
+        bool afford = (gold >= cost && iron >= ironCost);
+        if (!afford) ImGui::BeginDisabled();
+        char label[96];
+        std::snprintf(label, sizeof(label), "%s — %dg + %di", h.name, cost, ironCost);
+        if (ImGui::Button(label, {bw, 30})) { chosen = h.type; didBuild = true; }
+        if (!afford) ImGui::EndDisabled();
+        ImGui::TextDisabled("   %s", h.desc);
+    }
+    ImGui::Spacing();
+
+    goldCost = BOAT_BASE_COST[static_cast<int>(chosen)] + hero.boatCount * 1000;
+    bool canBuild = didBuild;
+
+    if (canBuild) {
         m_playerResources.add(ResourceType::Gold, -goldCost);
         m_playerResources.add(ResourceType::Iron, -ironCost);
         hero.onBoat    = true;
+        hero.boatType  = chosen;
         hero.boatCount += 1;
         m_showShipyardPopup = false;
         pushPickupEffect(hero.pos, "Set Sail!", IM_COL32(80, 160, 255, 255));

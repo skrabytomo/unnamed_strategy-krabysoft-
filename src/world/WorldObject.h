@@ -40,6 +40,12 @@ enum class WorldObjectType : uint8_t
     Arena,              // fight for +1 ATK or +1 DEF (choice popup); questState=visiting hero id (visited once per hero)
     ExperienceWell,     // free XP boost; collected once; value=0 (xp scales with week at visit time)
     PandoraBox,         // guarded gamble: fight week-scaled guardians, roll a big reward; value=rng seed
+    // ── Naval objects — sit on WATER, reachable only aboard a boat ───────────
+    Flotsam,        // floating salvage: free gold/resources; value=gold, resourceType/value2 set
+    Shipwreck,      // guarded salvage: beat the wreck's guardians, then gold + artifact; value=rng seed
+    SeaMonsterLair, // hostile: week-scaled sea beast, big XP + treasure when cleared; value=rng seed
+    Lighthouse,     // capturable beacon on a coastal water tile: owner's boats
+                    // sail faster and see further. faction field = ownerId (0=neutral)
 };
 
 struct WorldObject

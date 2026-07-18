@@ -3,7 +3,15 @@
 
 int Hero::moveCost(Terrain t) const
 {
-    if (onBoat && t == Terrain::Water) return 2;  // fast sailing
+    if (onBoat && t == Terrain::Water) {
+        // Sea speed depends on the hull; a Lighthouse held by this hero's
+        // side shaves one more point off every water hex.
+        int idx = static_cast<int>(boatType);
+        if (idx < 0 || idx > 2) idx = 0;
+        int sea = BOAT_SEA_COST[idx];
+        if (lighthouseBoost) sea -= 1;
+        return std::max(1, sea);
+    }
 
     int base = BASE_MOVE_COST[static_cast<int>(t)];
 
