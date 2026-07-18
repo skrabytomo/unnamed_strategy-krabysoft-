@@ -2485,7 +2485,14 @@ void Game::doEndTurn()
                         for (const auto& t : m_towns)
                             // Own docks only — a rival AI player's shipyard
                             // isn't this hero's to use.
-                            if (t.ownerId == eHero.ownerId && t.hasBuilding(BID::TOWN_SHIPYARD))
+                            // Own OR allied shipyard towns. Restricting to the
+                            // hero's own owner left most bots with docks=0
+                            // (measured: heroes wanted a boat 1065 times in one
+                            // game and could not name a single dock), so naval
+                            // was dead on arrival for anyone who hadn't
+                            // personally built a coastal town.
+                            if (isAllied(t.ownerId, eHero.ownerId)
+                                && t.hasBuilding(BID::TOWN_SHIPYARD))
                                 docks.push_back(t.pos);
                         std::vector<HexCoord> boatPath;
                         bool wasOnBoat = eHero.onBoat;
