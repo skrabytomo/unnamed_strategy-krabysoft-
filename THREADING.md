@@ -204,10 +204,29 @@ acceptable — but it must be stated, not discovered later.
   what retires that objection: rollouts are pure, off the render thread, and
   embarrassingly parallel.
 - **Deeper horizons.** `kAiPathHorizon = 60` is purely a CPU concession.
-- **Cache the per-step candidate rescan.** Every step of every hero currently
-  rebuilds the whole candidate list (scan of all towns, resources, objects,
-  heroes) and re-sorts it. This is now the dominant cost and is **orthogonal and
-  race-free** — likely a bigger raw win than threading. Worth doing regardless.
+- ~~**Cache the per-step candidate rescan.**~~ **MEASURED AND WRONG (2026-07-19).**
+  This claimed the rescan was "the dominant cost" and "likely a bigger raw win
+  than threading." Instrumenting one turn on an 8-player XL map says otherwise:
+
+  ```
+  cand-rebuilds=100  cand=34.8ms  path=3977.1ms   (cand 1%)
+  cand-rebuilds=88   cand=31.4ms  path=4712.6ms   (cand 1%)
+  ```
+
+  The candidate rescan is **~30 ms/turn — about 1%**. **Pathfinding is ~99%, at
+  3.3–4.7 SECONDS per turn.** Caching the rescan would have bought ~1%.
+
+  **The real target is pathfinding volume.** A* runs per *move step*, not per
+  turn: ~85–100 steps per turn, each recomputing a full path to the same target.
+  The `marchPath`/`marchPathIdx` cache already avoids this for locked town
+  goals; extending that reuse to *all* targets (recompute only when the target
+  changes or the hero strays off the path) attacks the actual 99%. That is
+  race-free and orthogonal to threading — it is the item that deserves the
+  "worth doing regardless" label this bullet used to carry.
+
+  Note this also reframes Phase 3: moving a 3–4 s/turn workload off the render
+  thread stops it *blocking the frame*, but the turn still takes 3–4 s. Cutting
+  the pathfinding first makes Phase 3 cheaper and the sim genuinely faster.
 
 ---
 

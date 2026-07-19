@@ -1,5 +1,14 @@
 #include "Game.h"
 #include "WorkerPool.h"
+#include <chrono>
+
+// TEMP INSTRUMENT (THREADING.md Phase 4 claims the per-step candidate rescan is
+// the dominant cost and a bigger win than threading). Measure it rather than
+// trust it — the same document's fan-out advice turned out to be a pessimism.
+// Accumulated across one doEndTurn, logged and reset at the end of the turn.
+static long long g_candNs     = 0;
+static long long g_pathNs     = 0;
+static int       g_candBuilds = 0;
 #include "../hero/LevelUpSystem.h"
 #include "../hero/SkillRegistry.h"
 #include "../hero/HeroClass.h"
@@ -2168,6 +2177,10 @@ void Game::doEndTurn()
                             break;
                     }
 
+                    // TEMP INSTRUMENT: is the per-step candidate rescan really
+                    // the dominant cost, as THREADING.md Phase 4 claims? Measure
+                    // before optimising — the same doc's fan-out advice was wrong.
+                    auto tCandStart = std::chrono::steady_clock::now();
                     // Score-based candidate selection: value / distance
                     struct Cand { HexCoord pos; float score; };
                     std::vector<Cand> cands;
@@ -2417,6 +2430,9 @@ void Game::doEndTurn()
                     if (cands.empty()) break;
                     std::sort(cands.begin(), cands.end(),
                               [](const Cand& a, const Cand& b){ return a.score > b.score; });
+                    g_candNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                    std::chrono::steady_clock::now() - tCandStart).count();
+                    ++g_candBuilds;
 
                     // ── AI target-lock ──────────────────────────────────────────
                     // If this hero already committed to marching on an enemy town,
@@ -2508,6 +2524,7 @@ void Game::doEndTurn()
                     // main-thread freeze). Recompute only if the cache is empty or
                     // the hero has strayed off it.
                     path.clear();
+                    auto tPathStart = std::chrono::steady_clock::now();
                     if (eHero.hasMarchGoal && topIsEnemyTown
                         && cands[0].pos == eHero.marchGoal
                         && !eHero.marchPath.empty()
@@ -2560,6 +2577,8 @@ void Game::doEndTurn()
                             }
                         }
                     }
+                    g_pathNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                    std::chrono::steady_clock::now() - tPathStart).count();
                     bool wantBoatForBestTarget =
                         (!cands.empty() && !eHero.onBoat && !bestReachable
                          && cands[0].score >= 150.f);
@@ -3129,6 +3148,15 @@ void Game::doEndTurn()
             triggerSiegeCombat(t.id);
             // triggerSiegeCombat may change game state; stop processing if combat started
             if (m_state == GameState::Combat) return;
+        }
+
+        // TEMP INSTRUMENT: per-turn cost split, candidate rescan vs pathfinding.
+        if (g_candBuilds > 0) {
+            gLog("  [PERF] turn: cand-rebuilds=%d cand=%.1fms path=%.1fms (cand %.0f%% of the two)\n",
+                 g_candBuilds, g_candNs / 1e6, g_pathNs / 1e6,
+                 100.0 * g_candNs / std::max(1LL, g_candNs + g_pathNs));
+            g_candNs = g_pathNs = 0;
+            g_candBuilds = 0;
         }
 
         bool newWeek = m_turns.endTurn(m_towns, m_heroes,
