@@ -9,6 +9,13 @@
 static long long g_candNs     = 0;
 static long long g_pathNs     = 0;
 static int       g_candBuilds = 0;
+// Split the remaining A* cost by horizon: the 400-hex cross-map march search
+// vs the cheap 60-hex local one. Tells us which to attack next.
+static long long g_longNs     = 0;
+static int       g_longCalls  = 0;
+static long long g_shortNs    = 0;
+static int       g_shortCalls = 0;
+static int       g_reuseHits  = 0;
 #include "../hero/LevelUpSystem.h"
 #include "../hero/SkillRegistry.h"
 #include "../hero/HeroClass.h"
@@ -1857,6 +1864,15 @@ void Game::doEndTurn()
             //    the "defender" role (rank>=2) and never acted. Now each AI owner
             //    gets its own raider/economic/defender split, so all AI players
             //    play the game.
+            // Land connectivity, once per turn — terrain is static within a turn.
+            // Every hero's pathfinding fast-reject reads this, so it must be
+            // built before any planning and never mutated during it.
+            {
+                int stamp = m_turns.week() * 100 + m_turns.day();
+                if (m_landCompTurn != stamp || m_landComp.empty())
+                    rebuildLandComponents();
+            }
+
             std::vector<int> heroRank(m_enemyHeroes.size(), 0);  // 0=raider,1=economic,2+=defender
             {
                 // group hero indices by ownerId
@@ -2566,13 +2582,28 @@ void Game::doEndTurn()
                             path.assign(eHero.stepPath.begin() + eHero.stepPathIdx,
                                         eHero.stepPath.end());
                             bestReachable = true;
+                            ++g_reuseHits;
                         }
                         int nCand = static_cast<int>(std::min<size_t>(cands.size(), 10));
                         if (!path.empty()) {
                             // cached — nothing to search
                         } else if (nCand > 0) {
                             int h0 = topIsEnemyTown ? 400 : kAiPathHorizon;
-                            path = Pathfinder::find(m_map, eHero.pos, cands[0].pos, costFn, h0);
+                            auto tA = std::chrono::steady_clock::now();
+                            // O(1) fast-reject: on foot, a target on another
+                            // landmass is unreachable by definition. Skipping the
+                            // search here is the whole win — the doomed 400-hex
+                            // A* was ~76 ms a call and dominated the turn.
+                            if (!eHero.onBoat && landRouteImpossible(eHero.pos, cands[0].pos))
+                                path.clear();
+                            else
+                                path = Pathfinder::find(m_map, eHero.pos, cands[0].pos, costFn, h0);
+                            {
+                                long long ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                                   std::chrono::steady_clock::now() - tA).count();
+                                if (h0 > kAiPathHorizon) { g_longNs += ns; ++g_longCalls; }
+                                else                     { g_shortNs += ns; ++g_shortCalls; }
+                            }
                             if (!path.empty()) {
                                 bestReachable = true;
                                 chosenIdx     = 0;
@@ -2586,6 +2617,12 @@ void Game::doEndTurn()
                                     static_cast<size_t>(nCand));
                                 WorkerPool::instance().parallelFor(nCand - 1, [&](int k) {
                                     int ci = k + 1;   // indices 1..nCand-1
+                                    // Same O(1) reject per fallback candidate.
+                                    // m_landComp is read-only here, so this is
+                                    // safe to consult from the worker threads.
+                                    if (!eHero.onBoat
+                                        && landRouteImpossible(eHero.pos, cands[ci].pos))
+                                        return;
                                     results[static_cast<size_t>(ci)] =
                                         Pathfinder::find(m_map, eHero.pos, cands[ci].pos,
                                                          costFn, kAiPathHorizon);
@@ -3198,11 +3235,13 @@ void Game::doEndTurn()
 
         // TEMP INSTRUMENT: per-turn cost split, candidate rescan vs pathfinding.
         if (g_candBuilds > 0) {
-            gLog("  [PERF] turn: cand-rebuilds=%d cand=%.1fms path=%.1fms (cand %.0f%% of the two)\n",
+            gLog("  [PERF] turn: steps=%d cand=%.1fms path=%.1fms | long(400)=%d %.1fms "
+                 "short(60)=%d %.1fms | reuse-hits=%d\n",
                  g_candBuilds, g_candNs / 1e6, g_pathNs / 1e6,
-                 100.0 * g_candNs / std::max(1LL, g_candNs + g_pathNs));
-            g_candNs = g_pathNs = 0;
-            g_candBuilds = 0;
+                 g_longCalls, g_longNs / 1e6, g_shortCalls, g_shortNs / 1e6,
+                 g_reuseHits);
+            g_candNs = g_pathNs = g_longNs = g_shortNs = 0;
+            g_candBuilds = g_longCalls = g_shortCalls = g_reuseHits = 0;
         }
 
         bool newWeek = m_turns.endTurn(m_towns, m_heroes,
@@ -8323,6 +8362,42 @@ void Game::renderWorldSpellPanel()
     }
     if (!any) ImGui::TextDisabled("No world-map spells known.");
     ImGui::End();
+}
+
+// ── Land connectivity flood fill ──────────────────────────────────────────────
+// One BFS over every land tile, labelling connected components. Lets the AI
+// reject an unreachable land target in O(1) instead of burning a full 400-hex
+// A* discovering the same thing (~76 ms a call, the dominant turn cost).
+void Game::rebuildLandComponents()
+{
+    m_landComp.clear();
+    auto passableByLand = [this](HexCoord c) -> bool {
+        const HexTile* t = m_map.getTile(c);
+        if (!t || t->blocked) return false;
+        return t->terrain != Terrain::Water && t->terrain != Terrain::Mountain;
+    };
+
+    int comp = 0;
+    std::vector<HexCoord> stack;
+    for (const HexCoord& start : m_map.coords()) {
+        if (!passableByLand(start))            continue;
+        if (m_landComp.find(start) != m_landComp.end()) continue;
+        ++comp;
+        stack.clear();
+        stack.push_back(start);
+        m_landComp[start] = comp;
+        while (!stack.empty()) {
+            HexCoord cur = stack.back();
+            stack.pop_back();
+            for (const HexCoord& nb : HexGrid::neighbors(cur)) {
+                if (!passableByLand(nb)) continue;
+                if (m_landComp.find(nb) != m_landComp.end()) continue;
+                m_landComp[nb] = comp;
+                stack.push_back(nb);
+            }
+        }
+    }
+    m_landCompTurn = m_turns.week() * 100 + m_turns.day();
 }
 
 // ── Lighthouse ownership → sea-speed bonus ────────────────────────────────────

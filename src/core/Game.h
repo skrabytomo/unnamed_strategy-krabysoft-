@@ -175,6 +175,28 @@ private:
     // side currently owns each Lighthouse. Call after a beacon changes hands.
     void refreshLighthouseBoosts();
 
+    // ── Land connectivity (pathfinding fast-reject) ──────────────────────────
+    // A FAILING 400-hex A* is the single most expensive thing the AI does: it
+    // explores the whole horizon before concluding "unreachable". Measured at
+    // ~76 ms per call, dominating the entire turn.
+    //
+    // Land passability is uniform across heroes (Mountain and Water are the only
+    // blockers, plus Barrier tiles), so one flood fill labels every land tile
+    // with a component id. Two tiles in different components CANNOT be connected
+    // by land — an O(1) lookup replaces the doomed search entirely.
+    // Rebuilt once per turn; terrain does not change mid-turn.
+    std::unordered_map<HexCoord, int, HexCoordHash> m_landComp;
+    int  m_landCompTurn = -1;
+    void rebuildLandComponents();
+    // true when a land route is provably impossible (different components).
+    bool landRouteImpossible(HexCoord a, HexCoord b) const
+    {
+        auto ia = m_landComp.find(a);
+        auto ib = m_landComp.find(b);
+        if (ia == m_landComp.end() || ib == m_landComp.end()) return false; // unknown: let A* decide
+        return ia->second != ib->second;
+    }
+
     // ── Combat board (hex grid with units) ────────────────────────────────────
     void renderCombatBoard();
 
