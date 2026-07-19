@@ -2,10 +2,13 @@
 #include <cstdio>
 #include <cstring>
 #include <mutex>
+#include <atomic>
 
 static std::vector<std::string> s_lines;
 static bool s_hasNew = false;
-static bool s_silent = false;
+// Atomic: gLog() is called from worker threads once AI planning is off the
+// render thread, and setSilent() can race with those reads.
+static std::atomic<bool> s_silent{false};
 static std::mutex s_mtx;
 
 void gLog(const char* fmt, ...) noexcept
@@ -39,9 +42,10 @@ void gLog(const char* fmt, ...) noexcept
     s_hasNew = true;
 }
 
-const std::vector<std::string>& DevLog::lines()
+std::vector<std::string> DevLog::snapshot()
 {
-    return s_lines;
+    std::lock_guard<std::mutex> lk(s_mtx);
+    return s_lines;   // copy under the lock — see header for why
 }
 
 void DevLog::clear()

@@ -1,10 +1,28 @@
 # THREADING — getting the AI off one core
 
-Status: **design only** — no threading in the game yet. Phases 0–1 were built on
-`fullgame_sim` and then **removed with it** (2026-07-17): that simulator ran a
-separate, simpler reimplementation of the AI, not the real `doEndTurn`, so it was
-the wrong thing to test against. The design below (Phases 2–4, the scheduling
-rule, the off-ramp) still stands and is the durable output of this work.
+Status (2026-07-19): **Phase 2 landed. Phase 3 NOT started — the 0 FPS freeze is
+still there.**
+
+- **Prerequisite — DevLog race: FIXED.** `DevLog::lines()` handed out a reference
+  to the shared vector while `gLog()` appended under a mutex. Replaced with
+  `DevLog::snapshot()`, which copies under the lock; `s_silent` is now atomic.
+  This had to land before any worker thread could call `gLog()`.
+- **Phase 2 — parallel candidate A\* fan-out: LANDED.** Persistent pool in
+  `src/core/WorkerPool.h` (singleton, threads created once, blocking
+  `parallelFor`; the dispatching thread works too). One deviation from the design
+  below, deliberate: the top candidate is still searched **serially first**. A
+  blind fan-out of all 10 would be a *pessimism* — the serial loop short-circuits
+  on the first hit, so the common case costs one A\* and fanning out costs ten.
+  Only the failure path (a rejected 400-hex march search, then retries) is
+  parallelised. Result is still the lowest reachable index, i.e. identical.
+- **Phase 0/1 — gone, and not needed.** They were built on `fullgame_sim` and
+  removed with it (2026-07-17): that simulator ran a separate, simpler
+  reimplementation of the AI, not the real `doEndTurn`, so it tested the wrong
+  thing.
+- **Phase 3 — still open.** `doEndTurn()` (2,668 lines) still runs synchronously
+  on the render thread, so high watch-AI speeds still eat the frame. Until it is
+  split into plan/apply, the in-HUD Pause and one-click speed buttons are a
+  usability workaround, not a fix.
 
 The goal: the game freezes to 0 FPS on XL maps with 8 players while watching AI.
 The endpoint: an AI with the CPU headroom to be genuinely smarter (see

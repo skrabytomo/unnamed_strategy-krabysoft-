@@ -1174,7 +1174,7 @@ void Game::renderPauseMenu()
             if (ImGui::SmallButton("Clear")) DevLog::clear();
             ImGui::BeginChild("##devlog", ImVec2(0, 220), true,
                               ImGuiWindowFlags_HorizontalScrollbar);
-            const auto& logLines = DevLog::lines();
+            const auto logLines = DevLog::snapshot();   // copy: safe vs worker threads
             for (const auto& line : logLines)
                 ImGui::TextUnformatted(line.c_str());
             // Auto-scroll to bottom when new lines arrive

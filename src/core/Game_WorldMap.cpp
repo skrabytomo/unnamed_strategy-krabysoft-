@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "WorkerPool.h"
 #include "../hero/LevelUpSystem.h"
 #include "../hero/SkillRegistry.h"
 #include "../hero/HeroClass.h"
@@ -2515,17 +2516,47 @@ void Game::doEndTurn()
                         path.assign(eHero.marchPath.begin() + eHero.marchPathIdx,
                                     eHero.marchPath.end());
                     } else {
-                        for (size_t ci = 0; ci < cands.size() && ci < 10; ++ci) {
-                            int horizon = (ci == 0 && topIsEnemyTown) ? 400 : kAiPathHorizon;
-                            path = Pathfinder::find(m_map, eHero.pos, cands[ci].pos, costFn, horizon);
+                        // THREADING.md Phase 2 — parallel candidate A* fan-out.
+                        //
+                        // The top candidate is still tried SERIALLY first. The
+                        // design's plain "fan all 10 out" would be a pessimism
+                        // here: the serial loop short-circuits on the first hit,
+                        // so when candidate 0 is reachable (the common case) it
+                        // costs exactly one A*, while a blind fan-out costs ten.
+                        // The case actually worth overlapping is the failure
+                        // path — a rejected 400-hex march search explores a huge
+                        // area, and then we do it again for each fallback.
+                        //
+                        // Taking the LOWEST reachable index keeps this provably
+                        // identical to the serial result: Pathfinder::find is
+                        // pure, costFn only reads m_map/m_towns/m_roadHexes, and
+                        // nothing mutates during the fan-out — so completion
+                        // order cannot change which candidate wins.
+                        int nCand = static_cast<int>(std::min<size_t>(cands.size(), 10));
+                        if (nCand > 0) {
+                            int h0 = topIsEnemyTown ? 400 : kAiPathHorizon;
+                            path = Pathfinder::find(m_map, eHero.pos, cands[0].pos, costFn, h0);
                             if (!path.empty()) {
-                                if (ci == 0) bestReachable = true;
-                                // Cache a fresh long march path for reuse next turn.
-                                if (ci == 0 && topIsEnemyTown) {
-                                    eHero.marchPath = path;
+                                bestReachable = true;
+                                if (topIsEnemyTown) {
+                                    eHero.marchPath    = path;
                                     eHero.marchPathIdx = 0;
                                 }
-                                break;
+                            } else if (nCand > 1) {
+                                // Candidate 0 unreachable: search the rest at once.
+                                std::vector<std::vector<HexCoord>> results(
+                                    static_cast<size_t>(nCand));
+                                WorkerPool::instance().parallelFor(nCand - 1, [&](int k) {
+                                    int ci = k + 1;   // indices 1..nCand-1
+                                    results[static_cast<size_t>(ci)] =
+                                        Pathfinder::find(m_map, eHero.pos, cands[ci].pos,
+                                                         costFn, kAiPathHorizon);
+                                });
+                                for (int ci = 1; ci < nCand; ++ci) {
+                                    if (results[static_cast<size_t>(ci)].empty()) continue;
+                                    path = std::move(results[static_cast<size_t>(ci)]);
+                                    break;
+                                }
                             }
                         }
                     }
