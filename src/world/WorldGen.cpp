@@ -234,12 +234,16 @@ WorldGenResult WorldGen::generate(HexMap& map, const WorldGenParams& p)
             }
         };
 
-        // Scale with how much sea there actually is.
+        // Scale with how much sea there actually is. NOTE the caps: real maps
+        // run to ~100k water tiles, and the first pass capped at 25 flotsam /
+        // 6 beacons — one object per ~4000 tiles, i.e. an ocean you could sail
+        // across all game and never find anything. Densities are now roughly
+        // one salvage point per ~250 sea tiles, with headroom to match.
         int seaTiles  = static_cast<int>(openWater.size() + coastalWater.size());
-        int flotsam   = std::clamp(seaTiles / 40, 0, 25);
-        int wrecks    = std::clamp(seaTiles / 90, 0, 10);
-        int monsters  = std::clamp(seaTiles / 120, 0, 8);
-        int beacons   = std::clamp(seaTiles / 150, 0, 6);
+        int flotsam   = std::clamp(seaTiles / 250,  0, 300);
+        int wrecks    = std::clamp(seaTiles / 700,  0, 100);
+        int monsters  = std::clamp(seaTiles / 900,  0,  70);
+        int beacons   = std::clamp(seaTiles / 1200, 0,  40);
 
         placeAt(openWater,    WorldObjectType::Flotsam,        flotsam,  0);
         placeAt(openWater,    WorldObjectType::Shipwreck,      wrecks,   0);

@@ -2693,6 +2693,21 @@ void Game::doEndTurn()
                             }
                             continue;
                         }
+                        // Flotsam drifts — a passing crew scoops it up without
+                        // having to land on the exact hex. Needed in practice:
+                        // a hero with a locked overseas march goal sails a
+                        // straight line, so requiring an exact tile hit meant
+                        // salvage was never collected on a 40k-tile ocean.
+                        if (obj.type == WorldObjectType::Flotsam && !obj.collected
+                            && eHero.onBoat && obj.pos != eHero.pos
+                            && HexGrid::distance(obj.pos, eHero.pos) <= 1) {
+                            obj.collected = true;
+                            int g = 300 + (obj.value % 700);
+                            aiResources(eHero.ownerId).add(ResourceType::Gold, g);
+                            gLog("P%u %s salvaged drifting flotsam (+%dg, week %d)\n",
+                                 eHero.ownerId, eHero.name.c_str(), g, m_turns.week());
+                            continue;
+                        }
                         if (obj.collected || obj.pos != eHero.pos) continue;
                         if (obj.type == WorldObjectType::Flotsam
                             || obj.type == WorldObjectType::Shipwreck
