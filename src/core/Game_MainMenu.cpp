@@ -338,10 +338,24 @@ void Game::renderMainMenu()
 
         if (watchMode) {
             ImGui::Text("Auto-advance speed:");
-            ImGui::SetNextItemWidth(bw);
-            ImGui::SliderFloat("##waisp", &m_watchAISpeed, 0.25f, 4.0f, "%.2fx");
+            // Same 0.25–8.0 range as the in-game HUD. The menu used to cap at
+            // 4x while the map allowed 8x, so the number changed under you the
+            // moment the game started.
+            static const float kMenuSpeeds[] = { 0.5f, 1.0f, 2.0f, 4.0f, 8.0f };
+            static const char* kMenuSpeedLbl[] = { "0.5x", "1x", "2x", "4x", "8x" };
+            float step = (bw - 4.0f * 6.0f) / 5.0f;
+            for (int i = 0; i < 5; ++i) {
+                if (i) ImGui::SameLine(0, 6);
+                bool active = (std::fabs(m_watchAISpeed - kMenuSpeeds[i]) < 0.01f);
+                if (active)
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.50f, 0.85f, 1.0f));
+                if (ImGui::Button(kMenuSpeedLbl[i], ImVec2(step, 26)))
+                    m_watchAISpeed = kMenuSpeeds[i];
+                if (active) ImGui::PopStyleColor();
+            }
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("1.0 = 1 end-turn per second. Higher = faster.");
+                ImGui::SetTooltip("1.0 = 1 end-turn per second. Higher = faster.\n"
+                                  "You can change this any time from the in-game HUD.");
             ImGui::Spacing();
         }
 

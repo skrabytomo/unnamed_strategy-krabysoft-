@@ -136,11 +136,17 @@ void main() {
             // Sampler uses GL_MIRRORED_REPEAT, so no matter how far this scrolls,
             // it reflects at each tile edge instead of wrapping — no seam is
             // possible even though the underlying image is much larger than one hex.
-            float warpX = sin(vWorldPos.y * 0.008 + uTime * 0.7) * 0.018;
-            float warpY = sin(vWorldPos.x * 0.006 - uTime * 0.5) * 0.012;
+            // Drift + swell. The original values (scroll 0.022/s, warp 0.018)
+            // were so small the sea read as a still image at map zoom — the
+            // animation was technically running and visually absent. Scaled up
+            // roughly 3x, plus a second cross-swell so the surface churns
+            // instead of sliding uniformly.
+            float warpX = sin(vWorldPos.y * 0.008 + uTime * 0.9) * 0.055;
+            float warpY = sin(vWorldPos.x * 0.006 - uTime * 0.7) * 0.042;
+            float swell = sin(vWorldPos.x * 0.013 + vWorldPos.y * 0.011 + uTime * 1.3) * 0.022;
             uv = vWorldPos * 0.012;
-            uv.x += uTime * 0.022 + warpX;
-            uv.y += uTime * 0.010 + warpY;
+            uv.x += uTime * 0.065 + warpX + swell;
+            uv.y += uTime * 0.038 + warpY - swell;
         }
 
         vec3 tex = texture(uTerrainTex, uv).rgb;

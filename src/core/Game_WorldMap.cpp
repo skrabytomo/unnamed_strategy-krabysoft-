@@ -1024,8 +1024,17 @@ void Game::updateWorldMap(float dt)
             }
         }
 
+        // Paused: skip all turn processing but keep rendering, so the HUD stays
+        // responsive. At 8x the turn work saturates the frame and the UI became
+        // near-impossible to click — pausing gives you the controls back.
+        if (m_watchAIPaused) return;
+
         m_watchAITimer -= dt;
         if (m_watchAITimer <= 0.f) {
+            // Guard the divisor: a 0 (or negative) speed — reachable by
+            // ctrl+click text entry on the slider — turned this into inf/NaN
+            // and wedged the timer permanently.
+            m_watchAISpeed = std::clamp(m_watchAISpeed, 0.25f, 8.0f);
             m_watchAITimer = 1.0f / m_watchAISpeed;
 
             // Watch game over (free-for-all): every ownerId is an independent
@@ -4286,14 +4295,39 @@ void Game::renderWorldMapImGui()
             ImGui::TextColored({1.f,0.82f,0.2f,1.f}, "WATCH AI vs AI");
             ImGui::SameLine(0, 16);
             ImGui::Text("Week %d", m_turns.week());
+            // One-click speed steps instead of a float slider. Dragging a
+            // slider at 8x was effectively impossible: the AI turn eats the
+            // frame, so you get a couple of frames a second and the drag never
+            // registers. A button needs exactly one frame to hit.
             ImGui::SameLine(0, 16);
-            ImGui::SetNextItemWidth(100);
-            ImGui::SliderFloat("Speed##waispeed", &m_watchAISpeed, 0.25f, 8.0f, "%.1fx");
+            ImGui::TextUnformatted("Speed");
+            static const float kSpeeds[] = { 0.5f, 1.0f, 2.0f, 4.0f, 8.0f };
+            static const char* kSpeedLbl[] = { "0.5x", "1x", "2x", "4x", "8x" };
+            for (int i = 0; i < 5; ++i) {
+                ImGui::SameLine(0, 4);
+                bool active = (std::fabs(m_watchAISpeed - kSpeeds[i]) < 0.01f);
+                if (active)
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.50f, 0.85f, 1.0f));
+                if (ImGui::Button(kSpeedLbl[i])) {
+                    m_watchAISpeed = kSpeeds[i];
+                    m_watchAITimer = 1.0f / m_watchAISpeed;
+                }
+                if (active) ImGui::PopStyleColor();
+            }
+            ImGui::SameLine(0, 12);
+            if (ImGui::Button(m_watchAIPaused ? "Resume##waipause" : "Pause##waipause",
+                              ImVec2(72, 0)))
+                m_watchAIPaused = !m_watchAIPaused;
             ImGui::SameLine(0, 8);
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0.1f, 1.0f));
             if (ImGui::Button("Stop##waistop")) {
-                m_watchingAI  = false;
-                m_fogDisabled = false;
+                // Pause first so no further turn is processed while the menu
+                // tears down — stopping straight from 8x used to run another
+                // full turn mid-transition and look like a hang.
+                m_watchAIPaused = false;
+                m_watchingAI    = false;
+                m_fogDisabled   = false;
+                m_watchAITimer  = 1.0f / std::max(0.25f, m_watchAISpeed);
                 m_state = GameState::MainMenu;
             }
             ImGui::PopStyleColor();
