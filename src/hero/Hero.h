@@ -128,6 +128,15 @@ struct Hero
     // huge search every turn (that per-hero-per-turn cost froze the main thread).
     std::vector<HexCoord> marchPath;
     size_t                marchPathIdx = 0;
+    // General per-turn path reuse, for ANY target — not just locked town goals.
+    // Measured: A* was ~99% of turn cost (3.3-4.7 s/turn on an 8-player XL map)
+    // because it re-ran once per MOVE STEP to the same destination, ~85-100
+    // times a turn. Keep the path we computed and walk it, recomputing only if
+    // the chosen target changes or the hero steps off it.
+    std::vector<HexCoord> stepPath;
+    size_t                stepPathIdx  = 0;
+    HexCoord              stepPathGoal{};
+    bool                  hasStepPath  = false;
     int  boatCount = 0;      // boats built so far (cost escalates per boat)
 
     // Specialty progression: tracked stats for specialty effects

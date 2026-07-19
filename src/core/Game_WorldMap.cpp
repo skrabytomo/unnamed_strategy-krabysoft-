@@ -2549,12 +2549,33 @@ void Game::doEndTurn()
                         // pure, costFn only reads m_map/m_towns/m_roadHexes, and
                         // nothing mutates during the fan-out — so completion
                         // order cannot change which candidate wins.
+                        // Reuse this turn's path when we're still heading to the
+                        // same place and haven't strayed off it. This is the 99%:
+                        // without it a full A* ran on EVERY move step to the
+                        // very same destination, ~85-100 times per turn.
+                        int chosenIdx = -1;
+                        if (eHero.hasStepPath && !cands.empty()
+                            && eHero.stepPathGoal == cands[0].pos
+                            && eHero.stepPathIdx < eHero.stepPath.size()
+                            // The remaining path must actually continue from where
+                            // the hero IS. Position can change without a move —
+                            // a boat launch or Town Portal teleports it — and
+                            // blindly resuming would teleport it along a stale route.
+                            && HexGrid::distance(eHero.pos,
+                                   eHero.stepPath[eHero.stepPathIdx]) == 1) {
+                            path.assign(eHero.stepPath.begin() + eHero.stepPathIdx,
+                                        eHero.stepPath.end());
+                            bestReachable = true;
+                        }
                         int nCand = static_cast<int>(std::min<size_t>(cands.size(), 10));
-                        if (nCand > 0) {
+                        if (!path.empty()) {
+                            // cached — nothing to search
+                        } else if (nCand > 0) {
                             int h0 = topIsEnemyTown ? 400 : kAiPathHorizon;
                             path = Pathfinder::find(m_map, eHero.pos, cands[0].pos, costFn, h0);
                             if (!path.empty()) {
                                 bestReachable = true;
+                                chosenIdx     = 0;
                                 if (topIsEnemyTown) {
                                     eHero.marchPath    = path;
                                     eHero.marchPathIdx = 0;
@@ -2571,10 +2592,19 @@ void Game::doEndTurn()
                                 });
                                 for (int ci = 1; ci < nCand; ++ci) {
                                     if (results[static_cast<size_t>(ci)].empty()) continue;
-                                    path = std::move(results[static_cast<size_t>(ci)]);
+                                    path      = std::move(results[static_cast<size_t>(ci)]);
+                                    chosenIdx = ci;
                                     break;
                                 }
                             }
+                        }
+                        // Remember the freshly computed path so the remaining
+                        // steps of this turn can walk it instead of re-running A*.
+                        if (chosenIdx >= 0 && !path.empty()) {
+                            eHero.stepPath     = path;
+                            eHero.stepPathIdx  = 0;
+                            eHero.stepPathGoal = cands[static_cast<size_t>(chosenIdx)].pos;
+                            eHero.hasStepPath  = true;
                         }
                     }
                     g_pathNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -2663,6 +2693,22 @@ void Game::doEndTurn()
                         if (eHero.marchPath[eHero.marchPathIdx] == eHero.pos)
                             eHero.marchPathIdx++;
                         else { eHero.marchPath.clear(); eHero.marchPathIdx = 0; }
+                    }
+                    // Same bookkeeping for the general per-turn path cache: walk
+                    // it forward when we landed on its next tile, drop it the
+                    // moment we diverge (boat launch, combat shove, blocked tile)
+                    // so the next step re-plans honestly instead of following a
+                    // path that no longer starts where the hero is.
+                    if (eHero.hasStepPath && eHero.stepPathIdx < eHero.stepPath.size()) {
+                        if (eHero.stepPath[eHero.stepPathIdx] == eHero.pos) {
+                            eHero.stepPathIdx++;
+                            if (eHero.stepPathIdx >= eHero.stepPath.size())
+                                eHero.hasStepPath = false;   // arrived
+                        } else {
+                            eHero.stepPath.clear();
+                            eHero.stepPathIdx = 0;
+                            eHero.hasStepPath = false;
+                        }
                     }
 
                     // Combat with a RIVAL AI hero? Real AI-vs-AI hostility:
