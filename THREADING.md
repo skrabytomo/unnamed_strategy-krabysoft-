@@ -19,10 +19,27 @@ still there.**
   removed with it (2026-07-17): that simulator ran a separate, simpler
   reimplementation of the AI, not the real `doEndTurn`, so it tested the wrong
   thing.
-- **Phase 3 — still open.** `doEndTurn()` (2,668 lines) still runs synchronously
-  on the render thread, so high watch-AI speeds still eat the frame. Until it is
-  split into plan/apply, the in-HUD Pause and one-click speed buttons are a
-  usability workaround, not a fix.
+- **Phase 4's real item, done first (it was worth far more than threading):**
+  measurement showed pathfinding was ~99% of turn cost, so two race-free fixes
+  landed ahead of Phase 3:
+  1. **Per-turn path reuse** (`Hero::stepPath`) — A* was re-running on every
+     move step to the same destination, ~85–100×/turn. **~2.3× faster turns.**
+  2. **O(1) land-connectivity fast-reject** (`Game::rebuildLandComponents`) —
+     a *failing* 400-hex A* explored the whole horizon before giving up (~76 ms
+     a call). One BFS per turn labels land components; a different-component
+     target is rejected by lookup. **Typical turn: ~1700 ms → ~50 ms.**
+
+  Combined, a typical AI turn's pathfinding went from ~3900 ms to ~50 ms.
+
+- **Phase 3 — still open, but much cheaper now.** `doEndTurn()` (2,668 lines)
+  still runs synchronously on the render thread. The workload it would move is
+  now ~50 ms rather than ~3900 ms, so the freeze is largely gone on typical
+  turns — but occasional turns still spike (~1.2 s when many far-but-same-
+  landmass targets force real searches), and those still block the frame.
+  Remaining known gaps, in value order:
+  1. Spikes from same-landmass-but-distant targets (the reject can't help).
+  2. Heroes already on a boat skip the reject entirely — naval planning unhelped.
+  3. Only then is Phase 3's plan/apply split worth its risk.
 
 The goal: the game freezes to 0 FPS on XL maps with 8 players while watching AI.
 The endpoint: an AI with the CPU headroom to be genuinely smarter (see
