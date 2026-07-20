@@ -201,28 +201,10 @@ private:
         struct RivalHero { HexCoord pos; int str; uint32_t ownerId; };
         std::vector<RivalHero> allHeroesForTargeting;
         std::vector<int> heroRank;          // 0=raider,1=economic,2+=defender
-        // Every hero the AI round plans this turn, in a stable order.
-        // = m_enemyHeroes, PLUS the watched slot's heroes in Watch-AI mode.
-        // The watched player used to run a separate, far dumber auto-play
-        // (60-hex horizon, no target lock, no march cache, no naval), which is
-        // why it sat on ~3 mines doing nothing while real AI players took 10-16.
-        // Rebuilt every round in aiTurnSetup(); raw pointers are safe because
-        // neither vector is resized during a round.
-        std::vector<Hero*> planHeroes;
     };
     AiTurnState m_aiTurn;
     void aiTurnSetup();
     bool aiTakeHeroTurn(int ehi);   // false = combat aborted the AI round
-
-    // Resource pool that a given owner actually spends from. The watched slot
-    // (owner 1) in Watch-AI mode is AI-driven but keeps its purse in
-    // m_playerResources, NOT aiResources(1) — routing it through the shared AI
-    // planner without this would have it spending a pool nobody funds.
-    Resources& poolFor(uint32_t ownerId)
-    {
-        return (ownerId == 1u && m_watchingAI) ? m_playerResources
-                                               : aiResources(ownerId);
-    }
     void aiTurnStep();              // one frame's budgeted slice (Watch mode)
     void doEndTurnPost(bool lastPlayerEndedTurn);
 

@@ -1207,13 +1207,7 @@ void Game::updateWorldMap(float dt)
                     if (moved) continue;
                     m_watchMovedThisDay.push_back(hid);
                     m_activeHeroIdx = static_cast<int>(hi);
-                    // The watched slot is now planned by the SHARED AI round
-                    // (aiTurnSetup/aiTakeHeroTurn include m_heroes via
-                    // AiTurnState::planHeroes), so it gets target-lock, march
-                    // caching, the 400-hex horizon and naval like everyone else.
-                    // The old watchAiMovePlayerHero() was a separate, far dumber
-                    // planner (60-hex horizon, no lock, no boats) and running it
-                    // here as well would double-move the hero.
+                    watchAiMovePlayerHero();
                     if (m_state != GameState::WorldMap) { allMoved = false; break; }
                 }
                 // All watched heroes moved → end the day (runs enemy AI, income,
@@ -1865,7 +1859,7 @@ void Game::doEndTurn()
                 m_aiTurn.lastPlayerEndedTurn = lastPlayerEndedTurn;
                 return;   // updateWorldMap() steps the heroes and runs the post
             }
-            while (m_aiTurn.nextHero < static_cast<int>(m_aiTurn.planHeroes.size())) {
+            while (m_aiTurn.nextHero < static_cast<int>(m_enemyHeroes.size())) {
                 if (!aiTakeHeroTurn(m_aiTurn.nextHero++))
                     return;   // combat vs the player aborts the round (as before)
             }
@@ -1948,33 +1942,19 @@ void Game::aiTurnSetup()
     // ── Strength-based weekly roles, computed PER PLAYER ─────────────────────
     //    Each AI owner gets its own raider/economic/defender split, so all AI
     //    players play the game (a global ranking starved everyone but one).
-    // Build the plan list: every AI hero, plus the watched slot's heroes when
-    // watching (they are AI-driven too and deserve the same planner).
-    S.planHeroes.clear();
-    S.planHeroes.reserve(m_enemyHeroes.size() + m_heroes.size());
-    for (auto& h : m_enemyHeroes) S.planHeroes.push_back(&h);
-    if (m_watchingAI) {
-        for (auto& h : m_heroes) {
-            // The planner keys economy/alliance off ownerId; the watched slot is
-            // player 1 and never had it set (it was a "human" slot).
-            if (h.ownerId == 0) h.ownerId = 1u;
-            S.planHeroes.push_back(&h);
-        }
-    }
-
-    S.heroRank.assign(S.planHeroes.size(), 0);   // 0=raider,1=economic,2+=defender
+    S.heroRank.assign(m_enemyHeroes.size(), 0);  // 0=raider,1=economic,2+=defender
     {
         std::vector<uint32_t> owners;
-        for (const auto* eh : S.planHeroes)
-            if (std::find(owners.begin(), owners.end(), eh->ownerId) == owners.end())
-                owners.push_back(eh->ownerId);
+        for (const auto& eh : m_enemyHeroes)
+            if (std::find(owners.begin(), owners.end(), eh.ownerId) == owners.end())
+                owners.push_back(eh.ownerId);
         for (uint32_t owner : owners) {
             std::vector<int> idxs;
-            for (int i = 0; i < (int)S.planHeroes.size(); ++i)
-                if (S.planHeroes[i]->ownerId == owner) idxs.push_back(i);
+            for (int i = 0; i < (int)m_enemyHeroes.size(); ++i)
+                if (m_enemyHeroes[i].ownerId == owner) idxs.push_back(i);
             std::sort(idxs.begin(), idxs.end(), [&](int a, int b){
-                return heroStrength(*S.planHeroes[a], unitDefs)
-                     > heroStrength(*S.planHeroes[b], unitDefs);
+                return heroStrength(m_enemyHeroes[a], unitDefs)
+                     > heroStrength(m_enemyHeroes[b], unitDefs);
             });
             for (size_t r = 0; r < idxs.size(); ++r)
                 S.heroRank[idxs[r]] = (int)r;
@@ -2045,9 +2025,7 @@ bool Game::aiTakeHeroTurn(int ehi)
     // NOTE: combat no longer aborts the roster — once one hero enters
     // combat, the rest still take their turn; they just can't start a
     // second fight (the player-tile is blocked and untargeted below).
-    auto& eHero = *S.planHeroes[ehi];
-    // Pool this hero actually spends from (watched slot uses m_playerResources).
-    Resources& heroPool = poolFor(eHero.ownerId);
+    auto& eHero = m_enemyHeroes[ehi];
     if (eHero.eliminated) return true; // lost a field battle earlier this pass — skip, round continues
 
     // ── Strength-based role (see byStrength above) ────────────────────
@@ -2062,7 +2040,7 @@ bool Game::aiTakeHeroTurn(int ehi)
         if (t.ownerId != eHero.ownerId) continue;
         if (HexGrid::distance(eHero.pos, t.pos) > 1) continue;
         takeGarrison(t, eHero, unitDefs);
-        aiPaidRecruit(t, eHero.army, heroPool, unitDefs);
+        aiPaidRecruit(t, eHero.army, aiResources(eHero.ownerId), unitDefs);
         // Field-upgrade base-tier stacks to whichever upgrade path the
         // town has built (previously only the watch-mode player did this,
         // so enemy armies stayed base-tier forever).
@@ -2113,7 +2091,7 @@ bool Game::aiTakeHeroTurn(int ehi)
         cost.set(ResourceType::BloodEssence,    10);
         cost.set(ResourceType::VerdantSap,      10);
         cost.set(ResourceType::Mercury,         10);
-        Resources& res = heroPool;
+        Resources& res = aiResources(eHero.ownerId);
         if (!res.canAfford(cost)) return false;
         res.spend(cost);
         eHero.mana -= 15;
@@ -2142,7 +2120,7 @@ bool Game::aiTakeHeroTurn(int ehi)
     // is only reachable from the human UI panel), which is why it
     // never founded a single Utopia city and never repositioned.
     {
-        Resources& spellRes = heroPool;
+        Resources& spellRes = aiResources(eHero.ownerId);
         auto knows = [&](int sid) {
             for (int s : eHero.knownSpells) if (s == sid) return true;
             return false;
@@ -2230,7 +2208,7 @@ bool Game::aiTakeHeroTurn(int ehi)
     // military pressure instead of hoarding. The more gold banked,
     // the more aggressive — this fixes the "3M gold, tiny army,
     // never attacks, game drags to week 43" failure.
-    int ownerGold = (int)heroPool.get(ResourceType::Gold);
+    int ownerGold = (int)aiResources(eHero.ownerId).get(ResourceType::Gold);
     if (ownerGold > 100000)      ownerAggr = std::max(2, ownerAggr - 5);
     else if (ownerGold > 40000)  ownerAggr = std::max(2, ownerAggr - 3);
     else if (ownerGold > 15000)  ownerAggr = std::max(2, ownerAggr - 1);
@@ -2893,7 +2871,7 @@ bool Game::aiTakeHeroTurn(int ehi)
             bool haveSeaTarget = false;
             if (!cands.empty()) { seaTarget = cands[0].pos; haveSeaTarget = true; }
             if (aiTryBoat(m_map, m_worldObjects, docks, eHero,
-                           heroPool, costFn, boatPath)) {
+                           aiResources(eHero.ownerId), costFn, boatPath)) {
                 path = boatPath;   // head to the dock
             } else if (!wasOnBoat && eHero.onBoat) {
                 // Just BOARDED at the dock this call. aiTryBoat returns
@@ -3062,7 +3040,7 @@ bool Game::aiTakeHeroTurn(int ehi)
                 && HexGrid::distance(obj.pos, eHero.pos) <= 1) {
                 obj.collected = true;
                 int g = 300 + (obj.value % 700);
-                heroPool.add(ResourceType::Gold, g);
+                aiResources(eHero.ownerId).add(ResourceType::Gold, g);
                 gLog("P%u %s salvaged drifting flotsam (+%dg, week %d)\n",
                      eHero.ownerId, eHero.name.c_str(), g, m_turns.week());
                 continue;
@@ -3092,7 +3070,7 @@ bool Game::aiTakeHeroTurn(int ehi)
                 obj.collected = true;
                 int gold = guarded ? 800 + (obj.value % 900)
                                    : 300 + (obj.value % 700);
-                heroPool.add(ResourceType::Gold, gold);
+                aiResources(eHero.ownerId).add(ResourceType::Gold, gold);
                 gLog("P%u %s salvaged %s at sea (+%dg, week %d)\n",
                      eHero.ownerId, eHero.name.c_str(),
                      obj.type == WorldObjectType::Flotsam ? "flotsam"
@@ -3163,7 +3141,7 @@ bool Game::aiTakeHeroTurn(int ehi)
                     // pool from its own pocket.
                     obj.linkedId = eHero.ownerId;
                     dwellingPaidRecruit(obj, eHero.army,
-                                        heroPool, unitDefs);
+                                        aiResources(eHero.ownerId), unitDefs);
                 }
                 continue;
             }
@@ -3272,7 +3250,7 @@ bool Game::aiTakeHeroTurn(int ehi)
                     // Stepped into one of its OWN towns — pick up
                     // the garrison and recruit, keep moving.
                     takeGarrison(t, eHero, unitDefs);
-                    aiPaidRecruit(t, eHero.army, heroPool, unitDefs);
+                    aiPaidRecruit(t, eHero.army, aiResources(eHero.ownerId), unitDefs);
                 } else if (t.ownerId == 0) {
                     t.ownerId = eHero.ownerId;
                     gLog("Enemy %s captured %s\n", eHero.name.c_str(), t.name.c_str());
