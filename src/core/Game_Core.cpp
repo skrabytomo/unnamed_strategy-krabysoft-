@@ -887,6 +887,11 @@ static const char* factionNameStr(int f) {
 void Game::saveGame(const std::string& customName)
 {
     if (!m_saveDB.isOpen()) return;
+    // Mid-round guard: while a spread AI round is in flight (Watch mode),
+    // half the heroes have moved but the day hasn't been advanced by
+    // doEndTurnPost() yet. m_aiTurn isn't serialized, so such a save would
+    // load into a day that can never finish — skip until the round completes.
+    if (m_aiTurn.active) return;
 
     GameSaveData data = SaveLoad::packState(
         m_map, m_heroes, m_enemyHeroes,
@@ -1196,6 +1201,9 @@ void Game::startNewGame()
     m_showCapturePopup = false;
     m_showTownLostPopup = false;
     m_showCombatResult = false;
+    // A quit-to-menu mid-Watch-round leaves a half-stepped AI turn behind;
+    // a fresh game must never resume it.
+    m_aiTurn = AiTurnState{};
 
     // Reset campaign state so leftover campaign data doesn't affect skirmish
     m_campaign.reset();

@@ -183,6 +183,31 @@ private:
     // side currently owns each Lighthouse. Call after a beacon changes hands.
     void refreshLighthouseBoosts();
 
+    // ── Resumable AI round (THREADING.md Phase 3 groundwork) ─────────────────
+    // The doEndTurn() enemy-AI block, split into setup / per-hero / post so
+    // Watch mode can process a few heroes per FRAME instead of freezing the
+    // render loop for the whole roster, and so per-hero planning has a clean
+    // seam for a future worker-thread AiPlanner. Main-thread only.
+    struct AiTurnState {
+        bool active   = false;   // heroes pending; updateWorldMap() steps them
+        int  nextHero = 0;
+        bool lastPlayerEndedTurn = false;   // forwarded to doEndTurnPost()
+        bool combatTriggered     = false;   // one combat per day, shared across heroes
+        int  plStr        = 0;
+        bool playerIsWeak = false;
+        ResourceType denialRes = ResourceType::Gold;
+        int  aggrPct = 5, retreatPct = 4;
+        std::unordered_map<uint32_t, ResourceType> aiNeededResByOwner;
+        struct RivalHero { HexCoord pos; int str; uint32_t ownerId; };
+        std::vector<RivalHero> allHeroesForTargeting;
+        std::vector<int> heroRank;          // 0=raider,1=economic,2+=defender
+    };
+    AiTurnState m_aiTurn;
+    void aiTurnSetup();
+    bool aiTakeHeroTurn(int ehi);   // false = combat aborted the AI round
+    void aiTurnStep();              // one frame's budgeted slice (Watch mode)
+    void doEndTurnPost(bool lastPlayerEndedTurn);
+
     // ── Land connectivity (pathfinding fast-reject) ──────────────────────────
     // A FAILING 400-hex A* is the single most expensive thing the AI does: it
     // explores the whole horizon before concluding "unreachable". Measured at

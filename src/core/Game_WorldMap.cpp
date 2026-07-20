@@ -17,6 +17,7 @@ static int       g_longFails  = 0;  // long searches that came back empty
 static long long g_shortNs    = 0;
 static int       g_shortCalls = 0;
 static int       g_reuseHits  = 0;
+static int       g_aiSlices   = 0;  // frames a spread AI round used (Watch mode)
 #include "../hero/LevelUpSystem.h"
 #include "../hero/SkillRegistry.h"
 #include "../hero/HeroClass.h"
@@ -1059,6 +1060,16 @@ void Game::updateWorldMap(float dt)
         // near-impossible to click — pausing gives you the controls back.
         if (m_watchAIPaused) return;
 
+        // A spread AI round is in flight (THREADING.md Phase 3): run one
+        // budgeted slice, then yield so this frame still renders. The day
+        // timer below is intentionally frozen until the round completes —
+        // a new day must not start while heroes from the last one are
+        // still moving.
+        if (m_aiTurn.active) {
+            aiTurnStep();
+            return;
+        }
+
         m_watchAITimer -= dt;
         if (m_watchAITimer <= 0.f) {
             // Guard the divisor: a 0 (or negative) speed — reachable by
@@ -1558,8 +1569,15 @@ void Game::aiEquipOrStashArtifact(Hero& hero, int artifactId)
     }
 }
 
+// Wall-clock anchor for the [PERF] total — set in doEndTurn(), read in
+// doEndTurnPost() (which, in Watch mode, runs several frames later).
+static std::chrono::steady_clock::time_point g_turnT0;
+
 void Game::doEndTurn()
 {
+    // Total wall time of the whole end-turn (income + AI + sieges…) — this is
+    // the actual frame stall the [PERF] line's cand/path split lives inside.
+    g_turnT0 = std::chrono::steady_clock::now();
     // Prune any AI heroes eliminated by an AI-vs-AI field battle since the
     // last call — done first, before any early-return path below, so an
     // elimination never lingers with a stale `heroId` left on the map.
@@ -1820,2466 +1838,2479 @@ void Game::doEndTurn()
         }
     }
 
+
         // Enemy hero AI — omniscient (full map visibility, no fog), faction-optimal.
         // Runs once per full round: immediately in single-player, or after the last
         // human ends their turn in hot-seat (m_enemyHeroes is pure AI in all modes).
+        //
+        // THREADING.md Phase 3 groundwork — the monolithic AI block is now three
+        // seams: aiTurnSetup() builds the shared round state, aiTakeHeroTurn(ehi)
+        // runs one hero's whole turn, doEndTurnPost() is everything that used to
+        // follow the loop. In Watch mode the roster is processed a few heroes per
+        // FRAME from updateWorldMap() (m_aiTurn.active) so the render loop keeps
+        // drawing instead of freezing 0 FPS for the whole AI round. Normal play
+        // drains the loop synchronously below — identical order, same thread, so
+        // no new race surface exists in either mode.
         if ((m_numHumanPlayers <= 1 || lastPlayerEndedTurn) && !m_heroes.empty()) {
-            Hero& playerHero = m_heroes[m_activeHeroIdx];
-            const auto& unitDefs = m_registry.units();
-            bool combatTriggered = false;
+            aiTurnSetup();
+            m_aiTurn.nextHero = 0;
+            if (m_watchingAI) {
+                m_aiTurn.active = true;
+                m_aiTurn.lastPlayerEndedTurn = lastPlayerEndedTurn;
+                return;   // updateWorldMap() steps the heroes and runs the post
+            }
+            while (m_aiTurn.nextHero < static_cast<int>(m_enemyHeroes.size())) {
+                if (!aiTakeHeroTurn(m_aiTurn.nextHero++))
+                    return;   // combat vs the player aborts the round (as before)
+            }
+        }
 
-            // ── Omniscient threat state ───────────────────────────────────────
-            int plStr = heroStrength(playerHero, unitDefs);
-            // Weak player = just fought a battle (army below expected for this week)
-            bool playerIsWeak = (plStr > 0 && plStr < m_turns.week() * 350);
+        doEndTurnPost(lastPlayerEndedTurn);
+}
 
-            // Player's key faction resource — AI denies these mines first
-            int plFidx = static_cast<int>(playerHero.faction);
-            ResourceType denialRes = (plFidx >= 0 && plFidx < 9)
-                                   ? kFactionResource[plFidx] : ResourceType::Gold;
+// ── THREADING.md Phase 3 groundwork: the AI round, split out of doEndTurn ────
+// Shared state for one AI round. Everything here is main-thread only; the
+// split exists so Watch mode can spread heroes across frames today and so the
+// per-hero planning has a clean seam for a worker-thread AiPlanner tomorrow.
+void Game::aiTurnSetup()
+{
+    AiTurnState& S = m_aiTurn;
+    S.combatTriggered = false;
+    S.allHeroesForTargeting.clear();
+    S.aiNeededResByOwner.clear();
 
-            // Resource blocking each AI player's own build queue — its mines
-            // get top priority (same 180 weighting the watch hero uses).
-            // Per-owner now: each AI player has its own economy/build queue,
-            // not one shared "team" queue.
-            std::unordered_map<uint32_t, ResourceType> aiNeededResByOwner;
-            {
-                const auto& allDefs = m_registry.buildings();
-                for (const auto& t : m_towns) {
-                    if (!isAiOwner(t.ownerId)) continue;
-                    if (aiNeededResByOwner.count(t.ownerId)) continue;
-                    int tfi = static_cast<int>(t.faction);
-                    if (tfi < 0 || tfi >= 9) continue;
-                    ResourceType need = aiBlockingResource(t, kBuildOrder[tfi], allDefs, aiResources(t.ownerId));
-                    if (static_cast<int>(need) < RESOURCE_COUNT) aiNeededResByOwner[t.ownerId] = need;
+    Hero& playerHero = m_heroes[m_activeHeroIdx];
+    const auto& unitDefs = m_registry.units();
+
+    // ── Omniscient threat state ──────────────────────────────────────────────
+    S.plStr = heroStrength(playerHero, unitDefs);
+    // Weak player = just fought a battle (army below expected for this week)
+    S.playerIsWeak = (S.plStr > 0 && S.plStr < m_turns.week() * 350);
+
+    // Player's key faction resource — AI denies these mines first
+    int plFidx = static_cast<int>(playerHero.faction);
+    S.denialRes = (plFidx >= 0 && plFidx < 9)
+                ? kFactionResource[plFidx] : ResourceType::Gold;
+
+    // Resource blocking each AI player's own build queue — its mines get top
+    // priority (same 180 weighting the watch hero uses). Per-owner: each AI
+    // player has its own economy/build queue, not one shared "team" queue.
+    {
+        const auto& allDefs = m_registry.buildings();
+        for (const auto& t : m_towns) {
+            if (!isAiOwner(t.ownerId)) continue;
+            if (S.aiNeededResByOwner.count(t.ownerId)) continue;
+            int tfi = static_cast<int>(t.faction);
+            if (tfi < 0 || tfi >= 9) continue;
+            ResourceType need = aiBlockingResource(t, kBuildOrder[tfi], allDefs, aiResources(t.ownerId));
+            if (static_cast<int>(need) < RESOURCE_COUNT) S.aiNeededResByOwner[t.ownerId] = need;
+        }
+    }
+
+    // Difficulty tunes how boldly the AI commits. Hard attacks at a lower
+    // strength ratio and retreats less readily; Easy is more timid.
+    int diffIdx = std::clamp(m_newGameDifficulty, 0, 2);
+    static const int kAggrPct[3]    = { 6, 5, 4 };  // Easy 60% / Normal 50% / Hard 40%
+    static const int kRetreatPct[3] = { 5, 4, 3 };  // Easy 50% / Normal 40% / Hard 30%
+    S.aggrPct    = kAggrPct[diffIdx];
+    S.retreatPct = kRetreatPct[diffIdx];
+
+    // ── Gather every hero on the map (human AND rival AI) so each bot
+    //    hunts/fears whichever hero is nearest, human or bot alike. Positions
+    //    are captured once per round (they were under the serial loop too). ──
+    for (const auto& h : m_heroes)
+        S.allHeroesForTargeting.push_back(
+            {h.pos, heroStrength(h, unitDefs), static_cast<uint32_t>(m_currentPlayerIdx + 1)});
+    for (int pi = 0; pi < m_numHumanPlayers; ++pi) {
+        if (pi == m_currentPlayerIdx) continue;  // that roster is live in m_heroes
+        for (const auto& h : m_players[pi].heroes)
+            S.allHeroesForTargeting.push_back(
+                {h.pos, heroStrength(h, unitDefs), static_cast<uint32_t>(pi + 1)});
+    }
+    for (const auto& h : m_enemyHeroes)
+        S.allHeroesForTargeting.push_back({h.pos, heroStrength(h, unitDefs), h.ownerId});
+
+    // Land connectivity, once per turn — terrain is static within a turn.
+    // Every hero's pathfinding fast-reject reads this, so it must be built
+    // before any planning and never mutated during it.
+    {
+        int stamp = m_turns.week() * 100 + m_turns.day();
+        if (m_landCompTurn != stamp || m_landComp.empty())
+            rebuildLandComponents();
+    }
+
+    // ── Strength-based weekly roles, computed PER PLAYER ─────────────────────
+    //    Each AI owner gets its own raider/economic/defender split, so all AI
+    //    players play the game (a global ranking starved everyone but one).
+    S.heroRank.assign(m_enemyHeroes.size(), 0);  // 0=raider,1=economic,2+=defender
+    {
+        std::vector<uint32_t> owners;
+        for (const auto& eh : m_enemyHeroes)
+            if (std::find(owners.begin(), owners.end(), eh.ownerId) == owners.end())
+                owners.push_back(eh.ownerId);
+        for (uint32_t owner : owners) {
+            std::vector<int> idxs;
+            for (int i = 0; i < (int)m_enemyHeroes.size(); ++i)
+                if (m_enemyHeroes[i].ownerId == owner) idxs.push_back(i);
+            std::sort(idxs.begin(), idxs.end(), [&](int a, int b){
+                return heroStrength(m_enemyHeroes[a], unitDefs)
+                     > heroStrength(m_enemyHeroes[b], unitDefs);
+            });
+            for (size_t r = 0; r < idxs.size(); ++r)
+                S.heroRank[idxs[r]] = (int)r;
+        }
+    }
+
+    // ── Consolidate armies into each player's raider ─────────────────────────
+    //    HoMM opening: extra heroes act as army shuttles — any non-raider hero
+    //    adjacent to its player's raider dumps its army into it (7-slot cap,
+    //    largest stacks first), so the AI fields one fat stack.
+    for (int ri = 0; ri < (int)m_enemyHeroes.size(); ++ri) {
+        if (S.heroRank[ri] != 0 || m_enemyHeroes[ri].eliminated) continue;
+        Hero& raider = m_enemyHeroes[ri];
+        for (int fi = 0; fi < (int)m_enemyHeroes.size(); ++fi) {
+            if (fi == ri) continue;
+            Hero& feeder = m_enemyHeroes[fi];
+            if (feeder.eliminated) continue;
+            if (feeder.ownerId != raider.ownerId) continue;
+            int d = HexGrid::distance(feeder.pos, raider.pos);
+            if (d > 1) continue;   // must be adjacent or same tile
+            std::sort(feeder.army.begin(), feeder.army.end(),
+                      [](const UnitStack& a, const UnitStack& b){ return a.count > b.count; });
+            for (auto it = feeder.army.begin(); it != feeder.army.end();) {
+                bool merged = false;
+                for (auto& s : raider.army)
+                    if (s.defId == it->defId) { s.count += it->count; merged = true; break; }
+                if (!merged && raider.army.size() < 7) {
+                    raider.army.push_back(*it); merged = true;
+                }
+                it = merged ? feeder.army.erase(it) : ++it;
+            }
+        }
+    }
+}
+
+// One enemy hero's entire turn. Body moved VERBATIM (reindented) from the
+// doEndTurn() per-hero loop; the aliases below keep every identifier the body
+// referenced resolving to the same thing it did as a loop body, so the diff
+// is a pure move. Returns false when combat against the player was triggered
+// — the caller must abort the rest of the AI round, exactly as the old
+// `if (combatTriggered) return;` did from inside doEndTurn().
+bool Game::aiTakeHeroTurn(int ehi)
+{
+    AiTurnState& S = m_aiTurn;
+    Hero& playerHero        = m_heroes[m_activeHeroIdx];
+    const auto& unitDefs    = m_registry.units();
+    bool& combatTriggered   = S.combatTriggered;
+    const int  plStr        = S.plStr;
+    const bool playerIsWeak = S.playerIsWeak;
+    const ResourceType denialRes = S.denialRes;
+    const int aggrPct       = S.aggrPct;
+    const int retreatPct    = S.retreatPct;
+    auto& allHeroesForTargeting = S.allHeroesForTargeting;
+    auto& heroRank          = S.heroRank;
+    auto& aiNeededResByOwner = S.aiNeededResByOwner;
+    using RivalHero = AiTurnState::RivalHero;
+    // Nearest RIVAL (any owner other than selfOwnerId or an ally) — human or bot.
+    auto nearestRival = [&](HexCoord from, uint32_t selfOwnerId, int& outStr) -> const RivalHero* {
+        const RivalHero* best = nullptr; int bestD = INT32_MAX;
+        for (const auto& hh : allHeroesForTargeting) {
+            if (isAllied(hh.ownerId, selfOwnerId)) continue;
+            int d = HexGrid::distance(from, hh.pos);
+            if (d < bestD) { bestD = d; best = &hh; }
+        }
+        if (best) outStr = best->str;
+        return best;
+    };
+    // NOTE: combat no longer aborts the roster — once one hero enters
+    // combat, the rest still take their turn; they just can't start a
+    // second fight (the player-tile is blocked and untargeted below).
+    auto& eHero = m_enemyHeroes[ehi];
+    if (eHero.eliminated) return true; // lost a field battle earlier this pass — skip, round continues
+
+    // ── Strength-based role (see byStrength above) ────────────────────
+    bool isRaider   = (heroRank[ehi] == 0);
+    bool isDefender = (heroRank[ehi] >= 2);
+
+    // Recruit from one of THIS player's own towns within 1 tile —
+    // paid from its own pool at real unit costs, plus pick up the
+    // garrison (which weekly recruitment fills). Was "any AI
+    // town" — a rival AI player's town, not just a teammate's.
+    for (auto& t : m_towns) {
+        if (t.ownerId != eHero.ownerId) continue;
+        if (HexGrid::distance(eHero.pos, t.pos) > 1) continue;
+        takeGarrison(t, eHero, unitDefs);
+        aiPaidRecruit(t, eHero.army, aiResources(eHero.ownerId), unitDefs);
+        // Field-upgrade base-tier stacks to whichever upgrade path the
+        // town has built (previously only the watch-mode player did this,
+        // so enemy armies stayed base-tier forever).
+        for (const auto& dw : t.dwellings) {
+            if (dw.path == UpgradePath::None) continue;
+            const UnitDef* pathDef = nullptr;
+            const UnitDef* baseDef = nullptr;
+            for (const auto& ud : unitDefs) {
+                if (ud.faction == t.faction && ud.tier == dw.tier) {
+                    if (ud.path == dw.path)                 pathDef = &ud;
+                    else if (ud.path == UpgradePath::None)  baseDef = &ud;
                 }
             }
+            if (!pathDef || !baseDef) continue;
+            for (auto& s : eHero.army)
+                if (s.defId == baseDef->id) s.defId = pathDef->id;
+        }
+    }
 
-            // Difficulty tunes how boldly the AI commits. Hard attacks at a lower
-            // strength ratio and retreats less readily; Easy is more timid.
-            // aggrPct = raider will attack at eiStr*10 >= nearHumanStr*aggrPct;
-            // retreatPct = veryWeak below eiStr*10 < nearHumanStr*retreatPct.
-            int diffIdx = std::clamp(m_newGameDifficulty, 0, 2);
-            static const int kAggrPct[3]    = { 6, 5, 4 };  // Easy 60% / Normal 50% / Hard 40%
-            static const int kRetreatPct[3] = { 5, 4, 3 };  // Easy 50% / Normal 40% / Hard 30%
-            int aggrPct    = kAggrPct[diffIdx];
-            int retreatPct = kRetreatPct[diffIdx];
+    int eiStr = heroStrength(eHero, unitDefs);
 
-            // ── Gather every hero on the map (human AND rival AI) so each bot
-            //    hunts/fears whichever hero is nearest, human or bot alike —
-            //    real AI-vs-AI hostility instead of only ever targeting humans. ─
-            struct RivalHero { HexCoord pos; int str; uint32_t ownerId; };
-            std::vector<RivalHero> allHeroesForTargeting;
-            for (const auto& h : m_heroes)
-                allHeroesForTargeting.push_back(
-                    {h.pos, heroStrength(h, unitDefs), static_cast<uint32_t>(m_currentPlayerIdx + 1)});
-            for (int pi = 0; pi < m_numHumanPlayers; ++pi) {
-                if (pi == m_currentPlayerIdx) continue;  // that roster is live in m_heroes
-                for (const auto& h : m_players[pi].heroes)
-                    allHeroesForTargeting.push_back(
-                        {h.pos, heroStrength(h, unitDefs), static_cast<uint32_t>(pi + 1)});
+    // ── Owner's town count: drives desperation + world spells ────
+    int ownerTownCount = 0;
+    for (const auto& t : m_towns)
+        if (t.ownerId == eHero.ownerId) ++ownerTownCount;
+    // A player with NO town is on a death clock — the weekly decay
+    // below starves its heroes out after 6 townless weeks. Sitting
+    // around guarantees elimination, so go all-in: max aggression
+    // and beeline the nearest enemy town. Better to die attacking
+    // than to be disbanded having never tried.
+    const bool townlessDesperate = (ownerTownCount == 0);
+
+    // Found City, as a callable: a bot clears a Utopia mid-move and
+    // has walked on by the next turn, so a turn-start-only check
+    // never fired. This runs BOTH at turn start and immediately
+    // after a Utopia is cleared, while the hero is still stood on it.
+    auto tryFoundCity = [&]() -> bool {
+        if (eHero.level < 10 || eHero.mana < 15) return false;
+        WorldObject* ut = nullptr;
+        for (auto& obj : m_worldObjects)
+            if (obj.type == WorldObjectType::Utopia
+                && obj.pos == eHero.pos && obj.collected) { ut = &obj; break; }
+        if (!ut) return false;
+        Resources cost;
+        cost.set(ResourceType::Gold,         10000);
+        cost.set(ResourceType::Iron,            10);
+        cost.set(ResourceType::FaithStones,     10);
+        cost.set(ResourceType::BloodEssence,    10);
+        cost.set(ResourceType::VerdantSap,      10);
+        cost.set(ResourceType::Mercury,         10);
+        Resources& res = aiResources(eHero.ownerId);
+        if (!res.canAfford(cost)) return false;
+        res.spend(cost);
+        eHero.mana -= 15;
+        uint32_t newId = 1;
+        for (const auto& t : m_towns) newId = std::max(newId, t.id + 1);
+        Town nt;
+        nt.id      = newId;
+        nt.name    = eHero.name + "'s Settlement";
+        nt.faction = eHero.faction;
+        nt.pos     = eHero.pos;
+        nt.ownerId = eHero.ownerId;
+        if (HexTile* ht = m_map.getTile(nt.pos)) ht->townId = nt.id;
+        m_towns.push_back(nt);
+        uint32_t utId = ut->id;
+        m_worldObjects.erase(
+            std::remove_if(m_worldObjects.begin(), m_worldObjects.end(),
+                [utId](const WorldObject& o){ return o.id == utId; }),
+            m_worldObjects.end());
+        gLog("P%u %s founded a city on a cleared Utopia (week %d)\n",
+             eHero.ownerId, eHero.name.c_str(), m_turns.week());
+        return true;
+    };
+
+    // ── AI world-map spells ──────────────────────────────────────
+    // The AI previously never cast ANY world spell (castWorldSpell
+    // is only reachable from the human UI panel), which is why it
+    // never founded a single Utopia city and never repositioned.
+    {
+        Resources& spellRes = aiResources(eHero.ownerId);
+        auto knows = [&](int sid) {
+            for (int s : eHero.knownSpells) if (s == sid) return true;
+            return false;
+        };
+        // FOUND CITY — a cleared Utopia under the hero becomes a
+        // town. A level-10 AI hero picks the spell up here: it has
+        // no spellbook UI to learn it from, so without this the
+        // Utopia->town mechanic is unreachable for bots entirely.
+        // Base heroes cap at maxMana=10 but Found City costs 15, so
+        // the precondition was literally unsatisfiable — lift the
+        // ceiling along with the grant.
+        if (eHero.level >= 10 && !knows(SPL::FOUND_CITY)) {
+            eHero.knownSpells.push_back(SPL::FOUND_CITY);
+            if (eHero.maxMana < 20) eHero.maxMana = 20;
+        }
+        // Town Portal is cheap (8 mana) and within a mid-level bot's
+        // reach, but bots only ever learned spells from rare scrolls.
+        if (eHero.level >= 5 && !knows(SPL::TOWN_PORTAL))
+            eHero.knownSpells.push_back(SPL::TOWN_PORTAL);
+        if (tryFoundCity()) ++ownerTownCount;
+        // TOWN PORTAL — jump home to defend a threatened town when
+        // far away and still holding a full move.
+        if (knows(SPL::TOWN_PORTAL) && eHero.mana >= 8
+            && eHero.movePool >= eHero.maxMove && ownerTownCount > 0) {
+            const Town* threatened = nullptr;
+            for (const auto& t : m_towns) {
+                if (t.ownerId != eHero.ownerId) continue;
+                if (HexGrid::distance(eHero.pos, t.pos) <= 10) continue;
+                bool underThreat = false;
+                for (const auto& oh : m_enemyHeroes) {
+                    if (oh.eliminated || isAllied(oh.ownerId, eHero.ownerId)) continue;
+                    if (HexGrid::distance(oh.pos, t.pos) <= 6) { underThreat = true; break; }
+                }
+                if (!underThreat && !m_heroes.empty()
+                    && !isAllied(static_cast<uint32_t>(currentPlayerId()), eHero.ownerId)
+                    && HexGrid::distance(m_heroes[0].pos, t.pos) <= 6)
+                    underThreat = true;
+                if (underThreat) { threatened = &t; break; }
             }
-            for (const auto& h : m_enemyHeroes)
-                allHeroesForTargeting.push_back({h.pos, heroStrength(h, unitDefs), h.ownerId});
-            // Nearest RIVAL (any owner other than selfOwnerId or an ally) —
-            // human or bot.
-            auto nearestRival = [&](HexCoord from, uint32_t selfOwnerId, int& outStr) -> const RivalHero* {
-                const RivalHero* best = nullptr; int bestD = INT32_MAX;
+            if (threatened) {
+                if (HexTile* oldT = m_map.getTile(eHero.pos)) oldT->heroId = 0;
+                eHero.pos    = threatened->pos;
+                eHero.mana  -= 8;
+                eHero.onBoat = false;
+                eHero.marchPath.clear(); eHero.marchPathIdx = 0;
+                if (HexTile* nT = m_map.getTile(eHero.pos)) nT->heroId = eHero.id;
+                gLog("P%u %s cast Town Portal to defend %s (week %d)\n",
+                     eHero.ownerId, eHero.name.c_str(),
+                     threatened->name.c_str(), m_turns.week());
+            }
+        }
+    }
+
+    // Strength gauge vs the NEAREST rival hero to this AI hero —
+    // human or bot alike (was always the single active player
+    // hero, so hot-seat/rival-AI opponents nearer by were ignored).
+    int nearHumanStr = plStr;
+    const RivalHero* target = nearestRival(eHero.pos, eHero.ownerId, nearHumanStr);
+    HexCoord targetPos = target ? target->pos : playerHero.pos;
+    if (nearHumanStr <= 0) nearHumanStr = plStr;
+
+    // Raider: attack at the difficulty-scaled ratio OR when the opponent
+    // is wounded; Economic: only at 1.5×; Defender: never.
+    // ── Personality modifies aggression per this hero's owner ─────
+    // Warrior commits at a lower ratio; Builder/Mage need a bigger
+    // edge before attacking; Explorer is timid but roams (handled in
+    // candidate scoring below).
+    int ownerAggr    = aggrPct;
+    int ownerRetreat = retreatPct;
+    AiPersonality persona = m_aiPersonality[std::min<uint32_t>(eHero.ownerId, 9)];
+    switch (persona) {
+        case AiPersonality::Warrior:  ownerAggr -= 2; ownerRetreat -= 1; break;
+        case AiPersonality::Explorer: ownerAggr += 1;                    break;
+        case AiPersonality::Builder:  ownerAggr += 2; ownerRetreat += 1; break;
+        case AiPersonality::Mage:
+            // calm early, escalates late
+            ownerAggr += (m_turns.week() < 12 ? 3 : -2);
+            break;
+    }
+    ownerAggr    = std::max(2, ownerAggr);
+    ownerRetreat = std::max(1, ownerRetreat);
+
+    // Rich-economy override: a bot sitting on a big treasury has
+    // already "won" economically and should convert that lead into
+    // military pressure instead of hoarding. The more gold banked,
+    // the more aggressive — this fixes the "3M gold, tiny army,
+    // never attacks, game drags to week 43" failure.
+    int ownerGold = (int)aiResources(eHero.ownerId).get(ResourceType::Gold);
+    if (ownerGold > 100000)      ownerAggr = std::max(2, ownerAggr - 5);
+    else if (ownerGold > 40000)  ownerAggr = std::max(2, ownerAggr - 3);
+    else if (ownerGold > 15000)  ownerAggr = std::max(2, ownerAggr - 1);
+
+    bool aggressive = isDefender ? false
+                    : isRaider   ? (playerIsWeak || eiStr * 10 >= nearHumanStr * ownerAggr)
+                    :              (eiStr * 10 >= nearHumanStr * 15);
+    // A very rich player commits even its non-raider heroes.
+    if (ownerGold > 40000 && !isDefender
+        && eiStr * 10 >= nearHumanStr * 9)
+        aggressive = true;
+    // Late-game escalation: past week 20 any non-defender at >=80%
+    // relative strength commits — prevents the endless "both sides farm
+    // mines and never engage" stalemate once the map is exhausted.
+    if (m_turns.week() >= 20 && !isDefender
+        && eiStr * 10 >= nearHumanStr * 8)
+        aggressive = true;
+    // Townless = doomed anyway: always commit, never hold back.
+    if (townlessDesperate) aggressive = true;
+    // Retreat when very weak regardless of role (difficulty + persona)
+    bool veryWeak   = (eiStr * 10 <  nearHumanStr * ownerRetreat);
+    // ...and never retreat/cower when there's no home to run to.
+    if (townlessDesperate) veryWeak = false;
+
+    // Graduated retreat thresholds
+    float strRatio = nearHumanStr > 0 ? (float)eiStr / nearHumanStr : 99.f;
+    bool softRetreat = strRatio < 0.6f;
+    bool dominant    = strRatio >= 1.2f;
+    // A strong opponent on the other side of the map is no reason
+    // to hide at home — cowering locked every AI hero in its
+    // castle all game (deposit + movePool=0 daily) whenever one
+    // human hero snowballed. Retreat instincts only apply when
+    // the threat can plausibly reach us.
+    int threatDist = target ? HexGrid::distance(eHero.pos, target->pos) : 999;
+    if (threatDist > 10) { veryWeak = false; softRetreat = false; }
+    // GhostWalk is now a soft penalty (halved target score) rather than
+    // a hard exemption that made a GhostWalk player un-huntable forever.
+    float ghostMult = playerHero.ghostWalkSpecialty ? 0.5f : 1.0f;
+
+    // Pinned by siege camp: enemy hero can't leave their besieged town
+    bool pinnedBySiege = false;
+    for (const auto& t : m_towns) {
+        if (t.ownerId != eHero.ownerId || !t.underSiege) continue;
+        if (HexGrid::distance(eHero.pos, t.pos) <= 1) { pinnedBySiege = true; break; }
+    }
+    if (pinnedBySiege) { eHero.movePool = 0; }
+
+    // Snap camera to this enemy hero so Watch AI is visible
+    if (m_watchingAI) {
+        float ewx, ewy;
+        m_hexRenderer.grid().hexToWorld(eHero.pos, ewx, ewy);
+        m_camera.setPosition(ewx, ewy);
+    }
+
+    // Per-turn memo of goals a search already proved unreachable
+    // (value = the horizon that failed). The candidate list is
+    // rebuilt every move step, so without this the same doomed
+    // searches re-ran once per step — the residual ~1.2 s turn
+    // spikes after the O(1) component reject (targets on the SAME
+    // landmass but walled off or beyond the horizon, which the
+    // reject can't see). Trades a sliver of mid-turn reactivity —
+    // a dead end stays "dead" until next turn even if the hero
+    // walks toward it — for not re-proving it ~100× per turn.
+    // Local to this hero's turn: never carried across turns.
+    std::unordered_map<HexCoord, int, HexCoordHash> failedTargets;
+    bool memoOnBoat = eHero.onBoat;
+    // marchGoalTurns is "turns spent committed" (the 60-turn lock
+    // timeout) but was incremented once per MOVE STEP, so the lock
+    // really expired after ~60 steps ≈ 6-8 turns — every cross-map
+    // march (~15+ turns) timed out mid-march, re-locked, and re-ran
+    // the 400-hex search. Count it once per hero-turn.
+    bool marchTurnCounted = false;
+
+    while (eHero.movePool > 0) {
+        // Persona weight biases: mineMul favours resources, attackMul
+        // favours enemy heroes/towns. Warrior hunts, Explorer grabs
+        // mines, Builder/Mage lean economic/defensive.
+        float mineMul = 1.f, attackMul = 1.f;
+        switch (persona) {
+            case AiPersonality::Explorer: mineMul = 1.8f; attackMul = 0.7f; break;
+            case AiPersonality::Warrior:  mineMul = 0.8f; attackMul = 1.8f; break;
+            case AiPersonality::Builder:  mineMul = 1.2f; attackMul = 0.7f; break;
+            case AiPersonality::Mage:
+                mineMul   = 1.2f;
+                attackMul = (m_turns.week() < 12 ? 0.6f : 1.6f);
+                break;
+        }
+
+        // TEMP INSTRUMENT: is the per-step candidate rescan really
+        // the dominant cost, as THREADING.md Phase 4 claims? Measure
+        // before optimising — the same doc's fan-out advice was wrong.
+        auto tCandStart = std::chrono::steady_clock::now();
+        // Score-based candidate selection: value / distance
+        struct Cand { HexCoord pos; float score; };
+        std::vector<Cand> cands;
+        auto add = [&](HexCoord pos, float val) {
+            if (pos == eHero.pos) return; // don't target current position
+            int d = std::max(1, HexGrid::distance(eHero.pos, pos));
+            cands.push_back({pos, val / d});
+        };
+        // Persona-weighted variants for resource / attack candidates.
+        auto addMine   = [&](HexCoord pos, float val){ add(pos, val * mineMul); };
+        auto addAttack = [&](HexCoord pos, float val){ add(pos, val * attackMul); };
+
+        if (veryWeak) {
+            for (const auto& t : m_towns)
+                if (t.ownerId == eHero.ownerId) add(t.pos, 500.f);
+            // A weak hero that's already home has no retreat target left
+            // (add() rejects a candidate equal to its own position), so
+            // it would otherwise freeze in place indefinitely every turn
+            // until it happens to out-level the player. Give it safe,
+            // nearby (within 4 hexes) unclaimed resources so it keeps
+            // doing something productive instead of statue-standing.
+            for (const auto& r : m_resources) {
+                if (isAllied(r.ownedBy, eHero.ownerId)) continue;   // skip own/ally mine
+                if (HexGrid::distance(eHero.pos, r.pos) <= 6) add(r.pos, 40.f);
+            }
+        } else if (isDefender) {
+            for (const auto& r : m_resources)
+                if (!isAllied(r.ownedBy, eHero.ownerId)) addMine(r.pos, 100.f);
+            for (const auto& t : m_towns)
+                if (t.ownerId == eHero.ownerId) add(t.pos, 80.f);
+            // Defenders actively intercept any RIVAL hero (human or
+            // bot — allies excluded) threatening an owned town
+            // (previously defenders just wandered for resources
+            // and never protected anything).
+            for (const auto& t : m_towns) {
+                if (t.ownerId != eHero.ownerId) continue;
                 for (const auto& hh : allHeroesForTargeting) {
-                    if (isAllied(hh.ownerId, selfOwnerId)) continue;
-                    int d = HexGrid::distance(from, hh.pos);
-                    if (d < bestD) { bestD = d; best = &hh; }
-                }
-                if (best) outStr = best->str;
-                return best;
-            };
-
-            // ── Strength-based weekly roles, computed PER PLAYER ──────────────
-            //    Previously ranked the entire m_enemyHeroes pool globally, so on
-            //    multi-AI maps only the single strongest hero raided and the 2nd
-            //    grabbed economy — every other AI player's heroes were forced into
-            //    the "defender" role (rank>=2) and never acted. Now each AI owner
-            //    gets its own raider/economic/defender split, so all AI players
-            //    play the game.
-            // Land connectivity, once per turn — terrain is static within a turn.
-            // Every hero's pathfinding fast-reject reads this, so it must be
-            // built before any planning and never mutated during it.
-            {
-                int stamp = m_turns.week() * 100 + m_turns.day();
-                if (m_landCompTurn != stamp || m_landComp.empty())
-                    rebuildLandComponents();
-            }
-
-            std::vector<int> heroRank(m_enemyHeroes.size(), 0);  // 0=raider,1=economic,2+=defender
-            {
-                // group hero indices by ownerId
-                std::vector<uint32_t> owners;
-                for (const auto& eh : m_enemyHeroes)
-                    if (std::find(owners.begin(), owners.end(), eh.ownerId) == owners.end())
-                        owners.push_back(eh.ownerId);
-                for (uint32_t owner : owners) {
-                    std::vector<int> idxs;
-                    for (int i = 0; i < (int)m_enemyHeroes.size(); ++i)
-                        if (m_enemyHeroes[i].ownerId == owner) idxs.push_back(i);
-                    std::sort(idxs.begin(), idxs.end(), [&](int a, int b){
-                        return heroStrength(m_enemyHeroes[a], unitDefs)
-                             > heroStrength(m_enemyHeroes[b], unitDefs);
-                    });
-                    for (size_t r = 0; r < idxs.size(); ++r)
-                        heroRank[idxs[r]] = (int)r;
+                    if (isAllied(hh.ownerId, eHero.ownerId)) continue;
+                    if (HexGrid::distance(hh.pos, t.pos) <= 6)
+                        addAttack(hh.pos, 250.f * ghostMult);
                 }
             }
+        } else {
+            // ── Supply-chain shuttle for non-raider heroes ──────────
+            // A clean two-state ferry: carrying troops → deliver to
+            // the raider (dominant pull, no detours); empty-handed →
+            // go to own town and grab the piled-up garrison. This is
+            // the HoMM scout-chain that keeps the raider on the front
+            // line instead of breaking off to collect units itself.
+            bool didShuttle = false;
+            if (!isRaider) {
+                int carried = 0;
+                for (const auto& s : eHero.army) carried += s.count;
 
-            // ── Consolidate armies into each player's raider ──────────────────
-            //    HoMM opening: extra heroes act as army shuttles — they feed the
-            //    main (raider) hero rather than wandering off solo with split
-            //    forces. Any non-raider hero adjacent to / on the same tile as
-            //    its player's raider dumps its army into the raider (7-slot cap
-            //    respected). This makes the AI field one fat stack instead of
-            //    several weak ones that each die to guards/rivals.
-            {
-                // map ownerId -> raider hero index (rank 0)
-                for (int ri = 0; ri < (int)m_enemyHeroes.size(); ++ri) {
-                    if (heroRank[ri] != 0 || m_enemyHeroes[ri].eliminated) continue;
-                    Hero& raider = m_enemyHeroes[ri];
-                    for (int fi = 0; fi < (int)m_enemyHeroes.size(); ++fi) {
-                        if (fi == ri) continue;
-                        Hero& feeder = m_enemyHeroes[fi];
-                        if (feeder.eliminated) continue;
-                        if (feeder.ownerId != raider.ownerId) continue;
-                        int d = HexGrid::distance(feeder.pos, raider.pos);
-                        if (d > 1) continue;   // must be adjacent or same tile
-                        // Merge feeder's army into the raider, LARGEST stacks
-                        // first, so the best troops make it in before the 7-slot
-                        // cap fills (was insertion-order, could strand the big
-                        // stack behind fodder).
-                        std::sort(feeder.army.begin(), feeder.army.end(),
-                                  [](const UnitStack& a, const UnitStack& b){ return a.count > b.count; });
-                        for (auto it = feeder.army.begin(); it != feeder.army.end();) {
-                            bool merged = false;
-                            for (auto& s : raider.army)
-                                if (s.defId == it->defId) { s.count += it->count; merged = true; break; }
-                            if (!merged && raider.army.size() < 7) {
-                                raider.army.push_back(*it); merged = true;
-                            }
-                            it = merged ? feeder.army.erase(it) : ++it;
-                        }
+                // Find this player's raider.
+                const Hero* raider = nullptr;
+                for (int rj = 0; rj < (int)m_enemyHeroes.size(); ++rj) {
+                    if (heroRank[rj] != 0) continue;
+                    const Hero& r = m_enemyHeroes[rj];
+                    if (!r.eliminated && r.ownerId == eHero.ownerId) { raider = &r; break; }
+                }
+
+                if (carried > 0 && raider) {
+                    // Deliver: head straight for the raider. Weight
+                    // scales with cargo so a full ferry is urgent.
+                    add(raider->pos, 500.f + std::min(500.f, carried * 4.f));
+                    didShuttle = true;
+                } else {
+                    // Empty: go to the OWN town with the most garrison
+                    // waiting to be picked up.
+                    const Town* bestTown = nullptr; int bestG = 0;
+                    for (const auto& t : m_towns) {
+                        if (t.ownerId != eHero.ownerId) continue;
+                        int g = 0;
+                        for (const auto& gs : t.garrison) g += gs.count;
+                        for (const auto& dw : t.dwellings) if (dw.available > 0) g += dw.available;
+                        if (g > bestG) { bestG = g; bestTown = &t; }
+                    }
+                    if (bestTown && bestG > 0) {
+                        add(bestTown->pos, 350.f + std::min(400.f, bestG * 4.f));
+                        didShuttle = true;
                     }
                 }
             }
 
-            // AI-vs-AI field battles are resolved off-screen inline below by
-            // setting `eliminated` on the loser rather than erasing from
-            // m_enemyHeroes mid-loop (which would silently corrupt the
-            // `eHero` reference for whichever index shifts into its slot).
-            // Actual removal happens at the top of the NEXT doEndTurn() call.
-            for (int ehi = 0; ehi < static_cast<int>(m_enemyHeroes.size()); ++ehi) {
-                // NOTE: combat no longer aborts the roster — once one hero enters
-                // combat, the rest still take their turn; they just can't start a
-                // second fight (the player-tile is blocked and untargeted below).
-                auto& eHero = m_enemyHeroes[ehi];
-                if (eHero.eliminated) continue; // lost a field battle earlier this pass
+            // Own town to recruit / collect garrison (raiders + any
+            // hero not already committed to a shuttle run).
+            if (!didShuttle)
+            for (const auto& t : m_towns) {
+                if (t.ownerId != eHero.ownerId) continue;
+                int garrisonUnits = 0;
+                for (const auto& gs : t.garrison) garrisonUnits += gs.count;
+                bool dwellUnits = false;
+                for (const auto& dw : t.dwellings) if (dw.available > 0) { dwellUnits = true; break; }
+                float pull = 0.f;
+                if (garrisonUnits > 0) pull = 200.f + std::min(600.f, garrisonUnits * 4.f);
+                else if (dwellUnits && (int)eHero.army.size() < 7) pull = 250.f;
+                if (pull > 0.f) add(t.pos, pull);
+            }
+            // Towns — capture ANY rival town (enemy AI or human).
+            // Neutral towns a lesser target. This is how players get
+            // eliminated — previously only human towns were targeted
+            // (ownerId <= numHumanPlayers), so AI-vs-AI games never
+            // resolved: nobody ever took anyone's town.
+            //
+            // Key fix: town value scales with THIS hero's strength and
+            // uses a gentler distance falloff (applied via addTownGoal
+            // below), so a strong army commits to the long march to an
+            // enemy capital instead of forever re-grabbing the nearest
+            // mine (score = val/dist buried distant towns under swarms
+            // of adjacent mines — the "everyone stuck at 1 town, no
+            // eliminations at week 49 despite million-str armies" bug).
+            long long myStr = heroStrength(eHero, unitDefs);
+            float strBoost = 1.f + std::min(8.f, (float)myStr / 60000.f);
+            for (const auto& t : m_towns) {
+                if (t.ownerId == 0) {
+                    // Homeless: an unowned town is a free home — grab
+                    // it over anything else on the map.
+                    addAttack(t.pos, townlessDesperate ? 20000.f : 150.f);
+                } else if (!isAllied(t.ownerId, eHero.ownerId)) {
+                    int rivalTowns = 0;
+                    for (const auto& t2 : m_towns)
+                        if (t2.ownerId == t.ownerId) ++rivalTowns;
+                    float val = 600.f * strBoost;
+                    if (rivalTowns == 1) val = 1200.f * strBoost; // elimination kill shot
+                    // Suicide run: with no town of our own we're dead
+                    // in 6 weeks regardless, so ANY enemy town
+                    // outweighs every mine/chest on the map. Take one
+                    // or die trying.
+                    if (townlessDesperate) val = 20000.f;
+                    // Gentler distance penalty for towns: use sqrt(dist)
+                    // instead of dist so a strong army will cross the
+                    // map for the kill. add() divides by dist, so we
+                    // pre-multiply by sqrt(dist) to soften it.
+                    int d = std::max(1, HexGrid::distance(eHero.pos, t.pos));
+                    addAttack(t.pos, val * std::sqrt((float)d));
+                }
+            }
+            // Resources — deny player's key resource and favour own faction's
+            {
+                int eFidx = static_cast<int>(eHero.faction);
+                ResourceType enemyKeyRes = (eFidx >= 0 && eFidx < 9)
+                                         ? kFactionResource[eFidx] : ResourceType::Gold;
+                auto neededIt = aiNeededResByOwner.find(eHero.ownerId);
+                ResourceType myNeededRes = (neededIt != aiNeededResByOwner.end())
+                                         ? neededIt->second : static_cast<ResourceType>(RESOURCE_COUNT);
+                for (const auto& r : m_resources) {
+                    // Skip mines THIS player or an ALLY already
+                    // holds — every non-allied AI player runs its
+                    // own economy, so a rival bot's mine is a
+                    // legitimate raid target, not team property.
+                    if (isAllied(r.ownedBy, eHero.ownerId)) continue;
+                    // Unclaimed/rival mines are worth taking — they're
+                    // the income engine. Unguarded ones are free money
+                    // and always attractive; guarded ones the arrival
+                    // check gates on strength.
+                    bool guarded = (r.guardId != 0 && !r.guardBeaten);
+                    float val = guarded ? 100.f : 120.f;
+                    if (r.type == denialRes)    val = std::max(val, 130.f);
+                    if (r.type == enemyKeyRes)  val = std::max(val, 110.f);
+                    // Mine type blocking our own build queue wins
+                    if (r.type == myNeededRes)  val = std::max(val, 180.f);
+                    addMine(r.pos, val);
+                }
+            }
+            // World objects
+            for (const auto& obj : m_worldObjects) {
+                if (obj.collected) continue;
+                float val = 0.f;
+                // ── Free army & growth — highest map priority ─────
+                if (obj.type == WorldObjectType::UnitDwelling)
+                    val = 160.f;   // weekly recruitable units — huge
+                // ── Naval objects — only worth anything afloat ──
+                // Without scoring these the AI only ever bumped into
+                // them by luck (25 salvage points scattered over
+                // 8000+ sea tiles = never), so the sea stayed empty
+                // of purpose. A hero already on a boat now detours
+                // for salvage and beacons on its way across.
+                else if (obj.type == WorldObjectType::Flotsam)
+                    val = eHero.onBoat ? 170.f : 0.f;
+                else if (obj.type == WorldObjectType::Shipwreck)
+                    val = eHero.onBoat ? 220.f : 0.f;
+                else if (obj.type == WorldObjectType::SeaMonsterLair)
+                    val = eHero.onBoat ? 200.f : 0.f;
+                else if (obj.type == WorldObjectType::Lighthouse)
+                    // Permanent fleet-wide speed/vision — worth a
+                    // real detour, and worth taking off a rival.
+                    val = (eHero.onBoat
+                           && obj.faction != static_cast<int>(eHero.ownerId))
+                          ? 320.f : 0.f;
+                else if (obj.type == WorldObjectType::NeutralOutpost) {
+                    // Guarded, but capture gives permanent weekly
+                    // production — very worth it once beatable.
+                    int siteStr = std::min(1400, 250 + m_turns.week() * 50);
+                    val = (eiStr >= siteStr * 14 / 10) ? 150.f : 0.f;
+                }
+                // ── Free resources / gold pickups ─────────────────
+                else if (obj.type == WorldObjectType::ResourceCache ||
+                         obj.type == WorldObjectType::Campfire      ||
+                         obj.type == WorldObjectType::LavaCrystal)
+                    val = 90.f;
+                // ── Chests & artifacts ───────────────────────────
+                else if (obj.type == WorldObjectType::ArtifactChest)  val = 100.f;
+                else if (obj.type == WorldObjectType::TreasureChest)  val = 85.f;
+                // ── Permanent hero upgrades ──────────────────────
+                else if (obj.type == WorldObjectType::Stables        ||
+                         obj.type == WorldObjectType::TreeOfKnowledge ||
+                         obj.type == WorldObjectType::WitchHut        ||
+                         obj.type == WorldObjectType::Landmark)       val = 70.f;
+                // ── Shrines / scrolls ────────────────────────────
+                else if (obj.type == WorldObjectType::XPShrine   ||
+                         obj.type == WorldObjectType::ForestShrine||
+                         obj.type == WorldObjectType::StatShrine  ||
+                         obj.type == WorldObjectType::SpellScroll ||
+                         obj.type == WorldObjectType::SwampAltar  ||
+                         obj.type == WorldObjectType::Observatory)  val = 50.f;
+                // ── Guarded high-value sites ─────────────────────
+                else if (obj.type == WorldObjectType::Crypt      ||
+                         obj.type == WorldObjectType::Utopia     ||
+                         obj.type == WorldObjectType::PandoraBox ||
+                         obj.type == WorldObjectType::BanditCamp) {
+                    int siteStr = std::min(2200, 350 + m_turns.week() * 80);
+                    if (obj.type == WorldObjectType::Utopia)     siteStr *= 2;
+                    if (obj.type == WorldObjectType::PandoraBox) siteStr = siteStr * 3 / 2;
+                    if (eiStr >= siteStr * 14 / 10) val = 110.f;
+                }
+                // Explorer persona loves map content — bump non-combat grabs.
+                if (persona == AiPersonality::Explorer && val > 0.f && val < 120.f)
+                    val *= 1.4f;
+                if (val > 0.f) add(obj.pos, val);
+            }
+            // Nearest human hero. The old score (300/dist) meant a hero
+            // 30 hexes away NEVER outbid a mine 2 hexes away, at any
+            // strength — both sides orbited trinkets forever and the game
+            // stalemated. Hunt value now grows with the week and decays
+            // with sqrt(dist), so late-game confrontation always wins out.
+            if (!softRetreat && !combatTriggered) {
+                int dist = HexGrid::distance(eHero.pos, targetPos);
+                if (dominant || dist <= 8 || isRaider) {
+                    float huntVal = 300.f + m_turns.week() * 10.f;
+                    cands.push_back({targetPos,
+                        huntVal * ghostMult / std::sqrt((float)std::max(1, dist))});
+                }
+            }
+        }
 
-                // ── Strength-based role (see byStrength above) ────────────────────
-                bool isRaider   = (heroRank[ehi] == 0);
-                bool isDefender = (heroRank[ehi] >= 2);
+        if (cands.empty()) break;
+        std::sort(cands.begin(), cands.end(),
+                  [](const Cand& a, const Cand& b){ return a.score > b.score; });
+        g_candNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        std::chrono::steady_clock::now() - tCandStart).count();
+        ++g_candBuilds;
 
-                // Recruit from one of THIS player's own towns within 1 tile —
-                // paid from its own pool at real unit costs, plus pick up the
-                // garrison (which weekly recruitment fills). Was "any AI
-                // town" — a rival AI player's town, not just a teammate's.
-                for (auto& t : m_towns) {
-                    if (t.ownerId != eHero.ownerId) continue;
-                    if (HexGrid::distance(eHero.pos, t.pos) > 1) continue;
+        // ── AI target-lock ──────────────────────────────────────────
+        // If this hero already committed to marching on an enemy town,
+        // keep heading there rather than re-evaluating every turn (the
+        // oscillation bug: a strong hero "eyeing" 6 towns at 200+ hexes
+        // and committing to none). Drop the lock when the town is no
+        // longer an enemy town, on arrival, or after a timeout.
+        auto townEnemyAt = [&](HexCoord p)->bool{
+            for (const auto& t : m_towns)
+                if (t.pos == p && t.ownerId != 0 && !isAllied(t.ownerId, eHero.ownerId))
+                    return true;
+            return false;
+        };
+        if (eHero.hasMarchGoal &&
+            (!townEnemyAt(eHero.marchGoal) || eHero.marchGoalTurns > 60)) {
+            eHero.hasMarchGoal = false; eHero.marchGoalTurns = 0;
+            eHero.marchPath.clear(); eHero.marchPathIdx = 0;
+        }
+        // Commit to a new goal if the top candidate is an enemy town.
+        if (!eHero.hasMarchGoal && townEnemyAt(cands[0].pos)) {
+            eHero.hasMarchGoal = true;
+            eHero.marchGoal = cands[0].pos;
+            eHero.marchGoalTurns = 0;
+            for (const auto& t : m_towns)
+                if (t.pos == cands[0].pos) {
+                    gLog("P%u %s committing to march on %s (P%u) dist %d\n",
+                         eHero.ownerId, eHero.name.c_str(), t.name.c_str(),
+                         t.ownerId, HexGrid::distance(eHero.pos, t.pos));
+                    break;
+                }
+        }
+        // While locked, force the committed town to the front so the
+        // hero keeps marching there instead of chasing a nearer mine.
+        if (eHero.hasMarchGoal) {
+            if (!marchTurnCounted) {
+                eHero.marchGoalTurns++;
+                marchTurnCounted = true;
+            }
+            bool present = false;
+            for (auto& c : cands) if (c.pos == eHero.marchGoal) { c.score = 1e9f; present = true; break; }
+            if (!present) cands.insert(cands.begin(), {eHero.marchGoal, 1e9f});
+            std::sort(cands.begin(), cands.end(),
+                      [](const Cand& a, const Cand& b){ return a.score > b.score; });
+        }
+
+        auto costFn = [this, &eHero, aggressive, combatTriggered,
+                       &playerHero](HexCoord c) -> int {
+            const HexTile* t = m_map.getTile(c);
+            if (!t || !eHero.canEnter(t->terrain) || t->blocked) return 999;
+            // One combat per day: block the player's tile once a fight is queued
+            if (combatTriggered && c == playerHero.pos) return 999;
+            // Only block passage through player towns, not destination
+            if (!aggressive && t->townId != 0) {
+                for (const auto& town : m_towns)
+                    if (town.id == t->townId && town.ownerId > 0 && town.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) return 999;
+            }
+            int base = eHero.moveCost(t->terrain);
+            if (m_roadHexes.count(c)) base = std::max(1, base / 2);
+            return base;
+        };
+        // Try candidates in score order until one is actually
+        // reachable — an unreachable top target (e.g. across
+        // water) used to freeze the hero for the whole game.
+        // Horizon cap (see watched-hero note above) keeps XL-map
+        // multi-hero turns from exploring the whole grid per hero.
+        constexpr int kAiPathHorizon = 60;
+        std::vector<HexCoord> path;
+        // First: is the SINGLE best target reachable by land? If not,
+        // and it's high-value (enemy town / strong hunt), prefer
+        // buying a boat to reach it over settling for lesser land
+        // grabs — otherwise ships never get used on maps that always
+        // have some nearby land mine.
+        // Track whether the single best target (cands[0]) was
+        // reachable. We get this for free from the loop below — no
+        // extra pathfind (the old extra A* per hero per turn was a
+        // major CPU cost on XL maps).
+        bool bestReachable = false;
+        // Path to the best reachable candidate. Use a generous
+        // horizon ONLY when the top target is an enemy town (worth a
+        // long cross-map march — the 60-hex cap made distant enemy
+        // capitals permanently unreachable, why towns were never
+        // captured even 1v1). Everything else keeps the cheap horizon
+        // so per-hero pathfinding cost stays low.
+        bool topIsEnemyTown = false;
+        if (!cands.empty()) {
+            for (const auto& t : m_towns)
+                if (t.pos == cands[0].pos && t.ownerId != 0
+                    && !isAllied(t.ownerId, eHero.ownerId)) { topIsEnemyTown = true; break; }
+        }
+        // Reuse a cached march path when locked onto a town goal so we
+        // don't rerun the expensive 400-hex A* every turn (that was the
+        // main-thread freeze). Recompute only if the cache is empty or
+        // the hero has strayed off it.
+        path.clear();
+        auto tPathStart = std::chrono::steady_clock::now();
+        if (eHero.hasMarchGoal && topIsEnemyTown
+            && cands[0].pos == eHero.marchGoal
+            && !eHero.marchPath.empty()
+            && eHero.marchPathIdx < eHero.marchPath.size()) {
+            // Follow the cached path from the current position.
+            path.assign(eHero.marchPath.begin() + eHero.marchPathIdx,
+                        eHero.marchPath.end());
+            // The cached path IS a route to cands[0] (the locked
+            // goal), so the top target is reachable. Leaving this
+            // false made wantBoatForBestTarget fire on every step
+            // (the lock's forced 1e9 score passes any threshold):
+            // aiTryBoat swapped in a dock path, the hero stepped
+            // off the march path, the divergence check wiped the
+            // cache — and the 400-hex search re-ran EVERY turn for
+            // EVERY marching hero while they yo-yoed toward docks.
+            bestReachable = true;
+        } else {
+            // THREADING.md Phase 2 — parallel candidate A* fan-out.
+            //
+            // The effective top candidate is still tried SERIALLY
+            // first. A plain "fan all 10 out" would be a pessimism:
+            // the serial try short-circuits on a hit, so when the
+            // leader is reachable (the common case) it costs exactly
+            // one A*, while a blind fan-out costs ten. Only the
+            // failure path is overlapped.
+            //
+            // Taking the LOWEST reachable index keeps the winner
+            // identical to a serial scan: Pathfinder::find is pure,
+            // costFn only reads m_map/m_towns/m_roadHexes, and
+            // nothing mutates during the fan-out — so completion
+            // order cannot change which candidate wins.
+            int chosenIdx = -1;
+            int nCand = static_cast<int>(std::min<size_t>(cands.size(), 10));
+            // Boarding or disembarking changes what is reachable, so
+            // unreachability proofs gathered in the other movement
+            // mode no longer hold — the per-turn memo AND the
+            // cross-turn march-fail stamp both expire.
+            if (eHero.onBoat != memoOnBoat) {
+                failedTargets.clear();
+                eHero.marchFailTurn = -1000000;
+                memoOnBoat = eHero.onBoat;
+            }
+            // Linear turn counter for the cross-turn retry cadence
+            // (the week*100+day stamp used elsewhere isn't linear).
+            const int linTurn = m_turns.week() * 7 + m_turns.day();
+            constexpr int kMarchRetryTurns = 4;
+            // Generous horizon ONLY for a top-candidate enemy town
+            // (worth a cross-map march); everything else stays cheap.
+            auto horizonFor = [&](int ci) {
+                return (ci == 0 && topIsEnemyTown) ? 400 : kAiPathHorizon;
+            };
+            // Known unreachable = another component (O(1) flood-fill
+            // lookup; the amphibious map covers onBoat heroes) OR a
+            // search this turn already failed at >= the horizon we
+            // would use now. Both are read-only queries, safe from
+            // the fan-out workers below.
+            auto knownUnreachable = [&](int ci) {
+                if (routeImpossible(eHero.onBoat, eHero.pos,
+                                    cands[static_cast<size_t>(ci)].pos))
+                    return true;
+                // Cross-turn throttle: this march goal's 400-hex
+                // search failed recently; don't re-prove it yet.
+                if (ci == 0 && eHero.hasMarchGoal
+                    && cands[0].pos == eHero.marchGoal
+                    && eHero.marchFailGoal == eHero.marchGoal
+                    && linTurn - eHero.marchFailTurn < kMarchRetryTurns)
+                    return true;
+                auto it = failedTargets.find(cands[static_cast<size_t>(ci)].pos);
+                return it != failedTargets.end() && it->second >= horizonFor(ci);
+            };
+            // Effective top candidate: the first not already known
+            // unreachable. Once a fallback is chosen, later steps of
+            // the same turn land here again instead of re-proving
+            // the doomed leader with a fresh A* per step (that
+            // re-proving was the residual ~1.2 s spike).
+            int effTop = -1;
+            for (int ci = 0; ci < nCand; ++ci)
+                if (!knownUnreachable(ci)) { effTop = ci; break; }
+            // Reuse this turn's path when we're still heading to the
+            // effective top target and haven't strayed off it. This
+            // is the 99%: without it a full A* ran on EVERY move
+            // step to the very same destination, ~85-100 times/turn.
+            if (effTop >= 0 && eHero.hasStepPath
+                && eHero.stepPathGoal == cands[static_cast<size_t>(effTop)].pos
+                && eHero.stepPathIdx < eHero.stepPath.size()
+                // The remaining path must actually continue from where
+                // the hero IS. Position can change without a move —
+                // a boat launch or Town Portal teleports it — and
+                // blindly resuming would teleport it along a stale route.
+                && HexGrid::distance(eHero.pos,
+                       eHero.stepPath[eHero.stepPathIdx]) == 1) {
+                path.assign(eHero.stepPath.begin() + eHero.stepPathIdx,
+                            eHero.stepPath.end());
+                // bestReachable means "cands[0] itself" — a reused
+                // path to a fallback must not suppress the boat
+                // consideration for the real top target.
+                bestReachable = (effTop == 0);
+                ++g_reuseHits;
+            }
+            if (!path.empty()) {
+                // cached — nothing to search
+            } else if (effTop >= 0) {
+                int h0 = horizonFor(effTop);
+                auto tA = std::chrono::steady_clock::now();
+                path = Pathfinder::find(m_map, eHero.pos,
+                                        cands[static_cast<size_t>(effTop)].pos,
+                                        costFn, h0);
+                {
+                    long long ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                       std::chrono::steady_clock::now() - tA).count();
+                    if (h0 > kAiPathHorizon) {
+                        g_longNs += ns; ++g_longCalls;
+                        if (path.empty()) ++g_longFails;
+                    }
+                    else                     { g_shortNs += ns; ++g_shortCalls; }
+                }
+                if (!path.empty()) {
+                    bestReachable = (effTop == 0);
+                    chosenIdx     = effTop;
+                    if (effTop == 0 && topIsEnemyTown) {
+                        eHero.marchPath    = path;
+                        eHero.marchPathIdx = 0;
+                    }
+                } else {
+                    // Memoise BEFORE the fan-out so the workers'
+                    // read-only view of failedTargets is settled.
+                    int& fh = failedTargets[cands[static_cast<size_t>(effTop)].pos];
+                    fh = std::max(fh, h0);
+                    // A failed MARCH search also stamps the hero so
+                    // the retry happens on a cadence, not per turn.
+                    if (effTop == 0 && eHero.hasMarchGoal
+                        && cands[0].pos == eHero.marchGoal
+                        && h0 > kAiPathHorizon) {
+                        eHero.marchFailGoal = eHero.marchGoal;
+                        eHero.marchFailTurn = linTurn;
+                    }
+                    if (effTop + 1 < nCand) {
+                        // Leader unreachable: search the rest at once.
+                        std::vector<std::vector<HexCoord>> results(
+                            static_cast<size_t>(nCand));
+                        // Which candidates actually ran a search —
+                        // distinguishes "failed" (worth memoising)
+                        // from "skipped". Distinct elements per
+                        // worker, so no data race.
+                        std::vector<char> searched(
+                            static_cast<size_t>(nCand), 0);
+                        WorkerPool::instance().parallelFor(
+                            nCand - 1 - effTop, [&](int k) {
+                            int ci = effTop + 1 + k;
+                            if (knownUnreachable(ci)) return;
+                            searched[static_cast<size_t>(ci)] = 1;
+                            results[static_cast<size_t>(ci)] =
+                                Pathfinder::find(m_map, eHero.pos,
+                                                 cands[static_cast<size_t>(ci)].pos,
+                                                 costFn, kAiPathHorizon);
+                        });
+                        for (int ci = effTop + 1; ci < nCand; ++ci) {
+                            if (!results[static_cast<size_t>(ci)].empty()) {
+                                if (chosenIdx < 0) {
+                                    path = std::move(
+                                        results[static_cast<size_t>(ci)]);
+                                    chosenIdx = ci;
+                                }
+                            } else if (searched[static_cast<size_t>(ci)]) {
+                                // Failed search → memoise so later
+                                // steps this turn skip it in O(1).
+                                int& f = failedTargets[
+                                    cands[static_cast<size_t>(ci)].pos];
+                                f = std::max(f, kAiPathHorizon);
+                            }
+                        }
+                    }
+                }
+            }
+            // Remember the freshly computed path so the remaining
+            // steps of this turn can walk it instead of re-running A*.
+            if (chosenIdx >= 0 && !path.empty()) {
+                eHero.stepPath     = path;
+                eHero.stepPathIdx  = 0;
+                eHero.stepPathGoal = cands[static_cast<size_t>(chosenIdx)].pos;
+                eHero.hasStepPath  = true;
+            }
+        }
+        g_pathNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        std::chrono::steady_clock::now() - tPathStart).count();
+        bool wantBoatForBestTarget =
+            (!cands.empty() && !eHero.onBoat && !bestReachable
+             && cands[0].score >= 150.f);
+        // Everything unreachable by land, OR the best target needs a
+        // boat: buy passage across the water.
+        if (path.empty() || wantBoatForBestTarget) {
+            std::vector<HexCoord> docks;
+            for (const auto& t : m_towns)
+                // Own docks only — a rival AI player's shipyard
+                // isn't this hero's to use.
+                // Own OR allied shipyard towns. Restricting to the
+                // hero's own owner left most bots with docks=0
+                // (measured: heroes wanted a boat 1065 times in one
+                // game and could not name a single dock), so naval
+                // was dead on arrival for anyone who hadn't
+                // personally built a coastal town.
+                if (isAllied(t.ownerId, eHero.ownerId)
+                    && t.hasBuilding(BID::TOWN_SHIPYARD))
+                    docks.push_back(t.pos);
+            std::vector<HexCoord> boatPath;
+            bool wasOnBoat = eHero.onBoat;
+            // The target that motivated buying passage in the first
+            // place. Must be latched BEFORE boarding, because the
+            // moment the hero is floating offshore a fresh scoring
+            // pass sees coastal land junk (a mine two hexes away)
+            // and happily sends it back to the beach.
+            HexCoord seaTarget{};
+            bool haveSeaTarget = false;
+            if (!cands.empty()) { seaTarget = cands[0].pos; haveSeaTarget = true; }
+            if (aiTryBoat(m_map, m_worldObjects, docks, eHero,
+                           aiResources(eHero.ownerId), costFn, boatPath)) {
+                path = boatPath;   // head to the dock
+            } else if (!wasOnBoat && eHero.onBoat) {
+                // Just BOARDED at the dock this call. aiTryBoat returns
+                // false here expecting a re-score, but the stale land
+                // `path` (a fallback target) would walk the hero back
+                // onto land and instantly disembark — wasting the boat
+                // and re-buying every turn (the "28 boats bought, never
+                // seen crossing water" bug). Drop the land path and
+                // re-score now that water is traversable so the hero
+                // actually sails toward the island target.
+                eHero.marchPath.clear(); eHero.marchPathIdx = 0;
+                // Commit to the crossing: lock the overseas target as
+                // the march goal so the re-score forces it to the
+                // front of the candidates. Without this the hero
+                // launched, immediately re-picked a nearby land
+                // target, stepped ashore and disembarked — 6 boats
+                // launched and 0 water tiles crossed in a real game.
+                if (haveSeaTarget) {
+                    eHero.marchGoal      = seaTarget;
+                    eHero.hasMarchGoal   = true;
+                    eHero.marchGoalTurns = 0;
+                }
+                continue;
+            } else if (path.empty()) {
+                break;             // no boat and nothing on land
+            }
+        }
+        if (path.empty()) break;
+
+        HexCoord next = path[0];
+        const HexTile* nextTile = m_map.getTile(next);
+        if (!nextTile) break;
+        int cost = eHero.moveCost(nextTile->terrain);
+        if (eHero.movePool < cost) break;
+
+        // Move
+        if (HexTile* old = m_map.getTile(eHero.pos)) old->heroId = 0;
+        eHero.pos = next;
+        eHero.movePool -= cost;
+        if (HexTile* nT = m_map.getTile(eHero.pos)) nT->heroId = eHero.id;
+        if (eHero.onBoat && nextTile->terrain == Terrain::Water)
+            gLog("  [SAIL] %s crossing water at (%d,%d) wk%d\n",
+                 eHero.name.c_str(), next.q, next.r, m_turns.week());
+        if (eHero.onBoat && nextTile->terrain != Terrain::Water)
+            eHero.onBoat = false;  // disembark
+        // If following the cached march path and we stepped onto its
+        // next tile, advance the index; if we diverged, invalidate it
+        // so it's recomputed next turn.
+        if (eHero.hasMarchGoal && !eHero.marchPath.empty()
+            && eHero.marchPathIdx < eHero.marchPath.size()) {
+            if (eHero.marchPath[eHero.marchPathIdx] == eHero.pos)
+                eHero.marchPathIdx++;
+            else { eHero.marchPath.clear(); eHero.marchPathIdx = 0; }
+        }
+        // Same bookkeeping for the general per-turn path cache: walk
+        // it forward when we landed on its next tile, drop it the
+        // moment we diverge (boat launch, combat shove, blocked tile)
+        // so the next step re-plans honestly instead of following a
+        // path that no longer starts where the hero is.
+        if (eHero.hasStepPath && eHero.stepPathIdx < eHero.stepPath.size()) {
+            if (eHero.stepPath[eHero.stepPathIdx] == eHero.pos) {
+                eHero.stepPathIdx++;
+                if (eHero.stepPathIdx >= eHero.stepPath.size())
+                    eHero.hasStepPath = false;   // arrived
+            } else {
+                eHero.stepPath.clear();
+                eHero.stepPathIdx = 0;
+                eHero.hasStepPath = false;
+            }
+        }
+
+        // Combat with a RIVAL AI hero? Real AI-vs-AI hostility:
+        // resolve it off-screen (no human is present to fight it
+        // out on the battlefield) instead of silently letting two
+        // bots' heroes phase through each other on the same tile.
+        {
+            bool fought = false;
+            for (int oj = 0; oj < static_cast<int>(m_enemyHeroes.size()); ++oj) {
+                if (oj == ehi) continue;
+                Hero& other = m_enemyHeroes[oj];
+                if (other.eliminated || isAllied(other.ownerId, eHero.ownerId)) continue;
+                if (other.pos != eHero.pos) continue;
+
+                int otherStr = heroStrength(other, unitDefs);
+                bool eWins = eiStr >= otherStr; // ties favour the mover
+                // Naval engagement: a War hull rams and sinks any
+                // lesser boat regardless of the armies aboard —
+                // that is the entire point of paying for one.
+                if (eHero.onBoat && other.onBoat) {
+                    bool eWar = (eHero.boatType == BoatType::War);
+                    bool oWar = (other.boatType == BoatType::War);
+                    if (eWar != oWar) {
+                        eWins = eWar;
+                        gLog("%s (war boat) rammed and sank %s at sea (week %d)\n",
+                             eWar ? eHero.name.c_str() : other.name.c_str(),
+                             eWar ? other.name.c_str() : eHero.name.c_str(),
+                             m_turns.week());
+                    }
+                }
+                Hero& winner = eWins ? eHero : other;
+                Hero& loser  = eWins ? other  : eHero;
+                int winnerStr = eWins ? eiStr : otherStr;
+                int loserStr  = eWins ? otherStr : eiStr;
+
+                if (!winner.army.empty()) {
+                    int bigIdx = 0;
+                    for (int i = 1; i < (int)winner.army.size(); ++i)
+                        if (winner.army[i].count > winner.army[bigIdx].count) bigIdx = i;
+                    // Close fights cost the winner more than a rout.
+                    int lossPct = (winnerStr > 0 && loserStr * 10 >= winnerStr * 7) ? 20 : 8;
+                    winner.army[bigIdx].count = std::max(1, winner.army[bigIdx].count
+                                                - winner.army[bigIdx].count * lossPct / 100);
+                }
+                loser.army.clear();
+                loser.eliminated = true;
+                if (HexTile* ct = m_map.getTile(eHero.pos)) ct->heroId = winner.id;
+                // Killing a rival hero awarded nothing either.
+                aiHeroAwardXp(winner, 200 + loserStr / 8);
+                gLog("%s defeated rival %s in the field (week %d)\n",
+                     winner.name.c_str(), loser.name.c_str(), m_turns.week());
+                fought = true;
+                break;
+            }
+            if (fought && eHero.eliminated) { eHero.movePool = 0; break; }
+        }
+
+        // Combat with player? (only the first collision per day fights)
+        if (eHero.pos == playerHero.pos && !combatTriggered
+            && !isAllied(static_cast<uint32_t>(currentPlayerId()), eHero.ownerId)) {
+            m_lastCombatEnemyId = eHero.id;
+            auto pUnits = makeHeroUnits(playerHero, unitDefs, true);
+            auto eUnits = makeHeroUnits(eHero, unitDefs, false);
+            if (m_watchingAI) {
+                m_fromBattleSim = true;
+                m_simAutoPlay   = true;
+                m_simAutoPlayTimer = 0.f;
+            }
+            enterCombat(playerHero, pUnits, eHero, eUnits);
+            combatTriggered = true;
+            break;
+        }
+
+        // Collect world objects — apply meaningful effects to enemy hero
+        for (auto& obj : m_worldObjects) {
+            // ── Naval objects (AI) ───────────────────────────────
+            // Lighthouses are capturable repeatedly, so they are
+            // checked before the generic `collected` guard.
+            if (obj.type == WorldObjectType::Lighthouse
+                && obj.pos == eHero.pos && eHero.onBoat) {
+                if (obj.faction != static_cast<int>(eHero.ownerId)) {
+                    obj.faction   = static_cast<int>(eHero.ownerId);
+                    obj.collected = true;
+                    refreshLighthouseBoosts();
+                    gLog("P%u %s captured a Lighthouse (week %d)\n",
+                         eHero.ownerId, eHero.name.c_str(), m_turns.week());
+                }
+                continue;
+            }
+            // Flotsam drifts — a passing crew scoops it up without
+            // having to land on the exact hex. Needed in practice:
+            // a hero with a locked overseas march goal sails a
+            // straight line, so requiring an exact tile hit meant
+            // salvage was never collected on a 40k-tile ocean.
+            if (obj.type == WorldObjectType::Flotsam && !obj.collected
+                && eHero.onBoat && obj.pos != eHero.pos
+                && HexGrid::distance(obj.pos, eHero.pos) <= 1) {
+                obj.collected = true;
+                int g = 300 + (obj.value % 700);
+                aiResources(eHero.ownerId).add(ResourceType::Gold, g);
+                gLog("P%u %s salvaged drifting flotsam (+%dg, week %d)\n",
+                     eHero.ownerId, eHero.name.c_str(), g, m_turns.week());
+                continue;
+            }
+            if (obj.collected || obj.pos != eHero.pos) continue;
+            if (obj.type == WorldObjectType::Flotsam
+                || obj.type == WorldObjectType::Shipwreck
+                || obj.type == WorldObjectType::SeaMonsterLair) {
+                if (!eHero.onBoat) continue;   // can't salvage on foot
+                bool guarded = (obj.type != WorldObjectType::Flotsam);
+                if (guarded) {
+                    // Week-scaled sea guardians; only engage if strong.
+                    int siteStr = std::min(2400, 400 + m_turns.week() * 90);
+                    if (obj.type == WorldObjectType::SeaMonsterLair)
+                        siteStr = siteStr * 3 / 2;
+                    if (eiStr < siteStr * 14 / 10) continue;
+                    if (!eHero.army.empty()) {
+                        int bigIdx = 0;
+                        for (int i = 1; i < (int)eHero.army.size(); ++i)
+                            if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
+                        eHero.army[bigIdx].count =
+                            std::max(1, eHero.army[bigIdx].count -
+                                     eHero.army[bigIdx].count * 12 / 100);
+                    }
+                    aiHeroAwardXp(eHero, siteStr / 3);
+                }
+                obj.collected = true;
+                int gold = guarded ? 800 + (obj.value % 900)
+                                   : 300 + (obj.value % 700);
+                aiResources(eHero.ownerId).add(ResourceType::Gold, gold);
+                gLog("P%u %s salvaged %s at sea (+%dg, week %d)\n",
+                     eHero.ownerId, eHero.name.c_str(),
+                     obj.type == WorldObjectType::Flotsam ? "flotsam"
+                     : obj.type == WorldObjectType::Shipwreck ? "a shipwreck"
+                     : "a monster lair",
+                     gold, m_turns.week());
+                continue;
+            }
+            // Guarded sites resolve as an off-screen fight, and only when
+            // strong enough — walking over one no longer silently deletes
+            // it (previous behavior collected EVERYTHING unconditionally).
+            if (obj.type == WorldObjectType::Crypt      ||
+                obj.type == WorldObjectType::Utopia     ||
+                obj.type == WorldObjectType::PandoraBox ||
+                obj.type == WorldObjectType::BanditCamp) {
+                int siteStr = std::min(2200, 350 + m_turns.week() * 80);
+                bool utopia  = (obj.type == WorldObjectType::Utopia);
+                bool pandora = (obj.type == WorldObjectType::PandoraBox);
+                if (utopia)  siteStr *= 2;
+                if (pandora) siteStr = siteStr * 3 / 2;
+                if (eiStr < siteStr * 14 / 10) continue;  // too risky — leave it
+                obj.collected = true;
+                // Casualties: ~15% off the largest stack (harder than a mine guard)
+                if (!eHero.army.empty()) {
+                    int bigIdx = 0;
+                    for (int i = 1; i < (int)eHero.army.size(); ++i)
+                        if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
+                    eHero.army[bigIdx].count =
+                        std::max(1, eHero.army[bigIdx].count -
+                                 eHero.army[bigIdx].count * 15 / 100);
+                }
+                aiHeroAwardXp(eHero, siteStr / 4);
+                if (utopia && obj.value > 0)
+                    aiEquipOrStashArtifact(eHero, obj.value);
+                // (naval sites are handled in their own branch below)
+                // Just cleared a Utopia and standing on it — this is
+                // the only moment the Found City precondition holds,
+                // since the hero walks on before its next turn.
+                // (tryFoundCity erases the object, so bail out of
+                // this loop rather than keep iterating it.)
+                if (utopia && tryFoundCity()) break;
+                if (pandora) {
+                    // Same reward table as the player, seed-rolled
+                    uint32_t seed = static_cast<uint32_t>(obj.value);
+                    if (seed % 4 == 1) {
+                        const auto& arts = m_artifactRegistry.artifacts();
+                        if (!arts.empty())
+                            aiEquipOrStashArtifact(eHero, arts[seed % arts.size()].id);
+                    } else if (seed % 4 == 2) {
+                        eHero.attack += 2; eHero.defense += 2;
+                    }
+                    // gold/resource rolls are meaningless to the AI (infinite
+                    // build budget) — XP above covers the value instead
+                }
+                gLog("Enemy %s cleared %s (week %d)\n", eHero.name.c_str(),
+                     utopia  ? "Utopia" :
+                     pandora ? "Pandora's Box" :
+                     (obj.type == WorldObjectType::Crypt ? "Crypt" : "Bandit Camp"),
+                     m_turns.week());
+                continue;
+            }
+            // Persistent sites are used, not consumed
+            if (isPersistentSite(obj.type)) {
+                if (obj.type == WorldObjectType::UnitDwelling) {
+                    // Capture: this AI PLAYER (not "the AI team")
+                    // gains +1 weekly growth of this tier in its
+                    // matching towns, and buys out the available
+                    // pool from its own pocket.
+                    obj.linkedId = eHero.ownerId;
+                    dwellingPaidRecruit(obj, eHero.army,
+                                        aiResources(eHero.ownerId), unitDefs);
+                }
+                continue;
+            }
+            obj.collected = true;
+            if (obj.type == WorldObjectType::XPShrine) {
+                aiHeroAwardXp(eHero, obj.value);
+                gLog("Enemy %s gained %d XP from shrine\n",
+                       eHero.name.c_str(), obj.value);
+            } else if (obj.type == WorldObjectType::SpellScroll) {
+                bool already = false;
+                for (int sid : eHero.knownSpells)
+                    if (sid == obj.value) { already = true; break; }
+                if (!already) eHero.knownSpells.push_back(obj.value);
+            } else if (obj.type == WorldObjectType::StatShrine) {
+                // Alternate ATK and DEF based on current stats
+                if (eHero.attack <= eHero.defense) eHero.attack++;
+                else eHero.defense++;
+            } else if (obj.type == WorldObjectType::ArtifactChest) {
+                aiEquipOrStashArtifact(eHero, obj.value);
+            } else if (obj.type == WorldObjectType::ForestShrine) {
+                aiHeroAwardXp(eHero, obj.value);
+                gLog("Enemy %s gained %d XP from forest shrine\n",
+                       eHero.name.c_str(), obj.value);
+            } else if (obj.type == WorldObjectType::SwampAltar) {
+                bool already = false;
+                for (int sid : eHero.knownSpells)
+                    if (sid == obj.value) { already = true; break; }
+                if (!already) eHero.knownSpells.push_back(obj.value);
+            } else if (obj.type == WorldObjectType::TreasureChest) {
+                // AI always takes gold from multi-choice chests
+                // (no popup, instant collect)
+                gLog("Enemy %s looted chest: +%d gold\n",
+                       eHero.name.c_str(), obj.value);
+            }
+        }
+
+        // Claim resource node (mine control). If a guard is present, the
+        // AI now fights it off-screen when comfortably stronger (was
+        // guardBeaten-only, so guarded mines were unclaimable by the AI).
+        if (nextTile->resourceId != 0) {
+            for (auto& r : m_resources) {
+                // (was `break` — bailed at the first non-matching
+                // node, so the AI claimed 0 mines in every game)
+                if (r.id != nextTile->resourceId) continue;
+                // An ally's mine — leave ownership alone, don't
+                // silently steal it by walking onto it.
+                if (r.ownedBy != 0 && r.ownedBy != eHero.ownerId
+                    && isAllied(r.ownedBy, eHero.ownerId)) break;
+                if (!r.guardBeaten && r.guardId != 0) {
+                    // Guard strength scales with the week but is kept
+                    // low and capped so a hero with a modest army can
+                    // clear nearby mines early — the AI's economy
+                    // depends on them. Require a 1.5x margin so it
+                    // doesn't gut its army on a marginal fight.
+                    int guardStr = std::min(900, 150 + m_turns.week() * 35);
+                    if (eiStr >= guardStr * 3 / 2) {
+                        r.guardBeaten = true;
+                        // Casualties: shave ~7% off the hero's largest stack.
+                        int bigIdx = 0;
+                        for (int i = 1; i < (int)eHero.army.size(); ++i)
+                            if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
+                        if (!eHero.army.empty())
+                            eHero.army[bigIdx].count =
+                                std::max(1, eHero.army[bigIdx].count -
+                                         eHero.army[bigIdx].count / 14);
+                        // Mine guards are the AI's most common fight
+                        // (~1000 a game) and awarded ZERO xp, which
+                        // is why bot heroes sat at level 2 all game
+                        // — gating Town Portal (L5), Found City
+                        // (L10) and every level-up stat behind a
+                        // bar they could never reach.
+                        aiHeroAwardXp(eHero, 40 + m_turns.week() * 8);
+                        gLog("Enemy %s beat mine guard (week %d)\n",
+                             eHero.name.c_str(), m_turns.week());
+                    }
+                }
+                // Unguarded mines are claimable outright (guardBeaten
+                // is only meaningful when a guard exists)
+                if (r.guardId == 0 || r.guardBeaten) r.ownedBy = eHero.ownerId;
+                break;
+            }
+        }
+
+        // Capture neutral towns / siege player towns / garrison at own towns
+        if (nextTile->townId != 0) {
+            for (auto& t : m_towns) {
+                if (t.id != nextTile->townId) continue;
+                if (t.ownerId == eHero.ownerId && veryWeak && !eHero.army.empty()) {
+                    // Retreating hero deposits their smallest stack as garrison
+                    int weakIdx = 0;
+                    for (int i = 1; i < (int)eHero.army.size(); ++i)
+                        if (eHero.army[i].count < eHero.army[weakIdx].count) weakIdx = i;
+                    auto& stack = eHero.army[weakIdx];
+                    int deposit = stack.count / 2;
+                    if (deposit > 0 && t.garrison.size() < 7) {
+                        bool merged = false;
+                        for (auto& gs : t.garrison)
+                            if (gs.defId == stack.defId) { gs.count += deposit; merged = true; break; }
+                        if (!merged) t.garrison.push_back({stack.defId, deposit});
+                        stack.count -= deposit;
+                        if (stack.count == 0)
+                            eHero.army.erase(eHero.army.begin() + weakIdx);
+                    }
+                    eHero.movePool = 0; // done retreating for this turn
+                } else if (t.ownerId == eHero.ownerId) {
+                    // Stepped into one of its OWN towns — pick up
+                    // the garrison and recruit, keep moving.
                     takeGarrison(t, eHero, unitDefs);
                     aiPaidRecruit(t, eHero.army, aiResources(eHero.ownerId), unitDefs);
-                    // Field-upgrade base-tier stacks to whichever upgrade path the
-                    // town has built (previously only the watch-mode player did this,
-                    // so enemy armies stayed base-tier forever).
-                    for (const auto& dw : t.dwellings) {
-                        if (dw.path == UpgradePath::None) continue;
-                        const UnitDef* pathDef = nullptr;
-                        const UnitDef* baseDef = nullptr;
-                        for (const auto& ud : unitDefs) {
-                            if (ud.faction == t.faction && ud.tier == dw.tier) {
-                                if (ud.path == dw.path)                 pathDef = &ud;
-                                else if (ud.path == UpgradePath::None)  baseDef = &ud;
-                            }
-                        }
-                        if (!pathDef || !baseDef) continue;
-                        for (auto& s : eHero.army)
-                            if (s.defId == baseDef->id) s.defId = pathDef->id;
-                    }
-                }
-
-                int eiStr = heroStrength(eHero, unitDefs);
-
-                // ── Owner's town count: drives desperation + world spells ────
-                int ownerTownCount = 0;
-                for (const auto& t : m_towns)
-                    if (t.ownerId == eHero.ownerId) ++ownerTownCount;
-                // A player with NO town is on a death clock — the weekly decay
-                // below starves its heroes out after 6 townless weeks. Sitting
-                // around guarantees elimination, so go all-in: max aggression
-                // and beeline the nearest enemy town. Better to die attacking
-                // than to be disbanded having never tried.
-                const bool townlessDesperate = (ownerTownCount == 0);
-
-                // Found City, as a callable: a bot clears a Utopia mid-move and
-                // has walked on by the next turn, so a turn-start-only check
-                // never fired. This runs BOTH at turn start and immediately
-                // after a Utopia is cleared, while the hero is still stood on it.
-                auto tryFoundCity = [&]() -> bool {
-                    if (eHero.level < 10 || eHero.mana < 15) return false;
-                    WorldObject* ut = nullptr;
-                    for (auto& obj : m_worldObjects)
-                        if (obj.type == WorldObjectType::Utopia
-                            && obj.pos == eHero.pos && obj.collected) { ut = &obj; break; }
-                    if (!ut) return false;
-                    Resources cost;
-                    cost.set(ResourceType::Gold,         10000);
-                    cost.set(ResourceType::Iron,            10);
-                    cost.set(ResourceType::FaithStones,     10);
-                    cost.set(ResourceType::BloodEssence,    10);
-                    cost.set(ResourceType::VerdantSap,      10);
-                    cost.set(ResourceType::Mercury,         10);
-                    Resources& res = aiResources(eHero.ownerId);
-                    if (!res.canAfford(cost)) return false;
-                    res.spend(cost);
-                    eHero.mana -= 15;
-                    uint32_t newId = 1;
-                    for (const auto& t : m_towns) newId = std::max(newId, t.id + 1);
-                    Town nt;
-                    nt.id      = newId;
-                    nt.name    = eHero.name + "'s Settlement";
-                    nt.faction = eHero.faction;
-                    nt.pos     = eHero.pos;
-                    nt.ownerId = eHero.ownerId;
-                    if (HexTile* ht = m_map.getTile(nt.pos)) ht->townId = nt.id;
-                    m_towns.push_back(nt);
-                    uint32_t utId = ut->id;
-                    m_worldObjects.erase(
-                        std::remove_if(m_worldObjects.begin(), m_worldObjects.end(),
-                            [utId](const WorldObject& o){ return o.id == utId; }),
-                        m_worldObjects.end());
-                    gLog("P%u %s founded a city on a cleared Utopia (week %d)\n",
-                         eHero.ownerId, eHero.name.c_str(), m_turns.week());
-                    return true;
-                };
-
-                // ── AI world-map spells ──────────────────────────────────────
-                // The AI previously never cast ANY world spell (castWorldSpell
-                // is only reachable from the human UI panel), which is why it
-                // never founded a single Utopia city and never repositioned.
-                {
-                    Resources& spellRes = aiResources(eHero.ownerId);
-                    auto knows = [&](int sid) {
-                        for (int s : eHero.knownSpells) if (s == sid) return true;
-                        return false;
-                    };
-                    // FOUND CITY — a cleared Utopia under the hero becomes a
-                    // town. A level-10 AI hero picks the spell up here: it has
-                    // no spellbook UI to learn it from, so without this the
-                    // Utopia->town mechanic is unreachable for bots entirely.
-                    // Base heroes cap at maxMana=10 but Found City costs 15, so
-                    // the precondition was literally unsatisfiable — lift the
-                    // ceiling along with the grant.
-                    if (eHero.level >= 10 && !knows(SPL::FOUND_CITY)) {
-                        eHero.knownSpells.push_back(SPL::FOUND_CITY);
-                        if (eHero.maxMana < 20) eHero.maxMana = 20;
-                    }
-                    // Town Portal is cheap (8 mana) and within a mid-level bot's
-                    // reach, but bots only ever learned spells from rare scrolls.
-                    if (eHero.level >= 5 && !knows(SPL::TOWN_PORTAL))
-                        eHero.knownSpells.push_back(SPL::TOWN_PORTAL);
-                    if (tryFoundCity()) ++ownerTownCount;
-                    // TOWN PORTAL — jump home to defend a threatened town when
-                    // far away and still holding a full move.
-                    if (knows(SPL::TOWN_PORTAL) && eHero.mana >= 8
-                        && eHero.movePool >= eHero.maxMove && ownerTownCount > 0) {
-                        const Town* threatened = nullptr;
-                        for (const auto& t : m_towns) {
-                            if (t.ownerId != eHero.ownerId) continue;
-                            if (HexGrid::distance(eHero.pos, t.pos) <= 10) continue;
-                            bool underThreat = false;
-                            for (const auto& oh : m_enemyHeroes) {
-                                if (oh.eliminated || isAllied(oh.ownerId, eHero.ownerId)) continue;
-                                if (HexGrid::distance(oh.pos, t.pos) <= 6) { underThreat = true; break; }
-                            }
-                            if (!underThreat && !m_heroes.empty()
-                                && !isAllied(static_cast<uint32_t>(currentPlayerId()), eHero.ownerId)
-                                && HexGrid::distance(m_heroes[0].pos, t.pos) <= 6)
-                                underThreat = true;
-                            if (underThreat) { threatened = &t; break; }
-                        }
-                        if (threatened) {
-                            if (HexTile* oldT = m_map.getTile(eHero.pos)) oldT->heroId = 0;
-                            eHero.pos    = threatened->pos;
-                            eHero.mana  -= 8;
-                            eHero.onBoat = false;
-                            eHero.marchPath.clear(); eHero.marchPathIdx = 0;
-                            if (HexTile* nT = m_map.getTile(eHero.pos)) nT->heroId = eHero.id;
-                            gLog("P%u %s cast Town Portal to defend %s (week %d)\n",
-                                 eHero.ownerId, eHero.name.c_str(),
-                                 threatened->name.c_str(), m_turns.week());
-                        }
-                    }
-                }
-
-                // Strength gauge vs the NEAREST rival hero to this AI hero —
-                // human or bot alike (was always the single active player
-                // hero, so hot-seat/rival-AI opponents nearer by were ignored).
-                int nearHumanStr = plStr;
-                const RivalHero* target = nearestRival(eHero.pos, eHero.ownerId, nearHumanStr);
-                HexCoord targetPos = target ? target->pos : playerHero.pos;
-                if (nearHumanStr <= 0) nearHumanStr = plStr;
-
-                // Raider: attack at the difficulty-scaled ratio OR when the opponent
-                // is wounded; Economic: only at 1.5×; Defender: never.
-                // ── Personality modifies aggression per this hero's owner ─────
-                // Warrior commits at a lower ratio; Builder/Mage need a bigger
-                // edge before attacking; Explorer is timid but roams (handled in
-                // candidate scoring below).
-                int ownerAggr    = aggrPct;
-                int ownerRetreat = retreatPct;
-                AiPersonality persona = m_aiPersonality[std::min<uint32_t>(eHero.ownerId, 9)];
-                switch (persona) {
-                    case AiPersonality::Warrior:  ownerAggr -= 2; ownerRetreat -= 1; break;
-                    case AiPersonality::Explorer: ownerAggr += 1;                    break;
-                    case AiPersonality::Builder:  ownerAggr += 2; ownerRetreat += 1; break;
-                    case AiPersonality::Mage:
-                        // calm early, escalates late
-                        ownerAggr += (m_turns.week() < 12 ? 3 : -2);
-                        break;
-                }
-                ownerAggr    = std::max(2, ownerAggr);
-                ownerRetreat = std::max(1, ownerRetreat);
-
-                // Rich-economy override: a bot sitting on a big treasury has
-                // already "won" economically and should convert that lead into
-                // military pressure instead of hoarding. The more gold banked,
-                // the more aggressive — this fixes the "3M gold, tiny army,
-                // never attacks, game drags to week 43" failure.
-                int ownerGold = (int)aiResources(eHero.ownerId).get(ResourceType::Gold);
-                if (ownerGold > 100000)      ownerAggr = std::max(2, ownerAggr - 5);
-                else if (ownerGold > 40000)  ownerAggr = std::max(2, ownerAggr - 3);
-                else if (ownerGold > 15000)  ownerAggr = std::max(2, ownerAggr - 1);
-
-                bool aggressive = isDefender ? false
-                                : isRaider   ? (playerIsWeak || eiStr * 10 >= nearHumanStr * ownerAggr)
-                                :              (eiStr * 10 >= nearHumanStr * 15);
-                // A very rich player commits even its non-raider heroes.
-                if (ownerGold > 40000 && !isDefender
-                    && eiStr * 10 >= nearHumanStr * 9)
-                    aggressive = true;
-                // Late-game escalation: past week 20 any non-defender at >=80%
-                // relative strength commits — prevents the endless "both sides farm
-                // mines and never engage" stalemate once the map is exhausted.
-                if (m_turns.week() >= 20 && !isDefender
-                    && eiStr * 10 >= nearHumanStr * 8)
-                    aggressive = true;
-                // Townless = doomed anyway: always commit, never hold back.
-                if (townlessDesperate) aggressive = true;
-                // Retreat when very weak regardless of role (difficulty + persona)
-                bool veryWeak   = (eiStr * 10 <  nearHumanStr * ownerRetreat);
-                // ...and never retreat/cower when there's no home to run to.
-                if (townlessDesperate) veryWeak = false;
-
-                // Graduated retreat thresholds
-                float strRatio = nearHumanStr > 0 ? (float)eiStr / nearHumanStr : 99.f;
-                bool softRetreat = strRatio < 0.6f;
-                bool dominant    = strRatio >= 1.2f;
-                // A strong opponent on the other side of the map is no reason
-                // to hide at home — cowering locked every AI hero in its
-                // castle all game (deposit + movePool=0 daily) whenever one
-                // human hero snowballed. Retreat instincts only apply when
-                // the threat can plausibly reach us.
-                int threatDist = target ? HexGrid::distance(eHero.pos, target->pos) : 999;
-                if (threatDist > 10) { veryWeak = false; softRetreat = false; }
-                // GhostWalk is now a soft penalty (halved target score) rather than
-                // a hard exemption that made a GhostWalk player un-huntable forever.
-                float ghostMult = playerHero.ghostWalkSpecialty ? 0.5f : 1.0f;
-
-                // Pinned by siege camp: enemy hero can't leave their besieged town
-                bool pinnedBySiege = false;
-                for (const auto& t : m_towns) {
-                    if (t.ownerId != eHero.ownerId || !t.underSiege) continue;
-                    if (HexGrid::distance(eHero.pos, t.pos) <= 1) { pinnedBySiege = true; break; }
-                }
-                if (pinnedBySiege) { eHero.movePool = 0; }
-
-                // Snap camera to this enemy hero so Watch AI is visible
-                if (m_watchingAI) {
-                    float ewx, ewy;
-                    m_hexRenderer.grid().hexToWorld(eHero.pos, ewx, ewy);
-                    m_camera.setPosition(ewx, ewy);
-                }
-
-                // Per-turn memo of goals a search already proved unreachable
-                // (value = the horizon that failed). The candidate list is
-                // rebuilt every move step, so without this the same doomed
-                // searches re-ran once per step — the residual ~1.2 s turn
-                // spikes after the O(1) component reject (targets on the SAME
-                // landmass but walled off or beyond the horizon, which the
-                // reject can't see). Trades a sliver of mid-turn reactivity —
-                // a dead end stays "dead" until next turn even if the hero
-                // walks toward it — for not re-proving it ~100× per turn.
-                // Local to this hero's turn: never carried across turns.
-                std::unordered_map<HexCoord, int, HexCoordHash> failedTargets;
-                bool memoOnBoat = eHero.onBoat;
-                // marchGoalTurns is "turns spent committed" (the 60-turn lock
-                // timeout) but was incremented once per MOVE STEP, so the lock
-                // really expired after ~60 steps ≈ 6-8 turns — every cross-map
-                // march (~15+ turns) timed out mid-march, re-locked, and re-ran
-                // the 400-hex search. Count it once per hero-turn.
-                bool marchTurnCounted = false;
-
-                while (eHero.movePool > 0) {
-                    // Persona weight biases: mineMul favours resources, attackMul
-                    // favours enemy heroes/towns. Warrior hunts, Explorer grabs
-                    // mines, Builder/Mage lean economic/defensive.
-                    float mineMul = 1.f, attackMul = 1.f;
-                    switch (persona) {
-                        case AiPersonality::Explorer: mineMul = 1.8f; attackMul = 0.7f; break;
-                        case AiPersonality::Warrior:  mineMul = 0.8f; attackMul = 1.8f; break;
-                        case AiPersonality::Builder:  mineMul = 1.2f; attackMul = 0.7f; break;
-                        case AiPersonality::Mage:
-                            mineMul   = 1.2f;
-                            attackMul = (m_turns.week() < 12 ? 0.6f : 1.6f);
-                            break;
-                    }
-
-                    // TEMP INSTRUMENT: is the per-step candidate rescan really
-                    // the dominant cost, as THREADING.md Phase 4 claims? Measure
-                    // before optimising — the same doc's fan-out advice was wrong.
-                    auto tCandStart = std::chrono::steady_clock::now();
-                    // Score-based candidate selection: value / distance
-                    struct Cand { HexCoord pos; float score; };
-                    std::vector<Cand> cands;
-                    auto add = [&](HexCoord pos, float val) {
-                        if (pos == eHero.pos) return; // don't target current position
-                        int d = std::max(1, HexGrid::distance(eHero.pos, pos));
-                        cands.push_back({pos, val / d});
-                    };
-                    // Persona-weighted variants for resource / attack candidates.
-                    auto addMine   = [&](HexCoord pos, float val){ add(pos, val * mineMul); };
-                    auto addAttack = [&](HexCoord pos, float val){ add(pos, val * attackMul); };
-
-                    if (veryWeak) {
-                        for (const auto& t : m_towns)
-                            if (t.ownerId == eHero.ownerId) add(t.pos, 500.f);
-                        // A weak hero that's already home has no retreat target left
-                        // (add() rejects a candidate equal to its own position), so
-                        // it would otherwise freeze in place indefinitely every turn
-                        // until it happens to out-level the player. Give it safe,
-                        // nearby (within 4 hexes) unclaimed resources so it keeps
-                        // doing something productive instead of statue-standing.
-                        for (const auto& r : m_resources) {
-                            if (isAllied(r.ownedBy, eHero.ownerId)) continue;   // skip own/ally mine
-                            if (HexGrid::distance(eHero.pos, r.pos) <= 6) add(r.pos, 40.f);
-                        }
-                    } else if (isDefender) {
-                        for (const auto& r : m_resources)
-                            if (!isAllied(r.ownedBy, eHero.ownerId)) addMine(r.pos, 100.f);
-                        for (const auto& t : m_towns)
-                            if (t.ownerId == eHero.ownerId) add(t.pos, 80.f);
-                        // Defenders actively intercept any RIVAL hero (human or
-                        // bot — allies excluded) threatening an owned town
-                        // (previously defenders just wandered for resources
-                        // and never protected anything).
-                        for (const auto& t : m_towns) {
-                            if (t.ownerId != eHero.ownerId) continue;
-                            for (const auto& hh : allHeroesForTargeting) {
-                                if (isAllied(hh.ownerId, eHero.ownerId)) continue;
-                                if (HexGrid::distance(hh.pos, t.pos) <= 6)
-                                    addAttack(hh.pos, 250.f * ghostMult);
-                            }
-                        }
+                } else if (t.ownerId == 0) {
+                    t.ownerId = eHero.ownerId;
+                    gLog("Enemy %s captured %s\n", eHero.name.c_str(), t.name.c_str());
+                } else if (isAllied(t.ownerId, eHero.ownerId)) {
+                    // An ally's town (bot or human) is never a
+                    // hostile target — no siege, no reaching into
+                    // its garrison/economy. Just pass through.
+                } else if (isAiOwner(t.ownerId)) {
+                    // A RIVAL bot's town — real AI-vs-AI hostility.
+                    // No human is present to play this out on the
+                    // battlefield, so resolve it off-screen the
+                    // same way mine-guard fights are resolved
+                    // above: compare strength, a decisive attacker
+                    // takes the town, otherwise it bounces off
+                    // with losses (mirrors the human-town "empty
+                    // garrison" stop-here behaviour below).
+                    int garrStr  = stacksStrength(t.garrison, unitDefs);
+                    // Fort ladder gives escalating defensive strength
+                    // so a fortified town is genuinely hard to take —
+                    // defending a Castle is as valid as attacking one.
+                    float fortMul = 0.f;
+                    if (t.hasBuilding(BID::CASTLE))      fortMul = 1.5f;
+                    else if (t.hasBuilding(BID::CITADEL)) fortMul = 1.0f;
+                    else if (t.hasBuilding(BID::FORT))    fortMul = 0.6f;
+                    if (t.hasBuilding(BID::BASTION))     fortMul += 0.75f;
+                    int fortBonus = (int)(garrStr * fortMul);
+                    // Walls also give a flat floor so an empty town
+                    // still resists a token force.
+                    int wallFloor = t.hasBuilding(BID::CASTLE) ? 800
+                                  : t.hasBuilding(BID::CITADEL) ? 500
+                                  : t.hasBuilding(BID::FORT) ? 300 : 100;
+                    int defStr = garrStr + fortBonus + wallFloor;
+                    int bigIdx = 0;
+                    for (int i = 1; i < (int)eHero.army.size(); ++i)
+                        if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
+                    if (eiStr * 10 >= defStr * 13) {
+                        if (!eHero.army.empty())
+                            eHero.army[bigIdx].count = std::max(1, eHero.army[bigIdx].count
+                                                        - eHero.army[bigIdx].count / 10);
+                        t.garrison.clear();
+                        t.ownerId = eHero.ownerId;
+                        // Taking a defended town is the biggest feat
+                        // on the map — it awarded no xp at all.
+                        aiHeroAwardXp(eHero, 400 + defStr / 4);
+                        gLog("Enemy %s stormed rival town %s (week %d)\n",
+                             eHero.name.c_str(), t.name.c_str(), m_turns.week());
                     } else {
-                        // ── Supply-chain shuttle for non-raider heroes ──────────
-                        // A clean two-state ferry: carrying troops → deliver to
-                        // the raider (dominant pull, no detours); empty-handed →
-                        // go to own town and grab the piled-up garrison. This is
-                        // the HoMM scout-chain that keeps the raider on the front
-                        // line instead of breaking off to collect units itself.
-                        bool didShuttle = false;
-                        if (!isRaider) {
-                            int carried = 0;
-                            for (const auto& s : eHero.army) carried += s.count;
-
-                            // Find this player's raider.
-                            const Hero* raider = nullptr;
-                            for (int rj = 0; rj < (int)m_enemyHeroes.size(); ++rj) {
-                                if (heroRank[rj] != 0) continue;
-                                const Hero& r = m_enemyHeroes[rj];
-                                if (!r.eliminated && r.ownerId == eHero.ownerId) { raider = &r; break; }
-                            }
-
-                            if (carried > 0 && raider) {
-                                // Deliver: head straight for the raider. Weight
-                                // scales with cargo so a full ferry is urgent.
-                                add(raider->pos, 500.f + std::min(500.f, carried * 4.f));
-                                didShuttle = true;
-                            } else {
-                                // Empty: go to the OWN town with the most garrison
-                                // waiting to be picked up.
-                                const Town* bestTown = nullptr; int bestG = 0;
-                                for (const auto& t : m_towns) {
-                                    if (t.ownerId != eHero.ownerId) continue;
-                                    int g = 0;
-                                    for (const auto& gs : t.garrison) g += gs.count;
-                                    for (const auto& dw : t.dwellings) if (dw.available > 0) g += dw.available;
-                                    if (g > bestG) { bestG = g; bestTown = &t; }
-                                }
-                                if (bestTown && bestG > 0) {
-                                    add(bestTown->pos, 350.f + std::min(400.f, bestG * 4.f));
-                                    didShuttle = true;
-                                }
-                            }
-                        }
-
-                        // Own town to recruit / collect garrison (raiders + any
-                        // hero not already committed to a shuttle run).
-                        if (!didShuttle)
-                        for (const auto& t : m_towns) {
-                            if (t.ownerId != eHero.ownerId) continue;
-                            int garrisonUnits = 0;
-                            for (const auto& gs : t.garrison) garrisonUnits += gs.count;
-                            bool dwellUnits = false;
-                            for (const auto& dw : t.dwellings) if (dw.available > 0) { dwellUnits = true; break; }
-                            float pull = 0.f;
-                            if (garrisonUnits > 0) pull = 200.f + std::min(600.f, garrisonUnits * 4.f);
-                            else if (dwellUnits && (int)eHero.army.size() < 7) pull = 250.f;
-                            if (pull > 0.f) add(t.pos, pull);
-                        }
-                        // Towns — capture ANY rival town (enemy AI or human).
-                        // Neutral towns a lesser target. This is how players get
-                        // eliminated — previously only human towns were targeted
-                        // (ownerId <= numHumanPlayers), so AI-vs-AI games never
-                        // resolved: nobody ever took anyone's town.
-                        //
-                        // Key fix: town value scales with THIS hero's strength and
-                        // uses a gentler distance falloff (applied via addTownGoal
-                        // below), so a strong army commits to the long march to an
-                        // enemy capital instead of forever re-grabbing the nearest
-                        // mine (score = val/dist buried distant towns under swarms
-                        // of adjacent mines — the "everyone stuck at 1 town, no
-                        // eliminations at week 49 despite million-str armies" bug).
-                        long long myStr = heroStrength(eHero, unitDefs);
-                        float strBoost = 1.f + std::min(8.f, (float)myStr / 60000.f);
-                        for (const auto& t : m_towns) {
-                            if (t.ownerId == 0) {
-                                // Homeless: an unowned town is a free home — grab
-                                // it over anything else on the map.
-                                addAttack(t.pos, townlessDesperate ? 20000.f : 150.f);
-                            } else if (!isAllied(t.ownerId, eHero.ownerId)) {
-                                int rivalTowns = 0;
-                                for (const auto& t2 : m_towns)
-                                    if (t2.ownerId == t.ownerId) ++rivalTowns;
-                                float val = 600.f * strBoost;
-                                if (rivalTowns == 1) val = 1200.f * strBoost; // elimination kill shot
-                                // Suicide run: with no town of our own we're dead
-                                // in 6 weeks regardless, so ANY enemy town
-                                // outweighs every mine/chest on the map. Take one
-                                // or die trying.
-                                if (townlessDesperate) val = 20000.f;
-                                // Gentler distance penalty for towns: use sqrt(dist)
-                                // instead of dist so a strong army will cross the
-                                // map for the kill. add() divides by dist, so we
-                                // pre-multiply by sqrt(dist) to soften it.
-                                int d = std::max(1, HexGrid::distance(eHero.pos, t.pos));
-                                addAttack(t.pos, val * std::sqrt((float)d));
-                            }
-                        }
-                        // Resources — deny player's key resource and favour own faction's
-                        {
-                            int eFidx = static_cast<int>(eHero.faction);
-                            ResourceType enemyKeyRes = (eFidx >= 0 && eFidx < 9)
-                                                     ? kFactionResource[eFidx] : ResourceType::Gold;
-                            auto neededIt = aiNeededResByOwner.find(eHero.ownerId);
-                            ResourceType myNeededRes = (neededIt != aiNeededResByOwner.end())
-                                                     ? neededIt->second : static_cast<ResourceType>(RESOURCE_COUNT);
-                            for (const auto& r : m_resources) {
-                                // Skip mines THIS player or an ALLY already
-                                // holds — every non-allied AI player runs its
-                                // own economy, so a rival bot's mine is a
-                                // legitimate raid target, not team property.
-                                if (isAllied(r.ownedBy, eHero.ownerId)) continue;
-                                // Unclaimed/rival mines are worth taking — they're
-                                // the income engine. Unguarded ones are free money
-                                // and always attractive; guarded ones the arrival
-                                // check gates on strength.
-                                bool guarded = (r.guardId != 0 && !r.guardBeaten);
-                                float val = guarded ? 100.f : 120.f;
-                                if (r.type == denialRes)    val = std::max(val, 130.f);
-                                if (r.type == enemyKeyRes)  val = std::max(val, 110.f);
-                                // Mine type blocking our own build queue wins
-                                if (r.type == myNeededRes)  val = std::max(val, 180.f);
-                                addMine(r.pos, val);
-                            }
-                        }
-                        // World objects
-                        for (const auto& obj : m_worldObjects) {
-                            if (obj.collected) continue;
-                            float val = 0.f;
-                            // ── Free army & growth — highest map priority ─────
-                            if (obj.type == WorldObjectType::UnitDwelling)
-                                val = 160.f;   // weekly recruitable units — huge
-                            // ── Naval objects — only worth anything afloat ──
-                            // Without scoring these the AI only ever bumped into
-                            // them by luck (25 salvage points scattered over
-                            // 8000+ sea tiles = never), so the sea stayed empty
-                            // of purpose. A hero already on a boat now detours
-                            // for salvage and beacons on its way across.
-                            else if (obj.type == WorldObjectType::Flotsam)
-                                val = eHero.onBoat ? 170.f : 0.f;
-                            else if (obj.type == WorldObjectType::Shipwreck)
-                                val = eHero.onBoat ? 220.f : 0.f;
-                            else if (obj.type == WorldObjectType::SeaMonsterLair)
-                                val = eHero.onBoat ? 200.f : 0.f;
-                            else if (obj.type == WorldObjectType::Lighthouse)
-                                // Permanent fleet-wide speed/vision — worth a
-                                // real detour, and worth taking off a rival.
-                                val = (eHero.onBoat
-                                       && obj.faction != static_cast<int>(eHero.ownerId))
-                                      ? 320.f : 0.f;
-                            else if (obj.type == WorldObjectType::NeutralOutpost) {
-                                // Guarded, but capture gives permanent weekly
-                                // production — very worth it once beatable.
-                                int siteStr = std::min(1400, 250 + m_turns.week() * 50);
-                                val = (eiStr >= siteStr * 14 / 10) ? 150.f : 0.f;
-                            }
-                            // ── Free resources / gold pickups ─────────────────
-                            else if (obj.type == WorldObjectType::ResourceCache ||
-                                     obj.type == WorldObjectType::Campfire      ||
-                                     obj.type == WorldObjectType::LavaCrystal)
-                                val = 90.f;
-                            // ── Chests & artifacts ───────────────────────────
-                            else if (obj.type == WorldObjectType::ArtifactChest)  val = 100.f;
-                            else if (obj.type == WorldObjectType::TreasureChest)  val = 85.f;
-                            // ── Permanent hero upgrades ──────────────────────
-                            else if (obj.type == WorldObjectType::Stables        ||
-                                     obj.type == WorldObjectType::TreeOfKnowledge ||
-                                     obj.type == WorldObjectType::WitchHut        ||
-                                     obj.type == WorldObjectType::Landmark)       val = 70.f;
-                            // ── Shrines / scrolls ────────────────────────────
-                            else if (obj.type == WorldObjectType::XPShrine   ||
-                                     obj.type == WorldObjectType::ForestShrine||
-                                     obj.type == WorldObjectType::StatShrine  ||
-                                     obj.type == WorldObjectType::SpellScroll ||
-                                     obj.type == WorldObjectType::SwampAltar  ||
-                                     obj.type == WorldObjectType::Observatory)  val = 50.f;
-                            // ── Guarded high-value sites ─────────────────────
-                            else if (obj.type == WorldObjectType::Crypt      ||
-                                     obj.type == WorldObjectType::Utopia     ||
-                                     obj.type == WorldObjectType::PandoraBox ||
-                                     obj.type == WorldObjectType::BanditCamp) {
-                                int siteStr = std::min(2200, 350 + m_turns.week() * 80);
-                                if (obj.type == WorldObjectType::Utopia)     siteStr *= 2;
-                                if (obj.type == WorldObjectType::PandoraBox) siteStr = siteStr * 3 / 2;
-                                if (eiStr >= siteStr * 14 / 10) val = 110.f;
-                            }
-                            // Explorer persona loves map content — bump non-combat grabs.
-                            if (persona == AiPersonality::Explorer && val > 0.f && val < 120.f)
-                                val *= 1.4f;
-                            if (val > 0.f) add(obj.pos, val);
-                        }
-                        // Nearest human hero. The old score (300/dist) meant a hero
-                        // 30 hexes away NEVER outbid a mine 2 hexes away, at any
-                        // strength — both sides orbited trinkets forever and the game
-                        // stalemated. Hunt value now grows with the week and decays
-                        // with sqrt(dist), so late-game confrontation always wins out.
-                        if (!softRetreat && !combatTriggered) {
-                            int dist = HexGrid::distance(eHero.pos, targetPos);
-                            if (dominant || dist <= 8 || isRaider) {
-                                float huntVal = 300.f + m_turns.week() * 10.f;
-                                cands.push_back({targetPos,
-                                    huntVal * ghostMult / std::sqrt((float)std::max(1, dist))});
-                            }
-                        }
+                        if (!eHero.army.empty())
+                            eHero.army[bigIdx].count = std::max(1, eHero.army[bigIdx].count
+                                                        - eHero.army[bigIdx].count / 6);
+                        eHero.movePool = 0; // assault failed, stops here
                     }
-
-                    if (cands.empty()) break;
-                    std::sort(cands.begin(), cands.end(),
-                              [](const Cand& a, const Cand& b){ return a.score > b.score; });
-                    g_candNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                    std::chrono::steady_clock::now() - tCandStart).count();
-                    ++g_candBuilds;
-
-                    // ── AI target-lock ──────────────────────────────────────────
-                    // If this hero already committed to marching on an enemy town,
-                    // keep heading there rather than re-evaluating every turn (the
-                    // oscillation bug: a strong hero "eyeing" 6 towns at 200+ hexes
-                    // and committing to none). Drop the lock when the town is no
-                    // longer an enemy town, on arrival, or after a timeout.
-                    auto townEnemyAt = [&](HexCoord p)->bool{
-                        for (const auto& t : m_towns)
-                            if (t.pos == p && t.ownerId != 0 && !isAllied(t.ownerId, eHero.ownerId))
-                                return true;
-                        return false;
-                    };
-                    if (eHero.hasMarchGoal &&
-                        (!townEnemyAt(eHero.marchGoal) || eHero.marchGoalTurns > 60)) {
-                        eHero.hasMarchGoal = false; eHero.marchGoalTurns = 0;
-                        eHero.marchPath.clear(); eHero.marchPathIdx = 0;
-                    }
-                    // Commit to a new goal if the top candidate is an enemy town.
-                    if (!eHero.hasMarchGoal && townEnemyAt(cands[0].pos)) {
-                        eHero.hasMarchGoal = true;
-                        eHero.marchGoal = cands[0].pos;
-                        eHero.marchGoalTurns = 0;
-                        for (const auto& t : m_towns)
-                            if (t.pos == cands[0].pos) {
-                                gLog("P%u %s committing to march on %s (P%u) dist %d\n",
-                                     eHero.ownerId, eHero.name.c_str(), t.name.c_str(),
-                                     t.ownerId, HexGrid::distance(eHero.pos, t.pos));
-                                break;
-                            }
-                    }
-                    // While locked, force the committed town to the front so the
-                    // hero keeps marching there instead of chasing a nearer mine.
-                    if (eHero.hasMarchGoal) {
-                        if (!marchTurnCounted) {
-                            eHero.marchGoalTurns++;
-                            marchTurnCounted = true;
-                        }
-                        bool present = false;
-                        for (auto& c : cands) if (c.pos == eHero.marchGoal) { c.score = 1e9f; present = true; break; }
-                        if (!present) cands.insert(cands.begin(), {eHero.marchGoal, 1e9f});
-                        std::sort(cands.begin(), cands.end(),
-                                  [](const Cand& a, const Cand& b){ return a.score > b.score; });
-                    }
-
-                    auto costFn = [this, &eHero, aggressive, combatTriggered,
-                                   &playerHero](HexCoord c) -> int {
-                        const HexTile* t = m_map.getTile(c);
-                        if (!t || !eHero.canEnter(t->terrain) || t->blocked) return 999;
-                        // One combat per day: block the player's tile once a fight is queued
-                        if (combatTriggered && c == playerHero.pos) return 999;
-                        // Only block passage through player towns, not destination
-                        if (!aggressive && t->townId != 0) {
-                            for (const auto& town : m_towns)
-                                if (town.id == t->townId && town.ownerId > 0 && town.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) return 999;
-                        }
-                        int base = eHero.moveCost(t->terrain);
-                        if (m_roadHexes.count(c)) base = std::max(1, base / 2);
-                        return base;
-                    };
-                    // Try candidates in score order until one is actually
-                    // reachable — an unreachable top target (e.g. across
-                    // water) used to freeze the hero for the whole game.
-                    // Horizon cap (see watched-hero note above) keeps XL-map
-                    // multi-hero turns from exploring the whole grid per hero.
-                    constexpr int kAiPathHorizon = 60;
-                    std::vector<HexCoord> path;
-                    // First: is the SINGLE best target reachable by land? If not,
-                    // and it's high-value (enemy town / strong hunt), prefer
-                    // buying a boat to reach it over settling for lesser land
-                    // grabs — otherwise ships never get used on maps that always
-                    // have some nearby land mine.
-                    // Track whether the single best target (cands[0]) was
-                    // reachable. We get this for free from the loop below — no
-                    // extra pathfind (the old extra A* per hero per turn was a
-                    // major CPU cost on XL maps).
-                    bool bestReachable = false;
-                    // Path to the best reachable candidate. Use a generous
-                    // horizon ONLY when the top target is an enemy town (worth a
-                    // long cross-map march — the 60-hex cap made distant enemy
-                    // capitals permanently unreachable, why towns were never
-                    // captured even 1v1). Everything else keeps the cheap horizon
-                    // so per-hero pathfinding cost stays low.
-                    bool topIsEnemyTown = false;
-                    if (!cands.empty()) {
-                        for (const auto& t : m_towns)
-                            if (t.pos == cands[0].pos && t.ownerId != 0
-                                && !isAllied(t.ownerId, eHero.ownerId)) { topIsEnemyTown = true; break; }
-                    }
-                    // Reuse a cached march path when locked onto a town goal so we
-                    // don't rerun the expensive 400-hex A* every turn (that was the
-                    // main-thread freeze). Recompute only if the cache is empty or
-                    // the hero has strayed off it.
-                    path.clear();
-                    auto tPathStart = std::chrono::steady_clock::now();
-                    if (eHero.hasMarchGoal && topIsEnemyTown
-                        && cands[0].pos == eHero.marchGoal
-                        && !eHero.marchPath.empty()
-                        && eHero.marchPathIdx < eHero.marchPath.size()) {
-                        // Follow the cached path from the current position.
-                        path.assign(eHero.marchPath.begin() + eHero.marchPathIdx,
-                                    eHero.marchPath.end());
-                        // The cached path IS a route to cands[0] (the locked
-                        // goal), so the top target is reachable. Leaving this
-                        // false made wantBoatForBestTarget fire on every step
-                        // (the lock's forced 1e9 score passes any threshold):
-                        // aiTryBoat swapped in a dock path, the hero stepped
-                        // off the march path, the divergence check wiped the
-                        // cache — and the 400-hex search re-ran EVERY turn for
-                        // EVERY marching hero while they yo-yoed toward docks.
-                        bestReachable = true;
-                    } else {
-                        // THREADING.md Phase 2 — parallel candidate A* fan-out.
-                        //
-                        // The effective top candidate is still tried SERIALLY
-                        // first. A plain "fan all 10 out" would be a pessimism:
-                        // the serial try short-circuits on a hit, so when the
-                        // leader is reachable (the common case) it costs exactly
-                        // one A*, while a blind fan-out costs ten. Only the
-                        // failure path is overlapped.
-                        //
-                        // Taking the LOWEST reachable index keeps the winner
-                        // identical to a serial scan: Pathfinder::find is pure,
-                        // costFn only reads m_map/m_towns/m_roadHexes, and
-                        // nothing mutates during the fan-out — so completion
-                        // order cannot change which candidate wins.
-                        int chosenIdx = -1;
-                        int nCand = static_cast<int>(std::min<size_t>(cands.size(), 10));
-                        // Boarding or disembarking changes what is reachable, so
-                        // unreachability proofs gathered in the other movement
-                        // mode no longer hold — the per-turn memo AND the
-                        // cross-turn march-fail stamp both expire.
-                        if (eHero.onBoat != memoOnBoat) {
-                            failedTargets.clear();
-                            eHero.marchFailTurn = -1000000;
-                            memoOnBoat = eHero.onBoat;
-                        }
-                        // Linear turn counter for the cross-turn retry cadence
-                        // (the week*100+day stamp used elsewhere isn't linear).
-                        const int linTurn = m_turns.week() * 7 + m_turns.day();
-                        constexpr int kMarchRetryTurns = 4;
-                        // Generous horizon ONLY for a top-candidate enemy town
-                        // (worth a cross-map march); everything else stays cheap.
-                        auto horizonFor = [&](int ci) {
-                            return (ci == 0 && topIsEnemyTown) ? 400 : kAiPathHorizon;
-                        };
-                        // Known unreachable = another component (O(1) flood-fill
-                        // lookup; the amphibious map covers onBoat heroes) OR a
-                        // search this turn already failed at >= the horizon we
-                        // would use now. Both are read-only queries, safe from
-                        // the fan-out workers below.
-                        auto knownUnreachable = [&](int ci) {
-                            if (routeImpossible(eHero.onBoat, eHero.pos,
-                                                cands[static_cast<size_t>(ci)].pos))
-                                return true;
-                            // Cross-turn throttle: this march goal's 400-hex
-                            // search failed recently; don't re-prove it yet.
-                            if (ci == 0 && eHero.hasMarchGoal
-                                && cands[0].pos == eHero.marchGoal
-                                && eHero.marchFailGoal == eHero.marchGoal
-                                && linTurn - eHero.marchFailTurn < kMarchRetryTurns)
-                                return true;
-                            auto it = failedTargets.find(cands[static_cast<size_t>(ci)].pos);
-                            return it != failedTargets.end() && it->second >= horizonFor(ci);
-                        };
-                        // Effective top candidate: the first not already known
-                        // unreachable. Once a fallback is chosen, later steps of
-                        // the same turn land here again instead of re-proving
-                        // the doomed leader with a fresh A* per step (that
-                        // re-proving was the residual ~1.2 s spike).
-                        int effTop = -1;
-                        for (int ci = 0; ci < nCand; ++ci)
-                            if (!knownUnreachable(ci)) { effTop = ci; break; }
-                        // Reuse this turn's path when we're still heading to the
-                        // effective top target and haven't strayed off it. This
-                        // is the 99%: without it a full A* ran on EVERY move
-                        // step to the very same destination, ~85-100 times/turn.
-                        if (effTop >= 0 && eHero.hasStepPath
-                            && eHero.stepPathGoal == cands[static_cast<size_t>(effTop)].pos
-                            && eHero.stepPathIdx < eHero.stepPath.size()
-                            // The remaining path must actually continue from where
-                            // the hero IS. Position can change without a move —
-                            // a boat launch or Town Portal teleports it — and
-                            // blindly resuming would teleport it along a stale route.
-                            && HexGrid::distance(eHero.pos,
-                                   eHero.stepPath[eHero.stepPathIdx]) == 1) {
-                            path.assign(eHero.stepPath.begin() + eHero.stepPathIdx,
-                                        eHero.stepPath.end());
-                            // bestReachable means "cands[0] itself" — a reused
-                            // path to a fallback must not suppress the boat
-                            // consideration for the real top target.
-                            bestReachable = (effTop == 0);
-                            ++g_reuseHits;
-                        }
-                        if (!path.empty()) {
-                            // cached — nothing to search
-                        } else if (effTop >= 0) {
-                            int h0 = horizonFor(effTop);
-                            auto tA = std::chrono::steady_clock::now();
-                            path = Pathfinder::find(m_map, eHero.pos,
-                                                    cands[static_cast<size_t>(effTop)].pos,
-                                                    costFn, h0);
-                            {
-                                long long ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                                   std::chrono::steady_clock::now() - tA).count();
-                                if (h0 > kAiPathHorizon) {
-                                    g_longNs += ns; ++g_longCalls;
-                                    if (path.empty()) ++g_longFails;
-                                }
-                                else                     { g_shortNs += ns; ++g_shortCalls; }
-                            }
-                            if (!path.empty()) {
-                                bestReachable = (effTop == 0);
-                                chosenIdx     = effTop;
-                                if (effTop == 0 && topIsEnemyTown) {
-                                    eHero.marchPath    = path;
-                                    eHero.marchPathIdx = 0;
-                                }
-                            } else {
-                                // Memoise BEFORE the fan-out so the workers'
-                                // read-only view of failedTargets is settled.
-                                int& fh = failedTargets[cands[static_cast<size_t>(effTop)].pos];
-                                fh = std::max(fh, h0);
-                                // A failed MARCH search also stamps the hero so
-                                // the retry happens on a cadence, not per turn.
-                                if (effTop == 0 && eHero.hasMarchGoal
-                                    && cands[0].pos == eHero.marchGoal
-                                    && h0 > kAiPathHorizon) {
-                                    eHero.marchFailGoal = eHero.marchGoal;
-                                    eHero.marchFailTurn = linTurn;
-                                }
-                                if (effTop + 1 < nCand) {
-                                    // Leader unreachable: search the rest at once.
-                                    std::vector<std::vector<HexCoord>> results(
-                                        static_cast<size_t>(nCand));
-                                    // Which candidates actually ran a search —
-                                    // distinguishes "failed" (worth memoising)
-                                    // from "skipped". Distinct elements per
-                                    // worker, so no data race.
-                                    std::vector<char> searched(
-                                        static_cast<size_t>(nCand), 0);
-                                    WorkerPool::instance().parallelFor(
-                                        nCand - 1 - effTop, [&](int k) {
-                                        int ci = effTop + 1 + k;
-                                        if (knownUnreachable(ci)) return;
-                                        searched[static_cast<size_t>(ci)] = 1;
-                                        results[static_cast<size_t>(ci)] =
-                                            Pathfinder::find(m_map, eHero.pos,
-                                                             cands[static_cast<size_t>(ci)].pos,
-                                                             costFn, kAiPathHorizon);
-                                    });
-                                    for (int ci = effTop + 1; ci < nCand; ++ci) {
-                                        if (!results[static_cast<size_t>(ci)].empty()) {
-                                            if (chosenIdx < 0) {
-                                                path = std::move(
-                                                    results[static_cast<size_t>(ci)]);
-                                                chosenIdx = ci;
-                                            }
-                                        } else if (searched[static_cast<size_t>(ci)]) {
-                                            // Failed search → memoise so later
-                                            // steps this turn skip it in O(1).
-                                            int& f = failedTargets[
-                                                cands[static_cast<size_t>(ci)].pos];
-                                            f = std::max(f, kAiPathHorizon);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        // Remember the freshly computed path so the remaining
-                        // steps of this turn can walk it instead of re-running A*.
-                        if (chosenIdx >= 0 && !path.empty()) {
-                            eHero.stepPath     = path;
-                            eHero.stepPathIdx  = 0;
-                            eHero.stepPathGoal = cands[static_cast<size_t>(chosenIdx)].pos;
-                            eHero.hasStepPath  = true;
-                        }
-                    }
-                    g_pathNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                    std::chrono::steady_clock::now() - tPathStart).count();
-                    bool wantBoatForBestTarget =
-                        (!cands.empty() && !eHero.onBoat && !bestReachable
-                         && cands[0].score >= 150.f);
-                    // Everything unreachable by land, OR the best target needs a
-                    // boat: buy passage across the water.
-                    if (path.empty() || wantBoatForBestTarget) {
-                        std::vector<HexCoord> docks;
-                        for (const auto& t : m_towns)
-                            // Own docks only — a rival AI player's shipyard
-                            // isn't this hero's to use.
-                            // Own OR allied shipyard towns. Restricting to the
-                            // hero's own owner left most bots with docks=0
-                            // (measured: heroes wanted a boat 1065 times in one
-                            // game and could not name a single dock), so naval
-                            // was dead on arrival for anyone who hadn't
-                            // personally built a coastal town.
-                            if (isAllied(t.ownerId, eHero.ownerId)
-                                && t.hasBuilding(BID::TOWN_SHIPYARD))
-                                docks.push_back(t.pos);
-                        std::vector<HexCoord> boatPath;
-                        bool wasOnBoat = eHero.onBoat;
-                        // The target that motivated buying passage in the first
-                        // place. Must be latched BEFORE boarding, because the
-                        // moment the hero is floating offshore a fresh scoring
-                        // pass sees coastal land junk (a mine two hexes away)
-                        // and happily sends it back to the beach.
-                        HexCoord seaTarget{};
-                        bool haveSeaTarget = false;
-                        if (!cands.empty()) { seaTarget = cands[0].pos; haveSeaTarget = true; }
-                        if (aiTryBoat(m_map, m_worldObjects, docks, eHero,
-                                       aiResources(eHero.ownerId), costFn, boatPath)) {
-                            path = boatPath;   // head to the dock
-                        } else if (!wasOnBoat && eHero.onBoat) {
-                            // Just BOARDED at the dock this call. aiTryBoat returns
-                            // false here expecting a re-score, but the stale land
-                            // `path` (a fallback target) would walk the hero back
-                            // onto land and instantly disembark — wasting the boat
-                            // and re-buying every turn (the "28 boats bought, never
-                            // seen crossing water" bug). Drop the land path and
-                            // re-score now that water is traversable so the hero
-                            // actually sails toward the island target.
-                            eHero.marchPath.clear(); eHero.marchPathIdx = 0;
-                            // Commit to the crossing: lock the overseas target as
-                            // the march goal so the re-score forces it to the
-                            // front of the candidates. Without this the hero
-                            // launched, immediately re-picked a nearby land
-                            // target, stepped ashore and disembarked — 6 boats
-                            // launched and 0 water tiles crossed in a real game.
-                            if (haveSeaTarget) {
-                                eHero.marchGoal      = seaTarget;
-                                eHero.hasMarchGoal   = true;
-                                eHero.marchGoalTurns = 0;
-                            }
-                            continue;
-                        } else if (path.empty()) {
-                            break;             // no boat and nothing on land
-                        }
-                    }
-                    if (path.empty()) break;
-
-                    HexCoord next = path[0];
-                    const HexTile* nextTile = m_map.getTile(next);
-                    if (!nextTile) break;
-                    int cost = eHero.moveCost(nextTile->terrain);
-                    if (eHero.movePool < cost) break;
-
-                    // Move
-                    if (HexTile* old = m_map.getTile(eHero.pos)) old->heroId = 0;
-                    eHero.pos = next;
-                    eHero.movePool -= cost;
-                    if (HexTile* nT = m_map.getTile(eHero.pos)) nT->heroId = eHero.id;
-                    if (eHero.onBoat && nextTile->terrain == Terrain::Water)
-                        gLog("  [SAIL] %s crossing water at (%d,%d) wk%d\n",
-                             eHero.name.c_str(), next.q, next.r, m_turns.week());
-                    if (eHero.onBoat && nextTile->terrain != Terrain::Water)
-                        eHero.onBoat = false;  // disembark
-                    // If following the cached march path and we stepped onto its
-                    // next tile, advance the index; if we diverged, invalidate it
-                    // so it's recomputed next turn.
-                    if (eHero.hasMarchGoal && !eHero.marchPath.empty()
-                        && eHero.marchPathIdx < eHero.marchPath.size()) {
-                        if (eHero.marchPath[eHero.marchPathIdx] == eHero.pos)
-                            eHero.marchPathIdx++;
-                        else { eHero.marchPath.clear(); eHero.marchPathIdx = 0; }
-                    }
-                    // Same bookkeeping for the general per-turn path cache: walk
-                    // it forward when we landed on its next tile, drop it the
-                    // moment we diverge (boat launch, combat shove, blocked tile)
-                    // so the next step re-plans honestly instead of following a
-                    // path that no longer starts where the hero is.
-                    if (eHero.hasStepPath && eHero.stepPathIdx < eHero.stepPath.size()) {
-                        if (eHero.stepPath[eHero.stepPathIdx] == eHero.pos) {
-                            eHero.stepPathIdx++;
-                            if (eHero.stepPathIdx >= eHero.stepPath.size())
-                                eHero.hasStepPath = false;   // arrived
-                        } else {
-                            eHero.stepPath.clear();
-                            eHero.stepPathIdx = 0;
-                            eHero.hasStepPath = false;
-                        }
-                    }
-
-                    // Combat with a RIVAL AI hero? Real AI-vs-AI hostility:
-                    // resolve it off-screen (no human is present to fight it
-                    // out on the battlefield) instead of silently letting two
-                    // bots' heroes phase through each other on the same tile.
-                    {
-                        bool fought = false;
-                        for (int oj = 0; oj < static_cast<int>(m_enemyHeroes.size()); ++oj) {
-                            if (oj == ehi) continue;
-                            Hero& other = m_enemyHeroes[oj];
-                            if (other.eliminated || isAllied(other.ownerId, eHero.ownerId)) continue;
-                            if (other.pos != eHero.pos) continue;
-
-                            int otherStr = heroStrength(other, unitDefs);
-                            bool eWins = eiStr >= otherStr; // ties favour the mover
-                            // Naval engagement: a War hull rams and sinks any
-                            // lesser boat regardless of the armies aboard —
-                            // that is the entire point of paying for one.
-                            if (eHero.onBoat && other.onBoat) {
-                                bool eWar = (eHero.boatType == BoatType::War);
-                                bool oWar = (other.boatType == BoatType::War);
-                                if (eWar != oWar) {
-                                    eWins = eWar;
-                                    gLog("%s (war boat) rammed and sank %s at sea (week %d)\n",
-                                         eWar ? eHero.name.c_str() : other.name.c_str(),
-                                         eWar ? other.name.c_str() : eHero.name.c_str(),
-                                         m_turns.week());
-                                }
-                            }
-                            Hero& winner = eWins ? eHero : other;
-                            Hero& loser  = eWins ? other  : eHero;
-                            int winnerStr = eWins ? eiStr : otherStr;
-                            int loserStr  = eWins ? otherStr : eiStr;
-
-                            if (!winner.army.empty()) {
-                                int bigIdx = 0;
-                                for (int i = 1; i < (int)winner.army.size(); ++i)
-                                    if (winner.army[i].count > winner.army[bigIdx].count) bigIdx = i;
-                                // Close fights cost the winner more than a rout.
-                                int lossPct = (winnerStr > 0 && loserStr * 10 >= winnerStr * 7) ? 20 : 8;
-                                winner.army[bigIdx].count = std::max(1, winner.army[bigIdx].count
-                                                            - winner.army[bigIdx].count * lossPct / 100);
-                            }
-                            loser.army.clear();
-                            loser.eliminated = true;
-                            if (HexTile* ct = m_map.getTile(eHero.pos)) ct->heroId = winner.id;
-                            // Killing a rival hero awarded nothing either.
-                            aiHeroAwardXp(winner, 200 + loserStr / 8);
-                            gLog("%s defeated rival %s in the field (week %d)\n",
-                                 winner.name.c_str(), loser.name.c_str(), m_turns.week());
-                            fought = true;
-                            break;
-                        }
-                        if (fought && eHero.eliminated) { eHero.movePool = 0; break; }
-                    }
-
-                    // Combat with player? (only the first collision per day fights)
-                    if (eHero.pos == playerHero.pos && !combatTriggered
-                        && !isAllied(static_cast<uint32_t>(currentPlayerId()), eHero.ownerId)) {
-                        m_lastCombatEnemyId = eHero.id;
-                        auto pUnits = makeHeroUnits(playerHero, unitDefs, true);
-                        auto eUnits = makeHeroUnits(eHero, unitDefs, false);
-                        if (m_watchingAI) {
-                            m_fromBattleSim = true;
-                            m_simAutoPlay   = true;
-                            m_simAutoPlayTimer = 0.f;
-                        }
-                        enterCombat(playerHero, pUnits, eHero, eUnits);
+                } else if (t.ownerId > 0 && t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) {
+                    // Assault on a human/watched player's town: ALWAYS
+                    // fight it for real on the battlefield. There is NO
+                    // off-screen strength comparison and NO walk-in
+                    // capture — the town only changes hands if the
+                    // attacker beats the garrison in an actual siege.
+                    // Watch mode plays it on-screen too (auto-played,
+                    // prep auto-picked).
+                    if (!combatTriggered
+                        && (t.ownerId == static_cast<uint32_t>(currentPlayerId())
+                            || m_watchingAI)
+                        && !t.garrison.empty()) {
+                        m_pendingTownDefenseId = t.id;
+                        m_defenseAttackerId    = eHero.id;
+                        eHero.movePool = 0;
                         combatTriggered = true;
+                        if (!m_watchingAI && t.hasBuilding(BID::BASTION)) {
+                            m_showDefensePrepPopup = true;  // battle starts on choice
+                        } else {
+                            startTownDefenseBattle(-1);
+                        }
                         break;
                     }
-
-                    // Collect world objects — apply meaningful effects to enemy hero
-                    for (auto& obj : m_worldObjects) {
-                        // ── Naval objects (AI) ───────────────────────────────
-                        // Lighthouses are capturable repeatedly, so they are
-                        // checked before the generic `collected` guard.
-                        if (obj.type == WorldObjectType::Lighthouse
-                            && obj.pos == eHero.pos && eHero.onBoat) {
-                            if (obj.faction != static_cast<int>(eHero.ownerId)) {
-                                obj.faction   = static_cast<int>(eHero.ownerId);
-                                obj.collected = true;
-                                refreshLighthouseBoosts();
-                                gLog("P%u %s captured a Lighthouse (week %d)\n",
-                                     eHero.ownerId, eHero.name.c_str(), m_turns.week());
-                            }
-                            continue;
-                        }
-                        // Flotsam drifts — a passing crew scoops it up without
-                        // having to land on the exact hex. Needed in practice:
-                        // a hero with a locked overseas march goal sails a
-                        // straight line, so requiring an exact tile hit meant
-                        // salvage was never collected on a 40k-tile ocean.
-                        if (obj.type == WorldObjectType::Flotsam && !obj.collected
-                            && eHero.onBoat && obj.pos != eHero.pos
-                            && HexGrid::distance(obj.pos, eHero.pos) <= 1) {
-                            obj.collected = true;
-                            int g = 300 + (obj.value % 700);
-                            aiResources(eHero.ownerId).add(ResourceType::Gold, g);
-                            gLog("P%u %s salvaged drifting flotsam (+%dg, week %d)\n",
-                                 eHero.ownerId, eHero.name.c_str(), g, m_turns.week());
-                            continue;
-                        }
-                        if (obj.collected || obj.pos != eHero.pos) continue;
-                        if (obj.type == WorldObjectType::Flotsam
-                            || obj.type == WorldObjectType::Shipwreck
-                            || obj.type == WorldObjectType::SeaMonsterLair) {
-                            if (!eHero.onBoat) continue;   // can't salvage on foot
-                            bool guarded = (obj.type != WorldObjectType::Flotsam);
-                            if (guarded) {
-                                // Week-scaled sea guardians; only engage if strong.
-                                int siteStr = std::min(2400, 400 + m_turns.week() * 90);
-                                if (obj.type == WorldObjectType::SeaMonsterLair)
-                                    siteStr = siteStr * 3 / 2;
-                                if (eiStr < siteStr * 14 / 10) continue;
-                                if (!eHero.army.empty()) {
-                                    int bigIdx = 0;
-                                    for (int i = 1; i < (int)eHero.army.size(); ++i)
-                                        if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
-                                    eHero.army[bigIdx].count =
-                                        std::max(1, eHero.army[bigIdx].count -
-                                                 eHero.army[bigIdx].count * 12 / 100);
-                                }
-                                aiHeroAwardXp(eHero, siteStr / 3);
-                            }
-                            obj.collected = true;
-                            int gold = guarded ? 800 + (obj.value % 900)
-                                               : 300 + (obj.value % 700);
-                            aiResources(eHero.ownerId).add(ResourceType::Gold, gold);
-                            gLog("P%u %s salvaged %s at sea (+%dg, week %d)\n",
-                                 eHero.ownerId, eHero.name.c_str(),
-                                 obj.type == WorldObjectType::Flotsam ? "flotsam"
-                                 : obj.type == WorldObjectType::Shipwreck ? "a shipwreck"
-                                 : "a monster lair",
-                                 gold, m_turns.week());
-                            continue;
-                        }
-                        // Guarded sites resolve as an off-screen fight, and only when
-                        // strong enough — walking over one no longer silently deletes
-                        // it (previous behavior collected EVERYTHING unconditionally).
-                        if (obj.type == WorldObjectType::Crypt      ||
-                            obj.type == WorldObjectType::Utopia     ||
-                            obj.type == WorldObjectType::PandoraBox ||
-                            obj.type == WorldObjectType::BanditCamp) {
-                            int siteStr = std::min(2200, 350 + m_turns.week() * 80);
-                            bool utopia  = (obj.type == WorldObjectType::Utopia);
-                            bool pandora = (obj.type == WorldObjectType::PandoraBox);
-                            if (utopia)  siteStr *= 2;
-                            if (pandora) siteStr = siteStr * 3 / 2;
-                            if (eiStr < siteStr * 14 / 10) continue;  // too risky — leave it
-                            obj.collected = true;
-                            // Casualties: ~15% off the largest stack (harder than a mine guard)
-                            if (!eHero.army.empty()) {
-                                int bigIdx = 0;
-                                for (int i = 1; i < (int)eHero.army.size(); ++i)
-                                    if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
-                                eHero.army[bigIdx].count =
-                                    std::max(1, eHero.army[bigIdx].count -
-                                             eHero.army[bigIdx].count * 15 / 100);
-                            }
-                            aiHeroAwardXp(eHero, siteStr / 4);
-                            if (utopia && obj.value > 0)
-                                aiEquipOrStashArtifact(eHero, obj.value);
-                            // (naval sites are handled in their own branch below)
-                            // Just cleared a Utopia and standing on it — this is
-                            // the only moment the Found City precondition holds,
-                            // since the hero walks on before its next turn.
-                            // (tryFoundCity erases the object, so bail out of
-                            // this loop rather than keep iterating it.)
-                            if (utopia && tryFoundCity()) break;
-                            if (pandora) {
-                                // Same reward table as the player, seed-rolled
-                                uint32_t seed = static_cast<uint32_t>(obj.value);
-                                if (seed % 4 == 1) {
-                                    const auto& arts = m_artifactRegistry.artifacts();
-                                    if (!arts.empty())
-                                        aiEquipOrStashArtifact(eHero, arts[seed % arts.size()].id);
-                                } else if (seed % 4 == 2) {
-                                    eHero.attack += 2; eHero.defense += 2;
-                                }
-                                // gold/resource rolls are meaningless to the AI (infinite
-                                // build budget) — XP above covers the value instead
-                            }
-                            gLog("Enemy %s cleared %s (week %d)\n", eHero.name.c_str(),
-                                 utopia  ? "Utopia" :
-                                 pandora ? "Pandora's Box" :
-                                 (obj.type == WorldObjectType::Crypt ? "Crypt" : "Bandit Camp"),
-                                 m_turns.week());
-                            continue;
-                        }
-                        // Persistent sites are used, not consumed
-                        if (isPersistentSite(obj.type)) {
-                            if (obj.type == WorldObjectType::UnitDwelling) {
-                                // Capture: this AI PLAYER (not "the AI team")
-                                // gains +1 weekly growth of this tier in its
-                                // matching towns, and buys out the available
-                                // pool from its own pocket.
-                                obj.linkedId = eHero.ownerId;
-                                dwellingPaidRecruit(obj, eHero.army,
-                                                    aiResources(eHero.ownerId), unitDefs);
-                            }
-                            continue;
-                        }
-                        obj.collected = true;
-                        if (obj.type == WorldObjectType::XPShrine) {
-                            aiHeroAwardXp(eHero, obj.value);
-                            gLog("Enemy %s gained %d XP from shrine\n",
-                                   eHero.name.c_str(), obj.value);
-                        } else if (obj.type == WorldObjectType::SpellScroll) {
-                            bool already = false;
-                            for (int sid : eHero.knownSpells)
-                                if (sid == obj.value) { already = true; break; }
-                            if (!already) eHero.knownSpells.push_back(obj.value);
-                        } else if (obj.type == WorldObjectType::StatShrine) {
-                            // Alternate ATK and DEF based on current stats
-                            if (eHero.attack <= eHero.defense) eHero.attack++;
-                            else eHero.defense++;
-                        } else if (obj.type == WorldObjectType::ArtifactChest) {
-                            aiEquipOrStashArtifact(eHero, obj.value);
-                        } else if (obj.type == WorldObjectType::ForestShrine) {
-                            aiHeroAwardXp(eHero, obj.value);
-                            gLog("Enemy %s gained %d XP from forest shrine\n",
-                                   eHero.name.c_str(), obj.value);
-                        } else if (obj.type == WorldObjectType::SwampAltar) {
-                            bool already = false;
-                            for (int sid : eHero.knownSpells)
-                                if (sid == obj.value) { already = true; break; }
-                            if (!already) eHero.knownSpells.push_back(obj.value);
-                        } else if (obj.type == WorldObjectType::TreasureChest) {
-                            // AI always takes gold from multi-choice chests
-                            // (no popup, instant collect)
-                            gLog("Enemy %s looted chest: +%d gold\n",
-                                   eHero.name.c_str(), obj.value);
-                        }
-                    }
-
-                    // Claim resource node (mine control). If a guard is present, the
-                    // AI now fights it off-screen when comfortably stronger (was
-                    // guardBeaten-only, so guarded mines were unclaimable by the AI).
-                    if (nextTile->resourceId != 0) {
-                        for (auto& r : m_resources) {
-                            // (was `break` — bailed at the first non-matching
-                            // node, so the AI claimed 0 mines in every game)
-                            if (r.id != nextTile->resourceId) continue;
-                            // An ally's mine — leave ownership alone, don't
-                            // silently steal it by walking onto it.
-                            if (r.ownedBy != 0 && r.ownedBy != eHero.ownerId
-                                && isAllied(r.ownedBy, eHero.ownerId)) break;
-                            if (!r.guardBeaten && r.guardId != 0) {
-                                // Guard strength scales with the week but is kept
-                                // low and capped so a hero with a modest army can
-                                // clear nearby mines early — the AI's economy
-                                // depends on them. Require a 1.5x margin so it
-                                // doesn't gut its army on a marginal fight.
-                                int guardStr = std::min(900, 150 + m_turns.week() * 35);
-                                if (eiStr >= guardStr * 3 / 2) {
-                                    r.guardBeaten = true;
-                                    // Casualties: shave ~7% off the hero's largest stack.
-                                    int bigIdx = 0;
-                                    for (int i = 1; i < (int)eHero.army.size(); ++i)
-                                        if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
-                                    if (!eHero.army.empty())
-                                        eHero.army[bigIdx].count =
-                                            std::max(1, eHero.army[bigIdx].count -
-                                                     eHero.army[bigIdx].count / 14);
-                                    // Mine guards are the AI's most common fight
-                                    // (~1000 a game) and awarded ZERO xp, which
-                                    // is why bot heroes sat at level 2 all game
-                                    // — gating Town Portal (L5), Found City
-                                    // (L10) and every level-up stat behind a
-                                    // bar they could never reach.
-                                    aiHeroAwardXp(eHero, 40 + m_turns.week() * 8);
-                                    gLog("Enemy %s beat mine guard (week %d)\n",
-                                         eHero.name.c_str(), m_turns.week());
-                                }
-                            }
-                            // Unguarded mines are claimable outright (guardBeaten
-                            // is only meaningful when a guard exists)
-                            if (r.guardId == 0 || r.guardBeaten) r.ownedBy = eHero.ownerId;
-                            break;
-                        }
-                    }
-
-                    // Capture neutral towns / siege player towns / garrison at own towns
-                    if (nextTile->townId != 0) {
-                        for (auto& t : m_towns) {
-                            if (t.id != nextTile->townId) continue;
-                            if (t.ownerId == eHero.ownerId && veryWeak && !eHero.army.empty()) {
-                                // Retreating hero deposits their smallest stack as garrison
-                                int weakIdx = 0;
-                                for (int i = 1; i < (int)eHero.army.size(); ++i)
-                                    if (eHero.army[i].count < eHero.army[weakIdx].count) weakIdx = i;
-                                auto& stack = eHero.army[weakIdx];
-                                int deposit = stack.count / 2;
-                                if (deposit > 0 && t.garrison.size() < 7) {
-                                    bool merged = false;
-                                    for (auto& gs : t.garrison)
-                                        if (gs.defId == stack.defId) { gs.count += deposit; merged = true; break; }
-                                    if (!merged) t.garrison.push_back({stack.defId, deposit});
-                                    stack.count -= deposit;
-                                    if (stack.count == 0)
-                                        eHero.army.erase(eHero.army.begin() + weakIdx);
-                                }
-                                eHero.movePool = 0; // done retreating for this turn
-                            } else if (t.ownerId == eHero.ownerId) {
-                                // Stepped into one of its OWN towns — pick up
-                                // the garrison and recruit, keep moving.
-                                takeGarrison(t, eHero, unitDefs);
-                                aiPaidRecruit(t, eHero.army, aiResources(eHero.ownerId), unitDefs);
-                            } else if (t.ownerId == 0) {
-                                t.ownerId = eHero.ownerId;
-                                gLog("Enemy %s captured %s\n", eHero.name.c_str(), t.name.c_str());
-                            } else if (isAllied(t.ownerId, eHero.ownerId)) {
-                                // An ally's town (bot or human) is never a
-                                // hostile target — no siege, no reaching into
-                                // its garrison/economy. Just pass through.
-                            } else if (isAiOwner(t.ownerId)) {
-                                // A RIVAL bot's town — real AI-vs-AI hostility.
-                                // No human is present to play this out on the
-                                // battlefield, so resolve it off-screen the
-                                // same way mine-guard fights are resolved
-                                // above: compare strength, a decisive attacker
-                                // takes the town, otherwise it bounces off
-                                // with losses (mirrors the human-town "empty
-                                // garrison" stop-here behaviour below).
-                                int garrStr  = stacksStrength(t.garrison, unitDefs);
-                                // Fort ladder gives escalating defensive strength
-                                // so a fortified town is genuinely hard to take —
-                                // defending a Castle is as valid as attacking one.
-                                float fortMul = 0.f;
-                                if (t.hasBuilding(BID::CASTLE))      fortMul = 1.5f;
-                                else if (t.hasBuilding(BID::CITADEL)) fortMul = 1.0f;
-                                else if (t.hasBuilding(BID::FORT))    fortMul = 0.6f;
-                                if (t.hasBuilding(BID::BASTION))     fortMul += 0.75f;
-                                int fortBonus = (int)(garrStr * fortMul);
-                                // Walls also give a flat floor so an empty town
-                                // still resists a token force.
-                                int wallFloor = t.hasBuilding(BID::CASTLE) ? 800
-                                              : t.hasBuilding(BID::CITADEL) ? 500
-                                              : t.hasBuilding(BID::FORT) ? 300 : 100;
-                                int defStr = garrStr + fortBonus + wallFloor;
-                                int bigIdx = 0;
-                                for (int i = 1; i < (int)eHero.army.size(); ++i)
-                                    if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
-                                if (eiStr * 10 >= defStr * 13) {
-                                    if (!eHero.army.empty())
-                                        eHero.army[bigIdx].count = std::max(1, eHero.army[bigIdx].count
-                                                                    - eHero.army[bigIdx].count / 10);
-                                    t.garrison.clear();
-                                    t.ownerId = eHero.ownerId;
-                                    // Taking a defended town is the biggest feat
-                                    // on the map — it awarded no xp at all.
-                                    aiHeroAwardXp(eHero, 400 + defStr / 4);
-                                    gLog("Enemy %s stormed rival town %s (week %d)\n",
-                                         eHero.name.c_str(), t.name.c_str(), m_turns.week());
-                                } else {
-                                    if (!eHero.army.empty())
-                                        eHero.army[bigIdx].count = std::max(1, eHero.army[bigIdx].count
-                                                                    - eHero.army[bigIdx].count / 6);
-                                    eHero.movePool = 0; // assault failed, stops here
-                                }
-                            } else if (t.ownerId > 0 && t.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) {
-                                // Assault on a human/watched player's town: ALWAYS
-                                // fight it for real on the battlefield. There is NO
-                                // off-screen strength comparison and NO walk-in
-                                // capture — the town only changes hands if the
-                                // attacker beats the garrison in an actual siege.
-                                // Watch mode plays it on-screen too (auto-played,
-                                // prep auto-picked).
-                                if (!combatTriggered
-                                    && (t.ownerId == static_cast<uint32_t>(currentPlayerId())
-                                        || m_watchingAI)
-                                    && !t.garrison.empty()) {
-                                    m_pendingTownDefenseId = t.id;
-                                    m_defenseAttackerId    = eHero.id;
-                                    eHero.movePool = 0;
-                                    combatTriggered = true;
-                                    if (!m_watchingAI && t.hasBuilding(BID::BASTION)) {
-                                        m_showDefensePrepPopup = true;  // battle starts on choice
-                                    } else {
-                                        startTownDefenseBattle(-1);
-                                    }
-                                    break;
-                                }
-                                // Empty garrison, or a battle already triggered this
-                                // turn: the enemy cannot take the town by walking in.
-                                // It simply stops here — no off-screen capture.
-                                eHero.movePool = 0;
-                            }
-                            break;
-                        }
-                    }
+                    // Empty garrison, or a battle already triggered this
+                    // turn: the enemy cannot take the town by walking in.
+                    // It simply stops here — no off-screen capture.
+                    eHero.movePool = 0;
                 }
-                if (combatTriggered) return;
+                break;
             }
         }
+    }
+    // Combat vs the player interrupts the whole AI round (both the
+    // remaining heroes and doEndTurnPost) — same semantics as when this
+    // was the last statement of the hero loop inside doEndTurn().
+    if (combatTriggered) return false;
+    return true;
+}
 
-        // Snap camera back to player hero after enemy turns (Watch AI)
-        if (m_watchingAI && !m_heroes.empty()) {
-            float pwx, pwy;
-            m_hexRenderer.grid().hexToWorld(m_heroes[m_activeHeroIdx].pos, pwx, pwy);
-            m_camera.setPosition(pwx, pwy);
+// One frame's slice of a spread AI round (Watch mode). Runs heroes until the
+// budget is spent, then yields so the frame can render; finishes the round
+// with doEndTurnPost() once the roster is done. A single hero can exceed the
+// budget on its own (e.g. a failing 400-hex march search) — the budget only
+// stops several such heroes stacking into one frame.
+void Game::aiTurnStep()
+{
+    constexpr double kFrameBudgetMs = 8.0;
+    ++g_aiSlices;
+    auto t0 = std::chrono::steady_clock::now();
+    while (m_aiTurn.nextHero < static_cast<int>(m_enemyHeroes.size())) {
+        if (!aiTakeHeroTurn(m_aiTurn.nextHero++)) {
+            // Combat interrupted the round — abandon the rest, exactly like
+            // the synchronous path (doEndTurnPost intentionally not run).
+            m_aiTurn.active = false;
+            return;
         }
+        double ms = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        std::chrono::steady_clock::now() - t0).count() / 1e6;
+        if (ms > kFrameBudgetMs) break;
+    }
+    if (m_aiTurn.nextHero >= static_cast<int>(m_enemyHeroes.size())) {
+        m_aiTurn.active = false;
+        doEndTurnPost(m_aiTurn.lastPlayerEndedTurn);
+    }
+}
 
-        // Infestation specialty (Flesh Architect/Amalgamate): FleshZone spreads each turn
-        auto applyInfestation = [&](std::vector<Hero>& heroList) {
-            for (auto& hero : heroList) {
-                if (!hero.infestationSpecialty) continue;
-                constexpr int INFEST_RADIUS = 2;
-                std::vector<HexCoord> toInfest;
-                for (const auto& coord : m_map.coords()) {
-                    if (HexGrid::distance(hero.pos, coord) > INFEST_RADIUS) continue;
-                    HexTile* t = m_map.getTile(coord);
-                    if (!t || t->terrain == Terrain::FleshZone) continue;
-                    bool adjacentFlesh = false;
-                    for (const auto& nb : HexGrid::neighbors(coord)) {
-                        const HexTile* nt = m_map.getTile(nb);
-                        if (nt && nt->terrain == Terrain::FleshZone) { adjacentFlesh = true; break; }
-                    }
-                    Terrain ter = t->terrain;
-                    if (adjacentFlesh && (ter == Terrain::Plains || ter == Terrain::Wasteland
-                                          || ter == Terrain::Corrupted || ter == Terrain::Barren)) {
-                        toInfest.push_back(coord);
-                    }
+// Everything doEndTurn() used to do AFTER the enemy-hero loop: specialty
+// terrain spread, siege resolution, day/week advancement, weekly hiring.
+// In Watch mode this runs frames after doEndTurn() returned (so the [PERF]
+// total there includes render time between slices, not pure CPU).
+void Game::doEndTurnPost(bool lastPlayerEndedTurn)
+{
+    // Snap camera back to player hero after enemy turns (Watch AI)
+    if (m_watchingAI && !m_heroes.empty()) {
+        float pwx, pwy;
+        m_hexRenderer.grid().hexToWorld(m_heroes[m_activeHeroIdx].pos, pwx, pwy);
+        m_camera.setPosition(pwx, pwy);
+    }
+
+    // Infestation specialty (Flesh Architect/Amalgamate): FleshZone spreads each turn
+    auto applyInfestation = [&](std::vector<Hero>& heroList) {
+        for (auto& hero : heroList) {
+            if (!hero.infestationSpecialty) continue;
+            constexpr int INFEST_RADIUS = 2;
+            std::vector<HexCoord> toInfest;
+            for (const auto& coord : m_map.coords()) {
+                if (HexGrid::distance(hero.pos, coord) > INFEST_RADIUS) continue;
+                HexTile* t = m_map.getTile(coord);
+                if (!t || t->terrain == Terrain::FleshZone) continue;
+                bool adjacentFlesh = false;
+                for (const auto& nb : HexGrid::neighbors(coord)) {
+                    const HexTile* nt = m_map.getTile(nb);
+                    if (nt && nt->terrain == Terrain::FleshZone) { adjacentFlesh = true; break; }
                 }
-                if (!toInfest.empty()) {
-                    int converted = 0;
-                    for (const auto& c : toInfest) {
-                        if (converted >= 2) break;
-                        HexTile* t = m_map.getTile(c);
-                        if (t) { t->terrain = Terrain::FleshZone; converted++; }
-                    }
-                    if (converted > 0) {
-                        char buf[48];
-                        std::snprintf(buf, sizeof(buf), "Infestation: +%d FleshZone", converted);
-                        pushPickupEffect(hero.pos, buf, IM_COL32(180, 100, 60, 255));
-                    }
+                Terrain ter = t->terrain;
+                if (adjacentFlesh && (ter == Terrain::Plains || ter == Terrain::Wasteland
+                                      || ter == Terrain::Corrupted || ter == Terrain::Barren)) {
+                    toInfest.push_back(coord);
                 }
             }
-        };
-        applyInfestation(m_heroes);
-        applyInfestation(m_enemyHeroes);
-
-        // BlightAura specialty (Blight Caller/Voidkin): Sacred terrain near the hero
-        // is passively corrupted each turn. Applies to both player and enemy heroes.
-        auto applyBlightAura = [&](std::vector<Hero>& heroList) {
-            for (auto& hero : heroList) {
-                if (!hero.blightAuraSpecialty) continue;
-                constexpr int BLIGHT_RADIUS = 3;
-                int corrupted = 0;
-                for (const auto& coord : m_map.coords()) {
-                    if (HexGrid::distance(hero.pos, coord) > BLIGHT_RADIUS) continue;
-                    HexTile* t = m_map.getTile(coord);
-                    if (t && t->terrain == Terrain::Sacred) {
-                        t->terrain = Terrain::Corrupted;
-                        corrupted++;
-                    }
+            if (!toInfest.empty()) {
+                int converted = 0;
+                for (const auto& c : toInfest) {
+                    if (converted >= 2) break;
+                    HexTile* t = m_map.getTile(c);
+                    if (t) { t->terrain = Terrain::FleshZone; converted++; }
                 }
-                if (corrupted > 0) {
-                    char buf[64];
-                    std::snprintf(buf, sizeof(buf), "BlightAura: %d Sacred → Corrupted", corrupted);
-                    pushPickupEffect(hero.pos, buf, IM_COL32(160, 80, 200, 255));
+                if (converted > 0) {
+                    char buf[48];
+                    std::snprintf(buf, sizeof(buf), "Infestation: +%d FleshZone", converted);
+                    pushPickupEffect(hero.pos, buf, IM_COL32(180, 100, 60, 255));
                 }
             }
-        };
-        applyBlightAura(m_heroes);
-        applyBlightAura(m_enemyHeroes);
-
-        // ── Siege camp resolution ─────────────────────────────────────────────
-        // Update underSiege flag for every town
-        for (auto& t : m_towns) t.underSiege = false;
-        for (const auto& h : m_heroes) {
-            if (!h.isSiegeCamping || h.siegeTargetTownId == 0) continue;
-            for (auto& t : m_towns)
-                if (t.id == h.siegeTargetTownId) t.underSiege = true;
         }
-        // Trigger siege combat for any town that has camped heroes this turn.
-        // (Fortify's actual bonuses are read and cleared inside
-        // triggerSiegeCombat itself, once combat is confirmed to start.)
-        for (auto& t : m_towns) {
-            if (!t.underSiege) continue;
-            triggerSiegeCombat(t.id);
-            // triggerSiegeCombat may change game state; stop processing if combat started
-            if (m_state == GameState::Combat) return;
-        }
+    };
+    applyInfestation(m_heroes);
+    applyInfestation(m_enemyHeroes);
 
-        // TEMP INSTRUMENT: per-turn cost split, candidate rescan vs pathfinding.
-        if (g_candBuilds > 0) {
-            gLog("  [PERF] turn: steps=%d cand=%.1fms path=%.1fms | long(400)=%d (fail %d) %.1fms "
-                 "short(60)=%d %.1fms | reuse-hits=%d\n",
-                 g_candBuilds, g_candNs / 1e6, g_pathNs / 1e6,
-                 g_longCalls, g_longFails, g_longNs / 1e6, g_shortCalls, g_shortNs / 1e6,
-                 g_reuseHits);
-            g_candNs = g_pathNs = g_longNs = g_shortNs = 0;
-            g_candBuilds = g_longCalls = g_longFails = g_shortCalls = g_reuseHits = 0;
+    // BlightAura specialty (Blight Caller/Voidkin): Sacred terrain near the hero
+    // is passively corrupted each turn. Applies to both player and enemy heroes.
+    auto applyBlightAura = [&](std::vector<Hero>& heroList) {
+        for (auto& hero : heroList) {
+            if (!hero.blightAuraSpecialty) continue;
+            constexpr int BLIGHT_RADIUS = 3;
+            int corrupted = 0;
+            for (const auto& coord : m_map.coords()) {
+                if (HexGrid::distance(hero.pos, coord) > BLIGHT_RADIUS) continue;
+                HexTile* t = m_map.getTile(coord);
+                if (t && t->terrain == Terrain::Sacred) {
+                    t->terrain = Terrain::Corrupted;
+                    corrupted++;
+                }
+            }
+            if (corrupted > 0) {
+                char buf[64];
+                std::snprintf(buf, sizeof(buf), "BlightAura: %d Sacred → Corrupted", corrupted);
+                pushPickupEffect(hero.pos, buf, IM_COL32(160, 80, 200, 255));
+            }
         }
+    };
+    applyBlightAura(m_heroes);
+    applyBlightAura(m_enemyHeroes);
 
-        bool newWeek = m_turns.endTurn(m_towns, m_heroes,
-                                       m_playerResources, m_registry,
-                                       static_cast<uint32_t>(currentPlayerId()));
-        if (newWeek) {
-            // Capture income totals for week summary popup before adding them
-            m_weekSummaryIncome = m_turns.calculateWeeklyIncome(m_towns, currentPlayerId());
+    // ── Siege camp resolution ─────────────────────────────────────────────
+    // Update underSiege flag for every town
+    for (auto& t : m_towns) t.underSiege = false;
+    for (const auto& h : m_heroes) {
+        if (!h.isSiegeCamping || h.siegeTargetTownId == 0) continue;
+        for (auto& t : m_towns)
+            if (t.id == h.siegeTargetTownId) t.underSiege = true;
+    }
+    // Trigger siege combat for any town that has camped heroes this turn.
+    // (Fortify's actual bonuses are read and cleared inside
+    // triggerSiegeCombat itself, once combat is confirmed to start.)
+    for (auto& t : m_towns) {
+        if (!t.underSiege) continue;
+        triggerSiegeCombat(t.id);
+        // triggerSiegeCombat may change game state; stop processing if combat started
+        if (m_state == GameState::Combat) return;
+    }
+
+    // TEMP INSTRUMENT: per-turn cost split, candidate rescan vs pathfinding.
+    if (g_candBuilds > 0) {
+        double totalMs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                             std::chrono::steady_clock::now() - g_turnT0).count() / 1e6;
+        gLog("  [PERF] turn: total=%.1fms steps=%d cand=%.1fms path=%.1fms | long(400)=%d (fail %d) %.1fms "
+             "short(60)=%d %.1fms | reuse-hits=%d slices=%d\n",
+             totalMs, g_candBuilds, g_candNs / 1e6, g_pathNs / 1e6,
+             g_longCalls, g_longFails, g_longNs / 1e6, g_shortCalls, g_shortNs / 1e6,
+             g_reuseHits, g_aiSlices);
+        g_candNs = g_pathNs = g_longNs = g_shortNs = 0;
+        g_candBuilds = g_longCalls = g_longFails = g_shortCalls = g_reuseHits = 0;
+        g_aiSlices = 0;
+    }
+
+    bool newWeek = m_turns.endTurn(m_towns, m_heroes,
+                                   m_playerResources, m_registry,
+                                   static_cast<uint32_t>(currentPlayerId()));
+    if (newWeek) {
+        // Capture income totals for week summary popup before adding them
+        m_weekSummaryIncome = m_turns.calculateWeeklyIncome(m_towns, currentPlayerId());
+        for (const auto& r : m_resources)
+            if (r.ownedBy == static_cast<uint32_t>(currentPlayerId())) m_weekSummaryIncome.add(r.type, mineYield(r));
+        m_cachedWeeklyIncome = m_weekSummaryIncome;
+        m_weekSummaryWeek = m_turns.week();
+        if (!m_watchingAI) m_showWeekSummary = true;
+
+        // Mine income for player-controlled resource nodes
+        for (const auto& r : m_resources)
+            if (r.ownedBy == static_cast<uint32_t>(currentPlayerId())) m_playerResources.add(r.type, mineYield(r));
+
+        // (Other human players' weekly income is applied in the
+        //  lastPlayerEndedTurn block below via m_players[pi].resources.)
+
+        // Each AI player's income: same rules as the player — towns pay
+        // their weeklyIncome, owned mines pay mineYield, into THAT
+        // player's own pool (previously every AI town/mine fed one shared
+        // pool regardless of which bot actually owned it). This block
+        // runs exactly once per game-week (hot-seat early-outs before
+        // endTurn for all but the last player).
+        {
+            int aiTowns = 0, aiMines = 0;
+            for (const auto& t : m_towns)
+                if (isAiOwner(t.ownerId)) { aiResources(t.ownerId).addAll(t.weeklyIncome); ++aiTowns; }
             for (const auto& r : m_resources)
-                if (r.ownedBy == static_cast<uint32_t>(currentPlayerId())) m_weekSummaryIncome.add(r.type, mineYield(r));
-            m_cachedWeeklyIncome = m_weekSummaryIncome;
-            m_weekSummaryWeek = m_turns.week();
-            if (!m_watchingAI) m_showWeekSummary = true;
-
-            // Mine income for player-controlled resource nodes
-            for (const auto& r : m_resources)
-                if (r.ownedBy == static_cast<uint32_t>(currentPlayerId())) m_playerResources.add(r.type, mineYield(r));
-
-            // (Other human players' weekly income is applied in the
-            //  lastPlayerEndedTurn block below via m_players[pi].resources.)
-
-            // Each AI player's income: same rules as the player — towns pay
-            // their weeklyIncome, owned mines pay mineYield, into THAT
-            // player's own pool (previously every AI town/mine fed one shared
-            // pool regardless of which bot actually owned it). This block
-            // runs exactly once per game-week (hot-seat early-outs before
-            // endTurn for all but the last player).
-            {
-                int aiTowns = 0, aiMines = 0;
-                for (const auto& t : m_towns)
-                    if (isAiOwner(t.ownerId)) { aiResources(t.ownerId).addAll(t.weeklyIncome); ++aiTowns; }
-                for (const auto& r : m_resources)
-                    if (isAiOwner(r.ownedBy)) { aiResources(r.ownedBy).add(r.type, mineYield(r)); ++aiMines; }
-                int totalGold = 0, totalIron = 0;
-                for (const auto& res : m_aiResources) {
-                    totalGold += res.get(ResourceType::Gold);
-                    totalIron += res.get(ResourceType::Iron);
-                }
-                gLog("AI economy: %d towns + %d mines across %zu players -> %dg %di combined\n",
-                     aiTowns, aiMines, m_aiResources.size(), totalGold, totalIron);
-                // ── Townless decay ──────────────────────────────────────────
-                // An owner with no town can't sustain heroes forever. After a
-                // grace period its heroes disband (starved of a home) and the
-                // player is eliminated — this is what removes a player who lost
-                // their last town but still has a wandering army.
-                for (uint32_t o = 1; o <= 9; ++o) {
-                    int towns = 0;
-                    for (const auto& t : m_towns) if (t.ownerId == o) towns++;
-                    if (towns > 0) { m_ownerTownlessWeeks[o] = 0; continue; }
-                    // Does this owner still have any hero at all?
-                    bool hasHero = false;
-                    if (o == 1u) hasHero = !m_heroes.empty();
-                    else for (const auto& h : m_enemyHeroes)
-                        if (h.ownerId == o && !h.eliminated) { hasHero = true; break; }
-                    if (!hasHero) continue;
-                    m_ownerTownlessWeeks[o]++;
-                    if (m_ownerTownlessWeeks[o] >= 6) {
-                        // Starve out — disband this owner's heroes.
-                        int disbanded = 0;
-                        for (auto& h : m_enemyHeroes)
-                            if (h.ownerId == o && !h.eliminated) {
-                                h.eliminated = true; h.army.clear(); disbanded++;
-                            }
-                        if (o == 1u) m_heroes.clear();
-                        gLog("P%u eliminated — no town for 6 weeks, %d hero(es) starved out (week %d)\n",
-                             o, disbanded, m_turns.week());
-                        m_ownerTownlessWeeks[o] = 0;
-                    }
-                }
-                // Per-player breakdown (every ~4 weeks) so we can see who is
-                // active vs idle across the whole game.
-                if (m_turns.week() % 4 == 0) {
-                    std::vector<uint32_t> owners;
-                    auto note=[&](uint32_t o){ if(o&&std::find(owners.begin(),owners.end(),o)==owners.end()) owners.push_back(o); };
-                    for (const auto& t : m_towns) note(t.ownerId);
-                    for (const auto& h : m_enemyHeroes) note(h.ownerId);
-                    std::sort(owners.begin(), owners.end());
-                    const auto& udl = m_registry.units();
-                    for (uint32_t o : owners) {
-                        long long str=0; int heroes=0, towns=0, mines=0;
-                        if (o == 1u) {
-                            for (const auto& h : m_heroes) { str += heroStrength(h, udl); heroes++; }
-                        } else {
-                            for (const auto& h : m_enemyHeroes) if (h.ownerId==o){ str+=heroStrength(h,udl); heroes++; }
+                if (isAiOwner(r.ownedBy)) { aiResources(r.ownedBy).add(r.type, mineYield(r)); ++aiMines; }
+            int totalGold = 0, totalIron = 0;
+            for (const auto& res : m_aiResources) {
+                totalGold += res.get(ResourceType::Gold);
+                totalIron += res.get(ResourceType::Iron);
+            }
+            gLog("AI economy: %d towns + %d mines across %zu players -> %dg %di combined\n",
+                 aiTowns, aiMines, m_aiResources.size(), totalGold, totalIron);
+            // ── Townless decay ──────────────────────────────────────────
+            // An owner with no town can't sustain heroes forever. After a
+            // grace period its heroes disband (starved of a home) and the
+            // player is eliminated — this is what removes a player who lost
+            // their last town but still has a wandering army.
+            for (uint32_t o = 1; o <= 9; ++o) {
+                int towns = 0;
+                for (const auto& t : m_towns) if (t.ownerId == o) towns++;
+                if (towns > 0) { m_ownerTownlessWeeks[o] = 0; continue; }
+                // Does this owner still have any hero at all?
+                bool hasHero = false;
+                if (o == 1u) hasHero = !m_heroes.empty();
+                else for (const auto& h : m_enemyHeroes)
+                    if (h.ownerId == o && !h.eliminated) { hasHero = true; break; }
+                if (!hasHero) continue;
+                m_ownerTownlessWeeks[o]++;
+                if (m_ownerTownlessWeeks[o] >= 6) {
+                    // Starve out — disband this owner's heroes.
+                    int disbanded = 0;
+                    for (auto& h : m_enemyHeroes)
+                        if (h.ownerId == o && !h.eliminated) {
+                            h.eliminated = true; h.army.clear(); disbanded++;
                         }
-                        for (const auto& t : m_towns)     if (t.ownerId==o) towns++;
-                        for (const auto& r : m_resources) if (r.ownedBy==o) mines++;
-                        int gold = (o == 1u) ? m_playerResources.get(ResourceType::Gold)
-                                             : aiResources(o).get(ResourceType::Gold);
-                        gLog("  P%u %-8s str=%lld heroes=%d towns=%d mines=%d gold=%d\n",
-                             o, aiPersonalityName(m_aiPersonality[std::min<uint32_t>(o,9)]),
-                             str, heroes, towns, mines, gold);
-                    }
+                    if (o == 1u) m_heroes.clear();
+                    gLog("P%u eliminated — no town for 6 weeks, %d hero(es) starved out (week %d)\n",
+                         o, disbanded, m_turns.week());
+                    m_ownerTownlessWeeks[o] = 0;
                 }
             }
-
-            // Garrison upkeep — 350 gold/week per garrisoned player hero
-            {
-                int garrisonCount = 0;
-                for (const auto& h : m_heroes)
-                    if (h.isGarrisoned) ++garrisonCount;
-                if (garrisonCount > 0) {
-                    int upkeep = garrisonCount * 350;
-                    m_playerResources.add(ResourceType::Gold, -upkeep);
-                    gLog("Garrison upkeep: -%dg (%d hero%s dug in)\n",
-                         upkeep, garrisonCount, garrisonCount == 1 ? "" : "es");
+            // Per-player breakdown (every ~4 weeks) so we can see who is
+            // active vs idle across the whole game.
+            if (m_turns.week() % 4 == 0) {
+                std::vector<uint32_t> owners;
+                auto note=[&](uint32_t o){ if(o&&std::find(owners.begin(),owners.end(),o)==owners.end()) owners.push_back(o); };
+                for (const auto& t : m_towns) note(t.ownerId);
+                for (const auto& h : m_enemyHeroes) note(h.ownerId);
+                std::sort(owners.begin(), owners.end());
+                const auto& udl = m_registry.units();
+                for (uint32_t o : owners) {
+                    long long str=0; int heroes=0, towns=0, mines=0;
+                    if (o == 1u) {
+                        for (const auto& h : m_heroes) { str += heroStrength(h, udl); heroes++; }
+                    } else {
+                        for (const auto& h : m_enemyHeroes) if (h.ownerId==o){ str+=heroStrength(h,udl); heroes++; }
+                    }
+                    for (const auto& t : m_towns)     if (t.ownerId==o) towns++;
+                    for (const auto& r : m_resources) if (r.ownedBy==o) mines++;
+                    int gold = (o == 1u) ? m_playerResources.get(ResourceType::Gold)
+                                         : aiResources(o).get(ResourceType::Gold);
+                    gLog("  P%u %-8s str=%lld heroes=%d towns=%d mines=%d gold=%d\n",
+                         o, aiPersonalityName(m_aiPersonality[std::min<uint32_t>(o,9)]),
+                         str, heroes, towns, mines, gold);
                 }
             }
+        }
 
-            // Apply March bonus (10% move) for heroes who used March last week
-            for (auto& h : m_heroes) {
-                h.marchBonusActive = false;  // reset; will re-enable if cooldown was set last week
-                if (h.marchCooldownWeek == m_turns.week()) {
-                    // Cooldown expires this week — grant the bonus move pool
-                    h.movePool = std::min(h.maxMove + h.maxMove / 10, h.movePool + h.maxMove / 10);
+        // Garrison upkeep — 350 gold/week per garrisoned player hero
+        {
+            int garrisonCount = 0;
+            for (const auto& h : m_heroes)
+                if (h.isGarrisoned) ++garrisonCount;
+            if (garrisonCount > 0) {
+                int upkeep = garrisonCount * 350;
+                m_playerResources.add(ResourceType::Gold, -upkeep);
+                gLog("Garrison upkeep: -%dg (%d hero%s dug in)\n",
+                     upkeep, garrisonCount, garrisonCount == 1 ? "" : "es");
+            }
+        }
+
+        // Apply March bonus (10% move) for heroes who used March last week
+        for (auto& h : m_heroes) {
+            h.marchBonusActive = false;  // reset; will re-enable if cooldown was set last week
+            if (h.marchCooldownWeek == m_turns.week()) {
+                // Cooldown expires this week — grant the bonus move pool
+                h.movePool = std::min(h.maxMove + h.maxMove / 10, h.movePool + h.maxMove / 10);
+            }
+        }
+
+        gLog("New week %d - income applied\n", m_turns.week());
+
+        // AI weekly recruitment — REAL economy, same rules as the player:
+        // each AI town recruits what the team pool affords from its own
+        // dwellings into the town garrison; heroes pick garrisons up when
+        // they visit. No conjured units, no difficulty multipliers.
+        {
+            const auto& unitDefs = m_registry.units();
+
+            // NOTE: towns used to get silently reassigned here to "whoever
+            // the strongest living AI hero is" every week, because a
+            // capture-time bug stored a HERO id (not the player's ownerId)
+            // on captured towns, orphaning them the moment that specific
+            // hero died. That capture bug is fixed now (ownerId is always
+            // a stable player-slot id, exactly like a human player's towns
+            // when their hero dies) so a town no longer needs "inheriting"
+            // — it just waits for its owner's emergency-recruit to field a
+            // new hero, same as everyone else.
+
+            // Each AI town recruits into its garrison at real cost — but
+            // spends at most HALF the pool's gold on troops. Recruiting
+            // first used to drain everything and starve construction
+            // forever (Ironhold: 'cannot afford' weeks 6-50 while buying
+            // 13 T2 every week).
+            for (auto& t : m_towns) {
+                // Watch-AI's watched side (ownerId==1) is a "human" slot for
+                // hot-seat purposes but is fully AI-driven — without this it
+                // never got the weekly garrison auto-fill that real AI towns
+                // get, only true isAiOwner() towns did, so its economy grew
+                // while its hero army starved. Mirrors the build loop below.
+                bool watchPlayerTown = (t.ownerId == 1 && m_watchingAI);
+                bool aiTown          = isAiOwner(t.ownerId);
+                if (!watchPlayerTown && !aiTown) continue;
+                Resources& pool = watchPlayerTown ? m_playerResources : aiResources(t.ownerId);
+                Resources budget = pool;
+                // Normally spend at most half the pool's gold on troops so
+                // construction isn't starved. But once the economy is
+                // clearly solved (rich pool), pour it into army — a bot
+                // sitting on hundreds of thousands of unspent gold with a
+                // tiny army is the #1 AI failure. Rich = spend it all.
+                int poolGold = pool.get(ResourceType::Gold);
+                if (poolGold < 50000)
+                    budget.set(ResourceType::Gold, poolGold / 2);
+                Resources before = budget;
+                int got = aiPaidRecruit(t, t.garrison, budget, unitDefs);
+                if (got > 0) {
+                    for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
+                        auto type = static_cast<ResourceType>(rt);
+                        int spent = before.get(type) - budget.get(type);
+                        if (spent > 0) pool.add(type, -spent);
+                    }
+                    gLog("AI %s recruited %d units into garrison (pool %dg)\n",
+                         t.name.c_str(), got,
+                         pool.get(ResourceType::Gold));
                 }
             }
+        }
 
-            gLog("New week %d - income applied\n", m_turns.week());
+        // Auto-save at start of each new week
+        if (m_settingsAutoSave) saveGame();
 
-            // AI weekly recruitment — REAL economy, same rules as the player:
-            // each AI town recruits what the team pool affords from its own
-            // dwellings into the town garrison; heroes pick garrisons up when
-            // they visit. No conjured units, no difficulty multipliers.
-            {
-                const auto& unitDefs = m_registry.units();
+        // ── AI town building: faction-specific priority order ─────────────────
+        // Every side builds from its REAL pool: watch-mode player towns
+        // from m_playerResources, each AI town from its OWN player's pool
+        // via aiResources(town.ownerId). Human towns (any player in
+        // hot-seat) are never auto-built.
+        {
+            const auto& allBuildings = m_registry.buildings();
 
-                // NOTE: towns used to get silently reassigned here to "whoever
-                // the strongest living AI hero is" every week, because a
-                // capture-time bug stored a HERO id (not the player's ownerId)
-                // on captured towns, orphaning them the moment that specific
-                // hero died. That capture bug is fixed now (ownerId is always
-                // a stable player-slot id, exactly like a human player's towns
-                // when their hero dies) so a town no longer needs "inheriting"
-                // — it just waits for its owner's emergency-recruit to field a
-                // new hero, same as everyone else.
+            for (auto& town : m_towns) {
+                bool watchPlayerTown = (town.ownerId == 1 && m_watchingAI);
+                bool aiTown          = isAiOwner(town.ownerId);
+                if (!watchPlayerTown && !aiTown) continue;
+                town.builtToday = 0;
 
-                // Each AI town recruits into its garrison at real cost — but
-                // spends at most HALF the pool's gold on troops. Recruiting
-                // first used to drain everything and starve construction
-                // forever (Ironhold: 'cannot afford' weeks 6-50 while buying
-                // 13 T2 every week).
-                for (auto& t : m_towns) {
-                    // Watch-AI's watched side (ownerId==1) is a "human" slot for
-                    // hot-seat purposes but is fully AI-driven — without this it
-                    // never got the weekly garrison auto-fill that real AI towns
-                    // get, only true isAiOwner() towns did, so its economy grew
-                    // while its hero army starved. Mirrors the build loop below.
-                    bool watchPlayerTown = (t.ownerId == 1 && m_watchingAI);
-                    bool aiTown          = isAiOwner(t.ownerId);
-                    if (!watchPlayerTown && !aiTown) continue;
-                    Resources& pool = watchPlayerTown ? m_playerResources : aiResources(t.ownerId);
-                    Resources budget = pool;
-                    // Normally spend at most half the pool's gold on troops so
-                    // construction isn't starved. But once the economy is
-                    // clearly solved (rich pool), pour it into army — a bot
-                    // sitting on hundreds of thousands of unspent gold with a
-                    // tiny army is the #1 AI failure. Rich = spend it all.
-                    int poolGold = pool.get(ResourceType::Gold);
-                    if (poolGold < 50000)
-                        budget.set(ResourceType::Gold, poolGold / 2);
-                    Resources before = budget;
-                    int got = aiPaidRecruit(t, t.garrison, budget, unitDefs);
-                    if (got > 0) {
-                        for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
-                            auto type = static_cast<ResourceType>(rt);
-                            int spent = before.get(type) - budget.get(type);
-                            if (spent > 0) pool.add(type, -spent);
-                        }
-                        gLog("AI %s recruited %d units into garrison (pool %dg)\n",
-                             t.name.c_str(), got,
-                             pool.get(ResourceType::Gold));
+                bool built = false;
+                int fIdx = static_cast<int>(town.faction);
+                Resources& buildRes = watchPlayerTown ? m_playerResources
+                                                      : aiResources(town.ownerId);
+
+                // Market trading: find the first building we could LEGALLY
+                // build (prereqs/week satisfied) but can't pay for, and
+                // fill its FULL deficit — every missing resource type —
+                // selling surplus at 4:1 (non-gold first, then gold). The
+                // old logic chased prereq-blocked buildings and only ever
+                // filled one resource type, so towns sat on six-figure
+                // gold piles "unable to afford" a 2-essence dwelling.
+                if (fIdx >= 0 && fIdx < 9) {
+                    bool hasMarket = false;
+                    for (const auto& t : m_towns) {
+                        // Same OWNER, not just "any AI" — each AI player is
+                        // its own economy now, so a market three players
+                        // over doesn't help this town sell surplus.
+                        if (t.ownerId != town.ownerId) continue;
+                        if (t.hasBuilding(BID::MARKET)) { hasMarket = true; break; }
                     }
-                }
-            }
-
-            // Auto-save at start of each new week
-            if (m_settingsAutoSave) saveGame();
-
-            // ── AI town building: faction-specific priority order ─────────────────
-            // Every side builds from its REAL pool: watch-mode player towns
-            // from m_playerResources, each AI town from its OWN player's pool
-            // via aiResources(town.ownerId). Human towns (any player in
-            // hot-seat) are never auto-built.
-            {
-                const auto& allBuildings = m_registry.buildings();
-
-                for (auto& town : m_towns) {
-                    bool watchPlayerTown = (town.ownerId == 1 && m_watchingAI);
-                    bool aiTown          = isAiOwner(town.ownerId);
-                    if (!watchPlayerTown && !aiTown) continue;
-                    town.builtToday = 0;
-
-                    bool built = false;
-                    int fIdx = static_cast<int>(town.faction);
-                    Resources& buildRes = watchPlayerTown ? m_playerResources
-                                                          : aiResources(town.ownerId);
-
-                    // Market trading: find the first building we could LEGALLY
-                    // build (prereqs/week satisfied) but can't pay for, and
-                    // fill its FULL deficit — every missing resource type —
-                    // selling surplus at 4:1 (non-gold first, then gold). The
-                    // old logic chased prereq-blocked buildings and only ever
-                    // filled one resource type, so towns sat on six-figure
-                    // gold piles "unable to afford" a 2-essence dwelling.
-                    if (fIdx >= 0 && fIdx < 9) {
-                        bool hasMarket = false;
-                        for (const auto& t : m_towns) {
-                            // Same OWNER, not just "any AI" — each AI player is
-                            // its own economy now, so a market three players
-                            // over doesn't help this town sell surplus.
-                            if (t.ownerId != town.ownerId) continue;
-                            if (t.hasBuilding(BID::MARKET)) { hasMarket = true; break; }
-                        }
-                        const BuildingDef* wantDef = nullptr;
-                        if (hasMarket) {
-                            for (int bid : kBuildOrder[fIdx]) {
-                                if (!town.canBuild(bid, allBuildings, m_turns.week())) continue;
-                                const BuildingDef* d2 = nullptr;
-                                for (const auto& d : allBuildings) if (d.id == bid) { d2 = &d; break; }
-                                if (!d2) continue;
-                                if (buildRes.canAfford(d2->cost)) break;  // builder handles it
-                                wantDef = d2;
-                                break;
-                            }
-                            // Priority list done or unblocked: also trade for the
-                            // common fallback buildings (Shipyard, Bastion, forts)
-                            // — they're not in kBuildOrder, so a gold-rich town
-                            // could sit 'cannot afford' on 6 iron forever.
-                            if (!wantDef) {
-                                for (const auto& d : allBuildings) {
-                                    if (d.faction != FactionId::None) continue;
-                                    if (d.category != BuildingCategory::Fort &&
-                                        d.category != BuildingCategory::Support) continue;
-                                    if (!town.canBuild(d.id, allBuildings, m_turns.week())) continue;
-                                    if (buildRes.canAfford(d.cost)) break;
-                                    wantDef = &d;
-                                    break;
-                                }
-                            }
-                        }
-                        if (wantDef) {
-                            constexpr int SELL_RATE = 4;
-                            for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
-                                auto need = static_cast<ResourceType>(rt);
-                                int deficit = wantDef->cost.get(need) - buildRes.get(need);
-                                if (deficit <= 0) continue;
-                                for (int pass = 0; pass < 2 && deficit > 0; ++pass) {
-                                    for (int st = 0; st < RESOURCE_COUNT && deficit > 0; ++st) {
-                                        auto sell = static_cast<ResourceType>(st);
-                                        if (sell == need) continue;
-                                        bool isGold = (sell == ResourceType::Gold);
-                                        if ((pass == 0) == isGold) continue;  // pass 0: specials, pass 1: gold
-                                        // never sell below what the building itself needs
-                                        int surplus = buildRes.get(sell) - wantDef->cost.get(sell);
-                                        int buy = std::min(deficit, surplus / SELL_RATE);
-                                        if (buy > 0) {
-                                            buildRes.add(sell, -(buy * SELL_RATE));
-                                            buildRes.add(need, buy);
-                                            deficit -= buy;
-                                            gLog("%s market: %d res%d -> %d res%d for %s at %s\n",
-                                                 watchPlayerTown ? "Watch AI" : "AI",
-                                                 buy * SELL_RATE, st, buy, rt,
-                                                 wantDef->name.c_str(), town.name.c_str());
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Coastal towns build a Shipyard as an EARLY priority (from
-                    // ~week 3, once the Hall is up) — it is NOT in any faction's
-                    // kBuildOrder, and the post-priority fallback further below
-                    // only fires on weeks when nothing else is buildable, so it
-                    // was starved for the entire early/mid game (verified: 0
-                    // shipyards + 0 boats built across a full AI-vs-AI game).
-                    // Without a dock the AI can never board a boat, so any
-                    // island- or water-separated rival is permanently
-                    // unreachable and can never be eliminated — the confirmed
-                    // root cause of the week-50 multi-player no-elimination
-                    // stalemate (heroes just oscillate on a local mine forever
-                    // "eyeing" an enemy capital they can't path to). A shipyard
-                    // is cheap and one-time; delaying a single dwelling on a
-                    // coastal town once is a trivial price for naval reach.
-                    if (!built && m_turns.week() >= 3
-                        && !town.hasBuilding(BID::TOWN_SHIPYARD)) {
-                        bool coastalEarly = false;
-                        for (const auto& nb : HexGrid::neighbors(town.pos)) {
-                            const HexTile* nt = m_map.getTile(nb);
-                            if (nt && nt->terrain == Terrain::Water) { coastalEarly = true; break; }
-                        }
-                        if (coastalEarly
-                            && town.build(BID::TOWN_SHIPYARD, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
-                            gLog("AI %s built Shipyard (coastal, early priority)\n", town.name.c_str());
-                            built = true;
-                        }
-                    }
-
-                    // Try faction priority list first
-                    if (fIdx >= 0 && fIdx < 9) {
+                    const BuildingDef* wantDef = nullptr;
+                    if (hasMarket) {
                         for (int bid : kBuildOrder[fIdx]) {
-                            if (town.build(bid, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
-                                gLog("AI %s built BID=%d (priority)\n", town.name.c_str(), bid);
-                                built = true; break;
-                            }
+                            if (!town.canBuild(bid, allBuildings, m_turns.week())) continue;
+                            const BuildingDef* d2 = nullptr;
+                            for (const auto& d : allBuildings) if (d.id == bid) { d2 = &d; break; }
+                            if (!d2) continue;
+                            if (buildRes.canAfford(d2->cost)) break;  // builder handles it
+                            wantDef = d2;
+                            break;
                         }
-                    }
-
-                    // Coastal towns get a Shipyard fairly promptly — it isn't
-                    // in any faction's kBuildOrder, so without this an
-                    // island-isolated AI only ever got one from the "last
-                    // resort" roll below, which dwelling/priority spam could
-                    // starve out indefinitely (a real "AI stuck on an island
-                    // forever" bug, not just a slow one).
-                    if (!built && !town.hasBuilding(BID::TOWN_SHIPYARD)) {
-                        bool coastal = false;
-                        for (const auto& nb : HexGrid::neighbors(town.pos)) {
-                            const HexTile* nt = m_map.getTile(nb);
-                            if (nt && nt->terrain == Terrain::Water) { coastal = true; break; }
-                        }
-                        if (coastal && town.build(BID::TOWN_SHIPYARD, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
-                            gLog("AI %s built Shipyard (coastal)\n", town.name.c_str());
-                            built = true;
-                        }
-                    }
-
-                    // Fallback: lowest unbought base dwelling tier
-                    for (int tier = 1; tier <= 6 && !built; ++tier) {
-                        for (const auto& def : allBuildings) {
-                            if (def.category != BuildingCategory::UnitDwelling) continue;
-                            if (def.faction != town.faction) continue;
-                            if (def.tier != tier) continue;
-                            if (def.path != UpgradePath::None) continue;
-                            if (town.build(def.id, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
-                                gLog("AI %s built %s\n", town.name.c_str(), def.name.c_str());
-                                built = true; break;
-                            }
-                        }
-                    }
-                    // Last resort: any fort or support building
-                    if (!built) {
-                        for (const auto& def : allBuildings) {
-                            if (def.faction != town.faction && def.faction != FactionId::None) continue;
-                            if (def.category != BuildingCategory::Fort &&
-                                def.category != BuildingCategory::Support) continue;
-                            if (town.build(def.id, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
-                                gLog("AI %s built %s\n", town.name.c_str(), def.name.c_str());
+                        // Priority list done or unblocked: also trade for the
+                        // common fallback buildings (Shipyard, Bastion, forts)
+                        // — they're not in kBuildOrder, so a gold-rich town
+                        // could sit 'cannot afford' on 6 iron forever.
+                        if (!wantDef) {
+                            for (const auto& d : allBuildings) {
+                                if (d.faction != FactionId::None) continue;
+                                if (d.category != BuildingCategory::Fort &&
+                                    d.category != BuildingCategory::Support) continue;
+                                if (!town.canBuild(d.id, allBuildings, m_turns.week())) continue;
+                                if (buildRes.canAfford(d.cost)) break;
+                                wantDef = &d;
                                 break;
                             }
                         }
                     }
-                }
-            }
-
-            // ── AI hero recruitment — one per week from owned tavern town ─────
-            {
-                // Hard fields more heroes than Easy/Normal (more map pressure).
-                // The cap is behavioral: every hire costs real gold now.
-                static const int kHeroCap[3] = { 5, 6, 7 };
-                const int AI_HERO_CAP = kHeroCap[std::clamp(m_newGameDifficulty, 0, 2)];
-                constexpr int AI_HIRE_COST = 2500;  // same as the human tavern
-                {
-                    static const char* kAINames[] = {
-                        "Drafted Sword","Hired Blade","Road Warden",
-                        "Freelance Arm","Wandering Axe","Sellsword",
-                        "Hired Shield","Iron Hand","Dusty Boot","Grim Pike"
-                    };
-                    for (auto& recruitTown : m_towns) {
-                        if (recruitTown.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) continue;
-                        // Cap and afford per OWNER now — each AI player fields
-                        // its own roster from its own wallet, not one shared
-                        // cap/pool across every bot on the map.
-                        int ownerHeroCount = 0;
-                        for (const auto& h : m_enemyHeroes)
-                            if (h.ownerId == recruitTown.ownerId) ++ownerHeroCount;
-                        if (ownerHeroCount >= AI_HERO_CAP) continue;
-                        if (aiResources(recruitTown.ownerId).get(ResourceType::Gold) < AI_HIRE_COST) continue;
-                        bool occupied = false;
-                        for (const auto& e : m_enemyHeroes)
-                            if (e.pos == recruitTown.pos) { occupied = true; break; }
-                        if (occupied) continue;
-
-                        uint32_t newId = 500u;
-                        for (const auto& h : m_heroes)      newId = std::max(newId, h.id + 1u);
-                        for (const auto& h : m_enemyHeroes) newId = std::max(newId, h.id + 1u);
-
-                        uint32_t nameSeed = (m_turns.week() * 7919u) ^ static_cast<uint32_t>(recruitTown.pos.q * 317u + recruitTown.pos.r);
-                        Hero newHero;
-                        newHero.id      = newId;
-                        newHero.ownerId = recruitTown.ownerId;
-                        newHero.faction = recruitTown.faction;
-                        newHero.name    = kAINames[nameSeed % 10];
-                        newHero.pos     = recruitTown.pos;
-                        newHero.movePool = newHero.maxMove;
-
-                        // Tavern retinue included in the fee (same as human hires)
-                        giveTavernRetinue(newHero, m_registry.buildings(), m_registry.units());
-                        aiResources(recruitTown.ownerId).add(ResourceType::Gold, -AI_HIRE_COST);
-                        // Consolidate: scoop the town garrison and buy more with the
-                        // AI pool — a TRUE mirror of the watched-side hire below.
-                        // Without this the enemy fielded fodder heroes while its
-                        // garrison + gold rotted in the town (223 mines / 185k gold
-                        // and still losing), so the enemy hire must match exactly.
-                        takeGarrison(recruitTown, newHero, m_registry.units());
-                        aiPaidRecruit(recruitTown, newHero.army, aiResources(recruitTown.ownerId), m_registry.units());
-                        HexCoord spawnPos = recruitTown.pos;
-                        for (auto& nb : HexGrid::neighbors(recruitTown.pos)) {
-                            const HexTile* nt = m_map.getTile(nb);
-                            if (nt && nt->terrain != Terrain::Water && nt->heroId == 0) {
-                                spawnPos = nb; break;
+                    if (wantDef) {
+                        constexpr int SELL_RATE = 4;
+                        for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
+                            auto need = static_cast<ResourceType>(rt);
+                            int deficit = wantDef->cost.get(need) - buildRes.get(need);
+                            if (deficit <= 0) continue;
+                            for (int pass = 0; pass < 2 && deficit > 0; ++pass) {
+                                for (int st = 0; st < RESOURCE_COUNT && deficit > 0; ++st) {
+                                    auto sell = static_cast<ResourceType>(st);
+                                    if (sell == need) continue;
+                                    bool isGold = (sell == ResourceType::Gold);
+                                    if ((pass == 0) == isGold) continue;  // pass 0: specials, pass 1: gold
+                                    // never sell below what the building itself needs
+                                    int surplus = buildRes.get(sell) - wantDef->cost.get(sell);
+                                    int buy = std::min(deficit, surplus / SELL_RATE);
+                                    if (buy > 0) {
+                                        buildRes.add(sell, -(buy * SELL_RATE));
+                                        buildRes.add(need, buy);
+                                        deficit -= buy;
+                                        gLog("%s market: %d res%d -> %d res%d for %s at %s\n",
+                                             watchPlayerTown ? "Watch AI" : "AI",
+                                             buy * SELL_RATE, st, buy, rt,
+                                             wantDef->name.c_str(), town.name.c_str());
+                                    }
+                                }
                             }
                         }
-                        newHero.pos = spawnPos;
-                        if (HexTile* ht = m_map.getTile(spawnPos)) ht->heroId = newHero.id;
-                        m_enemyHeroes.push_back(std::move(newHero));
-                        gLog("AI recruited hero at %s (week %d)\n",
-                             recruitTown.name.c_str(), m_turns.week());
-                        // NOT a break: this used to cap the ENTIRE map to one
-                        // new hero per week total, so whichever town happened
-                        // to iterate first every week (same player, every
-                        // time) hoarded all hero replenishment forever while
-                        // every other AI player's civilization went silent
-                        // the moment its one hero died — confirmed live via
-                        // a 119-week Watch AI run where 4 of 5 AI players
-                        // never recruited or built again after week ~3. Each
-                        // owner already has its own per-owner cap/afford
-                        // check above, so letting every eligible owner hire
-                        // once per week (instead of only the map's first
-                        // eligible town) is the correct per-player behaviour.
+                    }
+                }
+
+                // Coastal towns build a Shipyard as an EARLY priority (from
+                // ~week 3, once the Hall is up) — it is NOT in any faction's
+                // kBuildOrder, and the post-priority fallback further below
+                // only fires on weeks when nothing else is buildable, so it
+                // was starved for the entire early/mid game (verified: 0
+                // shipyards + 0 boats built across a full AI-vs-AI game).
+                // Without a dock the AI can never board a boat, so any
+                // island- or water-separated rival is permanently
+                // unreachable and can never be eliminated — the confirmed
+                // root cause of the week-50 multi-player no-elimination
+                // stalemate (heroes just oscillate on a local mine forever
+                // "eyeing" an enemy capital they can't path to). A shipyard
+                // is cheap and one-time; delaying a single dwelling on a
+                // coastal town once is a trivial price for naval reach.
+                if (!built && m_turns.week() >= 3
+                    && !town.hasBuilding(BID::TOWN_SHIPYARD)) {
+                    bool coastalEarly = false;
+                    for (const auto& nb : HexGrid::neighbors(town.pos)) {
+                        const HexTile* nt = m_map.getTile(nb);
+                        if (nt && nt->terrain == Terrain::Water) { coastalEarly = true; break; }
+                    }
+                    if (coastalEarly
+                        && town.build(BID::TOWN_SHIPYARD, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
+                        gLog("AI %s built Shipyard (coastal, early priority)\n", town.name.c_str());
+                        built = true;
+                    }
+                }
+
+                // Try faction priority list first
+                if (fIdx >= 0 && fIdx < 9) {
+                    for (int bid : kBuildOrder[fIdx]) {
+                        if (town.build(bid, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
+                            gLog("AI %s built BID=%d (priority)\n", town.name.c_str(), bid);
+                            built = true; break;
+                        }
+                    }
+                }
+
+                // Coastal towns get a Shipyard fairly promptly — it isn't
+                // in any faction's kBuildOrder, so without this an
+                // island-isolated AI only ever got one from the "last
+                // resort" roll below, which dwelling/priority spam could
+                // starve out indefinitely (a real "AI stuck on an island
+                // forever" bug, not just a slow one).
+                if (!built && !town.hasBuilding(BID::TOWN_SHIPYARD)) {
+                    bool coastal = false;
+                    for (const auto& nb : HexGrid::neighbors(town.pos)) {
+                        const HexTile* nt = m_map.getTile(nb);
+                        if (nt && nt->terrain == Terrain::Water) { coastal = true; break; }
+                    }
+                    if (coastal && town.build(BID::TOWN_SHIPYARD, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
+                        gLog("AI %s built Shipyard (coastal)\n", town.name.c_str());
+                        built = true;
+                    }
+                }
+
+                // Fallback: lowest unbought base dwelling tier
+                for (int tier = 1; tier <= 6 && !built; ++tier) {
+                    for (const auto& def : allBuildings) {
+                        if (def.category != BuildingCategory::UnitDwelling) continue;
+                        if (def.faction != town.faction) continue;
+                        if (def.tier != tier) continue;
+                        if (def.path != UpgradePath::None) continue;
+                        if (town.build(def.id, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
+                            gLog("AI %s built %s\n", town.name.c_str(), def.name.c_str());
+                            built = true; break;
+                        }
+                    }
+                }
+                // Last resort: any fort or support building
+                if (!built) {
+                    for (const auto& def : allBuildings) {
+                        if (def.faction != town.faction && def.faction != FactionId::None) continue;
+                        if (def.category != BuildingCategory::Fort &&
+                            def.category != BuildingCategory::Support) continue;
+                        if (town.build(def.id, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
+                            gLog("AI %s built %s\n", town.name.c_str(), def.name.c_str());
+                            break;
+                        }
                     }
                 }
             }
+        }
 
-            // ── Watch AI: watched-side hero recruitment — a MIRROR of the enemy ──
-            // The watched side hires full combat heroes up to the same cap the
-            // enemy uses, all driven by the same routine. (The old main +
-            // courier/scout system was a crutch from when the AI fielded one
-            // hero; both sides now field a real roster and fight for the map.)
-            if (m_watchingAI) {
-                constexpr int WATCH_HIRE_COST = 2500;
-                static const int kHeroCap[3] = { 5, 6, 7 };
-                const int WATCH_HERO_CAP = kHeroCap[std::clamp(m_newGameDifficulty, 0, 2)];
-                const auto& unitDefs = m_registry.units();
-
-                auto isCamped = [&](const Town& t, int freshStr) {
-                    for (const auto& eh : m_enemyHeroes)
-                        if (HexGrid::distance(eh.pos, t.pos) <= 4
-                            && heroStrength(eh, unitDefs) > freshStr * 2) return true;
-                    return false;
+        // ── AI hero recruitment — one per week from owned tavern town ─────
+        {
+            // Hard fields more heroes than Easy/Normal (more map pressure).
+            // The cap is behavioral: every hire costs real gold now.
+            static const int kHeroCap[3] = { 5, 6, 7 };
+            const int AI_HERO_CAP = kHeroCap[std::clamp(m_newGameDifficulty, 0, 2)];
+            constexpr int AI_HIRE_COST = 2500;  // same as the human tavern
+            {
+                static const char* kAINames[] = {
+                    "Drafted Sword","Hired Blade","Road Warden",
+                    "Freelance Arm","Wandering Axe","Sellsword",
+                    "Hired Shield","Iron Hand","Dusty Boot","Grim Pike"
                 };
-                auto spawnNear = [&](const Town& t) {
-                    HexCoord spawnPos = t.pos;
-                    for (auto& nb : HexGrid::neighbors(t.pos)) {
+                for (auto& recruitTown : m_towns) {
+                    if (recruitTown.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) continue;
+                    // Cap and afford per OWNER now — each AI player fields
+                    // its own roster from its own wallet, not one shared
+                    // cap/pool across every bot on the map.
+                    int ownerHeroCount = 0;
+                    for (const auto& h : m_enemyHeroes)
+                        if (h.ownerId == recruitTown.ownerId) ++ownerHeroCount;
+                    if (ownerHeroCount >= AI_HERO_CAP) continue;
+                    if (aiResources(recruitTown.ownerId).get(ResourceType::Gold) < AI_HIRE_COST) continue;
+                    bool occupied = false;
+                    for (const auto& e : m_enemyHeroes)
+                        if (e.pos == recruitTown.pos) { occupied = true; break; }
+                    if (occupied) continue;
+
+                    uint32_t newId = 500u;
+                    for (const auto& h : m_heroes)      newId = std::max(newId, h.id + 1u);
+                    for (const auto& h : m_enemyHeroes) newId = std::max(newId, h.id + 1u);
+
+                    uint32_t nameSeed = (m_turns.week() * 7919u) ^ static_cast<uint32_t>(recruitTown.pos.q * 317u + recruitTown.pos.r);
+                    Hero newHero;
+                    newHero.id      = newId;
+                    newHero.ownerId = recruitTown.ownerId;
+                    newHero.faction = recruitTown.faction;
+                    newHero.name    = kAINames[nameSeed % 10];
+                    newHero.pos     = recruitTown.pos;
+                    newHero.movePool = newHero.maxMove;
+
+                    // Tavern retinue included in the fee (same as human hires)
+                    giveTavernRetinue(newHero, m_registry.buildings(), m_registry.units());
+                    aiResources(recruitTown.ownerId).add(ResourceType::Gold, -AI_HIRE_COST);
+                    // Consolidate: scoop the town garrison and buy more with the
+                    // AI pool — a TRUE mirror of the watched-side hire below.
+                    // Without this the enemy fielded fodder heroes while its
+                    // garrison + gold rotted in the town (223 mines / 185k gold
+                    // and still losing), so the enemy hire must match exactly.
+                    takeGarrison(recruitTown, newHero, m_registry.units());
+                    aiPaidRecruit(recruitTown, newHero.army, aiResources(recruitTown.ownerId), m_registry.units());
+                    HexCoord spawnPos = recruitTown.pos;
+                    for (auto& nb : HexGrid::neighbors(recruitTown.pos)) {
                         const HexTile* nt = m_map.getTile(nb);
                         if (nt && nt->terrain != Terrain::Water && nt->heroId == 0) {
                             spawnPos = nb; break;
                         }
                     }
-                    return spawnPos;
-                };
-
-                static const char* kWatchNames[] = {
-                    "Vanguard","Marshal","Warden","Crusader","Templar",
-                    "Champion","Paladin","Sentinel","Reaver","Zealot"
-                };
-                // Empty roster is urgent (else the watched side is inert); one
-                // hire per week otherwise, just like the enemy.
-                bool rosterEmpty = m_heroes.empty();
-                if (static_cast<int>(m_heroes.size()) < WATCH_HERO_CAP
-                    && m_playerResources.get(ResourceType::Gold) >= WATCH_HIRE_COST) {
-                    for (auto& recruitTown : m_towns) {
-                        if (recruitTown.ownerId != 1) continue;
-                        bool occupied = false;
-                        for (const auto& h : m_heroes)
-                            if (h.pos == recruitTown.pos) { occupied = true; break; }
-                        if (occupied && !rosterEmpty) continue;
-
-                        uint32_t newId = 100u;
-                        for (const auto& h : m_heroes) newId = std::max(newId, h.id + 1u);
-                        uint32_t nameSeed = (m_turns.week() * 6271u) ^ newId;
-                        Hero newHero;
-                        newHero.id       = newId;
-                        newHero.faction  = recruitTown.faction;
-                        newHero.name     = kWatchNames[nameSeed % 10];
-                        newHero.movePool = newHero.maxMove;
-
-                        // Fresh level-1 hire, same as the enemy's — no XP
-                        // catch-up, a true mirror. It levels through play.
-                        giveTavernRetinue(newHero, m_registry.buildings(), unitDefs);
-
-                        int fresh = heroStrength(newHero, unitDefs)
-                                  + stacksStrength(recruitTown.garrison, unitDefs);
-                        if (isCamped(recruitTown, fresh)) continue;
-
-                        m_playerResources.add(ResourceType::Gold, -WATCH_HIRE_COST);
-                        takeGarrison(recruitTown, newHero, unitDefs);
-                        aiPaidRecruit(recruitTown, newHero.army, m_playerResources, unitDefs);
-                        newHero.pos = spawnNear(recruitTown);
-                        if (HexTile* ht = m_map.getTile(newHero.pos)) ht->heroId = newHero.id;
-                        gLog("Watch AI hired %s at %s (week %d)\n",
-                             newHero.name.c_str(), recruitTown.name.c_str(), m_turns.week());
-                        m_heroes.push_back(std::move(newHero));
-                        if (m_activeHeroIdx >= static_cast<int>(m_heroes.size()))
-                            m_activeHeroIdx = 0;
-                        break;
-                    }
+                    newHero.pos = spawnPos;
+                    if (HexTile* ht = m_map.getTile(spawnPos)) ht->heroId = newHero.id;
+                    m_enemyHeroes.push_back(std::move(newHero));
+                    gLog("AI recruited hero at %s (week %d)\n",
+                         recruitTown.name.c_str(), m_turns.week());
+                    // NOT a break: this used to cap the ENTIRE map to one
+                    // new hero per week total, so whichever town happened
+                    // to iterate first every week (same player, every
+                    // time) hoarded all hero replenishment forever while
+                    // every other AI player's civilization went silent
+                    // the moment its one hero died — confirmed live via
+                    // a 119-week Watch AI run where 4 of 5 AI players
+                    // never recruited or built again after week ~3. Each
+                    // owner already has its own per-owner cap/afford
+                    // check above, so letting every eligible owner hire
+                    // once per week (instead of only the map's first
+                    // eligible town) is the correct per-player behaviour.
                 }
             }
+        }
 
-            // ── Weekly random event ────────────────────────────────────────────
-            m_weeklyEventHeadline.clear();
-            m_weeklyEventBody.clear();
-            m_weekChoiceOptions.clear();
-            // Use week number + a pseudo-hash for varied but deterministic events
-            int evtRoll = ((m_turns.week() * 2654435761u) >> 8) % 28;
-            switch (evtRoll) {
-                case 0: { // no event
+        // ── Watch AI: watched-side hero recruitment — a MIRROR of the enemy ──
+        // The watched side hires full combat heroes up to the same cap the
+        // enemy uses, all driven by the same routine. (The old main +
+        // courier/scout system was a crutch from when the AI fielded one
+        // hero; both sides now field a real roster and fight for the map.)
+        if (m_watchingAI) {
+            constexpr int WATCH_HIRE_COST = 2500;
+            static const int kHeroCap[3] = { 5, 6, 7 };
+            const int WATCH_HERO_CAP = kHeroCap[std::clamp(m_newGameDifficulty, 0, 2)];
+            const auto& unitDefs = m_registry.units();
+
+            auto isCamped = [&](const Town& t, int freshStr) {
+                for (const auto& eh : m_enemyHeroes)
+                    if (HexGrid::distance(eh.pos, t.pos) <= 4
+                        && heroStrength(eh, unitDefs) > freshStr * 2) return true;
+                return false;
+            };
+            auto spawnNear = [&](const Town& t) {
+                HexCoord spawnPos = t.pos;
+                for (auto& nb : HexGrid::neighbors(t.pos)) {
+                    const HexTile* nt = m_map.getTile(nb);
+                    if (nt && nt->terrain != Terrain::Water && nt->heroId == 0) {
+                        spawnPos = nb; break;
+                    }
+                }
+                return spawnPos;
+            };
+
+            static const char* kWatchNames[] = {
+                "Vanguard","Marshal","Warden","Crusader","Templar",
+                "Champion","Paladin","Sentinel","Reaver","Zealot"
+            };
+            // Empty roster is urgent (else the watched side is inert); one
+            // hire per week otherwise, just like the enemy.
+            bool rosterEmpty = m_heroes.empty();
+            if (static_cast<int>(m_heroes.size()) < WATCH_HERO_CAP
+                && m_playerResources.get(ResourceType::Gold) >= WATCH_HIRE_COST) {
+                for (auto& recruitTown : m_towns) {
+                    if (recruitTown.ownerId != 1) continue;
+                    bool occupied = false;
+                    for (const auto& h : m_heroes)
+                        if (h.pos == recruitTown.pos) { occupied = true; break; }
+                    if (occupied && !rosterEmpty) continue;
+
+                    uint32_t newId = 100u;
+                    for (const auto& h : m_heroes) newId = std::max(newId, h.id + 1u);
+                    uint32_t nameSeed = (m_turns.week() * 6271u) ^ newId;
+                    Hero newHero;
+                    newHero.id       = newId;
+                    newHero.faction  = recruitTown.faction;
+                    newHero.name     = kWatchNames[nameSeed % 10];
+                    newHero.movePool = newHero.maxMove;
+
+                    // Fresh level-1 hire, same as the enemy's — no XP
+                    // catch-up, a true mirror. It levels through play.
+                    giveTavernRetinue(newHero, m_registry.buildings(), unitDefs);
+
+                    int fresh = heroStrength(newHero, unitDefs)
+                              + stacksStrength(recruitTown.garrison, unitDefs);
+                    if (isCamped(recruitTown, fresh)) continue;
+
+                    m_playerResources.add(ResourceType::Gold, -WATCH_HIRE_COST);
+                    takeGarrison(recruitTown, newHero, unitDefs);
+                    aiPaidRecruit(recruitTown, newHero.army, m_playerResources, unitDefs);
+                    newHero.pos = spawnNear(recruitTown);
+                    if (HexTile* ht = m_map.getTile(newHero.pos)) ht->heroId = newHero.id;
+                    gLog("Watch AI hired %s at %s (week %d)\n",
+                         newHero.name.c_str(), recruitTown.name.c_str(), m_turns.week());
+                    m_heroes.push_back(std::move(newHero));
+                    if (m_activeHeroIdx >= static_cast<int>(m_heroes.size()))
+                        m_activeHeroIdx = 0;
                     break;
                 }
-                case 1: { // Merchant's Gift — bonus gold
+            }
+        }
+
+        // ── Weekly random event ────────────────────────────────────────────
+        m_weeklyEventHeadline.clear();
+        m_weeklyEventBody.clear();
+        m_weekChoiceOptions.clear();
+        // Use week number + a pseudo-hash for varied but deterministic events
+        int evtRoll = ((m_turns.week() * 2654435761u) >> 8) % 28;
+        switch (evtRoll) {
+            case 0: { // no event
+                break;
+            }
+            case 1: { // Merchant's Gift — bonus gold
+                m_playerResources.add(ResourceType::Gold, 500);
+                m_weeklyEventHeadline = "A Merchant's Gift";
+                m_weeklyEventBody = "A wandering trader pays 500 Gold for safe passage through your lands.";
+                break;
+            }
+            case 2: { // Wandering Wizard — learn a random unknown spell
+                if (!m_heroes.empty()) {
+                    Hero& h = m_heroes[m_activeHeroIdx];
+                    for (int i = 0; i < SPELL_COUNT; ++i) {
+                        int sid = ALL_SPELLS[i].id;
+                        bool known = false;
+                        for (int s : h.knownSpells) if (s == sid) { known = true; break; }
+                        if (!known) {
+                            h.knownSpells.push_back(sid);
+                            m_weeklyEventHeadline = "Wandering Wizard";
+                            m_weeklyEventBody = std::string("A sage teaches your hero: ")
+                                              + ALL_SPELLS[i].name + "!";
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+            case 3: { // Bandit Raid — lose gold
+                int lost = std::min(200, m_playerResources.get(ResourceType::Gold));
+                m_playerResources.add(ResourceType::Gold, -lost);
+                m_weeklyEventHeadline = "Bandit Raid!";
+                m_weeklyEventBody = "Raiders struck your supply wagons, stealing "
+                                  + std::to_string(lost) + " Gold.";
+                break;
+            }
+            case 4: { // Rich Harvest — bonus resources
+                m_playerResources.add(ResourceType::Gold, 200);
+                m_playerResources.add(ResourceType::Iron, 3);
+                m_weeklyEventHeadline = "Rich Harvest";
+                m_weeklyEventBody = "Abundant yields from your territories: +200 Gold, +3 Iron.";
+                break;
+            }
+            case 5: { // Heroic Inspiration — XP boost
+                if (!m_heroes.empty()) {
+                    Hero& h = m_heroes[m_activeHeroIdx];
+                    int xpGain = 150;
+                    int oldLvl5 = h.level;
+                    if (h.addXp(xpGain)) {
+                        const HeroClassDef* cls = m_classRegistry.getClass(h.classId);
+                        if (cls) {
+                            std::vector<SkillDef> allSkills(SKILL_DEFS, SKILL_DEFS + SKILL_DEF_COUNT);
+                            m_levelUpOffers = LevelUpSystem::generateOffers(
+                                *cls, h.skills, h.level, allSkills, h.faction);
+                        }
+                        if (m_levelUpOffers.empty())
+                            m_levelUpOffers.push_back({SkillID::OFFENSE, false, false, "Learn Offense"});
+                        m_pendingLevelUps = h.level - oldLvl5;
+                        m_showLevelUpModal = true;
+                        { ScriptContext lvCtx; lvCtx.heroId = h.id; m_triggers.fire(TriggerType::HeroLevel, lvCtx); }
+                        // Level-up particle burst at hero's screen position
+                        {
+                            float hwx, hwy;
+                            m_hexRenderer.grid().hexToWorld(h.pos, hwx, hwy);
+                            float hsx, hsy;
+                            m_camera.worldToScreen(hwx, hwy, hsx, hsy);
+                            m_particles.emit(hsx, hsy, ParticlePreset::LevelUp);
+                        }
+                    }
+                    m_weeklyEventHeadline = "Battle Hardened";
+                    m_weeklyEventBody = "Tales of your deeds spread: +"
+                                       + std::to_string(xpGain) + " XP.";
+                }
+                break;
+            }
+            case 6: { // Arcane Font — bonus mana for the hero
+                if (!m_heroes.empty()) {
+                    Hero& h = m_heroes[m_activeHeroIdx];
+                    h.maxMana = std::min(h.maxMana + 5, 99);
+                    h.mana    = h.maxMana;
+                    m_weeklyEventHeadline = "Arcane Font";
+                    m_weeklyEventBody = "A ley-line resonance permanently expands your hero's mana pool by 5.";
+                }
+                break;
+            }
+            case 7: { // Ancient Armory — hero gains +1 Attack
+                if (!m_heroes.empty()) {
+                    Hero& h = m_heroes[m_activeHeroIdx];
+                    h.attack++;
+                    m_weeklyEventHeadline = "Ancient Armory";
+                    m_weeklyEventBody = "You unearth a cache of fine weapons from an old war. Your hero gains +1 Attack.";
+                }
+                break;
+            }
+            case 8: { // Rally! — strongest army stack grows
+                if (!m_heroes.empty()) {
+                    Hero& h = m_heroes[m_activeHeroIdx];
+                    int bestCount = 0; int bestIdx = -1;
+                    for (int i = 0; i < (int)h.army.size(); ++i)
+                        if (h.army[i].count > bestCount) { bestCount = h.army[i].count; bestIdx = i; }
+                    if (bestIdx >= 0) {
+                        h.army[bestIdx].count += 5;
+                        m_weeklyEventHeadline = "Rally!";
+                        m_weeklyEventBody = "Volunteers flock to your banner, reinforcing your ranks with 5 more fighters.";
+                    }
+                }
+                break;
+            }
+            case 9: { // Magical Storm — enemy heroes lose mana
+                for (auto& eh : m_enemyHeroes) eh.mana = std::max(0, eh.mana - 5);
+                m_weeklyEventHeadline = "Magical Storm";
+                m_weeklyEventBody = "A surge of wild magic disperses spell reserves. Enemy heroes lose 5 mana.";
+                break;
+            }
+            case 10: { // Tribute from Vassals — multi-resource bonus
+                m_playerResources.add(ResourceType::Gold,        300);
+                m_playerResources.add(ResourceType::FaithStones,   2);
+                m_playerResources.add(ResourceType::VerdantSap,    2);
+                m_weeklyEventHeadline = "Tribute from Vassals";
+                m_weeklyEventBody = "Subject villages send tribute: +300 Gold, +2 Faith Stones, +2 Verdant Sap.";
+                break;
+            }
+            case 11: { // Plague — garrison defenders weakened in all human-owned towns
+                int lostTotal = 0;
+                for (auto& t : m_towns) {
+                    if (t.ownerId == 0 || t.ownerId > static_cast<uint32_t>(m_numHumanPlayers)
+                        || t.garrison.empty()) continue;
+                    for (auto& s : t.garrison) {
+                        int lost = std::max(0, s.count / 5);
+                        s.count -= lost;
+                        lostTotal += lost;
+                    }
+                }
+                m_weeklyEventHeadline = "Plague Sweeps the Land!";
+                m_weeklyEventBody = "A virulent sickness culls your town garrisons. "
+                    + (lostTotal > 0 ? std::to_string(lostTotal) + " garrison troops perished."
+                                     : "Your towns were untouched — no garrison losses.");
+                break;
+            }
+            case 12: { // Fallen Knight — hero gains +1 Defense
+                if (!m_heroes.empty()) {
+                    Hero& h = m_heroes[m_activeHeroIdx];
+                    h.defense++;
+                    m_weeklyEventHeadline = "Fallen Knight's Legacy";
+                    m_weeklyEventBody = "You bury a fallen champion and claim his mantle. Your hero gains +1 Defense.";
+                }
+                break;
+            }
+            case 13: { // Mercenary Camp — strongest stack grows by 8
+                if (!m_heroes.empty()) {
+                    Hero& h = m_heroes[m_activeHeroIdx];
+                    int best = 0, bestIdx = -1;
+                    for (int i = 0; i < (int)h.army.size(); ++i)
+                        if (h.army[i].count > best) { best = h.army[i].count; bestIdx = i; }
+                    if (bestIdx >= 0) {
+                        h.army[bestIdx].count += 8;
+                        m_weeklyEventHeadline = "Mercenary Camp";
+                        m_weeklyEventBody = "Hired blades swell your ranks: +8 fighters join your strongest unit.";
+                    }
+                }
+                break;
+            }
+            case 14: { // Scouting Report — enemy hero mana drained + player gets gold
+                for (auto& eh : m_enemyHeroes) eh.mana = std::max(0, eh.mana - 8);
+                m_playerResources.add(ResourceType::Gold, 150);
+                m_weeklyEventHeadline = "Spy Network Pays Off";
+                m_weeklyEventBody = "Your agents disrupt enemy supply lines: +150 Gold, enemy heroes lose 8 mana.";
+                break;
+            }
+            case 15: { // Alchemy — rare resources
+                m_playerResources.add(ResourceType::Mercury, 2);
+                m_playerResources.add(ResourceType::BloodEssence, 1);
+                m_weeklyEventHeadline = "Alchemist's Discovery";
+                m_weeklyEventBody = "A rogue alchemist delivers rare reagents: +2 Mercury, +1 Blood Essence.";
+                break;
+            }
+            case 16: { // Divine Favour — hero fully restores mana
+                if (!m_heroes.empty()) {
+                    Hero& h = m_heroes[m_activeHeroIdx];
+                    h.mana = h.maxMana;
+                    m_weeklyEventHeadline = "Divine Favour";
+                    m_weeklyEventBody = "A radiant vision renews your hero's magical reserves. Mana fully restored.";
+                }
+                break;
+            }
+            case 17: { // Enemy Deserters — XP + small unit join
+                if (!m_heroes.empty()) {
+                    Hero& h = m_heroes[m_activeHeroIdx];
+                    int xp = 100;
+                    int oldLvl17 = h.level;
+                    if (h.addXp(xp)) {
+                        const HeroClassDef* cls = m_classRegistry.getClass(h.classId);
+                        if (cls) {
+                            std::vector<SkillDef> allSkills(SKILL_DEFS, SKILL_DEFS + SKILL_DEF_COUNT);
+                            m_levelUpOffers = LevelUpSystem::generateOffers(
+                                *cls, h.skills, h.level, allSkills, h.faction);
+                        }
+                        if (m_levelUpOffers.empty())
+                            m_levelUpOffers.push_back({SkillID::OFFENSE, false, false, "Learn Offense"});
+                        m_pendingLevelUps = h.level - oldLvl17;
+                        m_showLevelUpModal = true;
+                        { ScriptContext lvCtx; lvCtx.heroId = h.id; m_triggers.fire(TriggerType::HeroLevel, lvCtx); }
+                    }
+                    // Also add 3 to hero's weakest stack
+                    int least = INT32_MAX, leastIdx = -1;
+                    for (int i = 0; i < (int)h.army.size(); ++i)
+                        if (h.army[i].count > 0 && h.army[i].count < least)
+                            { least = h.army[i].count; leastIdx = i; }
+                    if (leastIdx >= 0) h.army[leastIdx].count += 3;
+                }
+                m_weeklyEventHeadline = "Enemy Deserters";
+                m_weeklyEventBody = "Enemy soldiers defect to your cause, bringing +100 XP and 3 recruits for your smallest unit.";
+                break;
+            }
+            case 18: { // Tax Revolt — gold halved (one-time penalty)
+                int lost = m_playerResources.get(ResourceType::Gold) / 2;
+                m_playerResources.add(ResourceType::Gold, -lost);
+                m_weeklyEventHeadline = "Tax Revolt!";
+                m_weeklyEventBody = "Overtaxed peasants revolt and seize half your treasury. Lost: "
+                    + std::to_string(lost) + " Gold.";
+                break;
+            }
+            case 19: { // Titan's Favour — hero max HP +15
+                if (!m_heroes.empty()) {
+                    Hero& h = m_heroes[m_activeHeroIdx];
+                    h.heroMaxHp += 15;
+                    h.heroHp = std::min(h.heroHp + 15, h.heroMaxHp);
+                    m_weeklyEventHeadline = "Titan's Favour";
+                    m_weeklyEventBody = "A titan spirit blesses your hero's endurance. Max HP permanently increased by 15.";
+                }
+                break;
+            }
+            case 20: { // Merchant's Offer — choice: buy/pass
+                m_weeklyEventHeadline = "Travelling Merchant";
+                m_weeklyEventBody = "A well-stocked merchant arrives at your camp offering rare supplies. He wants gold for his wares.";
+                m_weekChoiceOptions.clear();
+                m_weekChoiceOptions.push_back({"Buy supplies (-800 Gold)", "+4 Iron, +3 faction resource", [this](){
+                    if (m_playerResources.get(ResourceType::Gold) >= 800) {
+                        m_playerResources.add(ResourceType::Gold, -800);
+                        m_playerResources.add(ResourceType::Iron, 4);
+                        if (!m_heroes.empty()) {
+                            FactionId f = m_heroes[m_activeHeroIdx].faction;
+                            ResourceType fRes = ResourceType::Gold;
+                            switch (f) {
+                                case FactionId::HolyOrder:
+                                case FactionId::CrimsonWardens:  fRes = ResourceType::FaithStones;  break;
+                                case FactionId::Thornkin:
+                                case FactionId::Voidkin:         fRes = ResourceType::VerdantSap;   break;
+                                case FactionId::EternalEmpire:   fRes = ResourceType::Mercury;      break;
+                                case FactionId::Bloodsworn:
+                                case FactionId::Amalgamate:      fRes = ResourceType::BloodEssence; break;
+                                default: break;
+                            }
+                            if (fRes != ResourceType::Gold) m_playerResources.add(fRes, 3);
+                        }
+                    }
+                }});
+                m_weekChoiceOptions.push_back({"Sell surplus (+500 Gold)", "+500 Gold from your excess supplies", [this](){
                     m_playerResources.add(ResourceType::Gold, 500);
-                    m_weeklyEventHeadline = "A Merchant's Gift";
-                    m_weeklyEventBody = "A wandering trader pays 500 Gold for safe passage through your lands.";
-                    break;
-                }
-                case 2: { // Wandering Wizard — learn a random unknown spell
-                    if (!m_heroes.empty()) {
+                }});
+                m_weekChoiceOptions.push_back({"Send him away", "Nothing happens.", [](){}});
+                break;
+            }
+            case 21: { // Mercenary Company — choice: hire/partial/decline
+                m_weeklyEventHeadline = "Mercenary Company";
+                m_weeklyEventBody = "A veteran mercenary company approaches, offering their swords for coin. They have seen many battles.";
+                m_weekChoiceOptions.clear();
+                m_weekChoiceOptions.push_back({"Hire them (-1200 Gold)", "+15 fighters join your largest stack", [this](){
+                    if (!m_heroes.empty() && m_playerResources.get(ResourceType::Gold) >= 1200) {
+                        m_playerResources.add(ResourceType::Gold, -1200);
+                        Hero& h = m_heroes[m_activeHeroIdx];
+                        int best = 0, bestIdx = -1;
+                        for (int i = 0; i < (int)h.army.size(); ++i)
+                            if (h.army[i].count > best) { best = h.army[i].count; bestIdx = i; }
+                        if (bestIdx >= 0) h.army[bestIdx].count += 15;
+                    }
+                }});
+                m_weekChoiceOptions.push_back({"Partial hire (-500 Gold)", "+6 fighters join your largest stack", [this](){
+                    if (!m_heroes.empty() && m_playerResources.get(ResourceType::Gold) >= 500) {
+                        m_playerResources.add(ResourceType::Gold, -500);
+                        Hero& h = m_heroes[m_activeHeroIdx];
+                        int best = 0, bestIdx = -1;
+                        for (int i = 0; i < (int)h.army.size(); ++i)
+                            if (h.army[i].count > best) { best = h.army[i].count; bestIdx = i; }
+                        if (bestIdx >= 0) h.army[bestIdx].count += 6;
+                    }
+                }});
+                m_weekChoiceOptions.push_back({"Decline", "The mercenaries move on.", [](){}});
+                break;
+            }
+            case 22: { // Rogue Scholar — choice: buy spell/buy stat/ignore
+                m_weeklyEventHeadline = "Rogue Scholar";
+                m_weeklyEventBody = "An exiled mage-scholar approaches your camp. He offers his forbidden knowledge for coin.";
+                m_weekChoiceOptions.clear();
+                m_weekChoiceOptions.push_back({"Buy a spell (-1500 Gold)", "Learn a new spell you don't know yet", [this](){
+                    if (!m_heroes.empty() && m_playerResources.get(ResourceType::Gold) >= 1500) {
+                        m_playerResources.add(ResourceType::Gold, -1500);
                         Hero& h = m_heroes[m_activeHeroIdx];
                         for (int i = 0; i < SPELL_COUNT; ++i) {
                             int sid = ALL_SPELLS[i].id;
                             bool known = false;
                             for (int s : h.knownSpells) if (s == sid) { known = true; break; }
-                            if (!known) {
-                                h.knownSpells.push_back(sid);
-                                m_weeklyEventHeadline = "Wandering Wizard";
-                                m_weeklyEventBody = std::string("A sage teaches your hero: ")
-                                                  + ALL_SPELLS[i].name + "!";
-                                break;
-                            }
+                            if (!known) { h.knownSpells.push_back(sid); break; }
                         }
                     }
-                    break;
-                }
-                case 3: { // Bandit Raid — lose gold
-                    int lost = std::min(200, m_playerResources.get(ResourceType::Gold));
-                    m_playerResources.add(ResourceType::Gold, -lost);
-                    m_weeklyEventHeadline = "Bandit Raid!";
-                    m_weeklyEventBody = "Raiders struck your supply wagons, stealing "
-                                      + std::to_string(lost) + " Gold.";
-                    break;
-                }
-                case 4: { // Rich Harvest — bonus resources
-                    m_playerResources.add(ResourceType::Gold, 200);
-                    m_playerResources.add(ResourceType::Iron, 3);
-                    m_weeklyEventHeadline = "Rich Harvest";
-                    m_weeklyEventBody = "Abundant yields from your territories: +200 Gold, +3 Iron.";
-                    break;
-                }
-                case 5: { // Heroic Inspiration — XP boost
-                    if (!m_heroes.empty()) {
-                        Hero& h = m_heroes[m_activeHeroIdx];
-                        int xpGain = 150;
-                        int oldLvl5 = h.level;
-                        if (h.addXp(xpGain)) {
-                            const HeroClassDef* cls = m_classRegistry.getClass(h.classId);
-                            if (cls) {
-                                std::vector<SkillDef> allSkills(SKILL_DEFS, SKILL_DEFS + SKILL_DEF_COUNT);
-                                m_levelUpOffers = LevelUpSystem::generateOffers(
-                                    *cls, h.skills, h.level, allSkills, h.faction);
-                            }
-                            if (m_levelUpOffers.empty())
-                                m_levelUpOffers.push_back({SkillID::OFFENSE, false, false, "Learn Offense"});
-                            m_pendingLevelUps = h.level - oldLvl5;
-                            m_showLevelUpModal = true;
-                            { ScriptContext lvCtx; lvCtx.heroId = h.id; m_triggers.fire(TriggerType::HeroLevel, lvCtx); }
-                            // Level-up particle burst at hero's screen position
-                            {
-                                float hwx, hwy;
-                                m_hexRenderer.grid().hexToWorld(h.pos, hwx, hwy);
-                                float hsx, hsy;
-                                m_camera.worldToScreen(hwx, hwy, hsx, hsy);
-                                m_particles.emit(hsx, hsy, ParticlePreset::LevelUp);
-                            }
-                        }
-                        m_weeklyEventHeadline = "Battle Hardened";
-                        m_weeklyEventBody = "Tales of your deeds spread: +"
-                                           + std::to_string(xpGain) + " XP.";
+                }});
+                m_weekChoiceOptions.push_back({"Buy tactical insight (-800 Gold)", "+2 to hero Attack and Defense", [this](){
+                    if (!m_heroes.empty() && m_playerResources.get(ResourceType::Gold) >= 800) {
+                        m_playerResources.add(ResourceType::Gold, -800);
+                        m_heroes[m_activeHeroIdx].attack  += 2;
+                        m_heroes[m_activeHeroIdx].defense += 2;
                     }
-                    break;
-                }
-                case 6: { // Arcane Font — bonus mana for the hero
-                    if (!m_heroes.empty()) {
-                        Hero& h = m_heroes[m_activeHeroIdx];
-                        h.maxMana = std::min(h.maxMana + 5, 99);
-                        h.mana    = h.maxMana;
-                        m_weeklyEventHeadline = "Arcane Font";
-                        m_weeklyEventBody = "A ley-line resonance permanently expands your hero's mana pool by 5.";
-                    }
-                    break;
-                }
-                case 7: { // Ancient Armory — hero gains +1 Attack
-                    if (!m_heroes.empty()) {
-                        Hero& h = m_heroes[m_activeHeroIdx];
-                        h.attack++;
-                        m_weeklyEventHeadline = "Ancient Armory";
-                        m_weeklyEventBody = "You unearth a cache of fine weapons from an old war. Your hero gains +1 Attack.";
-                    }
-                    break;
-                }
-                case 8: { // Rally! — strongest army stack grows
-                    if (!m_heroes.empty()) {
-                        Hero& h = m_heroes[m_activeHeroIdx];
-                        int bestCount = 0; int bestIdx = -1;
-                        for (int i = 0; i < (int)h.army.size(); ++i)
-                            if (h.army[i].count > bestCount) { bestCount = h.army[i].count; bestIdx = i; }
-                        if (bestIdx >= 0) {
-                            h.army[bestIdx].count += 5;
-                            m_weeklyEventHeadline = "Rally!";
-                            m_weeklyEventBody = "Volunteers flock to your banner, reinforcing your ranks with 5 more fighters.";
-                        }
-                    }
-                    break;
-                }
-                case 9: { // Magical Storm — enemy heroes lose mana
-                    for (auto& eh : m_enemyHeroes) eh.mana = std::max(0, eh.mana - 5);
-                    m_weeklyEventHeadline = "Magical Storm";
-                    m_weeklyEventBody = "A surge of wild magic disperses spell reserves. Enemy heroes lose 5 mana.";
-                    break;
-                }
-                case 10: { // Tribute from Vassals — multi-resource bonus
-                    m_playerResources.add(ResourceType::Gold,        300);
-                    m_playerResources.add(ResourceType::FaithStones,   2);
-                    m_playerResources.add(ResourceType::VerdantSap,    2);
-                    m_weeklyEventHeadline = "Tribute from Vassals";
-                    m_weeklyEventBody = "Subject villages send tribute: +300 Gold, +2 Faith Stones, +2 Verdant Sap.";
-                    break;
-                }
-                case 11: { // Plague — garrison defenders weakened in all human-owned towns
-                    int lostTotal = 0;
-                    for (auto& t : m_towns) {
-                        if (t.ownerId == 0 || t.ownerId > static_cast<uint32_t>(m_numHumanPlayers)
-                            || t.garrison.empty()) continue;
-                        for (auto& s : t.garrison) {
-                            int lost = std::max(0, s.count / 5);
-                            s.count -= lost;
-                            lostTotal += lost;
-                        }
-                    }
-                    m_weeklyEventHeadline = "Plague Sweeps the Land!";
-                    m_weeklyEventBody = "A virulent sickness culls your town garrisons. "
-                        + (lostTotal > 0 ? std::to_string(lostTotal) + " garrison troops perished."
-                                         : "Your towns were untouched — no garrison losses.");
-                    break;
-                }
-                case 12: { // Fallen Knight — hero gains +1 Defense
-                    if (!m_heroes.empty()) {
-                        Hero& h = m_heroes[m_activeHeroIdx];
-                        h.defense++;
-                        m_weeklyEventHeadline = "Fallen Knight's Legacy";
-                        m_weeklyEventBody = "You bury a fallen champion and claim his mantle. Your hero gains +1 Defense.";
-                    }
-                    break;
-                }
-                case 13: { // Mercenary Camp — strongest stack grows by 8
-                    if (!m_heroes.empty()) {
-                        Hero& h = m_heroes[m_activeHeroIdx];
-                        int best = 0, bestIdx = -1;
-                        for (int i = 0; i < (int)h.army.size(); ++i)
-                            if (h.army[i].count > best) { best = h.army[i].count; bestIdx = i; }
-                        if (bestIdx >= 0) {
-                            h.army[bestIdx].count += 8;
-                            m_weeklyEventHeadline = "Mercenary Camp";
-                            m_weeklyEventBody = "Hired blades swell your ranks: +8 fighters join your strongest unit.";
-                        }
-                    }
-                    break;
-                }
-                case 14: { // Scouting Report — enemy hero mana drained + player gets gold
-                    for (auto& eh : m_enemyHeroes) eh.mana = std::max(0, eh.mana - 8);
-                    m_playerResources.add(ResourceType::Gold, 150);
-                    m_weeklyEventHeadline = "Spy Network Pays Off";
-                    m_weeklyEventBody = "Your agents disrupt enemy supply lines: +150 Gold, enemy heroes lose 8 mana.";
-                    break;
-                }
-                case 15: { // Alchemy — rare resources
-                    m_playerResources.add(ResourceType::Mercury, 2);
-                    m_playerResources.add(ResourceType::BloodEssence, 1);
-                    m_weeklyEventHeadline = "Alchemist's Discovery";
-                    m_weeklyEventBody = "A rogue alchemist delivers rare reagents: +2 Mercury, +1 Blood Essence.";
-                    break;
-                }
-                case 16: { // Divine Favour — hero fully restores mana
-                    if (!m_heroes.empty()) {
+                }});
+                m_weekChoiceOptions.push_back({"Chase him off", "You don't trust outlaws.", [](){}});
+                break;
+            }
+            case 23: { // Ancient Oracle — choice: pay for info/free lesser boon
+                m_weeklyEventHeadline = "Ancient Oracle";
+                m_weeklyEventBody = "An ancient seer emerges from the mist, offering visions of the near future -- for a price.";
+                m_weekChoiceOptions.clear();
+                m_weekChoiceOptions.push_back({"Pay the Oracle (-600 Gold)", "+250 XP and hero mana fully restored", [this](){
+                    if (!m_heroes.empty() && m_playerResources.get(ResourceType::Gold) >= 600) {
+                        m_playerResources.add(ResourceType::Gold, -600);
                         Hero& h = m_heroes[m_activeHeroIdx];
                         h.mana = h.maxMana;
-                        m_weeklyEventHeadline = "Divine Favour";
-                        m_weeklyEventBody = "A radiant vision renews your hero's magical reserves. Mana fully restored.";
-                    }
-                    break;
-                }
-                case 17: { // Enemy Deserters — XP + small unit join
-                    if (!m_heroes.empty()) {
-                        Hero& h = m_heroes[m_activeHeroIdx];
-                        int xp = 100;
-                        int oldLvl17 = h.level;
-                        if (h.addXp(xp)) {
-                            const HeroClassDef* cls = m_classRegistry.getClass(h.classId);
-                            if (cls) {
-                                std::vector<SkillDef> allSkills(SKILL_DEFS, SKILL_DEFS + SKILL_DEF_COUNT);
-                                m_levelUpOffers = LevelUpSystem::generateOffers(
-                                    *cls, h.skills, h.level, allSkills, h.faction);
-                            }
-                            if (m_levelUpOffers.empty())
-                                m_levelUpOffers.push_back({SkillID::OFFENSE, false, false, "Learn Offense"});
-                            m_pendingLevelUps = h.level - oldLvl17;
-                            m_showLevelUpModal = true;
-                            { ScriptContext lvCtx; lvCtx.heroId = h.id; m_triggers.fire(TriggerType::HeroLevel, lvCtx); }
-                        }
-                        // Also add 3 to hero's weakest stack
-                        int least = INT32_MAX, leastIdx = -1;
-                        for (int i = 0; i < (int)h.army.size(); ++i)
-                            if (h.army[i].count > 0 && h.army[i].count < least)
-                                { least = h.army[i].count; leastIdx = i; }
-                        if (leastIdx >= 0) h.army[leastIdx].count += 3;
-                    }
-                    m_weeklyEventHeadline = "Enemy Deserters";
-                    m_weeklyEventBody = "Enemy soldiers defect to your cause, bringing +100 XP and 3 recruits for your smallest unit.";
-                    break;
-                }
-                case 18: { // Tax Revolt — gold halved (one-time penalty)
-                    int lost = m_playerResources.get(ResourceType::Gold) / 2;
-                    m_playerResources.add(ResourceType::Gold, -lost);
-                    m_weeklyEventHeadline = "Tax Revolt!";
-                    m_weeklyEventBody = "Overtaxed peasants revolt and seize half your treasury. Lost: "
-                        + std::to_string(lost) + " Gold.";
-                    break;
-                }
-                case 19: { // Titan's Favour — hero max HP +15
-                    if (!m_heroes.empty()) {
-                        Hero& h = m_heroes[m_activeHeroIdx];
-                        h.heroMaxHp += 15;
-                        h.heroHp = std::min(h.heroHp + 15, h.heroMaxHp);
-                        m_weeklyEventHeadline = "Titan's Favour";
-                        m_weeklyEventBody = "A titan spirit blesses your hero's endurance. Max HP permanently increased by 15.";
-                    }
-                    break;
-                }
-                case 20: { // Merchant's Offer — choice: buy/pass
-                    m_weeklyEventHeadline = "Travelling Merchant";
-                    m_weeklyEventBody = "A well-stocked merchant arrives at your camp offering rare supplies. He wants gold for his wares.";
-                    m_weekChoiceOptions.clear();
-                    m_weekChoiceOptions.push_back({"Buy supplies (-800 Gold)", "+4 Iron, +3 faction resource", [this](){
-                        if (m_playerResources.get(ResourceType::Gold) >= 800) {
-                            m_playerResources.add(ResourceType::Gold, -800);
-                            m_playerResources.add(ResourceType::Iron, 4);
-                            if (!m_heroes.empty()) {
-                                FactionId f = m_heroes[m_activeHeroIdx].faction;
-                                ResourceType fRes = ResourceType::Gold;
-                                switch (f) {
-                                    case FactionId::HolyOrder:
-                                    case FactionId::CrimsonWardens:  fRes = ResourceType::FaithStones;  break;
-                                    case FactionId::Thornkin:
-                                    case FactionId::Voidkin:         fRes = ResourceType::VerdantSap;   break;
-                                    case FactionId::EternalEmpire:   fRes = ResourceType::Mercury;      break;
-                                    case FactionId::Bloodsworn:
-                                    case FactionId::Amalgamate:      fRes = ResourceType::BloodEssence; break;
-                                    default: break;
-                                }
-                                if (fRes != ResourceType::Gold) m_playerResources.add(fRes, 3);
-                            }
-                        }
-                    }});
-                    m_weekChoiceOptions.push_back({"Sell surplus (+500 Gold)", "+500 Gold from your excess supplies", [this](){
-                        m_playerResources.add(ResourceType::Gold, 500);
-                    }});
-                    m_weekChoiceOptions.push_back({"Send him away", "Nothing happens.", [](){}});
-                    break;
-                }
-                case 21: { // Mercenary Company — choice: hire/partial/decline
-                    m_weeklyEventHeadline = "Mercenary Company";
-                    m_weeklyEventBody = "A veteran mercenary company approaches, offering their swords for coin. They have seen many battles.";
-                    m_weekChoiceOptions.clear();
-                    m_weekChoiceOptions.push_back({"Hire them (-1200 Gold)", "+15 fighters join your largest stack", [this](){
-                        if (!m_heroes.empty() && m_playerResources.get(ResourceType::Gold) >= 1200) {
-                            m_playerResources.add(ResourceType::Gold, -1200);
-                            Hero& h = m_heroes[m_activeHeroIdx];
-                            int best = 0, bestIdx = -1;
-                            for (int i = 0; i < (int)h.army.size(); ++i)
-                                if (h.army[i].count > best) { best = h.army[i].count; bestIdx = i; }
-                            if (bestIdx >= 0) h.army[bestIdx].count += 15;
-                        }
-                    }});
-                    m_weekChoiceOptions.push_back({"Partial hire (-500 Gold)", "+6 fighters join your largest stack", [this](){
-                        if (!m_heroes.empty() && m_playerResources.get(ResourceType::Gold) >= 500) {
-                            m_playerResources.add(ResourceType::Gold, -500);
-                            Hero& h = m_heroes[m_activeHeroIdx];
-                            int best = 0, bestIdx = -1;
-                            for (int i = 0; i < (int)h.army.size(); ++i)
-                                if (h.army[i].count > best) { best = h.army[i].count; bestIdx = i; }
-                            if (bestIdx >= 0) h.army[bestIdx].count += 6;
-                        }
-                    }});
-                    m_weekChoiceOptions.push_back({"Decline", "The mercenaries move on.", [](){}});
-                    break;
-                }
-                case 22: { // Rogue Scholar — choice: buy spell/buy stat/ignore
-                    m_weeklyEventHeadline = "Rogue Scholar";
-                    m_weeklyEventBody = "An exiled mage-scholar approaches your camp. He offers his forbidden knowledge for coin.";
-                    m_weekChoiceOptions.clear();
-                    m_weekChoiceOptions.push_back({"Buy a spell (-1500 Gold)", "Learn a new spell you don't know yet", [this](){
-                        if (!m_heroes.empty() && m_playerResources.get(ResourceType::Gold) >= 1500) {
-                            m_playerResources.add(ResourceType::Gold, -1500);
-                            Hero& h = m_heroes[m_activeHeroIdx];
-                            for (int i = 0; i < SPELL_COUNT; ++i) {
-                                int sid = ALL_SPELLS[i].id;
-                                bool known = false;
-                                for (int s : h.knownSpells) if (s == sid) { known = true; break; }
-                                if (!known) { h.knownSpells.push_back(sid); break; }
-                            }
-                        }
-                    }});
-                    m_weekChoiceOptions.push_back({"Buy tactical insight (-800 Gold)", "+2 to hero Attack and Defense", [this](){
-                        if (!m_heroes.empty() && m_playerResources.get(ResourceType::Gold) >= 800) {
-                            m_playerResources.add(ResourceType::Gold, -800);
-                            m_heroes[m_activeHeroIdx].attack  += 2;
-                            m_heroes[m_activeHeroIdx].defense += 2;
-                        }
-                    }});
-                    m_weekChoiceOptions.push_back({"Chase him off", "You don't trust outlaws.", [](){}});
-                    break;
-                }
-                case 23: { // Ancient Oracle — choice: pay for info/free lesser boon
-                    m_weeklyEventHeadline = "Ancient Oracle";
-                    m_weeklyEventBody = "An ancient seer emerges from the mist, offering visions of the near future -- for a price.";
-                    m_weekChoiceOptions.clear();
-                    m_weekChoiceOptions.push_back({"Pay the Oracle (-600 Gold)", "+250 XP and hero mana fully restored", [this](){
-                        if (!m_heroes.empty() && m_playerResources.get(ResourceType::Gold) >= 600) {
-                            m_playerResources.add(ResourceType::Gold, -600);
-                            Hero& h = m_heroes[m_activeHeroIdx];
-                            h.mana = h.maxMana;
-                            int oldLvl = h.level;
-                            if (h.addXp(250) && h.level > oldLvl) {
-                                const HeroClassDef* cls = m_classRegistry.getClass(h.classId);
-                                if (cls) {
-                                    std::vector<SkillDef> allSkills(SKILL_DEFS, SKILL_DEFS + SKILL_DEF_COUNT);
-                                    m_levelUpOffers = LevelUpSystem::generateOffers(*cls, h.skills, h.level, allSkills, h.faction);
-                                }
-                                if (m_levelUpOffers.empty())
-                                    m_levelUpOffers.push_back({SkillID::OFFENSE, false, false, "Learn Offense"});
-                                m_pendingLevelUps = h.level - oldLvl;
-                                m_showLevelUpModal = true;
-                            }
-                        }
-                    }});
-                    m_weekChoiceOptions.push_back({"Accept a free omen", "+100 XP, the seer warns of coming danger", [this](){
-                        if (!m_heroes.empty()) {
-                            Hero& h = m_heroes[m_activeHeroIdx];
-                            int oldLvl = h.level;
-                            if (h.addXp(100) && h.level > oldLvl) {
-                                const HeroClassDef* cls = m_classRegistry.getClass(h.classId);
-                                if (cls) {
-                                    std::vector<SkillDef> allSkills(SKILL_DEFS, SKILL_DEFS + SKILL_DEF_COUNT);
-                                    m_levelUpOffers = LevelUpSystem::generateOffers(*cls, h.skills, h.level, allSkills, h.faction);
-                                }
-                                if (m_levelUpOffers.empty())
-                                    m_levelUpOffers.push_back({SkillID::OFFENSE, false, false, "Learn Offense"});
-                                m_pendingLevelUps = h.level - oldLvl;
-                                m_showLevelUpModal = true;
-                            }
-                        }
-                    }});
-                    m_weekChoiceOptions.push_back({"Walk away", "You have no time for riddles.", [](){}});
-                    break;
-                }
-                case 24: { // Wandering Herd — enemy hero loses units from their largest stack
-                    int lostTotal = 0;
-                    if (!m_enemyHeroes.empty()) {
-                        Hero& enemy = m_enemyHeroes[0];
-                        int best = 0, bestIdx = -1;
-                        for (int i = 0; i < (int)enemy.army.size(); ++i)
-                            if (enemy.army[i].count > best) { best = enemy.army[i].count; bestIdx = i; }
-                        if (bestIdx >= 0) {
-                            int lost = std::max(1, best / 6);
-                            enemy.army[bestIdx].count -= lost;
-                            lostTotal = lost;
-                        }
-                    }
-                    m_weeklyEventHeadline = "Wandering Herd Stampede";
-                    m_weeklyEventBody = lostTotal > 0
-                        ? "A wild beast stampede disrupts enemy camps, scattering " + std::to_string(lostTotal) + " soldiers."
-                        : "A wild beast stampede sweeps across enemy territory.";
-                    break;
-                }
-                case 25: { // Ancient Discovery — hero gains +50 XP
-                    if (!m_heroes.empty()) {
-                        Hero& h = m_heroes[m_activeHeroIdx];
                         int oldLvl = h.level;
-                        if (h.addXp(50) && h.level > oldLvl) {
+                        if (h.addXp(250) && h.level > oldLvl) {
                             const HeroClassDef* cls = m_classRegistry.getClass(h.classId);
                             if (cls) {
                                 std::vector<SkillDef> allSkills(SKILL_DEFS, SKILL_DEFS + SKILL_DEF_COUNT);
@@ -4291,192 +4322,248 @@ void Game::doEndTurn()
                             m_showLevelUpModal = true;
                         }
                     }
-                    m_weeklyEventHeadline = "Ancient Discovery";
-                    m_weeklyEventBody = "Your scouts unearth inscriptions from a forgotten age. +50 XP for your hero.";
-                    break;
-                }
-                case 26: { // Trade Caravan — bonus resources
-                    m_playerResources.add(ResourceType::Gold, 350);
-                    m_playerResources.add(ResourceType::Iron, 2);
-                    m_playerResources.add(ResourceType::FaithStones, 1);
-                    m_weeklyEventHeadline = "Trade Caravan Passes";
-                    m_weeklyEventBody = "A laden merchant convoy pays toll to cross your lands: +350 Gold, +2 Iron, +1 Faith Stones.";
-                    break;
-                }
-                case 27: { // Supply Raid — choice: intercept or let pass
-                    m_weeklyEventHeadline = "Supply Convoy Spotted";
-                    m_weeklyEventBody = "Scouts report an enemy supply convoy moving through the region. You can intercept it.";
-                    m_weekChoiceOptions.clear();
-                    m_weekChoiceOptions.push_back({"Intercept (-200 Gold, hero -5 MP)", "+8 Iron, enemy hero loses 10 units", [this](){
-                        if (m_playerResources.get(ResourceType::Gold) >= 200) {
-                            m_playerResources.add(ResourceType::Gold, -200);
-                            m_playerResources.add(ResourceType::Iron, 8);
-                            if (!m_heroes.empty()) {
-                                Hero& h = m_heroes[m_activeHeroIdx];
-                                h.movePool = std::max(0, h.movePool - 5);
+                }});
+                m_weekChoiceOptions.push_back({"Accept a free omen", "+100 XP, the seer warns of coming danger", [this](){
+                    if (!m_heroes.empty()) {
+                        Hero& h = m_heroes[m_activeHeroIdx];
+                        int oldLvl = h.level;
+                        if (h.addXp(100) && h.level > oldLvl) {
+                            const HeroClassDef* cls = m_classRegistry.getClass(h.classId);
+                            if (cls) {
+                                std::vector<SkillDef> allSkills(SKILL_DEFS, SKILL_DEFS + SKILL_DEF_COUNT);
+                                m_levelUpOffers = LevelUpSystem::generateOffers(*cls, h.skills, h.level, allSkills, h.faction);
                             }
-                            if (!m_enemyHeroes.empty()) {
-                                Hero& e = m_enemyHeroes[0];
-                                for (auto& s : e.army) if (s.count > 0) { s.count = std::max(1, s.count - 10); break; }
-                            }
-                        }
-                    }});
-                    m_weekChoiceOptions.push_back({"Let it pass", "No action taken this week.", [](){}});
-                    break;
-                }
-            }
-
-            ScriptContext ctx; ctx.heroId = 0;
-            m_triggers.fire(TriggerType::WeekStart, ctx);
-            if (m_turns.week() >= 10 && !m_hideout.isMilestoneComplete(Milestone::WEEK_10_REACHED))
-                m_hideout.completeMilestone(Milestone::WEEK_10_REACHED);
-            if (m_state == GameState::Campaign) {
-                m_campaign.onWeekStart(m_turns.week(), m_lua);
-                for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
-                    auto type = static_cast<ResourceType>(rt);
-                    m_campaign.onResourcesChecked(type, m_playerResources.get(type));
-                }
-            }
-        }
-        if (newWeek) {
-            // Add weekly growth to unit dwellings
-            for (auto& obj : m_worldObjects) {
-                if (obj.type == WorldObjectType::UnitDwelling && !obj.collected) {
-                    int tier = obj.value;
-                    obj.available += 3 + tier;  // T1=4, T6=9 per week
-                    // Captured dwelling: +1 weekly growth of this tier in the
-                    // capturing player's own towns of the same faction. Was
-                    // "any AI town" (obj.linkedId used to get set from a hero
-                    // ID, which could never equal a real ownerId, so this
-                    // fell back to treating every AI player as one side) —
-                    // linkedId is a real ownerId now, so match it directly.
-                    if (obj.linkedId != 0) {
-                        for (auto& t : m_towns) {
-                            if (t.ownerId != obj.linkedId) continue;
-                            if (static_cast<uint8_t>(t.faction) != obj.faction) continue;
-                            for (auto& dw : t.dwellings)
-                                if (dw.tier == tier) { dw.available += 1; break; }
+                            if (m_levelUpOffers.empty())
+                                m_levelUpOffers.push_back({SkillID::OFFENSE, false, false, "Learn Offense"});
+                            m_pendingLevelUps = h.level - oldLvl;
+                            m_showLevelUpModal = true;
                         }
                     }
-                }
-                // Observatory resets (allow re-use each week)
-                if (obj.type == WorldObjectType::Observatory)
-                    obj.collected = false;
-                // HolyFountain / Oasis reset weekly
-                if (obj.type == WorldObjectType::HolyFountain ||
-                    obj.type == WorldObjectType::Oasis)
-                    obj.collected = false;
-                // Captured NeutralOutpost produces 4 T1 units per week
-                if (obj.type == WorldObjectType::NeutralOutpost && obj.collected)
-                    obj.available += 4;
-                // CursedGround: restore one charge per week (up to original max=5)
-                if (obj.type == WorldObjectType::CursedGround && obj.questState < 5)
-                    obj.questState++;
+                }});
+                m_weekChoiceOptions.push_back({"Walk away", "You have no time for riddles.", [](){}});
+                break;
             }
-
-            // Auto-save at week start if enabled
-            if (m_settingsAutoSave) saveGame();
-        }
-    // Watch AI: passive victory/defeat check (needed when last enemy town captured without combat)
-    if (m_watchingAI && !m_showVictory && !m_showDefeat) {
-        bool noEnemyHeroes = m_enemyHeroes.empty();
-        bool noEnemyTowns  = true;
-        for (const auto& t : m_towns)
-            if (t.ownerId > 1) { noEnemyTowns = false; break; }
-        if (noEnemyHeroes && noEnemyTowns && !m_heroes.empty()) {
-            m_showVictory = true;
-            m_audio.playSound("victory");
-        }
-        if (!m_showVictory) {
-            bool anyTown = false;
-            for (const auto& t : m_towns) if (t.ownerId == 1) { anyTown = true; break; }
-            bool anyArmy = !m_heroes.empty() && !m_heroes[m_activeHeroIdx].army.empty();
-            if (!anyTown && !anyArmy) { m_showDefeat = true; m_finalDefeat = true; }
-        }
-    }
-
-    // ── Hotseat: after full turn, regen non-P1 heroes and show "Player 1's Turn" ─
-    if (lastPlayerEndedTurn) {
-        for (int pi = 1; pi < m_numHumanPlayers; ++pi) {
-            auto& ps = m_players[pi];
-            for (auto& h : ps.heroes) {
-                h.movePool = h.maxMove;
-                h.path.clear();
-                h.pathStep = 0;
-                int manaRegen = std::max(2, 2 + h.maxMana / 10);
-                h.mana = std::min(h.maxMana, h.mana + manaRegen);
-            }
-            if (m_turns.day() == 1) {  // new week just started
-                uint32_t pid = static_cast<uint32_t>(pi + 1);
-                auto piIncome = m_turns.calculateWeeklyIncome(m_towns, pid);
-                ps.resources.addAll(piIncome);
-                for (const auto& r : m_resources)
-                    if (r.ownedBy == pid) ps.resources.add(r.type, mineYield(r));
-                // Garrison upkeep
-                int garrisonCount = 0;
-                for (const auto& h : ps.heroes) if (h.isGarrisoned) ++garrisonCount;
-                if (garrisonCount > 0)
-                    ps.resources.add(ResourceType::Gold, -(garrisonCount * 350));
-                // Mirror weekly events (resource + silent hero-stat events only)
-                {
-                    int evtRoll = ((m_turns.week() * 2654435761u) >> 8) % 28;
-                    auto piHero = [&]() -> Hero* {
-                        if (ps.heroes.empty()) return nullptr;
-                        int idx = std::min(ps.activeHeroIdx, (int)ps.heroes.size() - 1);
-                        return &ps.heroes[idx];
-                    };
-                    switch (evtRoll) {
-                        case 1:  ps.resources.add(ResourceType::Gold, 500); break;
-                        case 2: { Hero* h = piHero();
-                            if (h) for (int i = 0; i < SPELL_COUNT; ++i) {
-                                int sid = ALL_SPELLS[i].id; bool known = false;
-                                for (int s : h->knownSpells) if (s == sid) { known = true; break; }
-                                if (!known) { h->knownSpells.push_back(sid); break; }
-                            } break; }
-                        case 3: { int lost = std::min(200, ps.resources.get(ResourceType::Gold));
-                            ps.resources.add(ResourceType::Gold, -lost); break; }
-                        case 4:  ps.resources.add(ResourceType::Gold, 200);
-                                 ps.resources.add(ResourceType::Iron, 3); break;
-                        case 6: { Hero* h = piHero();
-                            if (h) { h->maxMana = std::min(h->maxMana + 5, 99); h->mana = h->maxMana; } break; }
-                        case 7: { Hero* h = piHero(); if (h) h->attack++; break; }
-                        case 8: { Hero* h = piHero();
-                            if (h) { int best = 0, bestIdx = -1;
-                                for (int i = 0; i < (int)h->army.size(); ++i)
-                                    if (h->army[i].count > best) { best = h->army[i].count; bestIdx = i; }
-                                if (bestIdx >= 0) h->army[bestIdx].count += 5; } break; }
-                        case 10: ps.resources.add(ResourceType::Gold, 300);
-                                 ps.resources.add(ResourceType::FaithStones, 2);
-                                 ps.resources.add(ResourceType::VerdantSap, 2); break;
-                        case 12: { Hero* h = piHero(); if (h) h->defense++; break; }
-                        case 13: { Hero* h = piHero();
-                            if (h) { int best = 0, bestIdx = -1;
-                                for (int i = 0; i < (int)h->army.size(); ++i)
-                                    if (h->army[i].count > best) { best = h->army[i].count; bestIdx = i; }
-                                if (bestIdx >= 0) h->army[bestIdx].count += 8; } break; }
-                        case 14: ps.resources.add(ResourceType::Gold, 150); break;
-                        case 15: ps.resources.add(ResourceType::Mercury, 2);
-                                 ps.resources.add(ResourceType::BloodEssence, 1); break;
-                        case 16: { Hero* h = piHero(); if (h) h->mana = h->maxMana; break; }
-                        case 18: { int lost = ps.resources.get(ResourceType::Gold) / 2;
-                            ps.resources.add(ResourceType::Gold, -lost); break; }
-                        case 19: { Hero* h = piHero();
-                            if (h) { h->heroMaxHp += 15; h->heroHp = std::min(h->heroHp + 15, h->heroMaxHp); } break; }
-                        default: break;
+            case 24: { // Wandering Herd — enemy hero loses units from their largest stack
+                int lostTotal = 0;
+                if (!m_enemyHeroes.empty()) {
+                    Hero& enemy = m_enemyHeroes[0];
+                    int best = 0, bestIdx = -1;
+                    for (int i = 0; i < (int)enemy.army.size(); ++i)
+                        if (enemy.army[i].count > best) { best = enemy.army[i].count; bestIdx = i; }
+                    if (bestIdx >= 0) {
+                        int lost = std::max(1, best / 6);
+                        enemy.army[bestIdx].count -= lost;
+                        lostTotal = lost;
                     }
                 }
-                // Store week summary to show at start of this player's next turn
-                auto& notifs = m_playerNotifs[pi];
-                notifs.weekIncome  = piIncome;
-                for (const auto& r : m_resources)
-                    if (r.ownedBy == pid) notifs.weekIncome.add(r.type, mineYield(r));
-                notifs.weekNum     = m_turns.week();
-                notifs.weekSummary = true;
+                m_weeklyEventHeadline = "Wandering Herd Stampede";
+                m_weeklyEventBody = lostTotal > 0
+                    ? "A wild beast stampede disrupts enemy camps, scattering " + std::to_string(lostTotal) + " soldiers."
+                    : "A wild beast stampede sweeps across enemy territory.";
+                break;
+            }
+            case 25: { // Ancient Discovery — hero gains +50 XP
+                if (!m_heroes.empty()) {
+                    Hero& h = m_heroes[m_activeHeroIdx];
+                    int oldLvl = h.level;
+                    if (h.addXp(50) && h.level > oldLvl) {
+                        const HeroClassDef* cls = m_classRegistry.getClass(h.classId);
+                        if (cls) {
+                            std::vector<SkillDef> allSkills(SKILL_DEFS, SKILL_DEFS + SKILL_DEF_COUNT);
+                            m_levelUpOffers = LevelUpSystem::generateOffers(*cls, h.skills, h.level, allSkills, h.faction);
+                        }
+                        if (m_levelUpOffers.empty())
+                            m_levelUpOffers.push_back({SkillID::OFFENSE, false, false, "Learn Offense"});
+                        m_pendingLevelUps = h.level - oldLvl;
+                        m_showLevelUpModal = true;
+                    }
+                }
+                m_weeklyEventHeadline = "Ancient Discovery";
+                m_weeklyEventBody = "Your scouts unearth inscriptions from a forgotten age. +50 XP for your hero.";
+                break;
+            }
+            case 26: { // Trade Caravan — bonus resources
+                m_playerResources.add(ResourceType::Gold, 350);
+                m_playerResources.add(ResourceType::Iron, 2);
+                m_playerResources.add(ResourceType::FaithStones, 1);
+                m_weeklyEventHeadline = "Trade Caravan Passes";
+                m_weeklyEventBody = "A laden merchant convoy pays toll to cross your lands: +350 Gold, +2 Iron, +1 Faith Stones.";
+                break;
+            }
+            case 27: { // Supply Raid — choice: intercept or let pass
+                m_weeklyEventHeadline = "Supply Convoy Spotted";
+                m_weeklyEventBody = "Scouts report an enemy supply convoy moving through the region. You can intercept it.";
+                m_weekChoiceOptions.clear();
+                m_weekChoiceOptions.push_back({"Intercept (-200 Gold, hero -5 MP)", "+8 Iron, enemy hero loses 10 units", [this](){
+                    if (m_playerResources.get(ResourceType::Gold) >= 200) {
+                        m_playerResources.add(ResourceType::Gold, -200);
+                        m_playerResources.add(ResourceType::Iron, 8);
+                        if (!m_heroes.empty()) {
+                            Hero& h = m_heroes[m_activeHeroIdx];
+                            h.movePool = std::max(0, h.movePool - 5);
+                        }
+                        if (!m_enemyHeroes.empty()) {
+                            Hero& e = m_enemyHeroes[0];
+                            for (auto& s : e.army) if (s.count > 0) { s.count = std::max(1, s.count - 10); break; }
+                        }
+                    }
+                }});
+                m_weekChoiceOptions.push_back({"Let it pass", "No action taken this week.", [](){}});
+                break;
             }
         }
-        m_showPlayerTurnBanner = true;
-        m_playerTurnBannerT    = 2.5f;
+
+        ScriptContext ctx; ctx.heroId = 0;
+        m_triggers.fire(TriggerType::WeekStart, ctx);
+        if (m_turns.week() >= 10 && !m_hideout.isMilestoneComplete(Milestone::WEEK_10_REACHED))
+            m_hideout.completeMilestone(Milestone::WEEK_10_REACHED);
+        if (m_state == GameState::Campaign) {
+            m_campaign.onWeekStart(m_turns.week(), m_lua);
+            for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
+                auto type = static_cast<ResourceType>(rt);
+                m_campaign.onResourcesChecked(type, m_playerResources.get(type));
+            }
+        }
     }
+    if (newWeek) {
+        // Add weekly growth to unit dwellings
+        for (auto& obj : m_worldObjects) {
+            if (obj.type == WorldObjectType::UnitDwelling && !obj.collected) {
+                int tier = obj.value;
+                obj.available += 3 + tier;  // T1=4, T6=9 per week
+                // Captured dwelling: +1 weekly growth of this tier in the
+                // capturing player's own towns of the same faction. Was
+                // "any AI town" (obj.linkedId used to get set from a hero
+                // ID, which could never equal a real ownerId, so this
+                // fell back to treating every AI player as one side) —
+                // linkedId is a real ownerId now, so match it directly.
+                if (obj.linkedId != 0) {
+                    for (auto& t : m_towns) {
+                        if (t.ownerId != obj.linkedId) continue;
+                        if (static_cast<uint8_t>(t.faction) != obj.faction) continue;
+                        for (auto& dw : t.dwellings)
+                            if (dw.tier == tier) { dw.available += 1; break; }
+                    }
+                }
+            }
+            // Observatory resets (allow re-use each week)
+            if (obj.type == WorldObjectType::Observatory)
+                obj.collected = false;
+            // HolyFountain / Oasis reset weekly
+            if (obj.type == WorldObjectType::HolyFountain ||
+                obj.type == WorldObjectType::Oasis)
+                obj.collected = false;
+            // Captured NeutralOutpost produces 4 T1 units per week
+            if (obj.type == WorldObjectType::NeutralOutpost && obj.collected)
+                obj.available += 4;
+            // CursedGround: restore one charge per week (up to original max=5)
+            if (obj.type == WorldObjectType::CursedGround && obj.questState < 5)
+                obj.questState++;
+        }
+
+        // Auto-save at week start if enabled
+        if (m_settingsAutoSave) saveGame();
+    }
+// Watch AI: passive victory/defeat check (needed when last enemy town captured without combat)
+if (m_watchingAI && !m_showVictory && !m_showDefeat) {
+    bool noEnemyHeroes = m_enemyHeroes.empty();
+    bool noEnemyTowns  = true;
+    for (const auto& t : m_towns)
+        if (t.ownerId > 1) { noEnemyTowns = false; break; }
+    if (noEnemyHeroes && noEnemyTowns && !m_heroes.empty()) {
+        m_showVictory = true;
+        m_audio.playSound("victory");
+    }
+    if (!m_showVictory) {
+        bool anyTown = false;
+        for (const auto& t : m_towns) if (t.ownerId == 1) { anyTown = true; break; }
+        bool anyArmy = !m_heroes.empty() && !m_heroes[m_activeHeroIdx].army.empty();
+        if (!anyTown && !anyArmy) { m_showDefeat = true; m_finalDefeat = true; }
+    }
+}
+
+// ── Hotseat: after full turn, regen non-P1 heroes and show "Player 1's Turn" ─
+if (lastPlayerEndedTurn) {
+    for (int pi = 1; pi < m_numHumanPlayers; ++pi) {
+        auto& ps = m_players[pi];
+        for (auto& h : ps.heroes) {
+            h.movePool = h.maxMove;
+            h.path.clear();
+            h.pathStep = 0;
+            int manaRegen = std::max(2, 2 + h.maxMana / 10);
+            h.mana = std::min(h.maxMana, h.mana + manaRegen);
+        }
+        if (m_turns.day() == 1) {  // new week just started
+            uint32_t pid = static_cast<uint32_t>(pi + 1);
+            auto piIncome = m_turns.calculateWeeklyIncome(m_towns, pid);
+            ps.resources.addAll(piIncome);
+            for (const auto& r : m_resources)
+                if (r.ownedBy == pid) ps.resources.add(r.type, mineYield(r));
+            // Garrison upkeep
+            int garrisonCount = 0;
+            for (const auto& h : ps.heroes) if (h.isGarrisoned) ++garrisonCount;
+            if (garrisonCount > 0)
+                ps.resources.add(ResourceType::Gold, -(garrisonCount * 350));
+            // Mirror weekly events (resource + silent hero-stat events only)
+            {
+                int evtRoll = ((m_turns.week() * 2654435761u) >> 8) % 28;
+                auto piHero = [&]() -> Hero* {
+                    if (ps.heroes.empty()) return nullptr;
+                    int idx = std::min(ps.activeHeroIdx, (int)ps.heroes.size() - 1);
+                    return &ps.heroes[idx];
+                };
+                switch (evtRoll) {
+                    case 1:  ps.resources.add(ResourceType::Gold, 500); break;
+                    case 2: { Hero* h = piHero();
+                        if (h) for (int i = 0; i < SPELL_COUNT; ++i) {
+                            int sid = ALL_SPELLS[i].id; bool known = false;
+                            for (int s : h->knownSpells) if (s == sid) { known = true; break; }
+                            if (!known) { h->knownSpells.push_back(sid); break; }
+                        } break; }
+                    case 3: { int lost = std::min(200, ps.resources.get(ResourceType::Gold));
+                        ps.resources.add(ResourceType::Gold, -lost); break; }
+                    case 4:  ps.resources.add(ResourceType::Gold, 200);
+                             ps.resources.add(ResourceType::Iron, 3); break;
+                    case 6: { Hero* h = piHero();
+                        if (h) { h->maxMana = std::min(h->maxMana + 5, 99); h->mana = h->maxMana; } break; }
+                    case 7: { Hero* h = piHero(); if (h) h->attack++; break; }
+                    case 8: { Hero* h = piHero();
+                        if (h) { int best = 0, bestIdx = -1;
+                            for (int i = 0; i < (int)h->army.size(); ++i)
+                                if (h->army[i].count > best) { best = h->army[i].count; bestIdx = i; }
+                            if (bestIdx >= 0) h->army[bestIdx].count += 5; } break; }
+                    case 10: ps.resources.add(ResourceType::Gold, 300);
+                             ps.resources.add(ResourceType::FaithStones, 2);
+                             ps.resources.add(ResourceType::VerdantSap, 2); break;
+                    case 12: { Hero* h = piHero(); if (h) h->defense++; break; }
+                    case 13: { Hero* h = piHero();
+                        if (h) { int best = 0, bestIdx = -1;
+                            for (int i = 0; i < (int)h->army.size(); ++i)
+                                if (h->army[i].count > best) { best = h->army[i].count; bestIdx = i; }
+                            if (bestIdx >= 0) h->army[bestIdx].count += 8; } break; }
+                    case 14: ps.resources.add(ResourceType::Gold, 150); break;
+                    case 15: ps.resources.add(ResourceType::Mercury, 2);
+                             ps.resources.add(ResourceType::BloodEssence, 1); break;
+                    case 16: { Hero* h = piHero(); if (h) h->mana = h->maxMana; break; }
+                    case 18: { int lost = ps.resources.get(ResourceType::Gold) / 2;
+                        ps.resources.add(ResourceType::Gold, -lost); break; }
+                    case 19: { Hero* h = piHero();
+                        if (h) { h->heroMaxHp += 15; h->heroHp = std::min(h->heroHp + 15, h->heroMaxHp); } break; }
+                    default: break;
+                }
+            }
+            // Store week summary to show at start of this player's next turn
+            auto& notifs = m_playerNotifs[pi];
+            notifs.weekIncome  = piIncome;
+            for (const auto& r : m_resources)
+                if (r.ownedBy == pid) notifs.weekIncome.add(r.type, mineYield(r));
+            notifs.weekNum     = m_turns.week();
+            notifs.weekSummary = true;
+        }
+    }
+    m_showPlayerTurnBanner = true;
+    m_playerTurnBannerT    = 2.5f;
+}
 }
 
 void Game::renderPlayerTurnBanner()

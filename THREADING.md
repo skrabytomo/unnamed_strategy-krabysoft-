@@ -1,7 +1,8 @@
 # THREADING — getting the AI off one core
 
-Status (2026-07-20): **Phase 2 landed. The two pre-Phase-3 spike items are DONE
-— Phase 3 (plan/apply split) is now the front of the queue.**
+Status (2026-07-20): **Phase 3's freeze fix LANDED — the AI round is resumable
+and Watch mode spreads it across frames. The 0 FPS symptom is gone; what
+remains of Phase 3 is optional worker-thread planning inside the new seams.**
 
 - **Prerequisite — DevLog race: FIXED.** `DevLog::lines()` handed out a reference
   to the shared vector while `gLog()` appended under a mutex. Replaced with
@@ -60,12 +61,27 @@ Status (2026-07-20): **Phase 2 landed. The two pre-Phase-3 spike items are DONE
      ~6-8 turns and every cross-map march re-locked + re-searched mid-march;
      it now counts once per hero-turn.
 
-- **Phase 3 — now the front of the queue.** `doEndTurn()` still runs
-  synchronously on the render thread. The workload left to move is ~100 ms
-  typical / ~560 ms worst-case; the candidate rescan (~50 ms/turn) is now a
-  comparable share of the remainder. The plan/apply split fixes the residual
-  hitch *and* produces the pure `AiPlanner` kernel Phase 0's test harness
-  needs.
+- **Phase 3 freeze fix: LANDED (2026-07-20) as a resumable AI round.** The
+  monolithic `doEndTurn()` AI block is now three seams in `Game_WorldMap.cpp`:
+  `aiTurnSetup()` (shared round state in `Game::AiTurnState m_aiTurn`),
+  `aiTakeHeroTurn(ehi)` (one hero's whole turn — the old loop body moved
+  VERBATIM behind aliases), and `doEndTurnPost()` (everything after the loop).
+  In Watch mode `updateWorldMap()` steps heroes under an ~8 ms/frame budget
+  (`aiTurnStep()`); the frame renders between slices, so the 0 FPS freeze is
+  gone. Normal play drains the same loop synchronously — same order, same
+  thread, no new race surface in either mode.
+  - **Verified by the determinism differential this doc asked for** (now
+    possible: `--seed=N` CLI seeds worldgen + faction rolls + both combat
+    RNGs, and every run logs its `[SEED]`): old build vs new build, same
+    seed, 3-minute watch runs → **game logs byte-identical over 679 lines**
+    (only autosave row ids differed). Measured spreading: rounds that were
+    one 200–600 ms stall now span 5–12 slices (`slices=` in `[PERF]`).
+  - **Still open, in value order:** (1) a single hero can still hitch one
+    frame by itself (~200–500 ms worst: its failing 400-hex march search) —
+    the fix is running THAT search on the worker pool between frames, which
+    the seam now makes tractable; (2) the candidate rescan (~40 ms/turn) is
+    now a comparable share of round cost; (3) true parallel per-hero planning
+    (the plan/apply split below) only if (1)+(2) prove insufficient.
 
 The goal: the game freezes to 0 FPS on XL maps with 8 players while watching AI.
 The endpoint: an AI with the CPU headroom to be genuinely smarter (see
