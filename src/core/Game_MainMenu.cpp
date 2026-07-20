@@ -174,7 +174,10 @@ void Game::renderMainMenu()
             m_slotType[0]    = 0;                    // slot 0 is always you
             m_slotFaction[0] = m_newGameFaction;     // kept in sync for startNewGame
             // Column layout: [type] [faction] [hero] [bonus] [team swatch]
-            float rowH   = 34.f;
+            // 34 was too small to read the crest/portrait art at all —
+            // "the town selection and hero is too small" — the cell art is the
+            // whole point of the picker now, so give it room.
+            float rowH   = 48.f;
             float typeW  = (bw - 16) * 0.14f;
             float facW   = (bw - 16) * 0.26f;
             float heroW  = (bw - 16) * 0.26f;
@@ -209,76 +212,148 @@ void Game::renderMainMenu()
                     ImGui::PopStyleColor();
                 }
 
-                // ── Faction: town-art crest + combo ───────────────────────────
+                // ── Faction: clickable crest opens a PICTURE GRID picker ──────
+                // (was a tiny crest + text combo — "the combobox never was
+                // replaced with actual picture choosing")
                 ImGui::SameLine(0, 4);
                 {
                     int fsel = std::clamp(m_slotFaction[s], 0, 9);
+                    char popId[24]; std::snprintf(popId, sizeof(popId), "##facpick%d", s);
+
+                    // The whole cell is one button: crest + name.
                     ImVec2 cur = ImGui::GetCursorScreenPos();
-                    float ic = rowH;
-                    // Crest = the faction's TOWN art (not a unit sprite).
-                    if (fsel < 9 && m_townTex[fsel].ok()) {
-                        ImGui::GetWindowDrawList()->AddImage(
-                            (ImTextureID)(uintptr_t)m_townTex[fsel].id(),
-                            {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, {0,0}, {1,1});
-                    } else {
-                        ImGui::GetWindowDrawList()->AddRectFilled(
-                            {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, IM_COL32(70,70,80,255), 3.f);
-                    }
-                    ImGui::Dummy(ImVec2(ic, rowH)); ImGui::SameLine(0, 3);
-                    ImGui::SetNextItemWidth(facW - ic - 3);
-                    if (ImGui::BeginCombo("##fac", kSlotFacNames[fsel])) {
+                    if (ImGui::Button(popId, ImVec2(facW, rowH)))   // "##" prefix = no label
+                        ImGui::OpenPopup(popId);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Click to choose faction");
+                    ImDrawList* dl = ImGui::GetWindowDrawList();
+                    float ic = rowH - 4;
+                    if (fsel < 9 && m_townTex[fsel].ok())
+                        dl->AddImage((ImTextureID)(uintptr_t)m_townTex[fsel].id(),
+                                     {cur.x + 2, cur.y + 2}, {cur.x + 2 + ic, cur.y + 2 + ic});
+                    else
+                        dl->AddRectFilled({cur.x + 2, cur.y + 2}, {cur.x + 2 + ic, cur.y + 2 + ic},
+                                          IM_COL32(70,70,80,255), 3.f);
+                    dl->AddText({cur.x + ic + 8, cur.y + rowH * 0.5f - 7},
+                                IM_COL32(230,230,230,255), kSlotFacNames[fsel]);
+
+                    // Picture-grid popup: 5 crest tiles per row, name underneath.
+                    if (ImGui::BeginPopup(popId)) {
+                        const float tile = 84.f, cell = tile + 10.f;
                         for (int fi = 0; fi < 10; ++fi) {
-                            bool chosen = (fsel == fi);
-                            if (ImGui::Selectable(kSlotFacNames[fi], chosen)) {
+                            if (fi % 5) ImGui::SameLine();
+                            ImGui::BeginGroup();
+                            ImGui::PushID(fi);
+                            ImVec2 p = ImGui::GetCursorScreenPos();
+                            bool sel = (fsel == fi);
+                            if (ImGui::InvisibleButton("##t", ImVec2(cell, tile + 20))) {
                                 m_slotFaction[s] = fi;
                                 m_slotClassId[s] = 0;               // reset hero on faction change
                                 if (s == 0) { m_newGameFaction = fi; m_newGameClassId = 0; }
+                                ImGui::CloseCurrentPopup();
                             }
-                            if (chosen) ImGui::SetItemDefaultFocus();
+                            bool hov = ImGui::IsItemHovered();
+                            ImDrawList* pd = ImGui::GetWindowDrawList();
+                            // Tile background / crest art (fi==9 is Random)
+                            if (fi < 9 && m_townTex[fi].ok())
+                                pd->AddImage((ImTextureID)(uintptr_t)m_townTex[fi].id(),
+                                             {p.x + 5, p.y}, {p.x + 5 + tile, p.y + tile});
+                            else {
+                                pd->AddRectFilled({p.x + 5, p.y}, {p.x + 5 + tile, p.y + tile},
+                                                  IM_COL32(60,60,74,255), 4.f);
+                                pd->AddText({p.x + 5 + tile * 0.34f, p.y + tile * 0.4f},
+                                            IM_COL32(200,200,200,255), "?");
+                            }
+                            // Selection / hover frame
+                            if (sel)
+                                pd->AddRect({p.x + 4, p.y - 1}, {p.x + 6 + tile, p.y + tile + 1},
+                                            IM_COL32(255,215,80,255), 4.f, 0, 3.f);
+                            else if (hov)
+                                pd->AddRect({p.x + 4, p.y - 1}, {p.x + 6 + tile, p.y + tile + 1},
+                                            IM_COL32(160,200,255,200), 4.f, 0, 2.f);
+                            // Centred name under the tile
+                            float tw = ImGui::CalcTextSize(kSlotFacNames[fi]).x;
+                            pd->AddText({p.x + 5 + (tile - tw) * 0.5f, p.y + tile + 3},
+                                        sel ? IM_COL32(255,215,80,255) : IM_COL32(210,210,210,255),
+                                        kSlotFacNames[fi]);
+                            ImGui::PopID();
+                            ImGui::EndGroup();
                         }
-                        ImGui::EndCombo();
+                        ImGui::EndPopup();
                     }
                 }
 
-                // ── Hero: portrait + class combo ──────────────────────────────
+                // ── Hero: clickable portrait opens a PICTURE GRID picker ──────
                 ImGui::SameLine(0, 4);
                 {
                     int fsel = std::clamp(m_slotFaction[s], 0, 8);
                     auto classes = m_classRegistry.getClassesForFaction((FactionId)fsel);
-                    // portrait = the faction's HERO PORTRAIT (not the world figure)
-                    ImVec2 cur = ImGui::GetCursorScreenPos();
-                    float ic = rowH;
-                    if (m_slotFaction[s] < 9 && m_portraitTex[fsel].ok()) {
-                        ImGui::GetWindowDrawList()->AddImage(
-                            (ImTextureID)(uintptr_t)m_portraitTex[fsel].id(),
-                            {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, {0,0}, {1,1});
-                    } else {
-                        ImGui::GetWindowDrawList()->AddRectFilled(
-                            {cur.x, cur.y}, {cur.x + ic, cur.y + ic}, IM_COL32(60,70,60,255), 3.f);
-                    }
-                    ImGui::Dummy(ImVec2(ic, rowH)); ImGui::SameLine(0, 3);
-                    ImGui::SetNextItemWidth(heroW - ic - 3);
-                    if (classes.empty()) {
-                        ImGui::TextDisabled("(random)");
-                    } else {
+                    if (!classes.empty()) {
                         bool ok = false;
                         for (auto* c : classes) if (c->id == m_slotClassId[s]) ok = true;
                         if (!ok) m_slotClassId[s] = classes[0]->id;
-                        const char* curName = "?";
-                        for (auto* c : classes) if (c->id == m_slotClassId[s]) curName = c->name.c_str();
-                        if (ImGui::BeginCombo("##hero", curName)) {
-                            for (auto* c : classes) {
-                                bool chosen = (m_slotClassId[s] == c->id);
-                                if (ImGui::Selectable(c->name.c_str(), chosen)) {
-                                    m_slotClassId[s] = c->id;
-                                    if (s == 0) m_newGameClassId = c->id;
-                                }
-                                if (ImGui::IsItemHovered() && !c->specialtyDesc.empty())
-                                    ImGui::SetTooltip("Specialty: %s", c->specialtyDesc.c_str());
-                                if (chosen) ImGui::SetItemDefaultFocus();
+                    }
+                    const char* curName = "(random)";
+                    for (auto* c : classes) if (c->id == m_slotClassId[s]) curName = c->name.c_str();
+
+                    char popId[24]; std::snprintf(popId, sizeof(popId), "##heropick%d", s);
+                    ImVec2 cur = ImGui::GetCursorScreenPos();
+                    if (ImGui::Button(popId, ImVec2(heroW, rowH)) && !classes.empty())
+                        ImGui::OpenPopup(popId);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Click to choose hero class");
+                    ImDrawList* dl = ImGui::GetWindowDrawList();
+                    float ic = rowH - 4;
+                    // portrait = the faction's HERO PORTRAIT (not the world figure)
+                    if (m_slotFaction[s] < 9 && m_portraitTex[fsel].ok())
+                        dl->AddImage((ImTextureID)(uintptr_t)m_portraitTex[fsel].id(),
+                                     {cur.x + 2, cur.y + 2}, {cur.x + 2 + ic, cur.y + 2 + ic});
+                    else
+                        dl->AddRectFilled({cur.x + 2, cur.y + 2}, {cur.x + 2 + ic, cur.y + 2 + ic},
+                                          IM_COL32(60,70,60,255), 3.f);
+                    dl->AddText({cur.x + ic + 8, cur.y + rowH * 0.5f - 7},
+                                IM_COL32(230,230,230,255), curName);
+
+                    // Portrait-grid popup: one tile per class of this faction.
+                    // NOTE: there is only ONE portrait per faction today (HANDOFF
+                    // art gap), so the art repeats — the tile is still the class
+                    // card: name + specialty, which the combo never showed.
+                    if (ImGui::BeginPopup(popId)) {
+                        const float tile = 84.f, cell = tile + 10.f;
+                        int i = 0;
+                        for (auto* c : classes) {
+                            if (i++ % 4) ImGui::SameLine();
+                            ImGui::PushID(c->id);
+                            ImVec2 p = ImGui::GetCursorScreenPos();
+                            bool sel = (m_slotClassId[s] == c->id);
+                            if (ImGui::InvisibleButton("##h", ImVec2(cell, tile + 20))) {
+                                m_slotClassId[s] = c->id;
+                                if (s == 0) m_newGameClassId = c->id;
+                                ImGui::CloseCurrentPopup();
                             }
-                            ImGui::EndCombo();
+                            bool hov = ImGui::IsItemHovered();
+                            if (hov && !c->specialtyDesc.empty())
+                                ImGui::SetTooltip("Specialty: %s", c->specialtyDesc.c_str());
+                            ImDrawList* pd = ImGui::GetWindowDrawList();
+                            if (m_portraitTex[fsel].ok())
+                                pd->AddImage((ImTextureID)(uintptr_t)m_portraitTex[fsel].id(),
+                                             {p.x + 5, p.y}, {p.x + 5 + tile, p.y + tile});
+                            else
+                                pd->AddRectFilled({p.x + 5, p.y}, {p.x + 5 + tile, p.y + tile},
+                                                  IM_COL32(60,70,60,255), 4.f);
+                            if (sel)
+                                pd->AddRect({p.x + 4, p.y - 1}, {p.x + 6 + tile, p.y + tile + 1},
+                                            IM_COL32(255,215,80,255), 4.f, 0, 3.f);
+                            else if (hov)
+                                pd->AddRect({p.x + 4, p.y - 1}, {p.x + 6 + tile, p.y + tile + 1},
+                                            IM_COL32(160,200,255,200), 4.f, 0, 2.f);
+                            float tw = ImGui::CalcTextSize(c->name.c_str()).x;
+                            pd->AddText({p.x + 5 + (tile - tw) * 0.5f, p.y + tile + 3},
+                                        sel ? IM_COL32(255,215,80,255) : IM_COL32(210,210,210,255),
+                                        c->name.c_str());
+                            ImGui::PopID();
                         }
+                        ImGui::EndPopup();
                     }
                 }
 
