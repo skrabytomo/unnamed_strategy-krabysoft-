@@ -11,7 +11,8 @@ std::vector<HexCoord> Pathfinder::find(
     HexCoord      start,
     HexCoord      goal,
     CostFn        costFn,
-    int           maxCost)
+    int           maxCost,
+    int           maxNodes)
 {
     if (start == goal) return {};
     if (!map.inBounds(goal)) return {};
@@ -29,7 +30,14 @@ std::vector<HexCoord> Pathfinder::find(
     gScore[start] = 0;
     open.push({ HexGrid::distance(start, goal), start });
 
+    int expanded = 0;
     while (!open.empty()) {
+        // Node-expansion cap: a doomed search would otherwise sweep the whole
+        // maxCost radius (~305 ms each, measured) before returning empty.
+        // Bailing out early reports "unreachable", which is what the caller
+        // was about to conclude anyway — just ~60x sooner.
+        if (++expanded > maxNodes) return {};
+
         auto [f, current] = open.top(); open.pop();
 
         if (current == goal) {
