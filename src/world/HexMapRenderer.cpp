@@ -136,17 +136,23 @@ void main() {
             // Sampler uses GL_MIRRORED_REPEAT, so no matter how far this scrolls,
             // it reflects at each tile edge instead of wrapping — no seam is
             // possible even though the underlying image is much larger than one hex.
-            // Drift + swell. The original values (scroll 0.022/s, warp 0.018)
+            // NOTE (2026-07-20): the previous pass tripled these to 0.055/0.042
+            // plus a 0.022 cross-swell and that was TOO FAR — `warpX` varies with
+            // vWorldPos.y while displacing uv.x, so a large amplitude shears the
+            // sea into visible horizontal BANDS across the whole ocean. Pulled
+            // back to roughly 1.5x the original: still clearly moving at map
+            // zoom, no banding. Keep warp amplitude well under ~0.03 or the
+            // shear becomes structured stripes rather than ripples.
+            // Original values for reference (scroll 0.022/s, warp 0.018)
             // were so small the sea read as a still image at map zoom — the
             // animation was technically running and visually absent. Scaled up
             // roughly 3x, plus a second cross-swell so the surface churns
             // instead of sliding uniformly.
-            float warpX = sin(vWorldPos.y * 0.008 + uTime * 0.9) * 0.055;
-            float warpY = sin(vWorldPos.x * 0.006 - uTime * 0.7) * 0.042;
-            float swell = sin(vWorldPos.x * 0.013 + vWorldPos.y * 0.011 + uTime * 1.3) * 0.022;
+            float warpX = sin(vWorldPos.y * 0.008 + uTime * 0.9) * 0.020;
+            float warpY = sin(vWorldPos.x * 0.006 - uTime * 0.7) * 0.016;
             uv = vWorldPos * 0.012;
-            uv.x += uTime * 0.065 + warpX + swell;
-            uv.y += uTime * 0.038 + warpY - swell;
+            uv.x += uTime * 0.040 + warpX;
+            uv.y += uTime * 0.024 + warpY;
         }
 
         vec3 tex = texture(uTerrainTex, uv).rgb;
