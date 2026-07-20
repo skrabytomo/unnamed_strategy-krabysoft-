@@ -2693,7 +2693,15 @@ bool Game::aiTakeHeroTurn(int ehi)
             // Linear turn counter for the cross-turn retry cadence
             // (the week*100+day stamp used elsewhere isn't linear).
             const int linTurn = m_turns.week() * 7 + m_turns.day();
-            constexpr int kMarchRetryTurns = 4;
+            // Retry cadence for a march goal already PROVEN unreachable.
+            // Was 4, which a week-39 log showed costing 3-5 failed 400-hex
+            // searches EVERY turn at ~128 ms each — 400-650 ms of the worst
+            // turns spent re-proving the same dead ends.
+            // 16 is safe rather than merely cheaper: the one event that really
+            // changes reachability (boarding/leaving a boat) clears the memo
+            // explicitly above, regardless of this cadence. This only throttles
+            // re-proving a dead end that nothing has changed about.
+            constexpr int kMarchRetryTurns = 16;
             // Generous horizon ONLY for a top-candidate enemy town
             // (worth a cross-map march); everything else stays cheap.
             auto horizonFor = [&](int ci) {
