@@ -58,6 +58,11 @@ public:
     // Hexes adjacent to a target (for melee positioning)
     std::vector<HexCoord> meleePositions(HexCoord target) const;
 
+    // Farthest step count (<= steps) along `path` ending on a hex a unit may
+    // actually stand on (not an intact wall / obstacle / occupied tile).
+    // 0 = nowhere along the path is landable.
+    int landableSteps(const std::vector<HexCoord>& path, int steps) const;
+
     const HexGrid& hexGrid() const { return m_hexGrid; }
     const std::vector<HexCoord>& allCoords() const { return m_coords; }
 

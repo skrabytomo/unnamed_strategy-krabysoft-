@@ -77,6 +77,7 @@ bool CombatGrid::placeUnit(CombatUnit& unit, HexCoord h)
 {
     auto* tile = getTile(h);
     if (!tile || tile->occupied || tile->type == CombatTileType::Obstacle) return false;
+    if (tile->type == CombatTileType::Wall && tile->wallHP > 0) return false;
     tile->occupied = true;
     tile->unitId   = unit.id;
     unit.pos       = h;
@@ -92,9 +93,15 @@ bool CombatGrid::moveUnit(uint32_t unitId, HexCoord to)
     auto* oldTile = getTile(unit->pos);
     if (oldTile) { oldTile->occupied = false; oldTile->unitId = 0; }
 
-    // Set new tile
+    // Set new tile. Nothing may END a move on an obstacle or an intact wall
+    // segment — findPath deliberately exempts its destination hex from those
+    // checks (so units can path *toward* a wall or an occupied enemy and stop
+    // short), which means this is the last line of defence against a unit
+    // literally standing on the battlements ("units fight atop castle walls").
     auto* newTile = getTile(to);
-    if (!newTile || (newTile->occupied && newTile->unitId != unitId)) {
+    if (!newTile || (newTile->occupied && newTile->unitId != unitId)
+        || newTile->type == CombatTileType::Obstacle
+        || (newTile->type == CombatTileType::Wall && newTile->wallHP > 0)) {
         // Restore old tile
         if (oldTile) { oldTile->occupied = true; oldTile->unitId = unitId; }
         return false;
@@ -141,7 +148,12 @@ std::vector<HexCoord> CombatGrid::reachable(HexCoord from, int movePoints,
             const CombatTile* tile = getTile(nb);
             if (!tile) continue;
             if (tile->type == CombatTileType::Obstacle) continue;
-            if (tile->type == CombatTileType::Wall && tile->wallHP > 0) continue;
+            // Intact walls stop ground troops dead; flyers sail OVER them
+            // (HoMM convention — wings are how you assault an unbreached
+            // castle). Nobody may END a move on the battlements, so wall
+            // tiles are traversed but never offered as destinations.
+            bool wallTile = (tile->type == CombatTileType::Wall && tile->wallHP > 0);
+            if (wallTile && !flying) continue;
             if (tile->occupied) continue; // blocked by another unit
 
             int stepCost = 1;
@@ -157,7 +169,7 @@ std::vector<HexCoord> CombatGrid::reachable(HexCoord from, int movePoints,
             if (it == visited.end() || newCost < it->second) {
                 visited[nb] = newCost;
                 q.push({nb, newCost});
-                result.push_back(nb);
+                if (!wallTile) result.push_back(nb);
             }
         }
     }
@@ -194,7 +206,12 @@ std::vector<HexCoord> CombatGrid::findPath(HexCoord from, HexCoord to,
             if (!tile) continue;
             if (nb != to) {
                 if (tile->type == CombatTileType::Obstacle) continue;
-                if (tile->type == CombatTileType::Wall && tile->wallHP > 0) continue;
+                // Flyers cross intact walls (mirrors reachable()); walkers
+                // are stopped by them. The destination hex stays exempt so
+                // callers can path TOWARD a wall/occupied hex and stop short
+                // — landing legality is enforced by moveUnit/landableSteps.
+                if (tile->type == CombatTileType::Wall && tile->wallHP > 0
+                    && !flying) continue;
                 if (tile->occupied) continue;
             }
             int tentG = gCur + ((!flying && tile->type == CombatTileType::Moat) ? 2 : 1);
@@ -215,10 +232,32 @@ std::vector<HexCoord> CombatGrid::meleePositions(HexCoord target) const
     for (auto& nb : HexGrid::neighbors(target)) {
         if (!inBounds(nb)) continue;
         const CombatTile* t = getTile(nb);
-        if (t && !t->occupied && t->type != CombatTileType::Obstacle)
-            result.push_back(nb);
+        if (!t || t->occupied || t->type == CombatTileType::Obstacle) continue;
+        // An intact wall segment is not a place to stand. Without this, a
+        // melee attacker striking anything near the wall line (including the
+        // gate, whose neighbours ARE wall hexes) would happily park itself
+        // on the battlements — the "units fight atop castle walls" bug.
+        if (t->type == CombatTileType::Wall && t->wallHP > 0) continue;
+        result.push_back(nb);
     }
     return result;
+}
+
+int CombatGrid::landableSteps(const std::vector<HexCoord>& path, int steps) const
+{
+    // Farthest count of steps (<= steps) along `path` whose final hex a unit
+    // may END on. Needed because flyers may CROSS intact walls mid-path and
+    // findPath exempts its destination hex from wall/occupancy checks — so
+    // the s-th hex of a valid path is not automatically a valid landing spot.
+    for (int s = std::min<int>(steps, static_cast<int>(path.size())); s >= 1; --s) {
+        const CombatTile* t = getTile(path[static_cast<size_t>(s) - 1]);
+        if (!t) continue;
+        if (t->type == CombatTileType::Obstacle) continue;
+        if (t->type == CombatTileType::Wall && t->wallHP > 0) continue;
+        if (t->occupied) continue;
+        return s;
+    }
+    return 0;
 }
 
 void CombatGrid::placeSiegeWalls(int wallHP, int gateHP)

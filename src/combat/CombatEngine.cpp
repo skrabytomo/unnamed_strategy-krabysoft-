@@ -1319,7 +1319,8 @@ bool CombatEngine::aiTrySiegeWallAction(CombatUnit& unit)
         for (const auto& sp : m_grid.meleePositions(target)) {
             auto path = m_grid.findPath(unit.pos, sp, unit.flying);
             if (path.empty()) continue;
-            int steps = std::min(unit.speed, static_cast<int>(path.size()));
+            int steps = m_grid.landableSteps(path, unit.speed);
+            if (steps <= 0) continue;
             m_grid.moveUnit(unit.id, path[steps - 1]);
             unit.hasMoved = true;
             applyTileEffect(unit);
@@ -1383,8 +1384,8 @@ void CombatEngine::aiActPassive(CombatUnit& unit)
     auto melee = m_grid.meleePositions(target->pos);
     if (!melee.empty()) {
         auto path = m_grid.findPath(unit.pos, melee[0], unit.flying);
-        if (!path.empty()) {
-            int steps = std::min(unit.speed, static_cast<int>(path.size()));
+        int steps = path.empty() ? 0 : m_grid.landableSteps(path, unit.speed);
+        if (steps > 0) {
             m_grid.moveUnit(unit.id, path[steps - 1]);
             unit.hasMoved = true;
             // Attack immediately if movement reached melee range
@@ -1463,8 +1464,8 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
         HexCoord best = melee[0]; int d = HexGrid::distance(unit.pos, best);
         for (auto& h : melee) { int nd = HexGrid::distance(unit.pos, h); if (nd < d) { d = nd; best = h; } }
         auto path = m_grid.findPath(unit.pos, best, unit.flying);
-        if (!path.empty()) {
-            int steps = std::min(unit.speed, static_cast<int>(path.size()));
+        int steps = path.empty() ? 0 : m_grid.landableSteps(path, unit.speed);
+        if (steps > 0) {
             m_grid.moveUnit(unit.id, path[steps - 1]);
             unit.hasMoved = true;
             applyTileEffect(unit);
@@ -1638,9 +1639,14 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
                     }
                 }
             }
-            m_grid.moveUnit(unit.id, path[steps - 1]);
-            unit.hasMoved = true;
-            applyTileEffect(unit);
+            steps = m_grid.landableSteps(path, steps);
+            // steps == 0: nowhere along the path to land — stay put and let
+            // the in-range / adjacent checks and fallbacks below decide.
+            if (steps > 0) {
+                m_grid.moveUnit(unit.id, path[steps - 1]);
+                unit.hasMoved = true;
+                applyTileEffect(unit);
+            }
             // If now in range: shoot immediately (ranged) or attack (melee)
             int nowDist = HexGrid::distance(unit.pos, target->pos);
             if (unit.range > 0 && unit.shotsLeft > 0 && nowDist <= unit.range && target->alive) {
@@ -1722,8 +1728,8 @@ void CombatEngine::aiActTactical(CombatUnit& unit)
                 if (d < bestDst) { bestDst = d; dest = h; }
             }
             auto path2 = m_grid.findPath(unit.pos, dest, unit.flying);
-            if (!path2.empty()) {
-                int steps = std::min(unit.speed, static_cast<int>(path2.size()));
+            int steps = path2.empty() ? 0 : m_grid.landableSteps(path2, unit.speed);
+            if (steps > 0) {
                 m_grid.moveUnit(unit.id, path2[steps - 1]);
                 unit.hasMoved = true;
                 applyTileEffect(unit);
