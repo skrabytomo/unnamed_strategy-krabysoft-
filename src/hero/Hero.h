@@ -137,6 +137,16 @@ struct Hero
     size_t                stepPathIdx  = 0;
     HexCoord              stepPathGoal{};
     bool                  hasStepPath  = false;
+    // Cross-turn throttle for the expensive (400-hex) march search. When it
+    // fails, the goal is provably out of reach for now — but the lock stays
+    // (a boat may still get there), so without this the AI re-proved the same
+    // dead end with a fresh ~76 ms search EVERY turn, for up to the lock's 60
+    // turns. Instead the failure is stamped here and the search retried on a
+    // cadence; the hero works fallback targets meanwhile. Invalidated when
+    // the goal changes or the hero boards/leaves a boat (reachability regime
+    // changed, so the proof no longer holds).
+    HexCoord marchFailGoal{};
+    int      marchFailTurn = -1000000;   // linear turn stamp (week*7 + day)
     int  boatCount = 0;      // boats built so far (cost escalates per boat)
 
     // Specialty progression: tracked stats for specialty effects

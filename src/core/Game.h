@@ -185,15 +185,23 @@ private:
     // with a component id. Two tiles in different components CANNOT be connected
     // by land — an O(1) lookup replaces the doomed search entirely.
     // Rebuilt once per turn; terrain does not change mid-turn.
+    //
+    // m_seaComp is the amphibious version for heroes already ON a boat: they
+    // sail Water and disembark onto any land, so only Mountain and Barrier
+    // tiles separate components. Without it, onBoat heroes skipped the
+    // fast-reject entirely and naval planning paid full price for dead ends.
     std::unordered_map<HexCoord, int, HexCoordHash> m_landComp;
+    std::unordered_map<HexCoord, int, HexCoordHash> m_seaComp;
     int  m_landCompTurn = -1;
     void rebuildLandComponents();
-    // true when a land route is provably impossible (different components).
-    bool landRouteImpossible(HexCoord a, HexCoord b) const
+    // true when a route is provably impossible (different components) for a
+    // hero in the given movement mode. onBoat picks the amphibious map.
+    bool routeImpossible(bool onBoat, HexCoord a, HexCoord b) const
     {
-        auto ia = m_landComp.find(a);
-        auto ib = m_landComp.find(b);
-        if (ia == m_landComp.end() || ib == m_landComp.end()) return false; // unknown: let A* decide
+        const auto& comp = onBoat ? m_seaComp : m_landComp;
+        auto ia = comp.find(a);
+        auto ib = comp.find(b);
+        if (ia == comp.end() || ib == comp.end()) return false; // unknown: let A* decide
         return ia->second != ib->second;
     }
 

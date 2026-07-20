@@ -1,7 +1,7 @@
 # THREADING — getting the AI off one core
 
-Status (2026-07-19): **Phase 2 landed. Phase 3 NOT started — the 0 FPS freeze is
-still there.**
+Status (2026-07-20): **Phase 2 landed. The two pre-Phase-3 spike items are DONE
+— Phase 3 (plan/apply split) is now the front of the queue.**
 
 - **Prerequisite — DevLog race: FIXED.** `DevLog::lines()` handed out a reference
   to the shared vector while `gLog()` appended under a mutex. Replaced with
@@ -31,15 +31,41 @@ still there.**
 
   Combined, a typical AI turn's pathfinding went from ~3900 ms to ~50 ms.
 
-- **Phase 3 — still open, but much cheaper now.** `doEndTurn()` (2,668 lines)
-  still runs synchronously on the render thread. The workload it would move is
-  now ~50 ms rather than ~3900 ms, so the freeze is largely gone on typical
-  turns — but occasional turns still spike (~1.2 s when many far-but-same-
-  landmass targets force real searches), and those still block the frame.
-  Remaining known gaps, in value order:
-  1. Spikes from same-landmass-but-distant targets (the reject can't help).
-  2. Heroes already on a boat skip the reject entirely — naval planning unhelped.
-  3. Only then is Phase 3's plan/apply split worth its risk.
+- **Spike items 1 & 2: DONE (2026-07-20).** Measured on 8-player XL watch-AI
+  runs (~95 turns): **avg ~100 ms, typical turn 10–100 ms, max ~560 ms** of
+  per-turn pathfinding — down from ~700 ms avg / ~2 s max. Four changes, and
+  the biggest win was a *behaviour bug*, not a cache:
+  1. **`bestReachable` was never set on the march-cache hit** — so the lock's
+     forced 1e9 candidate score made `wantBoatForBestTarget` fire on every
+     step, `aiTryBoat` swapped in a dock path, the hero stepped off its march
+     path, and the divergence check wiped the cache. Result: the "cached"
+     400-hex march search actually re-ran EVERY turn for EVERY marching hero
+     (~25 long searches/turn late-game) while heroes yo-yoed toward docks.
+     One line (`bestReachable = true` on the cache hit) took divergence wipes
+     from 449 to 0 in a 4-minute run.
+  2. **Per-turn unreachable-target memo** (`failedTargets`, local to a hero's
+     turn): a failing search is memoised (keyed by target, valued by horizon)
+     and skipped for the rest of the turn; the step-path reuse now keys on the
+     *effective* top candidate (first not-known-unreachable), so a doomed
+     leader no longer forces a re-search per step. Cleared on boat state
+     change (reachability regime changed).
+  3. **Cross-turn march-fail throttle** (`Hero::marchFailGoal/marchFailTurn`):
+     a locked march goal whose 400-hex search failed is retried every 4th turn
+     instead of every turn (a failing 400-hex A* explores the whole landmass —
+     ~450-530 ms on XL). The hero works fallback targets between retries.
+  4. **`m_seaComp` amphibious component map**: onBoat heroes now get the O(1)
+     fast-reject too (Water traversable, disembark anywhere, so only
+     Mountain/Barrier split components). Also: `marchGoalTurns` was
+     incremented per STEP, so the "60-turn" lock timeout really expired after
+     ~6-8 turns and every cross-map march re-locked + re-searched mid-march;
+     it now counts once per hero-turn.
+
+- **Phase 3 — now the front of the queue.** `doEndTurn()` still runs
+  synchronously on the render thread. The workload left to move is ~100 ms
+  typical / ~560 ms worst-case; the candidate rescan (~50 ms/turn) is now a
+  comparable share of the remainder. The plan/apply split fixes the residual
+  hitch *and* produces the pure `AiPlanner` kernel Phase 0's test harness
+  needs.
 
 The goal: the game freezes to 0 FPS on XL maps with 8 players while watching AI.
 The endpoint: an AI with the CPU headroom to be genuinely smarter (see

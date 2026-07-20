@@ -13,6 +13,7 @@ static int       g_candBuilds = 0;
 // vs the cheap 60-hex local one. Tells us which to attack next.
 static long long g_longNs     = 0;
 static int       g_longCalls  = 0;
+static int       g_longFails  = 0;  // long searches that came back empty
 static long long g_shortNs    = 0;
 static int       g_shortCalls = 0;
 static int       g_reuseHits  = 0;
@@ -527,6 +528,14 @@ void Game::watchAiMovePlayerHero()
     // Only cower when that nearest threat is actually close.
     if (nearestEnemyDist > 10) { veryWeak = false; softRetreat = false; }
 
+    // Component maps for the O(1) unreachable-target reject below. Stamped per
+    // turn, so this is free when the enemy-AI block already built them.
+    {
+        int stamp = m_turns.week() * 100 + m_turns.day();
+        if (m_landCompTurn != stamp || m_landComp.empty())
+            rebuildLandComponents();
+    }
+
     while (hero.movePool > 0) {
         struct Cand { HexCoord pos; float score; };
         std::vector<Cand> cands;
@@ -665,6 +674,10 @@ void Game::watchAiMovePlayerHero()
         constexpr int kAiPathHorizon = 60;   // ~ a few turns of movement
         std::vector<HexCoord> path;
         for (size_t ci = 0; ci < cands.size() && ci < 10; ++ci) {
+            // Same O(1) component fast-reject as the enemy-AI loop: a target on
+            // another landmass (or, afloat, behind a mountain wall) cannot be
+            // reached by this search, so don't burn a doomed A* proving it.
+            if (routeImpossible(hero.onBoat, hero.pos, cands[ci].pos)) continue;
             path = Pathfinder::find(m_map, hero.pos, cands[ci].pos, costFn, kAiPathHorizon);
             if (!path.empty()) break;
         }
@@ -2178,6 +2191,25 @@ void Game::doEndTurn()
                     m_camera.setPosition(ewx, ewy);
                 }
 
+                // Per-turn memo of goals a search already proved unreachable
+                // (value = the horizon that failed). The candidate list is
+                // rebuilt every move step, so without this the same doomed
+                // searches re-ran once per step — the residual ~1.2 s turn
+                // spikes after the O(1) component reject (targets on the SAME
+                // landmass but walled off or beyond the horizon, which the
+                // reject can't see). Trades a sliver of mid-turn reactivity —
+                // a dead end stays "dead" until next turn even if the hero
+                // walks toward it — for not re-proving it ~100× per turn.
+                // Local to this hero's turn: never carried across turns.
+                std::unordered_map<HexCoord, int, HexCoordHash> failedTargets;
+                bool memoOnBoat = eHero.onBoat;
+                // marchGoalTurns is "turns spent committed" (the 60-turn lock
+                // timeout) but was incremented once per MOVE STEP, so the lock
+                // really expired after ~60 steps ≈ 6-8 turns — every cross-map
+                // march (~15+ turns) timed out mid-march, re-locked, and re-ran
+                // the 400-hex search. Count it once per hero-turn.
+                bool marchTurnCounted = false;
+
                 while (eHero.movePool > 0) {
                     // Persona weight biases: mineMul favours resources, attackMul
                     // favours enemy heroes/towns. Warrior hunts, Explorer grabs
@@ -2483,7 +2515,10 @@ void Game::doEndTurn()
                     // While locked, force the committed town to the front so the
                     // hero keeps marching there instead of chasing a nearer mine.
                     if (eHero.hasMarchGoal) {
-                        eHero.marchGoalTurns++;
+                        if (!marchTurnCounted) {
+                            eHero.marchGoalTurns++;
+                            marchTurnCounted = true;
+                        }
                         bool present = false;
                         for (auto& c : cands) if (c.pos == eHero.marchGoal) { c.score = 1e9f; present = true; break; }
                         if (!present) cands.insert(cands.begin(), {eHero.marchGoal, 1e9f});
@@ -2548,30 +2583,83 @@ void Game::doEndTurn()
                         // Follow the cached path from the current position.
                         path.assign(eHero.marchPath.begin() + eHero.marchPathIdx,
                                     eHero.marchPath.end());
+                        // The cached path IS a route to cands[0] (the locked
+                        // goal), so the top target is reachable. Leaving this
+                        // false made wantBoatForBestTarget fire on every step
+                        // (the lock's forced 1e9 score passes any threshold):
+                        // aiTryBoat swapped in a dock path, the hero stepped
+                        // off the march path, the divergence check wiped the
+                        // cache — and the 400-hex search re-ran EVERY turn for
+                        // EVERY marching hero while they yo-yoed toward docks.
+                        bestReachable = true;
                     } else {
                         // THREADING.md Phase 2 — parallel candidate A* fan-out.
                         //
-                        // The top candidate is still tried SERIALLY first. The
-                        // design's plain "fan all 10 out" would be a pessimism
-                        // here: the serial loop short-circuits on the first hit,
-                        // so when candidate 0 is reachable (the common case) it
-                        // costs exactly one A*, while a blind fan-out costs ten.
-                        // The case actually worth overlapping is the failure
-                        // path — a rejected 400-hex march search explores a huge
-                        // area, and then we do it again for each fallback.
+                        // The effective top candidate is still tried SERIALLY
+                        // first. A plain "fan all 10 out" would be a pessimism:
+                        // the serial try short-circuits on a hit, so when the
+                        // leader is reachable (the common case) it costs exactly
+                        // one A*, while a blind fan-out costs ten. Only the
+                        // failure path is overlapped.
                         //
-                        // Taking the LOWEST reachable index keeps this provably
-                        // identical to the serial result: Pathfinder::find is
-                        // pure, costFn only reads m_map/m_towns/m_roadHexes, and
+                        // Taking the LOWEST reachable index keeps the winner
+                        // identical to a serial scan: Pathfinder::find is pure,
+                        // costFn only reads m_map/m_towns/m_roadHexes, and
                         // nothing mutates during the fan-out — so completion
                         // order cannot change which candidate wins.
-                        // Reuse this turn's path when we're still heading to the
-                        // same place and haven't strayed off it. This is the 99%:
-                        // without it a full A* ran on EVERY move step to the
-                        // very same destination, ~85-100 times per turn.
                         int chosenIdx = -1;
-                        if (eHero.hasStepPath && !cands.empty()
-                            && eHero.stepPathGoal == cands[0].pos
+                        int nCand = static_cast<int>(std::min<size_t>(cands.size(), 10));
+                        // Boarding or disembarking changes what is reachable, so
+                        // unreachability proofs gathered in the other movement
+                        // mode no longer hold — the per-turn memo AND the
+                        // cross-turn march-fail stamp both expire.
+                        if (eHero.onBoat != memoOnBoat) {
+                            failedTargets.clear();
+                            eHero.marchFailTurn = -1000000;
+                            memoOnBoat = eHero.onBoat;
+                        }
+                        // Linear turn counter for the cross-turn retry cadence
+                        // (the week*100+day stamp used elsewhere isn't linear).
+                        const int linTurn = m_turns.week() * 7 + m_turns.day();
+                        constexpr int kMarchRetryTurns = 4;
+                        // Generous horizon ONLY for a top-candidate enemy town
+                        // (worth a cross-map march); everything else stays cheap.
+                        auto horizonFor = [&](int ci) {
+                            return (ci == 0 && topIsEnemyTown) ? 400 : kAiPathHorizon;
+                        };
+                        // Known unreachable = another component (O(1) flood-fill
+                        // lookup; the amphibious map covers onBoat heroes) OR a
+                        // search this turn already failed at >= the horizon we
+                        // would use now. Both are read-only queries, safe from
+                        // the fan-out workers below.
+                        auto knownUnreachable = [&](int ci) {
+                            if (routeImpossible(eHero.onBoat, eHero.pos,
+                                                cands[static_cast<size_t>(ci)].pos))
+                                return true;
+                            // Cross-turn throttle: this march goal's 400-hex
+                            // search failed recently; don't re-prove it yet.
+                            if (ci == 0 && eHero.hasMarchGoal
+                                && cands[0].pos == eHero.marchGoal
+                                && eHero.marchFailGoal == eHero.marchGoal
+                                && linTurn - eHero.marchFailTurn < kMarchRetryTurns)
+                                return true;
+                            auto it = failedTargets.find(cands[static_cast<size_t>(ci)].pos);
+                            return it != failedTargets.end() && it->second >= horizonFor(ci);
+                        };
+                        // Effective top candidate: the first not already known
+                        // unreachable. Once a fallback is chosen, later steps of
+                        // the same turn land here again instead of re-proving
+                        // the doomed leader with a fresh A* per step (that
+                        // re-proving was the residual ~1.2 s spike).
+                        int effTop = -1;
+                        for (int ci = 0; ci < nCand; ++ci)
+                            if (!knownUnreachable(ci)) { effTop = ci; break; }
+                        // Reuse this turn's path when we're still heading to the
+                        // effective top target and haven't strayed off it. This
+                        // is the 99%: without it a full A* ran on EVERY move
+                        // step to the very same destination, ~85-100 times/turn.
+                        if (effTop >= 0 && eHero.hasStepPath
+                            && eHero.stepPathGoal == cands[static_cast<size_t>(effTop)].pos
                             && eHero.stepPathIdx < eHero.stepPath.size()
                             // The remaining path must actually continue from where
                             // the hero IS. Position can change without a move —
@@ -2581,57 +2669,84 @@ void Game::doEndTurn()
                                    eHero.stepPath[eHero.stepPathIdx]) == 1) {
                             path.assign(eHero.stepPath.begin() + eHero.stepPathIdx,
                                         eHero.stepPath.end());
-                            bestReachable = true;
+                            // bestReachable means "cands[0] itself" — a reused
+                            // path to a fallback must not suppress the boat
+                            // consideration for the real top target.
+                            bestReachable = (effTop == 0);
                             ++g_reuseHits;
                         }
-                        int nCand = static_cast<int>(std::min<size_t>(cands.size(), 10));
                         if (!path.empty()) {
                             // cached — nothing to search
-                        } else if (nCand > 0) {
-                            int h0 = topIsEnemyTown ? 400 : kAiPathHorizon;
+                        } else if (effTop >= 0) {
+                            int h0 = horizonFor(effTop);
                             auto tA = std::chrono::steady_clock::now();
-                            // O(1) fast-reject: on foot, a target on another
-                            // landmass is unreachable by definition. Skipping the
-                            // search here is the whole win — the doomed 400-hex
-                            // A* was ~76 ms a call and dominated the turn.
-                            if (!eHero.onBoat && landRouteImpossible(eHero.pos, cands[0].pos))
-                                path.clear();
-                            else
-                                path = Pathfinder::find(m_map, eHero.pos, cands[0].pos, costFn, h0);
+                            path = Pathfinder::find(m_map, eHero.pos,
+                                                    cands[static_cast<size_t>(effTop)].pos,
+                                                    costFn, h0);
                             {
                                 long long ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                                    std::chrono::steady_clock::now() - tA).count();
-                                if (h0 > kAiPathHorizon) { g_longNs += ns; ++g_longCalls; }
+                                if (h0 > kAiPathHorizon) {
+                                    g_longNs += ns; ++g_longCalls;
+                                    if (path.empty()) ++g_longFails;
+                                }
                                 else                     { g_shortNs += ns; ++g_shortCalls; }
                             }
                             if (!path.empty()) {
-                                bestReachable = true;
-                                chosenIdx     = 0;
-                                if (topIsEnemyTown) {
+                                bestReachable = (effTop == 0);
+                                chosenIdx     = effTop;
+                                if (effTop == 0 && topIsEnemyTown) {
                                     eHero.marchPath    = path;
                                     eHero.marchPathIdx = 0;
                                 }
-                            } else if (nCand > 1) {
-                                // Candidate 0 unreachable: search the rest at once.
-                                std::vector<std::vector<HexCoord>> results(
-                                    static_cast<size_t>(nCand));
-                                WorkerPool::instance().parallelFor(nCand - 1, [&](int k) {
-                                    int ci = k + 1;   // indices 1..nCand-1
-                                    // Same O(1) reject per fallback candidate.
-                                    // m_landComp is read-only here, so this is
-                                    // safe to consult from the worker threads.
-                                    if (!eHero.onBoat
-                                        && landRouteImpossible(eHero.pos, cands[ci].pos))
-                                        return;
-                                    results[static_cast<size_t>(ci)] =
-                                        Pathfinder::find(m_map, eHero.pos, cands[ci].pos,
-                                                         costFn, kAiPathHorizon);
-                                });
-                                for (int ci = 1; ci < nCand; ++ci) {
-                                    if (results[static_cast<size_t>(ci)].empty()) continue;
-                                    path      = std::move(results[static_cast<size_t>(ci)]);
-                                    chosenIdx = ci;
-                                    break;
+                            } else {
+                                // Memoise BEFORE the fan-out so the workers'
+                                // read-only view of failedTargets is settled.
+                                int& fh = failedTargets[cands[static_cast<size_t>(effTop)].pos];
+                                fh = std::max(fh, h0);
+                                // A failed MARCH search also stamps the hero so
+                                // the retry happens on a cadence, not per turn.
+                                if (effTop == 0 && eHero.hasMarchGoal
+                                    && cands[0].pos == eHero.marchGoal
+                                    && h0 > kAiPathHorizon) {
+                                    eHero.marchFailGoal = eHero.marchGoal;
+                                    eHero.marchFailTurn = linTurn;
+                                }
+                                if (effTop + 1 < nCand) {
+                                    // Leader unreachable: search the rest at once.
+                                    std::vector<std::vector<HexCoord>> results(
+                                        static_cast<size_t>(nCand));
+                                    // Which candidates actually ran a search —
+                                    // distinguishes "failed" (worth memoising)
+                                    // from "skipped". Distinct elements per
+                                    // worker, so no data race.
+                                    std::vector<char> searched(
+                                        static_cast<size_t>(nCand), 0);
+                                    WorkerPool::instance().parallelFor(
+                                        nCand - 1 - effTop, [&](int k) {
+                                        int ci = effTop + 1 + k;
+                                        if (knownUnreachable(ci)) return;
+                                        searched[static_cast<size_t>(ci)] = 1;
+                                        results[static_cast<size_t>(ci)] =
+                                            Pathfinder::find(m_map, eHero.pos,
+                                                             cands[static_cast<size_t>(ci)].pos,
+                                                             costFn, kAiPathHorizon);
+                                    });
+                                    for (int ci = effTop + 1; ci < nCand; ++ci) {
+                                        if (!results[static_cast<size_t>(ci)].empty()) {
+                                            if (chosenIdx < 0) {
+                                                path = std::move(
+                                                    results[static_cast<size_t>(ci)]);
+                                                chosenIdx = ci;
+                                            }
+                                        } else if (searched[static_cast<size_t>(ci)]) {
+                                            // Failed search → memoise so later
+                                            // steps this turn skip it in O(1).
+                                            int& f = failedTargets[
+                                                cands[static_cast<size_t>(ci)].pos];
+                                            f = std::max(f, kAiPathHorizon);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3235,13 +3350,13 @@ void Game::doEndTurn()
 
         // TEMP INSTRUMENT: per-turn cost split, candidate rescan vs pathfinding.
         if (g_candBuilds > 0) {
-            gLog("  [PERF] turn: steps=%d cand=%.1fms path=%.1fms | long(400)=%d %.1fms "
+            gLog("  [PERF] turn: steps=%d cand=%.1fms path=%.1fms | long(400)=%d (fail %d) %.1fms "
                  "short(60)=%d %.1fms | reuse-hits=%d\n",
                  g_candBuilds, g_candNs / 1e6, g_pathNs / 1e6,
-                 g_longCalls, g_longNs / 1e6, g_shortCalls, g_shortNs / 1e6,
+                 g_longCalls, g_longFails, g_longNs / 1e6, g_shortCalls, g_shortNs / 1e6,
                  g_reuseHits);
             g_candNs = g_pathNs = g_longNs = g_shortNs = 0;
-            g_candBuilds = g_longCalls = g_shortCalls = g_reuseHits = 0;
+            g_candBuilds = g_longCalls = g_longFails = g_shortCalls = g_reuseHits = 0;
         }
 
         bool newWeek = m_turns.endTurn(m_towns, m_heroes,
@@ -8370,33 +8485,41 @@ void Game::renderWorldSpellPanel()
 // A* discovering the same thing (~76 ms a call, the dominant turn cost).
 void Game::rebuildLandComponents()
 {
-    m_landComp.clear();
-    auto passableByLand = [this](HexCoord c) -> bool {
-        const HexTile* t = m_map.getTile(c);
-        if (!t || t->blocked) return false;
-        return t->terrain != Terrain::Water && t->terrain != Terrain::Mountain;
-    };
-
-    int comp = 0;
-    std::vector<HexCoord> stack;
-    for (const HexCoord& start : m_map.coords()) {
-        if (!passableByLand(start))            continue;
-        if (m_landComp.find(start) != m_landComp.end()) continue;
-        ++comp;
-        stack.clear();
-        stack.push_back(start);
-        m_landComp[start] = comp;
-        while (!stack.empty()) {
-            HexCoord cur = stack.back();
-            stack.pop_back();
-            for (const HexCoord& nb : HexGrid::neighbors(cur)) {
-                if (!passableByLand(nb)) continue;
-                if (m_landComp.find(nb) != m_landComp.end()) continue;
-                m_landComp[nb] = comp;
-                stack.push_back(nb);
+    auto flood = [this](std::unordered_map<HexCoord, int, HexCoordHash>& comp,
+                        auto&& passable) {
+        comp.clear();
+        int id = 0;
+        std::vector<HexCoord> stack;
+        for (const HexCoord& start : m_map.coords()) {
+            if (!passable(start))              continue;
+            if (comp.find(start) != comp.end()) continue;
+            ++id;
+            stack.clear();
+            stack.push_back(start);
+            comp[start] = id;
+            while (!stack.empty()) {
+                HexCoord cur = stack.back();
+                stack.pop_back();
+                for (const HexCoord& nb : HexGrid::neighbors(cur)) {
+                    if (!passable(nb)) continue;
+                    if (comp.find(nb) != comp.end()) continue;
+                    comp[nb] = id;
+                    stack.push_back(nb);
+                }
             }
         }
-    }
+    };
+    flood(m_landComp, [this](HexCoord c) {
+        const HexTile* t = m_map.getTile(c);
+        return t && !t->blocked
+            && t->terrain != Terrain::Water && t->terrain != Terrain::Mountain;
+    });
+    // Amphibious map for heroes already afloat: Water is traversable and any
+    // land tile is a disembark point, so only Mountain/Barrier split components.
+    flood(m_seaComp, [this](HexCoord c) {
+        const HexTile* t = m_map.getTile(c);
+        return t && !t->blocked && t->terrain != Terrain::Mountain;
+    });
     m_landCompTurn = m_turns.week() * 100 + m_turns.day();
 }
 
