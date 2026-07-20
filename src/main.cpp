@@ -1,5 +1,7 @@
 #include <SDL2/SDL.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <string>
 #include "core/Game.h"
 
@@ -11,13 +13,22 @@ int main(int argc, char* argv[])
     // verified from gLog output alone. N defaults to 6. S is map shape:
     // 0=Hexagon (default), 1=JebusCross, 2=JebusCross3, 3=Ring. Z is map
     // size: 0=Small (default) .. 3=XLarge.
-    bool watchAiTest  = false;
-    int  watchPlayers = 6;
-    int  watchShape   = 0;
-    int  watchSize    = 0;
+    // --seed=N forces the world seed (worldgen, factions, personalities and
+    // combat RNGs all derive from it) so any run — watch-AI test or normal
+    // game — is reproducible. Without it every run gets a time-based seed;
+    // either way the chosen seed is logged as [SEED] at game start.
+    bool     watchAiTest  = false;
+    int      watchPlayers = 6;
+    int      watchShape   = 0;
+    int      watchSize    = 0;
+    bool     seedSet      = false;
+    uint32_t seedVal      = 0;
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
-        if (arg.rfind("--watch-ai-test", 0) == 0) {
+        if (arg.rfind("--seed=", 0) == 0) {
+            seedSet = true;
+            seedVal = static_cast<uint32_t>(strtoul(arg.c_str() + 7, nullptr, 10));
+        } else if (arg.rfind("--watch-ai-test", 0) == 0) {
             watchAiTest = true;
             auto eq = arg.find('=');
             if (eq != std::string::npos) {
@@ -45,6 +56,7 @@ int main(int argc, char* argv[])
         fprintf(stderr, "Failed to initialize game\n");
         return 1;
     }
+    if (seedSet)     game.setForcedSeed(seedVal);
     if (watchAiTest) game.autoStartWatchAI(watchPlayers, watchShape, watchSize);
     game.run();
     game.shutdown();

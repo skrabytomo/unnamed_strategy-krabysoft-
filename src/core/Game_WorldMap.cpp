@@ -1784,6 +1784,30 @@ void Game::doEndTurn()
         }
     }
 
+    // Fishing-hull daily income: the hull's whole pitch is "earns gold each
+    // day spent at sea", but until now that existed only in its tooltip.
+    // "At sea" = aboard and on a Water tile — parked at the dock earns nothing.
+    {
+        constexpr int kFishingBoatGold = 100;   // below a FishingHouse's 150 —
+                                                // the boat also moves you
+        auto fishingAtSea = [&](const Hero& h) {
+            if (!h.onBoat || h.boatType != BoatType::Fishing) return false;
+            const HexTile* t = m_map.getTile(h.pos);
+            return t && t->terrain == Terrain::Water;
+        };
+        for (const auto& h : m_heroes)
+            if (fishingAtSea(h)) m_playerResources.add(ResourceType::Gold, kFishingBoatGold);
+        for (int pi = 0; pi < (int)m_players.size(); ++pi) {
+            if (pi == m_currentPlayerIdx) continue;   // active player uses m_heroes
+            for (const auto& h : m_players[pi].heroes)
+                if (fishingAtSea(h))
+                    m_players[pi].resources.add(ResourceType::Gold, kFishingBoatGold);
+        }
+        for (const auto& h : m_enemyHeroes)
+            if (fishingAtSea(h))
+                aiResources(h.ownerId).add(ResourceType::Gold, kFishingBoatGold);
+    }
+
     // Restore hero movement pools and daily mana regen for enemy heroes.
     // In hot-seat this runs after the LAST player's handoff, so m_heroes is P1's
     // fresh-day roster; other humans' heroes were reset during their own handoff.
@@ -8793,7 +8817,7 @@ void Game::renderShipyardPopup()
     struct HullOpt { BoatType type; const char* name; const char* desc; };
     static const HullOpt kHulls[3] = {
         { BoatType::Travel,  "Travel Ship",  "Fastest crossing (1 move/sea hex)." },
-        { BoatType::Fishing, "Fishing Boat", "Cheap but slow (3 move/sea hex)."   },
+        { BoatType::Fishing, "Fishing Boat", "Cheap but slow (3 move/sea hex); earns 100g each day at sea." },
         { BoatType::War,     "War Galley",   "Rams and sinks any lesser boat (2 move/sea hex)." },
     };
 

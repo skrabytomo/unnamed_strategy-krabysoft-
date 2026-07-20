@@ -16,3 +16,5 @@ dist/
 packaging/Output/
 session.log
 session.log
+imgui.ini
+sim_*.txt

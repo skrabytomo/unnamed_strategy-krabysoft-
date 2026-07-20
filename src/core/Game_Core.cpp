@@ -1208,7 +1208,9 @@ void Game::startNewGame()
     int  numHumansResolved = 0;
     {
         m_slotType[0] = 0;  // slot 0 is always you
-        uint32_t frng = static_cast<uint32_t>(SDL_GetTicks()) ^ 0xC0FFEE11u;
+        uint32_t frng = (m_forcedSeedSet ? m_forcedSeed
+                                         : static_cast<uint32_t>(SDL_GetTicks()))
+                        ^ 0xC0FFEE11u;
         auto resolveFac = [&](int f) {
             if (f >= 0 && f <= 8) return f;
             frng = frng * 1664525u + 1013904223u;
@@ -1260,7 +1262,17 @@ void Game::startNewGame()
     };
 
     WorldGenParams wgp;
-    wgp.seed        = static_cast<uint32_t>(SDL_GetTicks()) ^ 0x5A5A5A5Au;
+    wgp.seed        = m_forcedSeedSet
+                    ? m_forcedSeed
+                    : static_cast<uint32_t>(SDL_GetTicks()) ^ 0x5A5A5A5Au;
+    // Combat RNGs derive from the world seed too, and the seed is logged, so
+    // ANY run can be reproduced afterwards — not just --seed ones. (The RNGs
+    // are thread_local; seeding here covers the main thread, which is where
+    // all combat runs today. Phase 3 must pass RNGs explicitly instead.)
+    DamageCalc::seedRng(wgp.seed ^ 0xD00D5EEDu);
+    CombatEngine::seedTurnRng(wgp.seed ^ 0x7E57C0DEu);
+    gLog("[SEED] world seed=%u%s\n", wgp.seed,
+         m_forcedSeedSet ? " (forced via --seed)" : "");
     wgp.size        = m_mapSize;
     wgp.playerCount = slotCount;   // exactly as many zones/towns as setup slots
     wgp.waterRatio  = 0.18f;

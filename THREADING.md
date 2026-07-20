@@ -292,9 +292,12 @@ Everything needed is in the repo — no prior session context required.
 ```bash
 export PATH="/c/msys64/ucrt64/bin:$PATH"
 cmake -B build -G Ninja                            # reconfigure after file changes
-cmake --build build --target unnamed_strategy -j4  # the game
-cmake --build build --target sim_test -j4          # combat-balance sim (still here)
+cmake --build build --target unnamed_strategy -j4  # the game (the only target)
 ```
+
+(The `sim_test` combat-balance target was removed along with `sim_main.cpp`;
+`src/sim/` survives only as the in-editor SimulatorWindow's backend. Verify AI
+work with `--watch-ai-test` + `--seed=N` for reproducible worlds.)
 
 **Files for the phases still to come:**
 

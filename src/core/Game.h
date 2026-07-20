@@ -70,7 +70,15 @@ public:
     // in main.cpp.
     void autoStartWatchAI(int playerCount = 6, int shape = 0, int size = 0);
 
+    // --seed CLI: force the next startNewGame()'s world seed (worldgen,
+    // faction rolls, AI personalities, combat RNGs all derive from it), making
+    // runs reproducible — the missing piece for A/B-testing AI changes and the
+    // Phase 3 determinism differential (see THREADING.md).
+    void setForcedSeed(uint32_t s) { m_forcedSeed = s; m_forcedSeedSet = true; }
+
 private:
+    uint32_t m_forcedSeed    = 0;
+    bool     m_forcedSeedSet = false;
     // ── Core loop ──────────────────────────────────────────────────────────────
     void processEvents();
     void update(float dt);
