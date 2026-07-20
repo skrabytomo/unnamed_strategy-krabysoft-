@@ -29,12 +29,21 @@ lot has shipped since it was written. Current reality:
 - **One-click installer** — CMake install() + NSIS Setup.exe. See
   `packaging/README.md`. Run `./packaging/build_installer.sh`.
 
-**Threading / performance (2026-07-17 — see `THREADING.md`):**
-- **XL + 8 players freezes to 0 FPS while watching AI.** Cause is structural:
-  `updateWorldMap()` calls `doEndTurn()` synchronously from the frame loop, so
-  the render thread sits *inside* the AI for the whole turn (15% CPU during the
-  freeze = one core busy, seven idle). Fix is to get the AI off the render
-  thread — parallelism alone does not fix a freeze, it only shortens it.
+**Threading / performance (updated 2026-07-20 — see `THREADING.md`):**
+- **The 0 FPS Watch-AI freeze is FIXED.** The `doEndTurn()` AI block is now a
+  *resumable round* (`aiTurnSetup` / `aiTakeHeroTurn` / `doEndTurnPost` +
+  `Game::AiTurnState m_aiTurn`); Watch mode processes a few heroes per FRAME
+  (~8 ms budget from `updateWorldMap()`), so the render loop keeps drawing.
+  Normal play drains the same loop synchronously — identical order, no new
+  race surface. Verified old-vs-new with `--seed`: game logs byte-identical.
+- **AI turn cost itself collapsed first** (2026-07-19/20): per-turn path reuse,
+  O(1) land/sea connectivity fast-reject, unreachable-target memos, and a
+  march-cache divergence *behaviour bug* fix took pathfinding from ~3900 ms to
+  ~100 ms typical per round. Details + remaining items in `THREADING.md`.
+- **`--seed=N` CLI** (2026-07-20): forces the world seed; worldgen, faction
+  rolls, AI personalities and both combat RNGs derive from it, and every run
+  logs `[SEED]`, so ANY run is reproducible. This is the determinism net for
+  AI refactors (diff two runs' logs minus `[PERF]` lines).
 - **`fullgame_sim` was DELETED (2026-07-17).** Its AI was a separate, simpler
   reimplementation (`simHero`), not the real `doEndTurn`, so its balance numbers
   measured a bot that never shipped — and it seeded no combat RNG, so it was
@@ -46,19 +55,26 @@ lot has shipped since it was written. Current reality:
   (`Simulator`/`ArmyBuilder`) stay because the in-game map-editor SimulatorWindow
   and Conquest mode use them.
 - **No ThreadSanitizer on MinGW** — the ucrt64 toolchain ships zero sanitizer
-  runtimes; TSan is Linux/macOS/BSD only. Race detection needs a headless,
-  SDL-free target around the *real* planner, built under WSL/Linux. That target
-  doesn't exist yet — it's built in Phase 0/3 (see `THREADING.md`).
-- **Known race to fix before threading:** `DevLog::lines()` hands out a
-  reference to the shared vector with no lock while `gLog()` appends under one.
+  runtimes; TSan is Linux/macOS/BSD only. The `--seed` determinism differential
+  above is the working substitute on Windows.
+- ~~Known race: `DevLog::lines()`~~ — **fixed**; `DevLog::snapshot()` copies
+  under the lock.
 
-**Known open issues (from playtest, not yet fixed):**
-- Siege: units render on/fight atop castle walls; walls take too much damage
-  from normal units (siege engines should breach).
-- AI: some players idle; not trading gold / buying creatures when rich.
-  (AI-vs-AI attacks now common; naval invasion now works — see below.)
+**Known open issues (from playtest; status 2026-07-20):**
+- ~~Siege: units render on/fight atop castle walls~~ — **fixed**: standing on an
+  intact wall segment is impossible by construction (`meleePositions` excludes
+  battlements, `moveUnit`/`placeUnit` hard-refuse them); flyers now CROSS
+  intact walls (HoMM convention) but cannot end on one (`landableSteps`).
+- Siege: wall damage from normal units is already engine-gated (capped 1–6 vs
+  engines' `wallDamage` in `CombatEngine::attackWall`) — remaining question is
+  *tuning*, needs playtest.
+- AI: "some players idle" — largely explained and fixed by the march-cache
+  divergence bug (heroes yo-yoed toward docks instead of marching; see
+  THREADING.md). Gold-hoarding / trading when rich still unverified.
 - UI: no "already built" indicator in town; kingdom overview is text not visual;
   hero right-click artifact sheet not built; town/hero pickers need icons.
+- Naval: Fishing hull now actually earns its +100 g/day at sea (2026-07-20).
+  War-hull ramming and FishingHouse build-from-boat were already in.
 
 **Art gaps (Gemini work):** only 1 hero portrait per faction (all heroes look
 same); upgrade-path A/B unit sprites (0/108). See `ART_DROPIN_MANIFEST.md`,
@@ -93,7 +109,7 @@ See GAME_PROJECT.md for full design document.
 | Campaign system | src/campaign/CampaignManager.cpp, AlignmentSystem.h, CampaignDef.h | ✅ |
 | Hideout meta-layer | src/meta/HideoutDB.cpp (SQLite) | ✅ |
 | Audio | src/audio/AudioManager.cpp (SDL_mixer) | ✅ |
-| Combat simulator | src/sim/Simulator.cpp, ArmyBuilder.cpp (standalone sim_test binary) | ✅ |
+| Combat simulator | src/sim/Simulator.cpp, ArmyBuilder.cpp — backend for the in-editor SimulatorWindow and Conquest only (standalone `sim_test` binary REMOVED, see addendum) | ✅ |
 | Turn manager | src/core/TurnManager.cpp — 7-day week, income, end turn | ✅ |
 | Skill archetype system | src/combat/CombatEngine.cpp (`applyArchetype` in `initCombat`) | ✅ |
 | World-map AI (combat) | src/combat/CombatEngine.cpp — Passive (Easy) / Tactical (Normal+Hard); aiTargetScore() kill/danger-aware focus-fire targeting; enemy hero casts one spell per round incl. watch/auto mode (processOneAIAction) | ✅ |
@@ -105,7 +121,7 @@ See GAME_PROJECT.md for full design document.
 | **Siege Camp mechanic** | Hero::isSiegeCamping/siegeTargetTownId, Town::underSiege/siegeFortified/fortifyBonuses, Game_WorldMap.cpp renderSiegeCampPrompt/renderSiegeIndicator/triggerSiegeCombat | ✅ |
 | **Fortify button** | Town screen service bar (Game_Town.cpp), one use per siege turn, +4 DEF/+2 wall HP/+3 tower dmg | ✅ |
 | **March ability** | Hero::marchCooldownWeek/marchBonusActive, renderMarchButton() in Game_WorldMap.cpp — costs 25% move, gives +10% next week, 1-week CD | ✅ |
-| **Balance sim** | src/sim/FullGameSim.cpp + SimDB.cpp + fullgame_main.cpp — headless AI vs AI, SQLite results, all-vs-all balance report | ✅ |
+| ~~Balance sim~~ | ~~FullGameSim/SimDB/fullgame_main~~ — **DELETED 2026-07-17** (tested a fake AI; see addendum). Use `--watch-ai-test` + `--seed` instead | ❌ removed |
 | **Artifact shops** | ArtifactDef::shopPrice; Tavern wares (3 rotating Specials/week by town+week seed); ArtifactMerchant map object (permanent 3-artifact shop, seed stored in obj.value); Game_Town.cpp renderArtifactMerchantPopup() | ✅ |
 | **AI emergency hire** | exitCombat(): when last enemy hero dies and AI has a town, immediately spawns a replacement hero (T1 army scaled to week) so AI isn't passive until next weekly phase | ✅ |
 | **Arena map object** | WorldObjectType::Arena; hero chooses +1 ATK or +1 DEF, fights scaled Arena Champion; stat applied in exitCombat() on win; per-hero visit lock via obj.questState; 2-3 per map | ✅ |
@@ -190,3 +206,10 @@ cmake --build build -j4
 ./build/bin/unnamed_strategy
 ```
 Requires: SDL2, OpenGL 3.3, SDL_mixer. Dependencies (ImGui, nlohmann/json) fetched via CMake FetchContent.
+
+Dev/test CLI flags:
+- `--watch-ai-test[=N[:S[:Z]]]` — skip the menu, hidden window, N-player Watch
+  AI game (S shape 0-3, Z size 0-3); verify AI behaviour from stdout/gLog alone.
+- `--seed=N` — force the world seed (worldgen, factions, personalities, combat
+  RNGs). Every run logs its `[SEED]`, forced or not, so any run can be replayed.
+  Two runs with the same seed diverge only in `[PERF]` wall-clock timings.

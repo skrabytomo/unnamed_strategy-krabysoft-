@@ -13,7 +13,7 @@ rest with real state).
 | `CLAUDE.md` | Claude Code project instructions (build, branch rules). |
 | `CONQUEST_MODE.md` | Conquest mode design — all 5 phases IMPLEMENTED. |
 | `AI_ROADMAP.md` | Triaged "Project Omniscient" AI plan (DONE/FITS/NO-FIT tiers). |
-| `THREADING.md` | Plan for getting the AI off the render thread and onto many cores (fixes the XL/8-player 0 FPS freeze). Phases 0–1 landed; 2–4 designed. Read before touching `doEndTurn()` or adding threads. |
+| `THREADING.md` | AI off the render thread. **The 0 FPS Watch freeze is FIXED (2026-07-20)**: resumable AI round, frame-spread in Watch mode, verified by a `--seed` determinism differential. Remaining: worker-thread planning inside the new seams. Read before touching `doEndTurn()` or adding threads. |
 | `packaging/README.md` | One-click installer / packaging instructions. |
 
 ## Art references (art gaps, for Gemini generation)
@@ -33,8 +33,11 @@ rest with real state).
 
 ## Known open engine work (not in a dedicated doc)
 
-Tracked in `HANDOFF.md` addendum: siege walls, AI idle/no-trade/no-attack,
-naval (ships unused), town "already built" indicator, visual kingdom overview,
-hero right-click artifact sheet, icon-based town/hero pickers.
+Tracked in `HANDOFF.md` addendum (statuses updated 2026-07-20 — siege
+units-on-walls and the AI dock yo-yo "idle" bug are FIXED; naval hulls all do
+their jobs now): still open are siege wall-damage *tuning*, AI gold-hoarding
+verification, town "already built" indicator, visual kingdom overview, hero
+right-click artifact sheet, icon-based town/hero pickers.
 
-Performance / threading work is tracked in `THREADING.md` (XL 8-player freeze).
+Performance / threading work is tracked in `THREADING.md` (freeze fixed;
+worker-thread planning optional next).
