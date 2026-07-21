@@ -33,9 +33,11 @@ CONFIG = {
         'div[contenteditable="true"][role="textbox"]',
         'textarea',
     ],
+    # Locale-independent first (class / icon), English aria-label last. Your
+    # Gemini UI may not be in English, so never rely on the label text alone.
     "send_selectors": [
-        'button[aria-label="Send message" i]',
         'button.send-button',
+        'button[mattooltip*="Send" i]',
         'button[aria-label*="Send" i]',
     ],
     "quota_phrases": [
@@ -160,8 +162,8 @@ def js_call(func_body, *args):
 
 
 # ── page-side JS ──────────────────────────────────────────────────────────────
-JS_TYPE_AND_SEND = """
-(sels, sendSels, promptText) => {
+JS_TYPE = """
+(sels, promptText) => {
   let el = null;
   for (const s of sels) { const e = document.querySelector(s); if (e) { el = e; break; } }
   if (!el) return "NO_INPUT";
@@ -170,15 +172,42 @@ JS_TYPE_AND_SEND = """
         document.execCommand('insertText', false, promptText); }
   catch (e) { el.textContent = promptText; }
   el.dispatchEvent(new InputEvent('input', { bubbles: true }));
-  let sent = false;
-  for (const s of sendSels) {
-    const b = document.querySelector(s);
-    if (b && !b.disabled) { b.click(); sent = true; break; }
-  }
-  if (!sent) el.dispatchEvent(new KeyboardEvent('keydown',
-      { key:'Enter', code:'Enter', keyCode:13, which:13, bubbles:true }));
-  return "OK";
+  return "TYPED";
 }
+"""
+
+# Submit the typed prompt. Locale-independent: prefer class / send-icon /
+# submit-type, fall back to a full synthetic Enter sequence on the editor.
+JS_SEND = """
+(inputSels, sendSels) => {
+  const vis = e => e && e.offsetParent !== null && !e.disabled &&
+                   e.getAttribute('aria-disabled') !== 'true';
+  for (const s of sendSels) { const b = document.querySelector(s); if (vis(b)) { b.click(); return "CLICK:"+s; } }
+  for (const b of document.querySelectorAll('button[type="submit"]')) if (vis(b)) { b.click(); return "SUBMIT"; }
+  // Any visible button carrying a "send" material icon (locale-independent).
+  for (const b of document.querySelectorAll('button')) {
+    if (!vis(b)) continue;
+    const ic = b.querySelector('mat-icon, svg, i');
+    const tag = ((ic && (ic.getAttribute('fonticon') || ic.getAttribute('data-mat-icon-name') ||
+                 ic.textContent)) || '') + ' ' + (b.className || '');
+    if (/send/i.test(tag)) { b.click(); return "ICON"; }
+  }
+  let el = null;
+  for (const s of inputSels) { const e = document.querySelector(s); if (e) { el = e; break; } }
+  if (el) {
+    el.focus();
+    for (const t of ['keydown','keypress','keyup'])
+      el.dispatchEvent(new KeyboardEvent(t, {key:'Enter', code:'Enter', keyCode:13, which:13, bubbles:true, cancelable:true}));
+    return "ENTER";
+  }
+  return "NO_SEND";
+}
+"""
+
+# Current text in the prompt box (empty string once Gemini accepts the submit).
+JS_INPUT_TEXT = """
+(sels) => { for (const s of sels) { const e = document.querySelector(s);
+  if (e) return (e.innerText || e.value || '').trim(); } return null; }
 """
 
 JS_SNAPSHOT = """
@@ -285,12 +314,38 @@ def generate_one(cdp, asset, out_abs):
     time.sleep(1.0)
 
     before = cdp.evaluate(JS_SNAPSHOT) or []
-    status = cdp.evaluate(js_call(JS_TYPE_AND_SEND, CONFIG["input_selectors"],
-                                  CONFIG["send_selectors"], asset["_full_prompt"]))
-    if status != "OK":
+    if cdp.evaluate(js_call(JS_TYPE, CONFIG["input_selectors"], asset["_full_prompt"])) != "TYPED":
         debug_dump(cdp, "type_fail_" + asset["id"])
         return "fail"
-    log(f"  prompt sent, waiting up to {asset['wait_seconds']}s for the image…")
+    time.sleep(0.6)
+
+    # Send, then confirm the box cleared (Gemini empties it on accept). Retry once.
+    sent = False
+    for attempt in range(2):
+        how = cdp.evaluate(js_call(JS_SEND, CONFIG["input_selectors"], CONFIG["send_selectors"]))
+        deadline = time.time() + 6
+        while time.time() < deadline:
+            txt = cdp.evaluate(js_call(JS_INPUT_TEXT, CONFIG["input_selectors"]))
+            if txt is not None and len(txt) < 5:
+                sent = True
+                break
+            time.sleep(0.5)
+        if sent:
+            log(f"  submitted (via {how}); waiting up to {asset['wait_seconds']}s for the image…")
+            break
+        log(f"  submit attempt {attempt+1} didn't take (via {how}); retrying…")
+    if not sent:
+        try:
+            btns = cdp.evaluate(
+                "JSON.stringify(Array.from(document.querySelectorAll('button'))"
+                ".filter(b=>b.offsetParent!==null).map(b=>({al:b.getAttribute('aria-label'),"
+                "cls:b.className,tt:b.getAttribute('mattooltip'),"
+                "ic:(b.querySelector('mat-icon,svg,i')||{}).textContent})).slice(0,40))")
+            log("  visible buttons (for selector fixing): " + (btns or "[]"))
+        except Exception:
+            pass
+        debug_dump(cdp, "send_fail_" + asset["id"])
+        return "fail"
 
     src = cdp.evaluate(js_call(JS_WAIT_IMAGE, before, CONFIG["image_src_hints"],
                                CONFIG["min_image_px"], CONFIG["quota_phrases"],
