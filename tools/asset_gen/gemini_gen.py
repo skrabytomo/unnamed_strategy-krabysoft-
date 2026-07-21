@@ -3,77 +3,316 @@
 gemini_gen.py — drive your logged-in Gemini (in Brave) to generate the game's
 missing art, one asset at a time, until you run out of Gemini image quota.
 
-It attaches to an ALREADY-RUNNING Brave over the Chrome DevTools Protocol, so it
-reuses your existing Google login — the script never sees your password.
+ZERO third-party dependencies. It talks to an already-running Brave over the
+Chrome DevTools Protocol using only the Python standard library (raw WebSocket +
+Runtime.evaluate). That sidesteps MSYS2's "externally-managed" pip entirely — no
+Playwright, no venv, no installs.
 
-QUICK START (see README.md for detail):
-  1) Fully quit Brave (check Task Manager — no brave.exe left).
-  2) Launch Brave with remote debugging on your normal profile:
-       & "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe" --remote-debugging-port=9222
-     Sign in to https://gemini.google.com if you aren't already.
-  3) From tools/asset_gen/ run:  python gemini_gen.py
-     Add  --only hero   or  --only icon   to filter,  --limit 5  to cap a run.
+It reuses your existing Google login; the script never sees your password.
 
-Nothing is destructive: it only writes new PNGs into assets/ and skips any file
-that already exists (use --force to overwrite).
+QUICK START (see README.md):
+  1) Fully quit Brave (Task Manager — no brave.exe left).
+  2) ./launch_brave.sh        (Brave with --remote-debugging-port=9222, your profile)
+     Sign in at https://gemini.google.com if you aren't already.
+  3) python gemini_gen.py --dry-run     then     python gemini_gen.py
+     Filters: --only hero | --only icon   Cap: --limit 5   Redo: --force
 
-Gemini's web UI changes often. Every CSS/text selector lives in the CONFIG
-block below — if a step stops working, update it there. On any failure the
-script drops a screenshot + page HTML into tools/asset_gen/_debug/ so you can
-see what the page looked like and fix the selector.
+Skips any asset whose output PNG already exists, so re-run after a quota cutoff
+to continue where you left off.
+
+Gemini's web UI changes often. Selectors/quota-phrases live in CONFIG below; on
+any failure a screenshot + HTML dump go to _debug/ so you can fix the selector.
 """
-import argparse, json, os, sys, time, datetime, re
+import argparse, base64, datetime, http.client, json, os, socket, struct, sys, time, urllib.request
 
-# ── CONFIG: everything Gemini-UI-specific. Update here when Google changes it ──
 CONFIG = {
     "gemini_url": "https://gemini.google.com/app",
-    # Prompt input box (first match wins). Gemini uses a Quill contenteditable.
     "input_selectors": [
         'div.ql-editor[contenteditable="true"]',
         'rich-textarea div[contenteditable="true"]',
         'div[contenteditable="true"][role="textbox"]',
         'textarea',
     ],
-    # "New chat" control, to reset context between assets (optional; falls back
-    # to reloading the app URL).
-    "new_chat_selectors": [
-        'button[aria-label="New chat" i]',
-        'a[aria-label="New chat" i]',
-        'button[data-test-id="new-chat-button"]',
+    "send_selectors": [
+        'button[aria-label="Send message" i]',
+        'button.send-button',
+        'button[aria-label*="Send" i]',
     ],
-    # Text that means "you hit the quota / rate limit" -> stop cleanly.
     "quota_phrases": [
-        "you've reached your limit",
-        "you have reached your limit",
-        "try again later",
-        "come back later",
-        "reached your daily limit",
-        "limit for now",
-        "can't generate more images",
-        "unable to generate",
+        "you've reached your limit", "you have reached your limit",
+        "try again later", "come back later", "reached your daily limit",
+        "limit for now", "can't generate more images", "unable to generate",
     ],
-    # An <img> is treated as a generated result only if its src matches one of
-    # these AND it renders larger than min_image_px. Avatars/icons are filtered.
     "image_src_hints": ["googleusercontent.com", "blob:", "data:image"],
     "min_image_px": 256,
 }
 
-REPO_ROOT = None  # resolved at runtime (two levels up from this file)
+
+def log(m): print(f"[{datetime.datetime.now():%H:%M:%S}] {m}", flush=True)
 
 
-def log(msg):
-    print(f"[{datetime.datetime.now():%H:%M:%S}] {msg}", flush=True)
+# ── Minimal WebSocket client (RFC 6455, client-masked text frames) ────────────
+class WS:
+    def __init__(self, host, port, path):
+        self.sock = socket.create_connection((host, port), timeout=15)
+        key = base64.b64encode(os.urandom(16)).decode()
+        req = (f"GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\n"
+               "Upgrade: websocket\r\nConnection: Upgrade\r\n"
+               f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n")
+        self.sock.sendall(req.encode())
+        self._buf = b""
+        while b"\r\n\r\n" not in self._buf:
+            chunk = self.sock.recv(4096)
+            if not chunk:
+                raise ConnectionError("WebSocket handshake closed")
+            self._buf += chunk
+        head, self._buf = self._buf.split(b"\r\n\r\n", 1)
+        if b" 101 " not in head.split(b"\r\n", 1)[0] + b" ":
+            raise RuntimeError("WebSocket handshake failed: " + head.decode("latin1", "replace"))
+
+    def settimeout(self, t): self.sock.settimeout(t)
+
+    def _read(self, n):
+        while len(self._buf) < n:
+            chunk = self.sock.recv(1 << 16)
+            if not chunk:
+                raise ConnectionError("WebSocket closed")
+            self._buf += chunk
+        out, self._buf = self._buf[:n], self._buf[n:]
+        return out
+
+    def _frame(self, opcode, payload=b""):
+        mask = os.urandom(4)
+        n = len(payload)
+        hdr = bytearray([0x80 | opcode])
+        if n < 126:
+            hdr.append(0x80 | n)
+        elif n < 65536:
+            hdr.append(0x80 | 126); hdr += struct.pack(">H", n)
+        else:
+            hdr.append(0x80 | 127); hdr += struct.pack(">Q", n)
+        hdr += mask
+        self.sock.sendall(bytes(hdr) + bytes(b ^ mask[i & 3] for i, b in enumerate(payload)))
+
+    def send(self, text): self._frame(0x1, text.encode("utf-8"))
+
+    def recv(self):
+        data = bytearray()
+        while True:
+            b0, b1 = self._read(2)
+            fin, opcode = b0 & 0x80, b0 & 0x0F
+            length = b1 & 0x7F
+            if length == 126:
+                length = struct.unpack(">H", self._read(2))[0]
+            elif length == 127:
+                length = struct.unpack(">Q", self._read(8))[0]
+            payload = self._read(length) if length else b""
+            if opcode == 0x8:
+                raise ConnectionError("WebSocket close frame")
+            if opcode == 0x9:  # ping -> pong
+                self._frame(0xA, payload); continue
+            if opcode == 0xA:  # pong
+                continue
+            data += payload
+            if fin:
+                return data.decode("utf-8", "replace")
 
 
-def resolve_root(explicit):
-    if explicit:
-        return os.path.abspath(explicit)
-    here = os.path.dirname(os.path.abspath(__file__))
-    return os.path.abspath(os.path.join(here, "..", ".."))  # tools/asset_gen -> repo root
+# ── CDP client over the WebSocket ─────────────────────────────────────────────
+class CDP:
+    def __init__(self, ws): self.ws = ws; self._id = 0
+
+    def call(self, method, params=None, timeout=30):
+        self._id += 1
+        mid = self._id
+        self.ws.settimeout(timeout + 15)
+        self.ws.send(json.dumps({"id": mid, "method": method, "params": params or {}}))
+        deadline = time.time() + timeout + 12
+        while time.time() < deadline:
+            msg = json.loads(self.ws.recv())
+            if msg.get("id") == mid:
+                if "error" in msg:
+                    raise RuntimeError(f"{method}: {msg['error']}")
+                return msg.get("result", {})
+        raise TimeoutError(method)
+
+    def evaluate(self, expression, await_promise=False, timeout=30):
+        r = self.call("Runtime.evaluate",
+                      {"expression": expression, "awaitPromise": await_promise,
+                       "returnByValue": True}, timeout=timeout)
+        if "exceptionDetails" in r:
+            raise RuntimeError("JS: " + r["exceptionDetails"].get("text", "exception"))
+        return r.get("result", {}).get("value")
+
+
+def http_json(port, path):
+    c = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+    c.request("GET", path)
+    r = c.getresponse()
+    body = r.read()
+    c.close()
+    return json.loads(body)
+
+
+def js_call(func_body, *args):
+    """Wrap a JS arrow/function source and call it with json-encoded args."""
+    return "(" + func_body + ")(" + ",".join(json.dumps(a) for a in args) + ")"
+
+
+# ── page-side JS ──────────────────────────────────────────────────────────────
+JS_TYPE_AND_SEND = """
+(sels, sendSels, promptText) => {
+  let el = null;
+  for (const s of sels) { const e = document.querySelector(s); if (e) { el = e; break; } }
+  if (!el) return "NO_INPUT";
+  el.focus();
+  try { document.execCommand('selectAll', false, null);
+        document.execCommand('insertText', false, promptText); }
+  catch (e) { el.textContent = promptText; }
+  el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+  let sent = false;
+  for (const s of sendSels) {
+    const b = document.querySelector(s);
+    if (b && !b.disabled) { b.click(); sent = true; break; }
+  }
+  if (!sent) el.dispatchEvent(new KeyboardEvent('keydown',
+      { key:'Enter', code:'Enter', keyCode:13, which:13, bubbles:true }));
+  return "OK";
+}
+"""
+
+JS_SNAPSHOT = """
+() => Array.from(document.querySelectorAll('img'))
+        .map(e => e.currentSrc || e.src).filter(Boolean)
+"""
+
+JS_WAIT_IMAGE = """
+(before, hints, minpx, quota, maxMs) => new Promise(resolve => {
+  const seen = new Set(before);
+  const t0 = Date.now();
+  const tick = () => {
+    const body = (document.body.innerText || '').toLowerCase();
+    if (quota.some(q => body.includes(q))) return resolve("__QUOTA__");
+    for (const img of document.querySelectorAll('img')) {
+      const src = img.currentSrc || img.src;
+      if (!src || seen.has(src)) continue;
+      if (!hints.some(h => src.includes(h))) continue;
+      const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+      if (w >= minpx && h >= minpx) return resolve(src);
+    }
+    if (Date.now() - t0 > maxMs) return resolve(null);
+    setTimeout(tick, 1000);
+  };
+  tick();
+})
+"""
+
+JS_FETCH_B64 = """
+(src) => fetch(src).then(r => r.arrayBuffer()).then(buf => {
+  const by = new Uint8Array(buf); let bin = ''; const C = 0x8000;
+  for (let i = 0; i < by.length; i += C) bin += String.fromCharCode.apply(null, by.subarray(i, i + C));
+  return btoa(bin);
+}).catch(e => "ERR:" + e.message)
+"""
+
+JS_HAS_INPUT = """
+(sels) => sels.some(s => !!document.querySelector(s))
+"""
+
+
+def debug_dump(cdp, tag):
+    dbg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_debug")
+    os.makedirs(dbg, exist_ok=True)
+    stamp = f"{tag}_{datetime.datetime.now():%H%M%S}"
+    try:
+        shot = cdp.call("Page.captureScreenshot", {"format": "png"}, timeout=20)
+        with open(os.path.join(dbg, stamp + ".png"), "wb") as f:
+            f.write(base64.b64decode(shot["data"]))
+    except Exception as e:
+        log(f"  (screenshot failed: {e})")
+    try:
+        html = cdp.evaluate("document.documentElement.outerHTML")
+        with open(os.path.join(dbg, stamp + ".html"), "w", encoding="utf-8") as f:
+            f.write(html or "")
+    except Exception:
+        pass
+    log(f"  (debug -> _debug/{stamp}.*)")
+
+
+def save_image(cdp, src, out_abs):
+    os.makedirs(os.path.dirname(out_abs), exist_ok=True)
+    data = None
+    if src.startswith("data:image"):
+        data = base64.b64decode(src.split(",", 1)[1])
+    else:
+        b64 = cdp.evaluate(js_call(JS_FETCH_B64, src), await_promise=True, timeout=60)
+        if isinstance(b64, str) and not b64.startswith("ERR:"):
+            data = base64.b64decode(b64)
+        elif not src.startswith("blob:"):
+            # in-page fetch blocked (CORS) — try a plain download (signed URLs are often public)
+            try:
+                with urllib.request.urlopen(src, timeout=30) as r:
+                    data = r.read()
+            except Exception as e:
+                raise RuntimeError(f"page fetch and direct download both failed ({b64}; {e})")
+        else:
+            raise RuntimeError(f"blob fetch failed: {b64}")
+    if not data or len(data) < 1024:
+        raise RuntimeError("downloaded image suspiciously small")
+    with open(out_abs, "wb") as f:
+        f.write(data)
+    return len(data)
+
+
+def wait_for_input(cdp, timeout=20):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            if cdp.evaluate(js_call(JS_HAS_INPUT, CONFIG["input_selectors"])):
+                return True
+        except Exception:
+            pass
+        time.sleep(0.5)
+    return False
+
+
+def generate_one(cdp, asset, out_abs):
+    log(f"→ {asset['id']}  ->  {asset['out']}")
+    cdp.call("Page.navigate", {"url": CONFIG["gemini_url"]}, timeout=30)  # fresh chat
+    if not wait_for_input(cdp, 25):
+        debug_dump(cdp, "no_input_" + asset["id"])
+        return "fail"
+    time.sleep(1.0)
+
+    before = cdp.evaluate(JS_SNAPSHOT) or []
+    status = cdp.evaluate(js_call(JS_TYPE_AND_SEND, CONFIG["input_selectors"],
+                                  CONFIG["send_selectors"], asset["_full_prompt"]))
+    if status != "OK":
+        debug_dump(cdp, "type_fail_" + asset["id"])
+        return "fail"
+    log(f"  prompt sent, waiting up to {asset['wait_seconds']}s for the image…")
+
+    src = cdp.evaluate(js_call(JS_WAIT_IMAGE, before, CONFIG["image_src_hints"],
+                               CONFIG["min_image_px"], CONFIG["quota_phrases"],
+                               asset["wait_seconds"] * 1000),
+                       await_promise=True, timeout=asset["wait_seconds"] + 20)
+    if src == "__QUOTA__":
+        return "quota"
+    if not src:
+        debug_dump(cdp, "no_image_" + asset["id"])
+        return "fail"
+    try:
+        n = save_image(cdp, src, out_abs)
+        log(f"  saved {n} bytes -> {asset['out']}")
+        return "ok"
+    except Exception as e:
+        log(f"  download failed: {e}")
+        debug_dump(cdp, "dl_fail_" + asset["id"])
+        return "fail"
 
 
 def load_manifest(path):
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         m = json.load(f)
     d = m.get("defaults", {})
     for a in m["assets"]:
@@ -82,192 +321,34 @@ def load_manifest(path):
     return m
 
 
-def debug_dump(page, tag):
-    dbg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_debug")
-    os.makedirs(dbg, exist_ok=True)
-    stamp = f"{tag}_{datetime.datetime.now():%H%M%S}"
-    try:
-        page.screenshot(path=os.path.join(dbg, stamp + ".png"), full_page=True)
-        with open(os.path.join(dbg, stamp + ".html"), "w", encoding="utf-8") as f:
-            f.write(page.content())
-        log(f"  (debug written to _debug/{stamp}.png/.html)")
-    except Exception as e:
-        log(f"  (debug dump failed: {e})")
-
-
-def find_first(page, selectors, timeout=8000):
-    """Return the first locator that becomes visible, else None."""
-    deadline = time.time() + timeout / 1000.0
-    while time.time() < deadline:
-        for sel in selectors:
-            loc = page.locator(sel).first
-            try:
-                if loc.count() > 0 and loc.is_visible():
-                    return loc
-            except Exception:
-                pass
-        time.sleep(0.25)
-    return None
-
-
-def page_has_quota_msg(page):
-    try:
-        body = page.inner_text("body").lower()
-    except Exception:
-        return False
-    return any(p in body for p in CONFIG["quota_phrases"])
-
-
-def snapshot_img_srcs(page):
-    try:
-        return set(page.eval_on_selector_all(
-            "img", "els => els.map(e => e.currentSrc || e.src).filter(Boolean)"))
-    except Exception:
-        return set()
-
-
-def wait_for_new_image(page, before_srcs, wait_seconds):
-    """Poll for a NEW <img> that looks like a generated result. Returns src or None."""
-    deadline = time.time() + wait_seconds
-    hints = CONFIG["image_src_hints"]
-    minpx = CONFIG["min_image_px"]
-    while time.time() < deadline:
-        if page_has_quota_msg(page):
-            return "__QUOTA__"
-        try:
-            cand = page.evaluate(
-                """(args) => {
-                    const [before, hints, minpx] = args;
-                    const set = new Set(before);
-                    for (const img of document.querySelectorAll('img')) {
-                        const src = img.currentSrc || img.src;
-                        if (!src || set.has(src)) continue;
-                        if (!hints.some(h => src.includes(h))) continue;
-                        const w = img.naturalWidth || img.width;
-                        const h = img.naturalHeight || img.height;
-                        if (w >= minpx && h >= minpx) return src;
-                    }
-                    return null;
-                }""",
-                [list(before_srcs), hints, minpx])
-        except Exception:
-            cand = None
-        if cand:
-            return cand
-        time.sleep(1.0)
-    return None
-
-
-def download_image(context, page, src, out_abs):
-    os.makedirs(os.path.dirname(out_abs), exist_ok=True)
-    data = None
-    if src.startswith("data:image"):
-        import base64
-        b64 = src.split(",", 1)[1]
-        data = base64.b64decode(b64)
-    elif src.startswith("blob:"):
-        # Fetch the blob inside the page (only place the blob URL is valid),
-        # return it base64-encoded.
-        b64 = page.evaluate(
-            """async (url) => {
-                const r = await fetch(url);
-                const buf = await r.arrayBuffer();
-                let bin = ''; const bytes = new Uint8Array(buf);
-                for (let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
-                return btoa(bin);
-            }""", src)
-        import base64
-        data = base64.b64decode(b64)
-    else:
-        # https URL — fetch with the browser context so auth cookies apply.
-        resp = context.request.get(src)
-        if not resp.ok:
-            raise RuntimeError(f"HTTP {resp.status} fetching image")
-        data = resp.body()
-    if not data or len(data) < 1024:
-        raise RuntimeError("downloaded image suspiciously small")
-    with open(out_abs, "wb") as f:
-        f.write(data)
-    return len(data)
-
-
-def start_new_chat(page):
-    btn = find_first(page, CONFIG["new_chat_selectors"], timeout=3000)
-    if btn:
-        try:
-            btn.click()
-            time.sleep(1.5)
-            return
-        except Exception:
-            pass
-    # Fallback: reload the app to a fresh conversation.
-    page.goto(CONFIG["gemini_url"], wait_until="domcontentloaded")
-    time.sleep(2.0)
-
-
-def generate_one(context, page, asset, out_abs):
-    log(f"→ {asset['id']}  ->  {asset['out']}")
-    start_new_chat(page)
-
-    box = find_first(page, CONFIG["input_selectors"], timeout=15000)
-    if not box:
-        debug_dump(page, "no_input_" + asset["id"])
-        raise RuntimeError("prompt input box not found (update CONFIG.input_selectors)")
-
-    before = snapshot_img_srcs(page)
-    box.click()
-    box.type(asset["_full_prompt"], delay=4)
-    time.sleep(0.3)
-    page.keyboard.press("Enter")
-    log(f"  prompt sent, waiting up to {asset['wait_seconds']}s for the image…")
-
-    src = wait_for_new_image(page, before, asset["wait_seconds"])
-    if src == "__QUOTA__":
-        return "quota"
-    if not src:
-        debug_dump(page, "no_image_" + asset["id"])
-        if page_has_quota_msg(page):
-            return "quota"
-        return "fail"
-
-    try:
-        n = download_image(context, page, src, out_abs)
-        log(f"  saved {n} bytes -> {asset['out']}")
-        return "ok"
-    except Exception as e:
-        log(f"  download failed: {e}")
-        debug_dump(page, "dl_fail_" + asset["id"])
-        return "fail"
-
-
 def main():
-    global REPO_ROOT
-    ap = argparse.ArgumentParser(description="Generate missing game art via logged-in Gemini in Brave.")
-    ap.add_argument("--manifest", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "manifest.json"))
-    ap.add_argument("--port", type=int, default=9222, help="Brave remote-debugging port")
+    here = os.path.dirname(os.path.abspath(__file__))
+    ap = argparse.ArgumentParser(description="Generate missing game art via logged-in Gemini in Brave (stdlib only).")
+    ap.add_argument("--manifest", default=os.path.join(here, "manifest.json"))
+    ap.add_argument("--port", type=int, default=9222)
     ap.add_argument("--only", choices=["hero", "icon", "all"], default="all")
-    ap.add_argument("--limit", type=int, default=0, help="max assets to generate this run (0 = no cap)")
-    ap.add_argument("--repo-root", default=None, help="override repo root (default: two levels up)")
-    ap.add_argument("--force", action="store_true", help="regenerate even if the output file exists")
-    ap.add_argument("--between", type=float, default=3.0, help="seconds to pause between assets")
-    ap.add_argument("--dry-run", action="store_true", help="list what would be generated and exit")
+    ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--repo-root", default=os.path.abspath(os.path.join(here, "..", "..")))
+    ap.add_argument("--force", action="store_true")
+    ap.add_argument("--between", type=float, default=3.0)
+    ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    REPO_ROOT = resolve_root(args.repo_root)
+    root = os.path.abspath(args.repo_root)
     man = load_manifest(args.manifest)
 
     pending = []
     for a in man["assets"]:
         if args.only != "all" and a.get("kind") != args.only:
             continue
-        out_abs = os.path.join(REPO_ROOT, a["out"].replace("/", os.sep))
+        out_abs = os.path.join(root, a["out"].replace("/", os.sep))
         if os.path.exists(out_abs) and not args.force:
             continue
         pending.append((a, out_abs))
     if args.limit > 0:
         pending = pending[:args.limit]
 
-    log(f"repo root: {REPO_ROOT}")
+    log(f"repo root: {root}")
     log(f"{len(pending)} asset(s) pending" + (f" (kind={args.only})" if args.only != "all" else ""))
     for a, _ in pending:
         log(f"    {a['id']:14s} {a['out']}")
@@ -277,51 +358,51 @@ def main():
         log("Nothing to do. (Everything exists — use --force to redo.)")
         return 0
 
+    # Attach to Brave, pick a page target (prefer an existing Gemini tab).
     try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        log("Playwright is not installed. Run  ./setup.sh  first (or: pip install playwright).")
+        targets = http_json(args.port, "/json")
+    except Exception as e:
+        log(f"Could not reach Brave DevTools on port {args.port}: {e}")
+        log(f"Fully quit Brave, then run ./launch_brave.sh (adds --remote-debugging-port={args.port}).")
+        return 2
+    pages = [t for t in targets if t.get("type") == "page" and t.get("webSocketDebuggerUrl")]
+    if not pages:
+        log("No page target in Brave. Open a tab (any URL) and retry.")
+        return 2
+    page = next((p for p in pages if "gemini.google.com" in (p.get("url") or "")), pages[0])
+    ws_url = page["webSocketDebuggerUrl"]           # ws://127.0.0.1:PORT/devtools/page/ID
+    _, rest = ws_url.split("://", 1)
+    hostport, path = rest.split("/", 1)
+    host, port = hostport.split(":")
+    ws = WS(host, int(port), "/" + path)
+    cdp = CDP(ws)
+
+    cdp.call("Page.navigate", {"url": CONFIG["gemini_url"]}, timeout=30)
+    if not wait_for_input(cdp, 30):
+        url = cdp.evaluate("location.href") or ""
+        if "accounts.google.com" in url or "signin" in url.lower():
+            log("Gemini wants you to sign in — do it in that Brave window, then re-run.")
+        else:
+            log("Gemini prompt box never appeared — is the tab on gemini.google.com and loaded?")
+            debug_dump(cdp, "startup")
         return 2
 
     ok = fail = 0
-    with sync_playwright() as pw:
+    for i, (asset, out_abs) in enumerate(pending, 1):
+        log(f"[{i}/{len(pending)}]")
         try:
-            browser = pw.chromium.connect_over_cdp(f"http://localhost:{args.port}")
+            result = generate_one(cdp, asset, out_abs)
         except Exception as e:
-            log(f"Could not attach to Brave on port {args.port}: {e}")
-            log("Is Brave running with  --remote-debugging-port={0}  ? (Fully quit Brave first.)".format(args.port))
-            return 2
+            log(f"  error: {e}")
+            result = "fail"
+        if result == "quota":
+            log("Gemini quota reached — stopping cleanly. Re-run later to continue.")
+            break
+        ok += (result == "ok")
+        fail += (result != "ok")
+        time.sleep(args.between)
 
-        ctx = browser.contexts[0] if browser.contexts else browser.new_context()
-        page = ctx.new_page()
-        page.goto(CONFIG["gemini_url"], wait_until="domcontentloaded")
-        time.sleep(2.5)
-        if "accounts.google.com" in page.url or "signin" in page.url.lower():
-            log("Gemini is asking you to sign in — sign in in that Brave window, then re-run.")
-            return 2
-
-        for i, (asset, out_abs) in enumerate(pending, 1):
-            log(f"[{i}/{len(pending)}]")
-            try:
-                result = generate_one(ctx, page, asset, out_abs)
-            except Exception as e:
-                log(f"  error: {e}")
-                result = "fail"
-            if result == "quota":
-                log("Gemini quota reached — stopping cleanly. Re-run later to continue where you left off.")
-                break
-            if result == "ok":
-                ok += 1
-            else:
-                fail += 1
-            time.sleep(args.between)
-
-        try:
-            page.close()
-        except Exception:
-            pass
-
-    log(f"Done. generated={ok}  failed={fail}. Remaining will be picked up on the next run.")
+    log(f"Done. generated={ok}  failed={fail}. Remaining will be picked up next run.")
     return 0
 
 

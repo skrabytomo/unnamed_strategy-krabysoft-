@@ -1,19 +1,18 @@
 #!/usr/bin/env bash
-# One-time setup: install Playwright into the MSYS2/UCRT64 Python.
-# We attach to your existing Brave over CDP, so NO browser download is needed
-# (that's why we skip `playwright install`).
-set -e
+# Preflight only — there is NOTHING to install. gemini_gen.py uses the Python
+# standard library exclusively (raw WebSocket + Chrome DevTools Protocol), so it
+# runs on the MSYS2 Python you already have. No pip, no venv, no Playwright.
 PY="${PYTHON:-python3}"
+BRAVE="/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
 
-echo "== bootstrapping pip =="
-"$PY" -m ensurepip --upgrade || true
-"$PY" -m pip install --upgrade pip
+echo "== python =="
+"$PY" --version || { echo "python3 not found"; exit 1; }
 
-echo "== installing playwright (python package only) =="
-"$PY" -m pip install playwright
+echo "== brave =="
+if [ -f "$BRAVE" ]; then echo "found: $BRAVE"; else echo "NOT found at $BRAVE — edit launch_brave.sh"; fi
 
 echo
-echo "Done. Next:"
-echo "  1) Fully quit Brave (no brave.exe in Task Manager)."
-echo "  2) ./launch_brave.sh        (or run launch_brave.ps1 in PowerShell)"
-echo "  3) python gemini_gen.py --dry-run   then   python gemini_gen.py"
+echo "No install needed. Next:"
+echo "  1) Fully quit Brave — check Task Manager, no brave.exe left."
+echo "  2) ./launch_brave.sh          (Brave with --remote-debugging-port=9222)"
+echo "  3) $PY gemini_gen.py --dry-run   then   $PY gemini_gen.py"

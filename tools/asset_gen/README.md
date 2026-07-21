@@ -5,6 +5,10 @@ game's missing **hero portraits** and **faction crest icons**, one at a time,
 until you run out of Gemini image quota. It attaches to a Brave you launch — it
 **never sees your password** and downloads nothing but the finished PNGs.
 
+**No dependencies.** It talks to Brave over the Chrome DevTools Protocol using
+only the Python **standard library** (a tiny built-in WebSocket + `Runtime.evaluate`),
+so it runs on the MSYS2 Python you already have — no pip, no venv, no Playwright.
+
 Scope is deliberately **hero art + icons only**. Unit sprites and their upgrade
 variants are **excluded** (you handle those separately). See
 [`MISSING_ART.md`](MISSING_ART.md) for the full list + prompts;
@@ -12,15 +16,17 @@ variants are **excluded** (you handle those separately). See
 
 ## Setup (once)
 
+Nothing to install. Optional preflight:
 ```bash
 cd tools/asset_gen
-./setup.sh          # ensurepip -> pip -> playwright  (no browser download)
+./setup.sh          # just checks python + brave and prints next steps
 ```
 
 ## Each run
 
-1. **Fully quit Brave** — check Task Manager, no `brave.exe` left. (Otherwise the
-   debug flag is silently ignored.)
+1. **Fully quit Brave** — check Task Manager, no `brave.exe` left. **This is the
+   #1 gotcha:** if any Brave is already running, `--remote-debugging-port` is
+   silently ignored and the port never opens (you'll get "connection refused").
 2. Launch Brave with the debug port on your normal profile:
    ```bash
    ./launch_brave.sh            # bash
