@@ -1,0 +1,55 @@
+{
+  "_comment": "Missing-art manifest for the Gemini generator. Edit freely: add/remove entries, tweak prompts. The script wraps each `prompt` with `wrap_prefix` + `style` (see defaults) before sending to Gemini. `out` is repo-root-relative. An entry is SKIPPED if `out` already exists (unless --force).",
+  "defaults": {
+    "wrap_prefix": "Generate a single high-detail image, 1:1 square aspect ratio. ",
+    "style": " Art style: dark-fantasy strategy game art, painterly, high contrast, clean readable silhouette, dramatic rim lighting, plain dark background, no text, no words, no watermark, no border, centered composition.",
+    "wait_seconds": 120
+  },
+  "assets": [
+    { "id": "portrait_f0_1", "kind": "hero", "out": "assets/portraits/faction_0_1.png", "prompt": "Fantasy character portrait bust, facing forward: a radiant Holy Order paladin commander in white-and-gold plate armor, faint golden halo, noble stern face." },
+    { "id": "portrait_f0_2", "kind": "hero", "out": "assets/portraits/faction_0_2.png", "prompt": "Fantasy character portrait bust, facing forward: a Holy Order high priestess of light, white and gold robes, glowing holy staff, serene glowing eyes." },
+    { "id": "portrait_f0_3", "kind": "hero", "out": "assets/portraits/faction_0_3.png", "prompt": "Fantasy character portrait bust, facing forward: a zealous Holy Order crusader knight in a winged helm, sunlit white-gold armor, resolute expression." },
+
+    { "id": "portrait_f1_1", "kind": "hero", "out": "assets/portraits/faction_1_1.png", "prompt": "Fantasy character portrait bust, facing forward: a grim Crimson Wardens blood-knight in polished silver armor and a deep crimson cloak, disciplined cold stare." },
+    { "id": "portrait_f1_2", "kind": "hero", "out": "assets/portraits/faction_1_2.png", "prompt": "Fantasy character portrait bust, facing forward: a Crimson Wardens templar with faint self-inflicted ritual scars, silver-and-red armor, solemn devout expression." },
+    { "id": "portrait_f1_3", "kind": "hero", "out": "assets/portraits/faction_1_3.png", "prompt": "Fantasy character portrait bust, facing forward: a highland fortress captain of the Crimson Wardens, silver breastplate, crimson tabard, weathered scarred face." },
+
+    { "id": "portrait_f2_1", "kind": "hero", "out": "assets/portraits/faction_2_1.png", "prompt": "Fantasy character portrait bust, facing forward: a Thornkin druid beastmaster wearing living-wood and leaf armor, moss and bark, calm wild green eyes." },
+    { "id": "portrait_f2_2", "kind": "hero", "out": "assets/portraits/faction_2_2.png", "prompt": "Fantasy character portrait bust, facing forward: a thorn-crowned Thornkin forest warden with branching antlers, vines and bark skin, fierce protective look." },
+    { "id": "portrait_f2_3", "kind": "hero", "out": "assets/portraits/faction_2_3.png", "prompt": "Fantasy character portrait bust, facing forward: a Thornkin symbiotic ranger bonded to a small beast on the shoulder, leaf-cloak, sharp attentive gaze." },
+
+    { "id": "portrait_f3_1", "kind": "hero", "out": "assets/portraits/faction_3_1.png", "prompt": "Fantasy character portrait bust, facing forward: an Eternal Empire undead death-lord wearing a jagged bone crown, black-and-silver armor, hollow glowing eyes." },
+    { "id": "portrait_f3_2", "kind": "hero", "out": "assets/portraits/faction_3_2.png", "prompt": "Fantasy character portrait bust, facing forward: a pale Eternal Empire necromancer in flowing black robes with violet death-magic wisps, gaunt sinister face." },
+    { "id": "portrait_f3_3", "kind": "hero", "out": "assets/portraits/faction_3_3.png", "prompt": "Fantasy character portrait bust, facing forward: a skeletal Eternal Empire knight-commander with a ghostly second-soul aura, tarnished dark armor." },
+
+    { "id": "portrait_f4_1", "kind": "hero", "out": "assets/portraits/faction_4_1.png", "prompt": "Fantasy character portrait bust, facing forward: a Bloodsworn cultist ascendant in dark-red robes covered in ritual scars, fanatical burning eyes." },
+    { "id": "portrait_f4_2", "kind": "hero", "out": "assets/portraits/faction_4_2.png", "prompt": "Fantasy character portrait bust, facing forward: a demonic Bloodsworn blood-priest mid-ascension, growing horns, crimson energy, cruel ecstatic grin." },
+    { "id": "portrait_f4_3", "kind": "hero", "out": "assets/portraits/faction_4_3.png", "prompt": "Fantasy character portrait bust, facing forward: a swamp-corrupted Bloodsworn blood-knight in blackened red plate, dripping crimson runes, menacing stare." },
+
+    { "id": "portrait_f5_1", "kind": "hero", "out": "assets/portraits/faction_5_1.png", "prompt": "Fantasy character portrait bust, facing forward: a corrupted Voidkin void-elf warlock wreathed in purple void energy, pale skin, unsettling glowing eyes." },
+    { "id": "portrait_f5_2", "kind": "hero", "out": "assets/portraits/faction_5_2.png", "prompt": "Fantasy character portrait bust, facing forward: a Voidkin possession-sorcerer with swirling void-purple eyes and floating dark runes, sly threatening look." },
+    { "id": "portrait_f5_3", "kind": "hero", "out": "assets/portraits/faction_5_3.png", "prompt": "Fantasy character portrait bust, facing forward: a Voidkin corrupted nature shaman with twisted blackened antlers, decaying leaves, eerie violet glow." },
+
+    { "id": "portrait_f6_1", "kind": "hero", "out": "assets/portraits/faction_6_1.png", "prompt": "Fantasy character portrait bust, facing forward: an Iron Assembly dwarven runesmith artificer with a mechanical arm, glowing runes, soot-streaked determined face." },
+    { "id": "portrait_f6_2", "kind": "hero", "out": "assets/portraits/faction_6_2.png", "prompt": "Fantasy character portrait bust, facing forward: an Iron Assembly engineer-commander in runic steam power-armor, brass and iron, glowing rune goggles." },
+    { "id": "portrait_f6_3", "kind": "hero", "out": "assets/portraits/faction_6_3.png", "prompt": "Fantasy character portrait bust, facing forward: an Iron Assembly forge-master holding a glowing blueprint, gears and pistons, gruff confident expression." },
+
+    { "id": "portrait_f7_1", "kind": "hero", "out": "assets/portraits/faction_7_1.png", "prompt": "Fantasy character portrait bust, facing forward: an Amalgamate flesh-metal hybrid warlord, biomechanical fusion of muscle and steel plating, cold artificial eye." },
+    { "id": "portrait_f7_2", "kind": "hero", "out": "assets/portraits/faction_7_2.png", "prompt": "Fantasy character portrait bust, facing forward: a grotesque Amalgamate organic-machine surgeon, exposed sinew and chrome tubing, unnerving stitched face." },
+    { "id": "portrait_f7_3", "kind": "hero", "out": "assets/portraits/faction_7_3.png", "prompt": "Fantasy character portrait bust, facing forward: an adaptive Amalgamate amalgam leader with shifting armored plates over living flesh, many glinting eyes." },
+
+    { "id": "portrait_f8_1", "kind": "hero", "out": "assets/portraits/faction_8_1.png", "prompt": "Fantasy character portrait bust, facing forward: an enigmatic Convergence hooded arcanist wreathed in shifting prismatic mirror-energy, face half in shadow." },
+    { "id": "portrait_f8_2", "kind": "hero", "out": "assets/portraits/faction_8_2.png", "prompt": "Fantasy character portrait bust, facing forward: a masked Convergence mirror-mage in reflective robes echoing many magic schools, calm inscrutable pose." },
+    { "id": "portrait_f8_3", "kind": "hero", "out": "assets/portraits/faction_8_3.png", "prompt": "Fantasy character portrait bust, facing forward: a Convergence void-hideout sorcerer surrounded by fractured mirror shards reflecting arcane runes." },
+
+    { "id": "crest_f0", "kind": "icon", "out": "assets/towns/crest_0.png", "prompt": "Heraldic faction crest emblem for the Holy Order: a radiant sun-and-winged-shield insignia, gold and white, symmetrical." },
+    { "id": "crest_f1", "kind": "icon", "out": "assets/towns/crest_1.png", "prompt": "Heraldic faction crest emblem for the Crimson Wardens: a silver tower flanked by a crimson drop of blood, symmetrical." },
+    { "id": "crest_f2", "kind": "icon", "out": "assets/towns/crest_2.png", "prompt": "Heraldic faction crest emblem for the Thornkin: an antlered tree-and-thorn sigil, deep green and bark-brown, symmetrical." },
+    { "id": "crest_f3", "kind": "icon", "out": "assets/towns/crest_3.png", "prompt": "Heraldic faction crest emblem for the Eternal Empire: a crowned skull over crossed bone scepters, black and bone-white, symmetrical." },
+    { "id": "crest_f4", "kind": "icon", "out": "assets/towns/crest_4.png", "prompt": "Heraldic faction crest emblem for the Bloodsworn: a chalice overflowing with blood beneath jagged horns, dark red and black, symmetrical." },
+    { "id": "crest_f5", "kind": "icon", "out": "assets/towns/crest_5.png", "prompt": "Heraldic faction crest emblem for the Voidkin: a corrupted eye within twisted antlers, void-purple and black, symmetrical." },
+    { "id": "crest_f6", "kind": "icon", "out": "assets/towns/crest_6.png", "prompt": "Heraldic faction crest emblem for the Iron Assembly: a runic cog-and-hammer sigil, brass and iron grey with glowing runes, symmetrical." },
+    { "id": "crest_f7", "kind": "icon", "out": "assets/towns/crest_7.png", "prompt": "Heraldic faction crest emblem for the Amalgamate: a fused flesh-and-gear ouroboros, sickly grey-green and chrome, symmetrical." },
+    { "id": "crest_f8", "kind": "icon", "out": "assets/towns/crest_8.png", "prompt": "Heraldic faction crest emblem for the Convergence: a prismatic mirrored hexagon radiating many-colored arcane rays, symmetrical." }
+  ]
+}
