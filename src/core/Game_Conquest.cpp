@@ -217,6 +217,28 @@ void Game::renderConquest()
         const ConquestNode& n = nodes[i];
         ImVec2 p = nodePos(n);
         dl->AddCircleFilled(p, R, nodeColor(n));
+        // Threat preview: the strongest (highest tier the node's week unlocks)
+        // enemy creature, drawn inside the node so you can read the fight at a
+        // glance instead of a plain coloured dot. Treasure caches have no army.
+        if (n.type != ConquestNodeType::Treasure) {
+            FactionId ef = m_conquest.enemyFactionForNode((int)i);
+            int ew = m_conquest.enemyWeeksForNode((int)i);
+            int topTier = 0;
+            for (int t = 6; t >= 1; --t) {
+                if (ArmyBuilder::unlockWeekForTier(t) <= ew &&
+                    m_registry.getUnitDef(ef, t, UpgradePath::None)) { topTier = t; break; }
+            }
+            int fi = (int)ef, ti = topTier - 1;
+            if (topTier >= 1 && fi >= 0 && fi < NUM_FACTIONS &&
+                ti >= 0 && ti < NUM_UNIT_TIERS && m_unitTex[fi][ti].ok()) {
+                int cols = std::max(1, m_unitTexCols[fi][ti]);
+                float s = R * 1.5f;   // fits inside the ring; corners barely touch
+                dl->AddImage((ImTextureID)(uintptr_t)m_unitTex[fi][ti].id(),
+                             {p.x - s * 0.5f, p.y - s * 0.5f},
+                             {p.x + s * 0.5f, p.y + s * 0.5f},
+                             {0.f, 0.f}, {1.f / cols, 1.f});
+            }
+        }
         dl->AddCircle(p, R, IM_COL32(220, 200, 150, 200), 0, 2.0f);
         const char* lbl = nodeTypeName(n.type);
         ImVec2 ts = ImGui::CalcTextSize(lbl);

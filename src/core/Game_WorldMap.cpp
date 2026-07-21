@@ -4679,7 +4679,10 @@ void Game::renderWorldMapImGui()
             const auto& udefs = m_registry.units();
             ImGui::TextColored({1.f,0.82f,0.2f,1.f}, "WATCH AI vs AI");
             ImGui::SameLine(0, 16);
-            ImGui::Text("Week %d", m_turns.week());
+            // Show the day too — the watch overlay only had the week, so the
+            // day counter the normal HUD shows "disappeared" the moment you
+            // started spectating.
+            ImGui::Text("Week %d, Day %d", m_turns.week(), m_turns.day());
             // One-click speed steps instead of a float slider. Dragging a
             // slider at 8x was effectively impossible: the AI turn eats the
             // frame, so you get a couple of frames a second and the drag never

@@ -69,7 +69,12 @@ void Game::renderMainMenu()
     drawMenuBackdrop(io.DisplaySize.x, io.DisplaySize.y, 70);
 
     ImGui::SetNextWindowPos(ImVec2(cx, cy), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowSize(ImVec2(400, 0), ImGuiCond_Always);
+    // The New Game (1) and Watch AI (6) screens host the multi-column player
+    // lobby — 400px squeezed the faction/hero cells down to postage stamps.
+    // Give those two screens a wide window so the picker cells read at HUD
+    // scale; every other menu screen stays the compact 400px column.
+    bool wideLobby = (m_menuMode == 1 || m_menuMode == 6);
+    ImGui::SetNextWindowSize(ImVec2(wideLobby ? 660.0f : 400.0f, 0), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.92f);
     ImGuiWindowFlags wf = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                           ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
@@ -171,17 +176,44 @@ void Game::renderMainMenu()
             static const char* kBonusNames[] = {
                 "Artifact", "+5 Resource", "+1500 Gold"
             };
+            // Self-contained iconography for the starting-bonus picker (no
+            // dedicated art): a violet gem (Artifact), a green crystal
+            // (+5 Resource), and a gold coin (+1500 Gold). Drawn into `dl` so
+            // both the always-visible cell and the popup tiles share one look.
+            auto drawBonusIcon = [](ImDrawList* dl, ImVec2 tl, float sz, int b) {
+                ImVec2 c = { tl.x + sz * 0.5f, tl.y + sz * 0.5f };
+                float r = sz * 0.34f;
+                if (b == 0) {                              // Artifact — violet gem
+                    ImU32 col = IM_COL32(180, 120, 235, 255);
+                    dl->AddQuadFilled({c.x, c.y - r}, {c.x + r, c.y},
+                                      {c.x, c.y + r}, {c.x - r, c.y}, col);
+                    dl->AddQuad({c.x, c.y - r}, {c.x + r, c.y},
+                                {c.x, c.y + r}, {c.x - r, c.y}, IM_COL32(235, 215, 255, 220), 1.6f);
+                } else if (b == 1) {                       // +5 Resource — green crystal
+                    ImU32 col = IM_COL32(90, 200, 120, 255);
+                    dl->AddTriangleFilled({c.x, c.y - r}, {c.x + r, c.y + r * 0.6f},
+                                          {c.x - r, c.y + r * 0.6f}, col);
+                    dl->AddTriangle({c.x, c.y - r}, {c.x + r, c.y + r * 0.6f},
+                                    {c.x - r, c.y + r * 0.6f}, IM_COL32(210, 255, 220, 220), 1.6f);
+                } else {                                   // +1500 Gold — coin
+                    dl->AddCircleFilled(c, r, IM_COL32(230, 190, 60, 255));
+                    dl->AddCircle(c, r, IM_COL32(120, 90, 20, 255), 0, 2.0f);
+                    dl->AddCircle(c, r * 0.55f, IM_COL32(255, 235, 160, 200), 0, 1.4f);
+                }
+            };
             m_slotType[0]    = 0;                    // slot 0 is always you
             m_slotFaction[0] = m_newGameFaction;     // kept in sync for startNewGame
             // Column layout: [type] [faction] [hero] [bonus] [team swatch]
             // 34 was too small to read the crest/portrait art at all —
             // "the town selection and hero is too small" — the cell art is the
-            // whole point of the picker now, so give it room.
-            float rowH   = 48.f;
-            float typeW  = (bw - 16) * 0.14f;
-            float facW   = (bw - 16) * 0.26f;
-            float heroW  = (bw - 16) * 0.26f;
-            float bonW   = (bw - 16) * 0.24f;
+            // whole point of the picker now, so give it room. 64px matches the
+            // in-game hero-panel portrait scale, which is the size the player
+            // asked for ("similar to ingame huds size").
+            float rowH   = 64.f;
+            float typeW  = (bw - 16) * 0.13f;
+            float facW   = (bw - 16) * 0.27f;
+            float heroW  = (bw - 16) * 0.27f;
+            float bonW   = (bw - 16) * 0.23f;
             float teamW  = (bw - 16) * 0.10f;
 
             // Header row
@@ -357,21 +389,57 @@ void Game::renderMainMenu()
                     }
                 }
 
-                // ── Starting bonus combo ──────────────────────────────────────
+                // ── Starting bonus: clickable icon opens a PICTURE GRID ───────
+                // (was a plain combobox — "the resource is still combobox not
+                // same as the first 2"; now it matches faction/hero.)
                 ImGui::SameLine(0, 4);
                 {
-                    ImGui::SetNextItemWidth(bonW);
                     int bsel = std::clamp(m_slotBonus[s], 0, 2);
-                    if (ImGui::BeginCombo("##bon", kBonusNames[bsel])) {
-                        for (int bi = 0; bi < 3; ++bi) {
-                            bool chosen = (bsel == bi);
-                            if (ImGui::Selectable(kBonusNames[bi], chosen)) m_slotBonus[s] = bi;
-                            if (chosen) ImGui::SetItemDefaultFocus();
-                        }
-                        ImGui::EndCombo();
-                    }
+                    char popId[24]; std::snprintf(popId, sizeof(popId), "##bonpick%d", s);
+
+                    ImVec2 cur = ImGui::GetCursorScreenPos();
+                    if (ImGui::Button(popId, ImVec2(bonW, rowH)))
+                        ImGui::OpenPopup(popId);
                     if (ImGui::IsItemHovered())
                         ImGui::SetTooltip("Starting bonus: random artifact, +5 key resource, or +1500 gold.");
+                    ImDrawList* dl = ImGui::GetWindowDrawList();
+                    float ic = rowH - 4;
+                    drawBonusIcon(dl, {cur.x + 2, cur.y + 2}, ic, bsel);
+                    dl->AddText({cur.x + ic + 8, cur.y + rowH * 0.5f - 7},
+                                IM_COL32(230,230,230,255), kBonusNames[bsel]);
+
+                    // Picture-grid popup: one tile per bonus, name underneath.
+                    if (ImGui::BeginPopup(popId)) {
+                        const float tile = 84.f, cell = tile + 10.f;
+                        for (int bi = 0; bi < 3; ++bi) {
+                            if (bi) ImGui::SameLine();
+                            ImGui::PushID(bi);
+                            ImVec2 p = ImGui::GetCursorScreenPos();
+                            bool sel = (bsel == bi);
+                            if (ImGui::InvisibleButton("##b", ImVec2(cell, tile + 20))) {
+                                m_slotBonus[s] = bi;
+                                ImGui::CloseCurrentPopup();
+                            }
+                            bool hov = ImGui::IsItemHovered();
+                            ImDrawList* pd = ImGui::GetWindowDrawList();
+                            pd->AddRectFilled({p.x + 5, p.y}, {p.x + 5 + tile, p.y + tile},
+                                              IM_COL32(48, 48, 60, 255), 4.f);
+                            drawBonusIcon(pd, {p.x + 5 + tile * 0.5f - tile * 0.34f,
+                                               p.y + tile * 0.5f - tile * 0.34f}, tile * 0.68f, bi);
+                            if (sel)
+                                pd->AddRect({p.x + 4, p.y - 1}, {p.x + 6 + tile, p.y + tile + 1},
+                                            IM_COL32(255,215,80,255), 4.f, 0, 3.f);
+                            else if (hov)
+                                pd->AddRect({p.x + 4, p.y - 1}, {p.x + 6 + tile, p.y + tile + 1},
+                                            IM_COL32(160,200,255,200), 4.f, 0, 2.f);
+                            float tw = ImGui::CalcTextSize(kBonusNames[bi]).x;
+                            pd->AddText({p.x + 5 + (tile - tw) * 0.5f, p.y + tile + 3},
+                                        sel ? IM_COL32(255,215,80,255) : IM_COL32(210,210,210,255),
+                                        kBonusNames[bi]);
+                            ImGui::PopID();
+                        }
+                        ImGui::EndPopup();
+                    }
                 }
 
                 // ── Alliance: colored swatch (click to cycle FFA / Team 1-4) ──

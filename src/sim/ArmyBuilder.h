@@ -38,12 +38,13 @@ public:
     // Hero level from weeks: 2 fights/week × XP ramp → approx level
     static int heroLevelFromWeeks(int weeks);
 
-private:
     // Simplified build-order assumption used only for the "what would this
     // faction's army look like at week N" estimate (real in-game unlock
-    // depends on prerequisites/resources, not a fixed week).
+    // depends on prerequisites/resources, not a fixed week). Public so the
+    // Conquest node map can preview the strongest creature a node fields.
     static int unlockWeekForTier(int tier);
 
+private:
     // Shared registry instance — self-initializing, used by both the in-game
     // Battle Simulator and the headless balance sim (fullgame_main), neither
     // of which necessarily has a live Game/town instance to query.
