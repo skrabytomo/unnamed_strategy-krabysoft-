@@ -1,0 +1,6 @@
+# Shell scripts MUST stay LF (CRLF breaks the bash shebang). Keep the Python
+# and JSON LF too so they run identically on any checkout, regardless of the
+# repo-wide autocrlf setting.
+*.sh  text eol=lf
+*.py  text eol=lf
+*.json text eol=lf
