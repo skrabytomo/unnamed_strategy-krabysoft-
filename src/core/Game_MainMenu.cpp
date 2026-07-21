@@ -176,30 +176,35 @@ void Game::renderMainMenu()
             static const char* kBonusNames[] = {
                 "Artifact", "+5 Resource", "+1500 Gold"
             };
-            // Self-contained iconography for the starting-bonus picker (no
-            // dedicated art): a violet gem (Artifact), a green crystal
-            // (+5 Resource), and a gold coin (+1500 Gold). Drawn into `dl` so
-            // both the always-visible cell and the popup tiles share one look.
-            auto drawBonusIcon = [](ImDrawList* dl, ImVec2 tl, float sz, int b) {
-                ImVec2 c = { tl.x + sz * 0.5f, tl.y + sz * 0.5f };
-                float r = sz * 0.34f;
-                if (b == 0) {                              // Artifact — violet gem
-                    ImU32 col = IM_COL32(180, 120, 235, 255);
-                    dl->AddQuadFilled({c.x, c.y - r}, {c.x + r, c.y},
-                                      {c.x, c.y + r}, {c.x - r, c.y}, col);
-                    dl->AddQuad({c.x, c.y - r}, {c.x + r, c.y},
-                                {c.x, c.y + r}, {c.x - r, c.y}, IM_COL32(235, 215, 255, 220), 1.6f);
-                } else if (b == 1) {                       // +5 Resource — green crystal
-                    ImU32 col = IM_COL32(90, 200, 120, 255);
-                    dl->AddTriangleFilled({c.x, c.y - r}, {c.x + r, c.y + r * 0.6f},
-                                          {c.x - r, c.y + r * 0.6f}, col);
-                    dl->AddTriangle({c.x, c.y - r}, {c.x + r, c.y + r * 0.6f},
-                                    {c.x - r, c.y + r * 0.6f}, IM_COL32(210, 255, 220, 220), 1.6f);
-                } else {                                   // +1500 Gold — coin
-                    dl->AddCircleFilled(c, r, IM_COL32(230, 190, 60, 255));
-                    dl->AddCircle(c, r, IM_COL32(120, 90, 20, 255), 0, 2.0f);
-                    dl->AddCircle(c, r * 0.55f, IM_COL32(255, 235, 160, 200), 0, 1.4f);
+            // Real in-game icons from the resource atlas (assets/icons.png,
+            // 8x6 grid): Gold = cell 32, the selected faction's key resource
+            // for "+5 Resource", and the treasure-chest (cell 6) for Artifact.
+            // Falls back to a coloured dot only if the atlas failed to load.
+            auto factionResAtlas = [](int f) -> int {
+                switch (f) {
+                    case 0: case 1: return 34;   // Holy Order / Crimson Wardens → Faith Stones
+                    case 2: case 5: return 36;   // Thornkin / Voidkin          → Verdant Sap
+                    case 3: case 8: return 37;   // Eternal Empire / Convergence → Mercury
+                    case 4: case 7: return 35;   // Bloodsworn / Amalgamate      → Blood Essence
+                    case 6:         return 33;   // Iron Assembly                → Iron
+                    default:        return 33;   // Random/unknown               → Iron (game default)
                 }
+            };
+            auto drawBonusIcon = [this, factionResAtlas]
+                                 (ImDrawList* dl, ImVec2 tl, float sz, int b, int fac) {
+                int atlas = (b == 0) ? 6 : (b == 2) ? 32 : factionResAtlas(fac);
+                if (m_iconTex.ok()) {
+                    float col = (float)(atlas % 8), row = (float)(atlas / 8);
+                    ImVec2 uv0(col / 8.f, row / 6.f), uv1((col + 1.f) / 8.f, (row + 1.f) / 6.f);
+                    dl->AddImage((ImTextureID)(uintptr_t)m_iconTex.id(),
+                                 tl, {tl.x + sz, tl.y + sz}, uv0, uv1);
+                    return;
+                }
+                ImVec2 c = { tl.x + sz * 0.5f, tl.y + sz * 0.5f };
+                dl->AddCircleFilled(c, sz * 0.34f,
+                    b == 0 ? IM_COL32(180,120,235,255)
+                  : b == 2 ? IM_COL32(230,190,60,255)
+                           : IM_COL32(90,200,120,255));
             };
             m_slotType[0]    = 0;                    // slot 0 is always you
             m_slotFaction[0] = m_newGameFaction;     // kept in sync for startNewGame
@@ -404,7 +409,8 @@ void Game::renderMainMenu()
                         ImGui::SetTooltip("Starting bonus: random artifact, +5 key resource, or +1500 gold.");
                     ImDrawList* dl = ImGui::GetWindowDrawList();
                     float ic = rowH - 4;
-                    drawBonusIcon(dl, {cur.x + 2, cur.y + 2}, ic, bsel);
+                    int fac = std::clamp(m_slotFaction[s], 0, 9);
+                    drawBonusIcon(dl, {cur.x + 2, cur.y + 2}, ic, bsel, fac);
                     dl->AddText({cur.x + ic + 8, cur.y + rowH * 0.5f - 7},
                                 IM_COL32(230,230,230,255), kBonusNames[bsel]);
 
@@ -424,8 +430,8 @@ void Game::renderMainMenu()
                             ImDrawList* pd = ImGui::GetWindowDrawList();
                             pd->AddRectFilled({p.x + 5, p.y}, {p.x + 5 + tile, p.y + tile},
                                               IM_COL32(48, 48, 60, 255), 4.f);
-                            drawBonusIcon(pd, {p.x + 5 + tile * 0.5f - tile * 0.34f,
-                                               p.y + tile * 0.5f - tile * 0.34f}, tile * 0.68f, bi);
+                            drawBonusIcon(pd, {p.x + 5, p.y}, tile, bi,
+                                          std::clamp(m_slotFaction[s], 0, 9));
                             if (sel)
                                 pd->AddRect({p.x + 4, p.y - 1}, {p.x + 6 + tile, p.y + tile + 1},
                                             IM_COL32(255,215,80,255), 4.f, 0, 3.f);
