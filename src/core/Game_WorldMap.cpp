@@ -1021,6 +1021,7 @@ void Game::updateWorldMap(float dt)
         if (m_showShipyardPopup)       m_showShipyardPopup       = false;
         if (m_showSiegeCampPrompt)     m_showSiegeCampPrompt     = false;
         if (m_showMineInfoPopup)       m_showMineInfoPopup       = false;
+        if (m_showHeroSheetPopup)      m_showHeroSheetPopup      = false;
         if (m_showLevelUpModal && !m_levelUpOffers.empty() && !m_heroes.empty()) {
             // Auto-pick first skill offer
             Hero& lvlHero = m_heroes[m_activeHeroIdx];
@@ -1356,10 +1357,15 @@ void Game::updateWorldMap(float dt)
 
     // Right-click on a mine tile — show guard/income info popup
     if (mouse.rightDown && !ImGui::GetIO().WantCaptureMouse) {
-        m_showMineInfoPopup = false;
+        m_showMineInfoPopup  = false;
+        m_showHeroSheetPopup = false;
         if (m_map.inBounds(m_hovered)) {
             const HexTile* ht = m_map.getTile(m_hovered);
-            if (ht && ht->resourceId != 0) {
+            // A hero standing on the tile takes precedence over the mine beneath.
+            if (ht && ht->heroId != 0) {
+                m_heroSheetId        = ht->heroId;
+                m_showHeroSheetPopup = true;
+            } else if (ht && ht->resourceId != 0) {
                 m_mineInfoId        = ht->resourceId;
                 m_showMineInfoPopup = true;
             }
@@ -4636,6 +4642,7 @@ void Game::renderWorldMapImGui()
     if (m_showCryptPopup)         renderCryptPopup();
     if (m_showUtopiaPopup)        renderUtopiaPopup();
     if (m_showMineInfoPopup)      renderMineInfoPopup();
+    if (m_showHeroSheetPopup)     renderHeroSheetPopup();
     if (m_showTreeKnowledgePopup) renderTreeOfKnowledgePopup();
     if (m_showShipyardPopup)      renderShipyardPopup();
     if (m_showMerchantPopup)      renderArtifactMerchantPopup();
@@ -8221,6 +8228,118 @@ void Game::renderMineInfoPopup()
     ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 80.0f) * 0.5f);
     if (ImGui::Button("Close", {80, 0}))
         m_showMineInfoPopup = false;
+    ImGui::End();
+}
+
+// ── Hero quick-sheet popup (right-click on a hero) ────────────────────────────
+// Right-clicking any hero on the world map opens this card. Your own heroes
+// show the full sheet — stats (with artifact totals folded in), army and the
+// equipped-artifact list. Enemy heroes reveal only the coarse scouting view:
+// name, faction, level and army composition, never their artifacts.
+void Game::renderHeroSheetPopup()
+{
+    if (!m_showHeroSheetPopup) return;
+
+    static const char* kFactionNames[] = {
+        "Holy Order", "Crimson Wardens", "Thornkin", "Eternal Empire",
+        "Bloodsworn", "Voidkin", "Iron Assembly", "Amalgamate", "Convergence"
+    };
+
+    // Locate the hero by id. Ownership: found in m_heroes => the active player's.
+    const Hero* hero = nullptr;
+    bool owned = false;
+    for (const auto& h : m_heroes)
+        if (h.id == m_heroSheetId) { hero = &h; owned = true; break; }
+    if (!hero) {
+        for (const auto& h : m_enemyHeroes)
+            if (h.id == m_heroSheetId) { hero = &h; break; }
+    }
+    if (!hero) {
+        for (int pi = 0; pi < m_numHumanPlayers && !hero; ++pi) {
+            if (pi == m_currentPlayerIdx) continue;
+            for (const auto& h : m_players[pi].heroes)
+                if (h.id == m_heroSheetId) { hero = &h; break; }
+        }
+    }
+    if (!hero) { m_showHeroSheetPopup = false; return; }
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
+                            ImGuiCond_Always, {0.5f, 0.5f});
+    ImGui::SetNextWindowSize({380, 0}, ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.94f);
+    ImGuiWindowFlags wf = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
+                        | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar;
+    if (!ImGui::Begin("##hero_sheet", nullptr, wf)) { ImGui::End(); return; }
+
+    int fi = static_cast<int>(hero->faction);
+    const char* fname = (fi >= 0 && fi < 9) ? kFactionNames[fi] : "Unaligned";
+    const HeroClassDef* cls = m_classRegistry.getClass(hero->classId);
+
+    // Header
+    if (owned)
+        ImGui::TextColored({0.95f, 0.85f, 0.35f, 1.0f}, "%s", hero->name.c_str());
+    else
+        ImGui::TextColored({0.95f, 0.45f, 0.45f, 1.0f}, "%s  [Enemy]", hero->name.c_str());
+    ImGui::SameLine();
+    ImGui::TextDisabled(" Lv %d", hero->level);
+    ImGui::TextDisabled("%s  \xe2\x80\xa2  %s", fname, cls ? cls->name.c_str() : "Adventurer");
+    ImGui::Separator();
+
+    // Primary stats — fold equipped-artifact bonuses into the shown totals.
+    ArtifactBonus ab = m_artifactRegistry.totalBonus(hero->artifacts);
+    auto statLine = [](const char* label, int base, int bonus) {
+        if (bonus != 0)
+            ImGui::Text("%-8s %d  (%+d)", label, base + bonus, bonus);
+        else
+            ImGui::Text("%-8s %d", label, base);
+    };
+    statLine("Attack",  hero->attack,  ab.attack);
+    statLine("Defense", hero->defense, ab.defense);
+    if (owned) {
+        ImGui::Text("Move     %d / %d", hero->movePool, hero->maxMove);
+        ImGui::Text("Mana     %d / %d", hero->mana, hero->maxMana);
+        ImGui::TextDisabled("XP %d / %d   \xe2\x80\xa2   Battles won %d",
+                            hero->xp, hero->xpToNext, hero->battlesWon);
+    }
+    ImGui::Separator();
+
+    // Army composition (shown for owned and enemy heroes alike — coarse scouting).
+    ImGui::TextColored({0.75f, 0.8f, 0.9f, 1.0f}, "Army:");
+    bool anyStack = false;
+    for (const auto& stack : hero->army) {
+        if (stack.count <= 0) continue;
+        anyStack = true;
+        const UnitDef* ud = m_registry.getUnitDef(stack.defId);
+        ImGui::BulletText("%-20s x%d", ud ? ud->name.c_str() : "Unknown", stack.count);
+    }
+    if (!anyStack) ImGui::TextDisabled("  (no troops)");
+
+    // Equipped artifacts — own heroes only.
+    if (owned) {
+        static const char* slotNames[] = {
+            "Helm","Armor","Weapon","Shield","Ring","Boots","Cloak","Misc"
+        };
+        ImGui::Separator();
+        ImGui::TextColored({0.8f, 0.7f, 0.4f, 1.0f}, "Artifacts:");
+        bool anyArt = false;
+        for (int i = 0; i < HeroArtifacts::SLOT_COUNT; ++i) {
+            int aid = hero->artifacts.equippedIds[i];
+            if (!aid) continue;
+            const ArtifactDef* def = m_artifactRegistry.getDef(aid);
+            if (!def) continue;
+            anyArt = true;
+            ImGui::BulletText("%-8s %s", slotNames[i], def->name.c_str());
+            if (ImGui::IsItemHovered() && !def->description.empty())
+                ImGui::SetTooltip("%s", def->description.c_str());
+        }
+        if (!anyArt) ImGui::TextDisabled("  (none equipped — press F7 to manage)");
+    }
+
+    ImGui::Spacing();
+    ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 80.0f) * 0.5f);
+    if (ImGui::Button("Close", {80, 0}))
+        m_showHeroSheetPopup = false;
     ImGui::End();
 }
 

@@ -71,8 +71,13 @@ lot has shipped since it was written. Current reality:
 - AI: "some players idle" — largely explained and fixed by the march-cache
   divergence bug (heroes yo-yoed toward docks instead of marching; see
   THREADING.md). Gold-hoarding / trading when rich still unverified.
-- UI: no "already built" indicator in town; kingdom overview is text not visual;
-  hero right-click artifact sheet not built; town/hero pickers need icons.
+- UI: kingdom overview is text not visual; town/hero pickers need icons.
+  ~~no "already built" indicator in town~~ — **done**: built rows show a green
+  `[✓]` check in `TownScreen::drawBuildingTree()`. ~~hero right-click artifact
+  sheet not built~~ — **done (2026-07-21)**: right-clicking any hero on the
+  world map opens a quick-sheet (`renderHeroSheetPopup()`) — your own heroes
+  show stats-with-artifact-totals, army and equipped artifacts; enemy heroes
+  reveal only name/faction/level/army (coarse scouting, no artifacts).
 - Naval: Fishing hull now actually earns its +100 g/day at sea (2026-07-20).
   War-hull ramming and FishingHouse build-from-boat were already in.
 

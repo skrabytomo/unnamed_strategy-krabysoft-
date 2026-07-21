@@ -765,6 +765,11 @@ private:
     uint32_t m_mineInfoId        = 0;
     void renderMineInfoPopup();
 
+    // ── Hero quick-sheet popup (right-click on a hero) ────────────────────────
+    bool     m_showHeroSheetPopup = false;
+    uint32_t m_heroSheetId         = 0;
+    void renderHeroSheetPopup();
+
     // ── Tree of Knowledge choice popup ────────────────────────────────────────
     bool     m_showTreeKnowledgePopup = false;
     uint32_t m_pendingTreeId          = 0;
