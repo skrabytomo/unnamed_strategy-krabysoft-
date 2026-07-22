@@ -6,72 +6,522 @@
     "wait_seconds": 200
   },
   "assets": [
-    { "id": "portrait_f0_1", "kind": "hero", "out": "assets/portraits/faction_0_1.png", "prompt": "Fantasy character portrait bust, facing forward: a radiant Holy Order paladin commander in white-and-gold plate armor, faint golden halo, noble stern face." },
-    { "id": "portrait_f0_2", "kind": "hero", "out": "assets/portraits/faction_0_2.png", "prompt": "Fantasy character portrait bust, facing forward: a Holy Order high priestess of light, white and gold robes, glowing holy staff, serene glowing eyes." },
-    { "id": "portrait_f0_3", "kind": "hero", "out": "assets/portraits/faction_0_3.png", "prompt": "Fantasy character portrait bust, facing forward: a zealous Holy Order crusader knight in a winged helm, sunlit white-gold armor, resolute expression." },
-
-    { "id": "portrait_f1_1", "kind": "hero", "out": "assets/portraits/faction_1_1.png", "prompt": "Fantasy character portrait bust, facing forward: a grim Crimson Wardens blood-knight in polished silver armor and a deep crimson cloak, disciplined cold stare." },
-    { "id": "portrait_f1_2", "kind": "hero", "out": "assets/portraits/faction_1_2.png", "prompt": "Fantasy character portrait bust, facing forward: a Crimson Wardens templar with faint self-inflicted ritual scars, silver-and-red armor, solemn devout expression." },
-    { "id": "portrait_f1_3", "kind": "hero", "out": "assets/portraits/faction_1_3.png", "prompt": "Fantasy character portrait bust, facing forward: a highland fortress captain of the Crimson Wardens, silver breastplate, crimson tabard, weathered scarred face." },
-
-    { "id": "portrait_f2_1", "kind": "hero", "out": "assets/portraits/faction_2_1.png", "prompt": "Fantasy character portrait bust, facing forward: a Thornkin druid beastmaster wearing living-wood and leaf armor, moss and bark, calm wild green eyes." },
-    { "id": "portrait_f2_2", "kind": "hero", "out": "assets/portraits/faction_2_2.png", "prompt": "Fantasy character portrait bust, facing forward: a thorn-crowned Thornkin forest warden with branching antlers, vines and bark skin, fierce protective look." },
-    { "id": "portrait_f2_3", "kind": "hero", "out": "assets/portraits/faction_2_3.png", "prompt": "Fantasy character portrait bust, facing forward: a Thornkin symbiotic ranger bonded to a small beast on the shoulder, leaf-cloak, sharp attentive gaze." },
-
-    { "id": "portrait_f3_1", "kind": "hero", "out": "assets/portraits/faction_3_1.png", "prompt": "Fantasy character portrait bust, facing forward: an Eternal Empire undead death-lord wearing a jagged bone crown, black-and-silver armor, hollow glowing eyes." },
-    { "id": "portrait_f3_2", "kind": "hero", "out": "assets/portraits/faction_3_2.png", "prompt": "Fantasy character portrait bust, facing forward: a pale Eternal Empire necromancer in flowing black robes with violet death-magic wisps, gaunt sinister face." },
-    { "id": "portrait_f3_3", "kind": "hero", "out": "assets/portraits/faction_3_3.png", "prompt": "Fantasy character portrait bust, facing forward: a skeletal Eternal Empire knight-commander with a ghostly second-soul aura, tarnished dark armor." },
-
-    { "id": "portrait_f4_1", "kind": "hero", "out": "assets/portraits/faction_4_1.png", "prompt": "Fantasy character portrait bust, facing forward: a Bloodsworn cultist ascendant in dark-red robes covered in ritual scars, fanatical burning eyes." },
-    { "id": "portrait_f4_2", "kind": "hero", "out": "assets/portraits/faction_4_2.png", "prompt": "Fantasy character portrait bust, facing forward: a demonic Bloodsworn blood-priest mid-ascension, growing horns, crimson energy, cruel ecstatic grin." },
-    { "id": "portrait_f4_3", "kind": "hero", "out": "assets/portraits/faction_4_3.png", "prompt": "Fantasy character portrait bust, facing forward: a swamp-corrupted Bloodsworn blood-knight in blackened red plate, dripping crimson runes, menacing stare." },
-
-    { "id": "portrait_f5_1", "kind": "hero", "out": "assets/portraits/faction_5_1.png", "prompt": "Fantasy character portrait bust, facing forward: a corrupted Voidkin void-elf warlock wreathed in purple void energy, pale skin, unsettling glowing eyes." },
-    { "id": "portrait_f5_2", "kind": "hero", "out": "assets/portraits/faction_5_2.png", "prompt": "Fantasy character portrait bust, facing forward: a Voidkin possession-sorcerer with swirling void-purple eyes and floating dark runes, sly threatening look." },
-    { "id": "portrait_f5_3", "kind": "hero", "out": "assets/portraits/faction_5_3.png", "prompt": "Fantasy character portrait bust, facing forward: a Voidkin corrupted nature shaman with twisted blackened antlers, decaying leaves, eerie violet glow." },
-
-    { "id": "portrait_f6_1", "kind": "hero", "out": "assets/portraits/faction_6_1.png", "prompt": "Fantasy character portrait bust, facing forward: an Iron Assembly dwarven runesmith artificer with a mechanical arm, glowing runes, soot-streaked determined face." },
-    { "id": "portrait_f6_2", "kind": "hero", "out": "assets/portraits/faction_6_2.png", "prompt": "Fantasy character portrait bust, facing forward: an Iron Assembly engineer-commander in runic steam power-armor, brass and iron, glowing rune goggles." },
-    { "id": "portrait_f6_3", "kind": "hero", "out": "assets/portraits/faction_6_3.png", "prompt": "Fantasy character portrait bust, facing forward: an Iron Assembly forge-master holding a glowing blueprint, gears and pistons, gruff confident expression." },
-
-    { "id": "portrait_f7_1", "kind": "hero", "out": "assets/portraits/faction_7_1.png", "prompt": "Fantasy character portrait bust, facing forward: an Amalgamate flesh-metal hybrid warlord, biomechanical fusion of muscle and steel plating, cold artificial eye." },
-    { "id": "portrait_f7_2", "kind": "hero", "out": "assets/portraits/faction_7_2.png", "prompt": "Fantasy character portrait bust, facing forward: a grotesque Amalgamate organic-machine surgeon, exposed sinew and chrome tubing, unnerving stitched face." },
-    { "id": "portrait_f7_3", "kind": "hero", "out": "assets/portraits/faction_7_3.png", "prompt": "Fantasy character portrait bust, facing forward: an adaptive Amalgamate amalgam leader with shifting armored plates over living flesh, many glinting eyes." },
-
-    { "id": "portrait_f8_1", "kind": "hero", "out": "assets/portraits/faction_8_1.png", "prompt": "Fantasy character portrait bust, facing forward: an enigmatic Convergence hooded arcanist wreathed in shifting prismatic mirror-energy, face half in shadow." },
-    { "id": "portrait_f8_2", "kind": "hero", "out": "assets/portraits/faction_8_2.png", "prompt": "Fantasy character portrait bust, facing forward: a masked Convergence mirror-mage in reflective robes echoing many magic schools, calm inscrutable pose." },
-    { "id": "portrait_f8_3", "kind": "hero", "out": "assets/portraits/faction_8_3.png", "prompt": "Fantasy character portrait bust, facing forward: a Convergence void-hideout sorcerer surrounded by fractured mirror shards reflecting arcane runes." },
-
-    { "id": "portrait_f1_4", "kind": "hero", "out": "assets/portraits/faction_1_4.png", "prompt": "Fantasy character portrait bust, facing forward: a Crimson Wardens warden-huntress, silver mail and a crimson hood, a loaded crossbow on her back, sharp watchful eyes." },
-    { "id": "portrait_f2_4", "kind": "hero", "out": "assets/portraits/faction_2_4.png", "prompt": "Fantasy character portrait bust, facing forward: an ancient Thornkin treant-shaman elder, cracked bark skin, a mossy beard and glowing amber eyes." },
-    { "id": "portrait_f3_4", "kind": "hero", "out": "assets/portraits/faction_3_4.png", "prompt": "Fantasy character portrait bust, facing forward: an Eternal Empire wraith-queen, a spectral crown and translucent ghostly veil, cold hollow gaze, deathly pale (female)." },
-    { "id": "portrait_f4_4", "kind": "hero", "out": "assets/portraits/faction_4_4.png", "prompt": "Fantasy character portrait bust, facing forward: a feral Bloodsworn berserker, blood-slicked skin and crude spiked armor, wild eyes and a savage snarl." },
-    { "id": "portrait_f6_4", "kind": "hero", "out": "assets/portraits/faction_6_4.png", "prompt": "Fantasy character portrait bust, facing forward: an Iron Assembly gnome tinkerer with brass goggles, a soot-smudged grin and a small mechanical familiar on the shoulder." },
-    { "id": "portrait_f7_4", "kind": "hero", "out": "assets/portraits/faction_7_4.png", "prompt": "Fantasy character portrait bust, facing forward: a hulking Amalgamate flesh-golem brute, mismatched armor plates fused into raw muscle, a single glowing ocular implant." },
-    { "id": "portrait_f8_4", "kind": "hero", "out": "assets/portraits/faction_8_4.png", "prompt": "Fantasy character portrait bust, facing forward: a young Convergence channeler prodigy, glowing prismatic runic tattoos across face and arms, confident luminous eyes." },
-
-    { "id": "crest_f0", "kind": "icon", "out": "assets/towns/crest_0.png", "prompt": "Heraldic faction crest emblem for the Holy Order: a radiant sun-and-winged-shield insignia, gold and white, symmetrical." },
-    { "id": "crest_f1", "kind": "icon", "out": "assets/towns/crest_1.png", "prompt": "Heraldic faction crest emblem for the Crimson Wardens: a silver tower flanked by a crimson drop of blood, symmetrical." },
-    { "id": "crest_f2", "kind": "icon", "out": "assets/towns/crest_2.png", "prompt": "Heraldic faction crest emblem for the Thornkin: an antlered tree-and-thorn sigil, deep green and bark-brown, symmetrical." },
-    { "id": "crest_f3", "kind": "icon", "out": "assets/towns/crest_3.png", "prompt": "Heraldic faction crest emblem for the Eternal Empire: a crowned skull over crossed bone scepters, black and bone-white, symmetrical." },
-    { "id": "crest_f4", "kind": "icon", "out": "assets/towns/crest_4.png", "prompt": "Heraldic faction crest emblem for the Bloodsworn: a chalice overflowing with blood beneath jagged horns, dark red and black, symmetrical." },
-    { "id": "crest_f5", "kind": "icon", "out": "assets/towns/crest_5.png", "prompt": "Heraldic faction crest emblem for the Voidkin: a corrupted eye within twisted antlers, void-purple and black, symmetrical." },
-    { "id": "crest_f6", "kind": "icon", "out": "assets/towns/crest_6.png", "prompt": "Heraldic faction crest emblem for the Iron Assembly: a runic cog-and-hammer sigil, brass and iron grey with glowing runes, symmetrical." },
-    { "id": "crest_f7", "kind": "icon", "out": "assets/towns/crest_7.png", "prompt": "Heraldic faction crest emblem for the Amalgamate: a fused flesh-and-gear ouroboros, sickly grey-green and chrome, symmetrical." },
-    { "id": "crest_f8", "kind": "icon", "out": "assets/towns/crest_8.png", "prompt": "Heraldic faction crest emblem for the Convergence: a prismatic mirrored hexagon radiating many-colored arcane rays, symmetrical." },
-
-    { "id": "collage_f2", "kind": "collage", "out": "assets/collages/faction_2.png", "style": " Art style: dark-fantasy strategy game art, painterly, a richly detailed isometric faction tableau composited on aged parchment inside an ornate carved border, high contrast, dramatic lighting, no text.", "prompt": "A Thornkin faction tableau: isometric living-wood treetop halls and vine-wreathed groves, antlered druids with beast companions, a colossal glowing world-tree at the centre, forest wildlife around the edges, deep greens and bark browns." },
-    { "id": "collage_f4", "kind": "collage", "out": "assets/collages/faction_4.png", "style": " Art style: dark-fantasy strategy game art, painterly, a richly detailed isometric faction tableau composited on aged parchment inside an ornate carved border, high contrast, dramatic lighting, no text.", "prompt": "A Bloodsworn faction tableau: isometric red-and-black blood-cult citadel with a vampire manor and sacrificial altars, demonic knights and horned blood-priests, a towering winged blood lord at the centre, crimson and shadow." },
-    { "id": "collage_f5", "kind": "collage", "out": "assets/collages/faction_5.png", "style": " Art style: dark-fantasy strategy game art, painterly, a richly detailed isometric faction tableau composited on aged parchment inside an ornate carved border, high contrast, dramatic lighting, no text.", "prompt": "A Voidkin faction tableau: isometric corrupted void-forest spires with twisted purple-glowing trees and possessed creatures, a rift of swirling void energy at the centre, violet-and-black corruption spreading outward." },
-
-    { "id": "town_f0", "kind": "town", "out": "assets/towns/faction_0.png", "prompt": "Fantasy faction stronghold illustration: a radiant Holy Order cathedral-castle of white marble with gold-capped spires, sunlit banners and a great rose window." },
-    { "id": "town_f1", "kind": "town", "out": "assets/towns/faction_1.png", "prompt": "Fantasy faction stronghold illustration: a grim Crimson Wardens highland fortress of silver-grey stone with crimson banners and iron gates beneath a blood-red moon." },
-    { "id": "town_f2", "kind": "town", "out": "assets/towns/faction_2.png", "prompt": "Fantasy faction stronghold illustration: a Thornkin settlement grown from colossal living trees and vines, mossy timber halls glowing with soft green light." },
-    { "id": "town_f3", "kind": "town", "out": "assets/towns/faction_3.png", "prompt": "Fantasy faction stronghold illustration: an Eternal Empire necropolis castle of black stone and bone spires wreathed in a sickly green deathly glow, tattered banners." },
-    { "id": "town_f4", "kind": "town", "out": "assets/towns/faction_4.png", "prompt": "Fantasy faction stronghold illustration: a Bloodsworn demonic citadel of red-and-black stone with horned spires and sacrificial braziers, dripping crimson." },
-    { "id": "town_f5", "kind": "town", "out": "assets/towns/faction_5.png", "prompt": "Fantasy faction stronghold illustration: a Voidkin void-touched spire rising from a twisted purple forest, crackling with violet corruption energy." },
-    { "id": "town_f6", "kind": "town", "out": "assets/towns/faction_6.png", "prompt": "Fantasy faction stronghold illustration: an Iron Assembly industrial forge-city of brass pipes, turning gears and riveted iron towers, glowing furnaces and smoke." },
-    { "id": "town_f7", "kind": "town", "out": "assets/towns/faction_7.png", "prompt": "Fantasy faction stronghold illustration: a grotesque Amalgamate hive-fortress of fused flesh and metal, pulsing organic machinery and chrome plating." },
-    { "id": "town_f8", "kind": "town", "out": "assets/towns/faction_8.png", "prompt": "Fantasy faction stronghold illustration: an enigmatic Convergence arcane citadel of shifting prismatic crystal and floating runic platforms, radiant many-colored light." }
+    {
+      "id": "portrait_f0_1",
+      "kind": "hero",
+      "out": "assets/portraits/faction_0_1.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a radiant Holy Order paladin commander in white-and-gold plate armor, faint golden halo, noble stern face."
+    },
+    {
+      "id": "portrait_f0_2",
+      "kind": "hero",
+      "out": "assets/portraits/faction_0_2.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a Holy Order high priestess of light, white and gold robes, glowing holy staff, serene glowing eyes."
+    },
+    {
+      "id": "portrait_f0_3",
+      "kind": "hero",
+      "out": "assets/portraits/faction_0_3.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a zealous Holy Order crusader knight in a winged helm, sunlit white-gold armor, resolute expression."
+    },
+    {
+      "id": "portrait_f1_1",
+      "kind": "hero",
+      "out": "assets/portraits/faction_1_1.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a grim Crimson Wardens blood-knight in polished silver armor and a deep crimson cloak, disciplined cold stare."
+    },
+    {
+      "id": "portrait_f1_2",
+      "kind": "hero",
+      "out": "assets/portraits/faction_1_2.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a Crimson Wardens templar with faint self-inflicted ritual scars, silver-and-red armor, solemn devout expression."
+    },
+    {
+      "id": "portrait_f1_3",
+      "kind": "hero",
+      "out": "assets/portraits/faction_1_3.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a highland fortress captain of the Crimson Wardens, silver breastplate, crimson tabard, weathered scarred face."
+    },
+    {
+      "id": "portrait_f2_1",
+      "kind": "hero",
+      "out": "assets/portraits/faction_2_1.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a Thornkin druid beastmaster wearing living-wood and leaf armor, moss and bark, calm wild green eyes."
+    },
+    {
+      "id": "portrait_f2_2",
+      "kind": "hero",
+      "out": "assets/portraits/faction_2_2.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a thorn-crowned Thornkin forest warden with branching antlers, vines and bark skin, fierce protective look."
+    },
+    {
+      "id": "portrait_f2_3",
+      "kind": "hero",
+      "out": "assets/portraits/faction_2_3.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a Thornkin symbiotic ranger bonded to a small beast on the shoulder, leaf-cloak, sharp attentive gaze."
+    },
+    {
+      "id": "portrait_f3_1",
+      "kind": "hero",
+      "out": "assets/portraits/faction_3_1.png",
+      "prompt": "Fantasy character portrait bust, facing forward: an Eternal Empire undead death-lord wearing a jagged bone crown, black-and-silver armor, hollow glowing eyes."
+    },
+    {
+      "id": "portrait_f3_2",
+      "kind": "hero",
+      "out": "assets/portraits/faction_3_2.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a pale Eternal Empire necromancer in flowing black robes with violet death-magic wisps, gaunt sinister face."
+    },
+    {
+      "id": "portrait_f3_3",
+      "kind": "hero",
+      "out": "assets/portraits/faction_3_3.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a skeletal Eternal Empire knight-commander with a ghostly second-soul aura, tarnished dark armor."
+    },
+    {
+      "id": "portrait_f4_1",
+      "kind": "hero",
+      "out": "assets/portraits/faction_4_1.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a Bloodsworn cultist ascendant in dark-red robes covered in ritual scars, fanatical burning eyes."
+    },
+    {
+      "id": "portrait_f4_2",
+      "kind": "hero",
+      "out": "assets/portraits/faction_4_2.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a demonic Bloodsworn blood-priest mid-ascension, growing horns, crimson energy, cruel ecstatic grin."
+    },
+    {
+      "id": "portrait_f4_3",
+      "kind": "hero",
+      "out": "assets/portraits/faction_4_3.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a swamp-corrupted Bloodsworn blood-knight in blackened red plate, dripping crimson runes, menacing stare."
+    },
+    {
+      "id": "portrait_f5_1",
+      "kind": "hero",
+      "out": "assets/portraits/faction_5_1.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a corrupted Voidkin void-elf warlock wreathed in purple void energy, pale skin, unsettling glowing eyes."
+    },
+    {
+      "id": "portrait_f5_2",
+      "kind": "hero",
+      "out": "assets/portraits/faction_5_2.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a Voidkin possession-sorcerer with swirling void-purple eyes and floating dark runes, sly threatening look."
+    },
+    {
+      "id": "portrait_f5_3",
+      "kind": "hero",
+      "out": "assets/portraits/faction_5_3.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a Voidkin corrupted nature shaman with twisted blackened antlers, decaying leaves, eerie violet glow."
+    },
+    {
+      "id": "portrait_f6_1",
+      "kind": "hero",
+      "out": "assets/portraits/faction_6_1.png",
+      "prompt": "Fantasy character portrait bust, facing forward: an Iron Assembly dwarven runesmith artificer with a mechanical arm, glowing runes, soot-streaked determined face."
+    },
+    {
+      "id": "portrait_f6_2",
+      "kind": "hero",
+      "out": "assets/portraits/faction_6_2.png",
+      "prompt": "Fantasy character portrait bust, facing forward: an Iron Assembly engineer-commander in runic steam power-armor, brass and iron, glowing rune goggles."
+    },
+    {
+      "id": "portrait_f6_3",
+      "kind": "hero",
+      "out": "assets/portraits/faction_6_3.png",
+      "prompt": "Fantasy character portrait bust, facing forward: an Iron Assembly forge-master holding a glowing blueprint, gears and pistons, gruff confident expression."
+    },
+    {
+      "id": "portrait_f7_1",
+      "kind": "hero",
+      "out": "assets/portraits/faction_7_1.png",
+      "prompt": "Fantasy character portrait bust, facing forward: an Amalgamate flesh-metal hybrid warlord, biomechanical fusion of muscle and steel plating, cold artificial eye."
+    },
+    {
+      "id": "portrait_f7_2",
+      "kind": "hero",
+      "out": "assets/portraits/faction_7_2.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a grotesque Amalgamate organic-machine surgeon, exposed sinew and chrome tubing, unnerving stitched face."
+    },
+    {
+      "id": "portrait_f7_3",
+      "kind": "hero",
+      "out": "assets/portraits/faction_7_3.png",
+      "prompt": "Fantasy character portrait bust, facing forward: an adaptive Amalgamate amalgam leader with shifting armored plates over living flesh, many glinting eyes."
+    },
+    {
+      "id": "portrait_f8_1",
+      "kind": "hero",
+      "out": "assets/portraits/faction_8_1.png",
+      "prompt": "Fantasy character portrait bust, facing forward: an enigmatic Convergence hooded arcanist wreathed in shifting prismatic mirror-energy, face half in shadow."
+    },
+    {
+      "id": "portrait_f8_2",
+      "kind": "hero",
+      "out": "assets/portraits/faction_8_2.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a masked Convergence mirror-mage in reflective robes echoing many magic schools, calm inscrutable pose."
+    },
+    {
+      "id": "portrait_f8_3",
+      "kind": "hero",
+      "out": "assets/portraits/faction_8_3.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a Convergence void-hideout sorcerer surrounded by fractured mirror shards reflecting arcane runes."
+    },
+    {
+      "id": "portrait_f1_4",
+      "kind": "hero",
+      "out": "assets/portraits/faction_1_4.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a Crimson Wardens warden-huntress, silver mail and a crimson hood, a loaded crossbow on her back, sharp watchful eyes."
+    },
+    {
+      "id": "portrait_f2_4",
+      "kind": "hero",
+      "out": "assets/portraits/faction_2_4.png",
+      "prompt": "Fantasy character portrait bust, facing forward: an ancient Thornkin treant-shaman elder, cracked bark skin, a mossy beard and glowing amber eyes."
+    },
+    {
+      "id": "portrait_f3_4",
+      "kind": "hero",
+      "out": "assets/portraits/faction_3_4.png",
+      "prompt": "Fantasy character portrait bust, facing forward: an Eternal Empire wraith-queen, a spectral crown and translucent ghostly veil, cold hollow gaze, deathly pale (female)."
+    },
+    {
+      "id": "portrait_f4_4",
+      "kind": "hero",
+      "out": "assets/portraits/faction_4_4.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a feral Bloodsworn berserker, blood-slicked skin and crude spiked armor, wild eyes and a savage snarl."
+    },
+    {
+      "id": "portrait_f6_4",
+      "kind": "hero",
+      "out": "assets/portraits/faction_6_4.png",
+      "prompt": "Fantasy character portrait bust, facing forward: an Iron Assembly gnome tinkerer with brass goggles, a soot-smudged grin and a small mechanical familiar on the shoulder."
+    },
+    {
+      "id": "portrait_f7_4",
+      "kind": "hero",
+      "out": "assets/portraits/faction_7_4.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a hulking Amalgamate flesh-golem brute, mismatched armor plates fused into raw muscle, a single glowing ocular implant."
+    },
+    {
+      "id": "portrait_f8_4",
+      "kind": "hero",
+      "out": "assets/portraits/faction_8_4.png",
+      "prompt": "Fantasy character portrait bust, facing forward: a young Convergence channeler prodigy, glowing prismatic runic tattoos across face and arms, confident luminous eyes."
+    },
+    {
+      "id": "crest_f0",
+      "kind": "icon",
+      "out": "assets/towns/crest_0.png",
+      "prompt": "Heraldic faction crest emblem for the Holy Order: a radiant sun-and-winged-shield insignia, gold and white, symmetrical."
+    },
+    {
+      "id": "crest_f1",
+      "kind": "icon",
+      "out": "assets/towns/crest_1.png",
+      "prompt": "Heraldic faction crest emblem for the Crimson Wardens: a silver tower flanked by a crimson drop of blood, symmetrical."
+    },
+    {
+      "id": "crest_f2",
+      "kind": "icon",
+      "out": "assets/towns/crest_2.png",
+      "prompt": "Heraldic faction crest emblem for the Thornkin: an antlered tree-and-thorn sigil, deep green and bark-brown, symmetrical."
+    },
+    {
+      "id": "crest_f3",
+      "kind": "icon",
+      "out": "assets/towns/crest_3.png",
+      "prompt": "Heraldic faction crest emblem for the Eternal Empire: a crowned skull over crossed bone scepters, black and bone-white, symmetrical."
+    },
+    {
+      "id": "crest_f4",
+      "kind": "icon",
+      "out": "assets/towns/crest_4.png",
+      "prompt": "Heraldic faction crest emblem for the Bloodsworn: a chalice overflowing with blood beneath jagged horns, dark red and black, symmetrical."
+    },
+    {
+      "id": "crest_f5",
+      "kind": "icon",
+      "out": "assets/towns/crest_5.png",
+      "prompt": "Heraldic faction crest emblem for the Voidkin: a corrupted eye within twisted antlers, void-purple and black, symmetrical."
+    },
+    {
+      "id": "crest_f6",
+      "kind": "icon",
+      "out": "assets/towns/crest_6.png",
+      "prompt": "Heraldic faction crest emblem for the Iron Assembly: a runic cog-and-hammer sigil, brass and iron grey with glowing runes, symmetrical."
+    },
+    {
+      "id": "crest_f7",
+      "kind": "icon",
+      "out": "assets/towns/crest_7.png",
+      "prompt": "Heraldic faction crest emblem for the Amalgamate: a fused flesh-and-gear ouroboros, sickly grey-green and chrome, symmetrical."
+    },
+    {
+      "id": "crest_f8",
+      "kind": "icon",
+      "out": "assets/towns/crest_8.png",
+      "prompt": "Heraldic faction crest emblem for the Convergence: a prismatic mirrored hexagon radiating many-colored arcane rays, symmetrical."
+    },
+    {
+      "id": "collage_f2",
+      "kind": "collage",
+      "out": "assets/collages/faction_2.png",
+      "style": " Art style: dark-fantasy strategy game art, painterly, a richly detailed isometric faction tableau composited on aged parchment inside an ornate carved border, high contrast, dramatic lighting, no text.",
+      "prompt": "A Thornkin faction tableau: isometric living-wood treetop halls and vine-wreathed groves, antlered druids with beast companions, a colossal glowing world-tree at the centre, forest wildlife around the edges, deep greens and bark browns."
+    },
+    {
+      "id": "collage_f4",
+      "kind": "collage",
+      "out": "assets/collages/faction_4.png",
+      "style": " Art style: dark-fantasy strategy game art, painterly, a richly detailed isometric faction tableau composited on aged parchment inside an ornate carved border, high contrast, dramatic lighting, no text.",
+      "prompt": "A Bloodsworn faction tableau: isometric red-and-black blood-cult citadel with a vampire manor and sacrificial altars, demonic knights and horned blood-priests, a towering winged blood lord at the centre, crimson and shadow."
+    },
+    {
+      "id": "collage_f5",
+      "kind": "collage",
+      "out": "assets/collages/faction_5.png",
+      "style": " Art style: dark-fantasy strategy game art, painterly, a richly detailed isometric faction tableau composited on aged parchment inside an ornate carved border, high contrast, dramatic lighting, no text.",
+      "prompt": "A Voidkin faction tableau: isometric corrupted void-forest spires with twisted purple-glowing trees and possessed creatures, a rift of swirling void energy at the centre, violet-and-black corruption spreading outward."
+    },
+    {
+      "id": "town_f0",
+      "kind": "town",
+      "out": "assets/towns/faction_0.png",
+      "prompt": "Fantasy faction stronghold illustration: a radiant Holy Order cathedral-castle of white marble with gold-capped spires, sunlit banners and a great rose window."
+    },
+    {
+      "id": "town_f1",
+      "kind": "town",
+      "out": "assets/towns/faction_1.png",
+      "prompt": "Fantasy faction stronghold illustration: a grim Crimson Wardens highland fortress of silver-grey stone with crimson banners and iron gates beneath a blood-red moon."
+    },
+    {
+      "id": "town_f2",
+      "kind": "town",
+      "out": "assets/towns/faction_2.png",
+      "prompt": "Fantasy faction stronghold illustration: a Thornkin settlement grown from colossal living trees and vines, mossy timber halls glowing with soft green light."
+    },
+    {
+      "id": "town_f3",
+      "kind": "town",
+      "out": "assets/towns/faction_3.png",
+      "prompt": "Fantasy faction stronghold illustration: an Eternal Empire necropolis castle of black stone and bone spires wreathed in a sickly green deathly glow, tattered banners."
+    },
+    {
+      "id": "town_f4",
+      "kind": "town",
+      "out": "assets/towns/faction_4.png",
+      "prompt": "Fantasy faction stronghold illustration: a Bloodsworn demonic citadel of red-and-black stone with horned spires and sacrificial braziers, dripping crimson."
+    },
+    {
+      "id": "town_f5",
+      "kind": "town",
+      "out": "assets/towns/faction_5.png",
+      "prompt": "Fantasy faction stronghold illustration: a Voidkin void-touched spire rising from a twisted purple forest, crackling with violet corruption energy."
+    },
+    {
+      "id": "town_f6",
+      "kind": "town",
+      "out": "assets/towns/faction_6.png",
+      "prompt": "Fantasy faction stronghold illustration: an Iron Assembly industrial forge-city of brass pipes, turning gears and riveted iron towers, glowing furnaces and smoke."
+    },
+    {
+      "id": "town_f7",
+      "kind": "town",
+      "out": "assets/towns/faction_7.png",
+      "prompt": "Fantasy faction stronghold illustration: a grotesque Amalgamate hive-fortress of fused flesh and metal, pulsing organic machinery and chrome plating."
+    },
+    {
+      "id": "town_f8",
+      "kind": "town",
+      "out": "assets/towns/faction_8.png",
+      "prompt": "Fantasy faction stronghold illustration: an enigmatic Convergence arcane citadel of shifting prismatic crystal and floating runic platforms, radiant many-colored light."
+    },
+    {
+      "id": "terrain_barren_0",
+      "kind": "terrain",
+      "out": "assets/terrain/barren_0.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "sun-scorched barren badlands ground: cracked dry parched earth, pale sand, dust and scattered pebbles (variation 1)."
+    },
+    {
+      "id": "terrain_barren_1",
+      "kind": "terrain",
+      "out": "assets/terrain/barren_1.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "sun-scorched barren badlands ground: cracked dry parched earth, pale sand, dust and scattered pebbles (variation 2)."
+    },
+    {
+      "id": "terrain_barren_2",
+      "kind": "terrain",
+      "out": "assets/terrain/barren_2.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "sun-scorched barren badlands ground: cracked dry parched earth, pale sand, dust and scattered pebbles (variation 3)."
+    },
+    {
+      "id": "terrain_corrupted",
+      "kind": "terrain",
+      "out": "assets/terrain/corrupted.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "corrupted blighted ground: diseased purple-black soil laced with dark veins, oozing corruption and a cracked crust (variation 1)."
+    },
+    {
+      "id": "terrain_corrupted_0",
+      "kind": "terrain",
+      "out": "assets/terrain/corrupted_0.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "corrupted blighted ground: diseased purple-black soil laced with dark veins, oozing corruption and a cracked crust (variation 2)."
+    },
+    {
+      "id": "terrain_corrupted_forest_0",
+      "kind": "terrain",
+      "out": "assets/terrain/corrupted_forest_0.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "corrupted dead forest floor seen straight from above: twisted blackened roots, purple rot, sickly glowing spores and decayed leaves (variation 1)."
+    },
+    {
+      "id": "terrain_corrupted_forest_1",
+      "kind": "terrain",
+      "out": "assets/terrain/corrupted_forest_1.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "corrupted dead forest floor seen straight from above: twisted blackened roots, purple rot, sickly glowing spores and decayed leaves (variation 2)."
+    },
+    {
+      "id": "terrain_corrupted_forest_2",
+      "kind": "terrain",
+      "out": "assets/terrain/corrupted_forest_2.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "corrupted dead forest floor seen straight from above: twisted blackened roots, purple rot, sickly glowing spores and decayed leaves (variation 3)."
+    },
+    {
+      "id": "terrain_flesh_zone_0",
+      "kind": "terrain",
+      "out": "assets/terrain/flesh_zone_0.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "grotesque living-flesh ground: raw red muscle and sinew, pulsing dark veins, patches of exposed bone, a wet organic surface (variation 1)."
+    },
+    {
+      "id": "terrain_flesh_zone_1",
+      "kind": "terrain",
+      "out": "assets/terrain/flesh_zone_1.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "grotesque living-flesh ground: raw red muscle and sinew, pulsing dark veins, patches of exposed bone, a wet organic surface (variation 2)."
+    },
+    {
+      "id": "terrain_flesh_zone_2",
+      "kind": "terrain",
+      "out": "assets/terrain/flesh_zone_2.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "grotesque living-flesh ground: raw red muscle and sinew, pulsing dark veins, patches of exposed bone, a wet organic surface (variation 3)."
+    },
+    {
+      "id": "terrain_mountain_0",
+      "kind": "terrain",
+      "out": "assets/terrain/mountain_0.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "rugged grey mountain rock seen from above: bare craggy stone, loose rocky scree and scattered patches of snow (variation 1)."
+    },
+    {
+      "id": "terrain_mountain_1",
+      "kind": "terrain",
+      "out": "assets/terrain/mountain_1.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "rugged grey mountain rock seen from above: bare craggy stone, loose rocky scree and scattered patches of snow (variation 2)."
+    },
+    {
+      "id": "terrain_swamp_0",
+      "kind": "terrain",
+      "out": "assets/terrain/swamp_0.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "murky swamp ground seen from above: dark green stagnant water, wet mud, tangled reeds and floating lily pads (variation 1)."
+    },
+    {
+      "id": "terrain_swamp_1",
+      "kind": "terrain",
+      "out": "assets/terrain/swamp_1.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "murky swamp ground seen from above: dark green stagnant water, wet mud, tangled reeds and floating lily pads (variation 2)."
+    },
+    {
+      "id": "terrain_swamp_2",
+      "kind": "terrain",
+      "out": "assets/terrain/swamp_2.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "murky swamp ground seen from above: dark green stagnant water, wet mud, tangled reeds and floating lily pads (variation 3)."
+    },
+    {
+      "id": "terrain_toxic_0",
+      "kind": "terrain",
+      "out": "assets/terrain/toxic_0.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "toxic waste ground: sickly acid-green bubbling sludge and glowing chemical pools over poisoned cracked earth."
+    },
+    {
+      "id": "terrain_volcanic_0",
+      "kind": "terrain",
+      "out": "assets/terrain/volcanic_0.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "volcanic ground: black basalt rock split by glowing molten-orange lava cracks, cooling magma crust and ash (variation 1)."
+    },
+    {
+      "id": "terrain_volcanic_1",
+      "kind": "terrain",
+      "out": "assets/terrain/volcanic_1.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "volcanic ground: black basalt rock split by glowing molten-orange lava cracks, cooling magma crust and ash (variation 2)."
+    },
+    {
+      "id": "terrain_volcanic_2",
+      "kind": "terrain",
+      "out": "assets/terrain/volcanic_2.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "volcanic ground: black basalt rock split by glowing molten-orange lava cracks, cooling magma crust and ash (variation 3)."
+    },
+    {
+      "id": "terrain_wasteland_0",
+      "kind": "terrain",
+      "out": "assets/terrain/wasteland_0.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "grey dead wasteland ground: cracked ashen earth, drifting ash, bleached debris and dry withered scrub (variation 1)."
+    },
+    {
+      "id": "terrain_wasteland_1",
+      "kind": "terrain",
+      "out": "assets/terrain/wasteland_1.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "grey dead wasteland ground: cracked ashen earth, drifting ash, bleached debris and dry withered scrub (variation 2)."
+    },
+    {
+      "id": "terrain_wasteland_2",
+      "kind": "terrain",
+      "out": "assets/terrain/wasteland_2.png",
+      "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
+      "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
+      "prompt": "grey dead wasteland ground: cracked ashen earth, drifting ash, bleached debris and dry withered scrub (variation 3)."
+    }
   ]
 }

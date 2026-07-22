@@ -39,6 +39,7 @@ cd tools/asset_gen
    python gemini_gen.py                # generate everything pending
    python gemini_gen.py --only hero    # portraits only
    python gemini_gen.py --only icon    # crests only
+   python gemini_gen.py --only terrain # map terrain tiles only
    python gemini_gen.py --limit 5      # cap this run to 5
    ```
 
@@ -52,6 +53,20 @@ files.
 |---|---|---|
 | Hero portraits | `assets/portraits/faction_<F>_<N>.png` (F 0–8, N 1–3) | Needs a tiny loader change (see below) |
 | Faction crests | `assets/towns/crest_<F>.png` (F 0–8) | Needs a one-line lobby wire-up |
+| Terrain tiles | `assets/terrain/<biome>[_<N>].png` | **Yes, drop-in** — same paths the engine already loads |
+
+### Terrain tiles (`--only terrain`)
+
+Regenerates the map ground tiles that were drawn as a *circular vignette on a
+dark background* — the map hex samples the bright centre plus a dark ring, so
+neighbours don't visually touch. These prompts force a **seamless, full-bleed,
+edge-to-edge** texture (like `water.png`, which was always correct) so the tile
+fills the whole hex. Nine biomes are covered: barren, corrupted,
+corrupted_forest, flesh_zone, mountain, swamp, toxic, volcanic, wasteland. The
+old vignetted PNGs were deleted, so a plain `--only terrain` run recreates them
+in place — no engine change needed. Eyeball the results: if Gemini still frames
+one with a border/vignette, `--force` that single file after tightening its
+prompt in `manifest.json`.
 
 Per `ART_DROPIN_MANIFEST.md`, the engine currently loads only one portrait per
 faction (`faction_<F>.png`). Once these exist, the loader in
