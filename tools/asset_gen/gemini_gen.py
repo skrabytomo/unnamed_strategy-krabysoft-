@@ -407,7 +407,11 @@ def load_manifest(path):
     d = m.get("defaults", {})
     for a in m["assets"]:
         a.setdefault("wait_seconds", d.get("wait_seconds", 120))
-        a["_full_prompt"] = (d.get("wrap_prefix", "") + a["prompt"] + d.get("style", "")).strip()
+        # Per-entry wrap_prefix/style override the defaults so different asset
+        # kinds can look different (dark-bust portraits vs parchment collages).
+        wrap  = a.get("wrap_prefix", d.get("wrap_prefix", ""))
+        style = a.get("style",       d.get("style", ""))
+        a["_full_prompt"] = (wrap + a["prompt"] + style).strip()
     return m
 
 
@@ -416,7 +420,7 @@ def main():
     ap = argparse.ArgumentParser(description="Generate missing game art via logged-in Gemini in Brave (stdlib only).")
     ap.add_argument("--manifest", default=os.path.join(here, "manifest.json"))
     ap.add_argument("--port", type=int, default=9222)
-    ap.add_argument("--only", choices=["hero", "icon", "all"], default="all")
+    ap.add_argument("--only", choices=["hero", "icon", "town", "collage", "all"], default="all")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--repo-root", default=os.path.abspath(os.path.join(here, "..", "..")))
     ap.add_argument("--force", action="store_true")
