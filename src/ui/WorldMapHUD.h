@@ -34,8 +34,13 @@ public:
     UICallback onOptions;         // toggle options / pause menu
 
     void setIconTex(ImTextureID tex) { m_iconTex = tex; }
+    // First portrait for a faction (resets the list); addPortrait() appends the
+    // rest. The hero panel picks one per hero by id so same-faction heroes differ.
     void setPortraitTex(int factionIdx, ImTextureID tex) {
-        if (factionIdx >= 0 && factionIdx < 9) m_portraitTex[factionIdx] = tex;
+        if (factionIdx >= 0 && factionIdx < 9) { m_portraits[factionIdx].clear(); if (tex) m_portraits[factionIdx].push_back(tex); }
+    }
+    void addPortrait(int factionIdx, ImTextureID tex) {
+        if (factionIdx >= 0 && factionIdx < 9 && tex) m_portraits[factionIdx].push_back(tex);
     }
     // Per-faction town art (castle/settlement illustration) — distinct from the
     // hero portrait, used for the Towns panel so it doesn't show a hero's face.
@@ -80,7 +85,7 @@ private:
 
     TooltipWidget m_tooltip;
     ImTextureID m_iconTex = nullptr;
-    ImTextureID m_portraitTex[9] = {};
+    std::vector<ImTextureID> m_portraits[9];   // faction -> [primary, variants…]
     ImTextureID m_townArtTex[9] = {};
     int m_maxBuildings[9] = {};
     int m_currentPlayerId = 1;

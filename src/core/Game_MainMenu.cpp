@@ -341,9 +341,11 @@ void Game::renderMainMenu()
                         ImGui::SetTooltip("Click to choose hero class");
                     ImDrawList* dl = ImGui::GetWindowDrawList();
                     float ic = rowH - 4;
-                    // portrait = the faction's HERO PORTRAIT (not the world figure)
-                    if (m_slotFaction[s] < 9 && m_portraitTex[fsel].ok())
-                        dl->AddImage((ImTextureID)(uintptr_t)m_portraitTex[fsel].id(),
+                    // portrait = this class's HERO PORTRAIT (per-class so different
+                    // classes of a faction show different faces)
+                    unsigned pid = portraitTexIdFor(fsel, (uint32_t)m_slotClassId[s]);
+                    if (m_slotFaction[s] < 9 && pid)
+                        dl->AddImage((ImTextureID)(uintptr_t)pid,
                                      {cur.x + 2, cur.y + 2}, {cur.x + 2 + ic, cur.y + 2 + ic});
                     else
                         dl->AddRectFilled({cur.x + 2, cur.y + 2}, {cur.x + 2 + ic, cur.y + 2 + ic},
@@ -351,10 +353,9 @@ void Game::renderMainMenu()
                     dl->AddText({cur.x + ic + 8, cur.y + rowH * 0.5f - 7},
                                 IM_COL32(230,230,230,255), curName);
 
-                    // Portrait-grid popup: one tile per class of this faction.
-                    // NOTE: there is only ONE portrait per faction today (HANDOFF
-                    // art gap), so the art repeats — the tile is still the class
-                    // card: name + specialty, which the combo never showed.
+                    // Portrait-grid popup: one tile per class of this faction,
+                    // each showing that class's own portrait (keyed by class id
+                    // across the faction's portrait set) plus name + specialty.
                     if (ImGui::BeginPopup(popId)) {
                         const float tile = 84.f, cell = tile + 10.f;
                         int i = 0;
@@ -372,8 +373,9 @@ void Game::renderMainMenu()
                             if (hov && !c->specialtyDesc.empty())
                                 ImGui::SetTooltip("Specialty: %s", c->specialtyDesc.c_str());
                             ImDrawList* pd = ImGui::GetWindowDrawList();
-                            if (m_portraitTex[fsel].ok())
-                                pd->AddImage((ImTextureID)(uintptr_t)m_portraitTex[fsel].id(),
+                            unsigned tpid = portraitTexIdFor(fsel, (uint32_t)c->id);
+                            if (tpid)
+                                pd->AddImage((ImTextureID)(uintptr_t)tpid,
                                              {p.x + 5, p.y}, {p.x + 5 + tile, p.y + tile});
                             else
                                 pd->AddRectFilled({p.x + 5, p.y}, {p.x + 5 + tile, p.y + tile},

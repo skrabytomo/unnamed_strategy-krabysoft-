@@ -234,7 +234,11 @@ void WorldMapHUD::drawHeroPanel(UIRenderer& rdr,
         float portX = x + 2.0f;
         float portY = y + 4.0f;
         int fid = static_cast<int>(h.faction);
-        ImTextureID portTex = (fid >= 0 && fid < 9) ? m_portraitTex[fid] : nullptr;
+        // Same-faction heroes must not share a face: pick from the faction's
+        // portrait list by a stable key (hero id).
+        ImTextureID portTex = nullptr;
+        if (fid >= 0 && fid < 9 && !m_portraits[fid].empty())
+            portTex = m_portraits[fid][h.id % m_portraits[fid].size()];
         if (portTex) {
             dl->AddImage(portTex, {portX, portY}, {portX + portSz, portY + portSz});
             dl->AddRect({portX, portY}, {portX + portSz, portY + portSz},

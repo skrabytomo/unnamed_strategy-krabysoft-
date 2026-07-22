@@ -382,7 +382,23 @@ private:
     static constexpr int NUM_UNIT_TIERS = 6;
     Texture           m_unitTex[NUM_FACTIONS][NUM_UNIT_TIERS];
     int               m_unitTexCols[NUM_FACTIONS][NUM_UNIT_TIERS] = {};  // frame count per sheet
-    Texture           m_portraitTex[NUM_FACTIONS];
+    Texture           m_portraitTex[NUM_FACTIONS];        // primary (faction_F.png) = portrait slot 0
+    // Extra hero portraits per faction (assets/portraits/faction_F_1.png …).
+    // Same-faction heroes pick a different one by id so they don't all share a
+    // face. Slot 0 is m_portraitTex[F]; slots 1.. are these variants.
+    static constexpr int MAX_PORTRAIT_VARS = 8;
+    Texture           m_portraitVar[NUM_FACTIONS][MAX_PORTRAIT_VARS];
+    int               m_portraitVarCount[NUM_FACTIONS] = {};
+    Texture           m_crestTex[NUM_FACTIONS];            // faction emblem (assets/towns/crest_F.png), optional
+    // GL texture id of the portrait a hero should show, chosen by a stable key
+    // (hero id) across primary + variants. 0 = none available.
+    unsigned int portraitTexIdFor(int faction, uint32_t key) const {
+        if (faction < 0 || faction >= NUM_FACTIONS) return 0;
+        int total = 1 + m_portraitVarCount[faction];
+        int idx = total > 0 ? static_cast<int>(key % static_cast<uint32_t>(total)) : 0;
+        const Texture& t = (idx == 0) ? m_portraitTex[faction] : m_portraitVar[faction][idx - 1];
+        return t.ok() ? t.id() : (m_portraitTex[faction].ok() ? m_portraitTex[faction].id() : 0);
+    }
 
     // Summoned-unit sprite sheets (Necromancy skeletons, WildGrowth ghosts) —
     // combat units with no faction/tier mapping. Same 8-frame row format.
