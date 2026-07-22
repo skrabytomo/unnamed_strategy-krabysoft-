@@ -134,16 +134,21 @@ elseif(UNIX)
     target_link_libraries(${PROJECT_NAME} PRIVATE GL)
 endif()
 
-# ── Post-build: copy assets and create runtime dirs ───────────────────────────
-# Wipe the runtime assets/ first, then copy — copy_directory only ADDS/updates
-# and never removes, so deleting a source asset used to leave a stale copy in
-# build/bin/assets that the game kept loading ("I deleted this terrain but still
-# see it"). The rebuild already re-copies the whole tree, so the wipe is ~free.
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+# ── Asset sync: mirror source assets/ to the runtime dir on EVERY build ───────
+# The game loads from <exe dir>/assets. Two footguns this avoids:
+#  * copy_directory only ADDS/updates, never removes -> deleted source assets
+#    lingered ("deleted this terrain but still see it"). We wipe first.
+#  * a POST_BUILD step only runs when the exe relinks, so newly ADDED art (e.g.
+#    freshly generated portraits) never appeared until an unrelated code change.
+# A dedicated ALL target that depends on the exe runs the wipe+copy every build,
+# so `cmake --build build` always leaves the runtime assets identical to source.
+add_custom_target(sync_assets ALL
     COMMAND ${CMAKE_COMMAND} -E rm -rf $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets
+    COMMENT "Mirroring assets/ to runtime dir"
 )
+add_dependencies(sync_assets ${PROJECT_NAME})
 # Lua scripts must be COPIED, not just have an empty dir created for them.
 # scripts/autoload.lua + campaign.lua exist in the repo and install() ships
 # them, but the dev build only ever made an empty build/bin/scripts — so every
