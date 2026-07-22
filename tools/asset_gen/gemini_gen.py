@@ -236,6 +236,26 @@ JS_WAIT_IMAGE = """
 })
 """
 
+# Primary download: read the already-decoded <img> pixels via a canvas. Works
+# for Gemini's same-origin blob: images regardless of CSP/CORS (fetch is blocked
+# for blobs), and yields full native-resolution PNG.
+JS_EXTRACT_PNG = """
+(src) => {
+  const imgs = Array.from(document.querySelectorAll('img'));
+  let img = imgs.find(i => (i.currentSrc || i.src) === src)
+         || imgs.find(i => (i.currentSrc || i.src || '').startsWith('blob:'));
+  if (!img) return "ERR:img-not-found";
+  const w = img.naturalWidth, h = img.naturalHeight;
+  if (!w || !h) return "ERR:img-not-loaded";
+  try {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    return c.toDataURL('image/png').split(',')[1];   // strips "data:image/png;base64,"
+  } catch (e) { return "ERR:" + e.message; }           // tainted (cross-origin) etc.
+}
+"""
+
+# Fallback download for cross-origin https images (not blobs): in-page fetch.
 JS_FETCH_B64 = """
 (src) => fetch(src).then(r => r.arrayBuffer()).then(buf => {
   const by = new Uint8Array(buf); let bin = ''; const C = 0x8000;
@@ -274,18 +294,23 @@ def save_image(cdp, src, out_abs):
     if src.startswith("data:image"):
         data = base64.b64decode(src.split(",", 1)[1])
     else:
-        b64 = cdp.evaluate(js_call(JS_FETCH_B64, src), await_promise=True, timeout=60)
-        if isinstance(b64, str) and not b64.startswith("ERR:"):
+        # 1) canvas readback (handles the same-origin blob: image Gemini returns)
+        b64 = cdp.evaluate(js_call(JS_EXTRACT_PNG, src), timeout=45)
+        if isinstance(b64, str) and b64 and not b64.startswith("ERR:"):
             data = base64.b64decode(b64)
-        elif not src.startswith("blob:"):
-            # in-page fetch blocked (CORS) — try a plain download (signed URLs are often public)
-            try:
-                with urllib.request.urlopen(src, timeout=30) as r:
-                    data = r.read()
-            except Exception as e:
-                raise RuntimeError(f"page fetch and direct download both failed ({b64}; {e})")
         else:
-            raise RuntimeError(f"blob fetch failed: {b64}")
+            # 2) in-page fetch, then 3) plain download (for cross-origin https)
+            b64f = cdp.evaluate(js_call(JS_FETCH_B64, src), await_promise=True, timeout=60)
+            if isinstance(b64f, str) and not b64f.startswith("ERR:"):
+                data = base64.b64decode(b64f)
+            elif not src.startswith("blob:"):
+                try:
+                    with urllib.request.urlopen(src, timeout=30) as r:
+                        data = r.read()
+                except Exception as e:
+                    raise RuntimeError(f"canvas={b64}; fetch={b64f}; urllib={e}")
+            else:
+                raise RuntimeError(f"canvas={b64}; fetch={b64f}")
     if not data or len(data) < 1024:
         raise RuntimeError("downloaded image suspiciously small")
     with open(out_abs, "wb") as f:
