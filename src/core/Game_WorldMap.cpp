@@ -8542,36 +8542,84 @@ void Game::renderKingdomPanel()
         ImGui::End(); return;
     }
 
+    // ── Visual helpers: pull thumbnails straight from the loaded art. Each
+    //    guards on .ok(); a missing sheet falls back to reserved blank space so
+    //    layout never shifts and no garbage-texture quad is drawn.
+    auto factionPortrait = [&](FactionId f) -> ImTextureID {
+        int fi = std::clamp(static_cast<int>(f), 0, NUM_FACTIONS - 1);
+        return m_portraitTex[fi].ok()
+             ? (ImTextureID)(uintptr_t)m_portraitTex[fi].id() : nullptr;
+    };
+    auto factionCrest = [&](FactionId f) -> ImTextureID {
+        int fi = std::clamp(static_cast<int>(f), 0, NUM_FACTIONS - 1);
+        return m_townTex[fi].ok()
+             ? (ImTextureID)(uintptr_t)m_townTex[fi].id() : nullptr;
+    };
+    // Unit sprite sheets are horizontal strips; the first frame is the left 1/8.
+    auto drawUnitIcon = [&](int defId, int count, float sz) {
+        const UnitDef* ud = m_registry.getUnitDef(defId);
+        ImTextureID t = nullptr;
+        if (ud) {
+            int fid = std::clamp(static_cast<int>(ud->faction), 0, NUM_FACTIONS - 1);
+            int tid = std::clamp(ud->tier - 1, 0, NUM_UNIT_TIERS - 1);
+            if (m_unitTex[fid][tid].ok())
+                t = (ImTextureID)(uintptr_t)m_unitTex[fid][tid].id();
+        }
+        if (t) ImGui::Image(t, {sz, sz}, {0.0f, 0.0f}, {0.125f, 1.0f});
+        else   ImGui::Dummy({sz, sz});
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s x%d", ud ? ud->name.c_str() : "Unit", count);
+        ImGui::SameLine(0, 2);
+        ImGui::Text("x%d", count);
+    };
+    // Resource icons live in the shared 8x6 HUD atlas at ICO_RES_GOLD (9) + type.
+    ImTextureID resAtlas = m_iconTex.ok() ? (ImTextureID)(uintptr_t)m_iconTex.id() : nullptr;
+    auto drawResIcon = [&](int ri, float sz) {
+        if (resAtlas) {
+            int idx    = 9 + ri;
+            float col  = static_cast<float>(idx % 8);
+            float row  = static_cast<float>(idx / 8);
+            ImGui::Image(resAtlas, {sz, sz},
+                         {col / 8.0f, row / 6.0f}, {(col + 1.0f) / 8.0f, (row + 1.0f) / 6.0f});
+        } else {
+            ImGui::Dummy({sz, sz});
+        }
+    };
+
+    static const char* kFactionNames[] = {
+        "Holy Order", "Crimson Wardens", "Thornkin", "Eternal Empire",
+        "Bloodsworn", "Voidkin", "Iron Assembly", "Amalgamate", "Convergence"
+    };
+
     // ── HEROES ────────────────────────────────────────────────────────────────
     ImGui::TextColored({1.0f, 0.82f, 0.2f, 1.0f}, "HEROES");
     ImGui::Separator();
 
     for (const auto& h : m_heroes) {
+        ImGui::PushID(static_cast<int>(h.id));
+        ImTextureID port = factionPortrait(h.faction);
+        if (port) { ImGui::Image(port, {30, 30}); ImGui::SameLine(0, 6); }
         char hdr[120];
         std::snprintf(hdr, sizeof(hdr), "%s  (Level %d  ATK %d  DEF %d  MP %d/%d)",
                       h.name.c_str(), h.level, h.attack, h.defense, h.mana, h.maxMana);
-        if (ImGui::TreeNodeEx(hdr, ImGuiTreeNodeFlags_DefaultOpen)) {
+        bool open = ImGui::TreeNodeEx(hdr, ImGuiTreeNodeFlags_DefaultOpen);
+        if (open) {
             // Move bar
             float mv = h.maxMove > 0 ? static_cast<float>(h.movePool) / h.maxMove : 0.0f;
             ImGui::ProgressBar(mv, ImVec2(-1, 8), "");
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Movement: %d / %d", h.movePool, h.maxMove);
 
-            // Army
+            // Army — one sprite thumbnail per stack
             ImGui::TextColored({0.7f, 1.0f, 0.7f, 1.0f}, "Army:");
-            ImGui::SameLine();
             bool first = true;
             for (const auto& s : h.army) {
                 if (s.count <= 0) continue;
-                // Look up unit name
-                const char* uname = "Unit";
-                for (const auto& ud : m_registry.units())
-                    if (ud.id == s.defId) { uname = ud.name.c_str(); break; }
-                if (!first) ImGui::SameLine();
-                ImGui::TextColored({0.85f, 0.9f, 0.85f, 1.0f}, "[%s x%d]", uname, s.count);
+                ImGui::SameLine(0, 8);
+                drawUnitIcon(s.defId, s.count, 22.0f);
                 first = false;
             }
-            if (first) ImGui::TextDisabled("  (no army)");
+            if (first) { ImGui::SameLine(); ImGui::TextDisabled("(none)"); }
 
             // Known world-map spells
             bool hasWS = false;
@@ -8587,6 +8635,7 @@ void Game::renderKingdomPanel()
 
             ImGui::TreePop();
         }
+        ImGui::PopID();
     }
 
     ImGui::Spacing();
@@ -8595,33 +8644,33 @@ void Game::renderKingdomPanel()
     ImGui::TextColored({1.0f, 0.82f, 0.2f, 1.0f}, "TOWNS");
     ImGui::Separator();
 
-    static const char* kFacShort[] = {
-        "HO","BS","TK","EE","CW","VK","IA","AM","CV"
-    };
     bool anyTown = false;
+    int  townPid = 0;
     for (const auto& t : m_towns) {
         if (t.ownerId != static_cast<uint32_t>(currentPlayerId())) continue;
         anyTown = true;
+        ImGui::PushID(4000 + townPid++);
         int fi = static_cast<int>(t.faction);
-        char thdr[100];
+        ImTextureID crest = factionCrest(t.faction);
+        if (crest) { ImGui::Image(crest, {28, 28}); ImGui::SameLine(0, 6); }
+        char thdr[120];
         std::snprintf(thdr, sizeof(thdr), "%s  [%s]  %d buildings",
                       t.name.c_str(),
-                      (fi >= 0 && fi < 9) ? kFacShort[fi] : "?",
+                      (fi >= 0 && fi < 9) ? kFactionNames[fi] : "?",
                       static_cast<int>(t.builtBuildings.size()));
         if (ImGui::TreeNodeEx(thdr, ImGuiTreeNodeFlags_Leaf)) {
-            // Garrison
+            // Garrison — sprite thumbnails
             if (!t.garrison.empty()) {
                 ImGui::TextColored({0.9f, 0.8f, 0.5f, 1.0f}, "Garrison:");
                 for (const auto& s : t.garrison) {
-                    const char* uname = "Unit";
-                    for (const auto& ud : m_registry.units())
-                        if (ud.id == s.defId) { uname = ud.name.c_str(); break; }
-                    ImGui::SameLine();
-                    ImGui::Text("[%s x%d]", uname, s.count);
+                    if (s.count <= 0) continue;
+                    ImGui::SameLine(0, 8);
+                    drawUnitIcon(s.defId, s.count, 22.0f);
                 }
             }
             ImGui::TreePop();
         }
+        ImGui::PopID();
     }
     if (!anyTown) ImGui::TextDisabled("No towns owned.");
 
@@ -8659,6 +8708,7 @@ void Game::renderKingdomPanel()
     for (int i = 0; i < RESOURCE_COUNT; ++i) {
         auto rt = static_cast<ResourceType>(i);
         ImVec4 col = (i < 6) ? kResCol[i] : ImVec4(1,1,1,1);
+        drawResIcon(i, 16.0f); ImGui::SameLine(0, 5);
         ImGui::TextColored(col, "%s", resourceName(rt));     ImGui::NextColumn();
         ImGui::Text("%d", mineCount[i]);                      ImGui::NextColumn();
         if (mineIncome[i] > 0)

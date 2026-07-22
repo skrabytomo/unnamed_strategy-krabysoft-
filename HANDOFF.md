@@ -71,7 +71,11 @@ lot has shipped since it was written. Current reality:
 - AI: "some players idle" — largely explained and fixed by the march-cache
   divergence bug (heroes yo-yoed toward docks instead of marching; see
   THREADING.md). Gold-hoarding / trading when rich still unverified.
-- UI: kingdom overview is text not visual; town/hero pickers need icons.
+- UI: town/hero pickers need icons.
+  ~~kingdom overview is text not visual~~ — **done (2026-07-21)**: `renderKingdomPanel()`
+  now shows hero faction portraits, unit-sprite army/garrison thumbnails, town
+  faction crests and resource icons in the income table (also fixed a swapped
+  Crimson-Wardens/Bloodsworn faction code there).
   ~~no "already built" indicator in town~~ — **done**: built rows show a green
   `[✓]` check in `TownScreen::drawBuildingTree()`. ~~hero right-click artifact
   sheet not built~~ — **done (2026-07-21)**: right-clicking any hero on the
