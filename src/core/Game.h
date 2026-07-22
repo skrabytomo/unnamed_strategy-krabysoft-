@@ -394,10 +394,12 @@ private:
     // (hero id) across primary + variants. 0 = none available.
     unsigned int portraitTexIdFor(int faction, uint32_t key) const {
         if (faction < 0 || faction >= NUM_FACTIONS) return 0;
-        int total = 1 + m_portraitVarCount[faction];
-        int idx = total > 0 ? static_cast<int>(key % static_cast<uint32_t>(total)) : 0;
-        const Texture& t = (idx == 0) ? m_portraitTex[faction] : m_portraitVar[faction][idx - 1];
-        return t.ok() ? t.id() : (m_portraitTex[faction].ok() ? m_portraitTex[faction].id() : 0);
+        int vc = m_portraitVarCount[faction];
+        if (vc > 0) {                       // curated variants only (basic clashes)
+            int idx = static_cast<int>(key % static_cast<uint32_t>(vc));
+            if (m_portraitVar[faction][idx].ok()) return m_portraitVar[faction][idx].id();
+        }
+        return m_portraitTex[faction].ok() ? m_portraitTex[faction].id() : 0;
     }
 
     // Summoned-unit sprite sheets (Necromancy skeletons, WildGrowth ghosts) —

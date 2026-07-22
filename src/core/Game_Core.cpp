@@ -308,20 +308,22 @@ bool Game::init(const std::string& title, int width, int height, bool hidden)
     for (int i = 0; i < NUM_FACTIONS; ++i) {
         char rel[80];
         std::snprintf(rel, sizeof(rel), "assets/portraits/faction_%d.png", i);
-        m_portraitTex[i].load(m_basePath + rel, false, false);
+        // mipmap=true: these 1024² illustrations are shown at 40–90px, so
+        // trilinear minification keeps them crisp instead of shimmery.
+        m_portraitTex[i].load(m_basePath + rel, false, false, false, false, false, /*mipmap*/true);
 
         m_portraitVarCount[i] = 0;
         for (int v = 1; v <= MAX_PORTRAIT_VARS; ++v) {
             char vb[80];
             std::snprintf(vb, sizeof(vb), "assets/portraits/faction_%d_%d.png", i, v);
-            if (m_portraitVar[i][v - 1].load(m_basePath + vb, false, false, false, false, /*quiet*/true))
+            if (m_portraitVar[i][v - 1].load(m_basePath + vb, false, false, false, false, /*quiet*/true, /*mipmap*/true))
                 m_portraitVarCount[i]++;
             else
                 break;  // variants are contiguous from _1
         }
         char cb[80];
         std::snprintf(cb, sizeof(cb), "assets/towns/crest_%d.png", i);
-        m_crestTex[i].load(m_basePath + cb, false, false, false, false, /*quiet*/true);
+        m_crestTex[i].load(m_basePath + cb, false, false, false, false, /*quiet*/true, /*mipmap*/true);
     }
 
     // Load faction town art (user-provided or placeholder)
@@ -606,11 +608,16 @@ bool Game::init(const std::string& title, int width, int height, bool hidden)
     if (m_iconTex.ok())
         m_worldHUD.setIconTex((ImTextureID)(uintptr_t)m_iconTex.id());
     for (int i = 0; i < NUM_FACTIONS; ++i) {
-        if (m_portraitTex[i].ok())
-            m_worldHUD.setPortraitTex(i, (ImTextureID)(uintptr_t)m_portraitTex[i].id());  // slot 0
-        for (int v = 0; v < m_portraitVarCount[i]; ++v)                                    // slots 1..
-            if (m_portraitVar[i][v].ok())
-                m_worldHUD.addPortrait(i, (ImTextureID)(uintptr_t)m_portraitVar[i][v].id());
+        // Prefer the curated variant portraits; only fall back to the basic
+        // faction_F.png when a faction has none (the basics clash with the new
+        // style, so they're dropped from rotation once real portraits exist).
+        if (m_portraitVarCount[i] > 0) {
+            for (int v = 0; v < m_portraitVarCount[i]; ++v)
+                if (m_portraitVar[i][v].ok())
+                    m_worldHUD.addPortrait(i, (ImTextureID)(uintptr_t)m_portraitVar[i][v].id());
+        } else if (m_portraitTex[i].ok()) {
+            m_worldHUD.setPortraitTex(i, (ImTextureID)(uintptr_t)m_portraitTex[i].id());
+        }
         if (m_townTex[i].ok())
             m_worldHUD.setTownArtTex(i, (ImTextureID)(uintptr_t)m_townTex[i].id());
         m_worldHUD.setMaxBuildings(i,

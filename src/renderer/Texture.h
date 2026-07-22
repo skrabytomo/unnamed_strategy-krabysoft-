@@ -12,7 +12,8 @@ public:
     // reflects at each tile boundary so continuously-scrolled UVs never show a
     // seam, regardless of whether the source image tiles edge-to-edge cleanly.
     bool load(const std::string& path, bool pixelArt = true, bool flipV = true,
-              bool repeat = false, bool wrapMirror = false, bool quiet = false);
+              bool repeat = false, bool wrapMirror = false, bool quiet = false,
+              bool mipmap = false);
     void bind(int slot = 0) const;
     void unbind() const;
 

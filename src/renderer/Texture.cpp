@@ -31,7 +31,7 @@ static FILE* openUtf8Path(const std::string& path)
 }
 #endif
 
-bool Texture::load(const std::string& path, bool pixelArt, bool flipV, bool repeat, bool wrapMirror, bool quiet)
+bool Texture::load(const std::string& path, bool pixelArt, bool flipV, bool repeat, bool wrapMirror, bool quiet, bool mipmap)
 {
     stbi_set_flip_vertically_on_load(flipV ? 1 : 0);
 
@@ -56,16 +56,23 @@ bool Texture::load(const std::string& path, bool pixelArt, bool flipV, bool repe
     glGenTextures(1, &m_id);
     glBindTexture(GL_TEXTURE_2D, m_id);
 
-    // Filtering — nearest for pixel art, linear for smooth
-    GLint filter = pixelArt ? GL_NEAREST : GL_LINEAR;
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+    // Filtering — nearest for pixel art, linear for smooth. With mipmaps the
+    // minification filter trilinearly samples down a pre-averaged pyramid, so a
+    // 1024² portrait shown at ~60px stays crisp instead of undersampling into a
+    // shimmery/blurry mess. Only meaningful for smooth (non-pixel-art) textures.
+    bool useMips = mipmap && !pixelArt;
+    GLint magF = pixelArt ? GL_NEAREST : GL_LINEAR;
+    GLint minF = pixelArt ? GL_NEAREST : (useMips ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minF);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magF);
     GLint wrap = wrapMirror ? GL_MIRRORED_REPEAT : (repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height,
                  0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    if (useMips)
+        glGenerateMipmap(GL_TEXTURE_2D);
 
     stbi_image_free(data);
     glBindTexture(GL_TEXTURE_2D, 0);
