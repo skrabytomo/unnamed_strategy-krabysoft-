@@ -159,6 +159,14 @@ void UIRenderer::flushText(ImDrawList* dl)
     m_textQueue.clear();
 }
 
+float UIRenderer::measureTextWidth(const std::string& text, float size) const
+{
+    ImFont* font = ImGui::GetFont();
+    if (!font || text.empty()) return 0.0f;
+    // CalcTextSizeA scales the glyph metrics to the requested pixel size.
+    return font->CalcTextSizeA(size, FLT_MAX, -1.0f, text.c_str()).x;
+}
+
 void UIRenderer::drawTooltip(const Rect& r)
 {
     UIColor bg   = UIColor::hex(UITheme::BG_PANEL, 0.95f);

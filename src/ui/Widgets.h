@@ -71,9 +71,10 @@ public:
         UIColor brd = hovered ? UIColor::hex(UITheme::BORDER_BRIGHT) : colorBorder;
         if (!enabled) bg = UIColor::hex(UITheme::BG_PANEL, 0.5f);
         rdr.drawRect(bounds, bg, brd, 1.0f);
-        // Center text
-        float tx = bounds.x + 6.0f;
-        float ty = bounds.y + (bounds.h - fontSize * 0.75f) * 0.5f;
+        // Center text within the button (fall back to a small inset if it's wider).
+        float tw = rdr.measureTextWidth(text, fontSize);
+        float tx = bounds.x + std::max(4.0f, (bounds.w - tw) * 0.5f);
+        float ty = bounds.y + (bounds.h - fontSize) * 0.5f;
         UIColor tc = enabled ? colorText : UIColor::hex(UITheme::TEXT_DISABLED);
         rdr.drawText(text, tx, ty, tc, fontSize);
     }

@@ -36,6 +36,10 @@ public:
     // ImGui::NewFrame() and ImGui::EndFrame() (i.e. inside beginImGuiFrame/end).
     void flushText(ImDrawList* dl);
 
+    // Pixel width of `text` rendered at `size` with the active ImGui font —
+    // used by widgets to center their labels.
+    float measureTextWidth(const std::string& text, float size) const;
+
     // Tooltip background
     void drawTooltip(const Rect& r);
 

@@ -64,6 +64,11 @@ void WorldMapHUD::buildLayout(int sw, int sh)
     m_optionsBtn.colorBorder = UIColor::hex(UITheme::TEXT_SECONDARY);
     m_optionsBtn.colorText   = UIColor::hex(UITheme::TEXT_SECONDARY);
 
+    // Bigger labels so the action bar reads clearly (default 13px was cramped
+    // and near-illegible on the dark stone bar).
+    for (Button* b : {&m_worldSpellsBtn, &m_kingdomBtn, &m_endTurnBtn, &m_optionsBtn})
+        b->fontSize = 18.0f;
+
     // Hero panel — right side, below top bar
     m_heroPanel = Panel({(float)sw - 180.0f, 68.0f, 176.0f, 230.0f});
     m_heroPanel.title = "Heroes";
