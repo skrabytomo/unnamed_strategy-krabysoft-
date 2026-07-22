@@ -11,11 +11,12 @@ Playwright, no venv, no installs.
 It reuses your existing Google login; the script never sees your password.
 
 QUICK START (see README.md):
-  1) Fully quit Brave (Task Manager — no brave.exe left).
-  2) ./launch_brave.sh        (Brave with --remote-debugging-port=9222, your profile)
-     Sign in at https://gemini.google.com if you aren't already.
-  3) python gemini_gen.py --dry-run     then     python gemini_gen.py
-     Filters: --only hero | --only icon   Cap: --limit 5   Redo: --force
+  Just run it — the script launches Brave for you, using its OWN dedicated
+  profile (separate from your normal Brave, no port conflict, nothing to close):
+      python gemini_gen.py --only collage
+  On the FIRST run a Brave window opens; sign into Gemini once (it persists in
+  the dedicated profile). Filters: --only hero|icon|town|collage  Cap: --limit N
+  Redo existing: --force.  Attach to your own Brave instead: --no-launch.
 
 Skips any asset whose output PNG already exists, so re-run after a quota cutoff
 to continue where you left off.
@@ -154,6 +155,66 @@ def http_json(port, path):
     body = r.read()
     c.close()
     return json.loads(body)
+
+
+def port_up(port):
+    try:
+        http_json(port, "/json")
+        return True
+    except Exception:
+        return False
+
+
+BRAVE_CANDIDATES = [
+    r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+    r"C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe",
+    os.path.expandvars(r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe"),
+    "/usr/bin/brave-browser", "/usr/bin/brave",
+]
+
+
+def find_brave(explicit):
+    if explicit:
+        return explicit if os.path.exists(explicit) else None
+    for p in BRAVE_CANDIDATES:
+        if p and os.path.exists(p):
+            return p
+    return None
+
+
+def ensure_brave(port, brave_path, profile, allow_launch):
+    """Return True with Brave listening on `port`. Auto-launches a DEDICATED
+    profile instance if needed — separate from the user's normal Brave, so
+    there's no port conflict and nothing to close. Login persists in `profile`,
+    so you only sign into Gemini once. Returns (ok, just_launched)."""
+    if port_up(port):
+        return True, False
+    if not allow_launch:
+        return False, False
+    brave = find_brave(brave_path)
+    if not brave:
+        log("Brave not found. Pass --brave <path to brave.exe>, or use --no-launch and start it yourself.")
+        return False, False
+    os.makedirs(profile, exist_ok=True)
+    import subprocess
+    argv = [brave, f"--remote-debugging-port={port}", f"--user-data-dir={profile}",
+            "--no-first-run", "--no-default-browser-check", "--start-maximized",
+            "https://gemini.google.com/app"]
+    flags = 0x00000008 | 0x00000200 if os.name == "nt" else 0  # DETACHED_PROCESS|NEW_PROCESS_GROUP
+    log(f"Launching Brave (dedicated automation profile) on port {port}…")
+    try:
+        subprocess.Popen(argv, creationflags=flags,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True)
+    except Exception as e:
+        log(f"  launch failed: {e}")
+        return False, False
+    for _ in range(40):
+        if port_up(port):
+            log("  Brave debug port is up.")
+            return True, True
+        time.sleep(1)
+    log("  Brave didn't expose the debug port in time.")
+    return False, False
 
 
 def js_call(func_body, *args):
@@ -425,6 +486,11 @@ def main():
     ap.add_argument("--repo-root", default=os.path.abspath(os.path.join(here, "..", "..")))
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--between", type=float, default=6.0)
+    ap.add_argument("--brave", default=None, help="path to brave.exe (auto-detected if omitted)")
+    ap.add_argument("--profile", default=os.path.join(here, ".brave-profile"),
+                    help="dedicated Brave profile dir (persists your Gemini login across runs)")
+    ap.add_argument("--no-launch", action="store_true",
+                    help="don't auto-launch Brave; attach to one you started yourself")
     ap.add_argument("--max-backoff", type=float, default=180.0,
                     help="cap on the progressive throttle backoff after failures")
     ap.add_argument("--dry-run", action="store_true")
@@ -454,13 +520,13 @@ def main():
         log("Nothing to do. (Everything exists — use --force to redo.)")
         return 0
 
-    # Attach to Brave, pick a page target (prefer an existing Gemini tab).
-    try:
-        targets = http_json(args.port, "/json")
-    except Exception as e:
-        log(f"Could not reach Brave DevTools on port {args.port}: {e}")
-        log(f"Fully quit Brave, then run ./launch_brave.sh (adds --remote-debugging-port={args.port}).")
+    # Attach to Brave — auto-launching a dedicated-profile instance if needed
+    # (no conflict with your normal Brave, nothing for you to open).
+    ok, just_launched = ensure_brave(args.port, args.brave, args.profile, not args.no_launch)
+    if not ok:
+        log(f"Could not reach or launch Brave on port {args.port}.")
         return 2
+    targets = http_json(args.port, "/json")
     pages = [t for t in targets if t.get("type") == "page" and t.get("webSocketDebuggerUrl")]
     if not pages:
         log("No page target in Brave. Open a tab (any URL) and retry.")
@@ -474,10 +540,17 @@ def main():
     cdp = CDP(ws)
 
     cdp.call("Page.navigate", {"url": CONFIG["gemini_url"]}, timeout=30)
-    if not wait_for_input(cdp, 30):
+    # First launch of the dedicated profile isn't logged into Gemini yet — give
+    # a generous window to sign in once (it persists in the profile afterwards).
+    login_wait = 240 if just_launched else 30
+    if just_launched:
+        log("A Brave window opened. If it asks you to sign in, log into Google/Gemini "
+            "there — you only do this ONCE (login persists). Waiting up to "
+            f"{login_wait}s for the prompt box…")
+    if not wait_for_input(cdp, login_wait):
         url = cdp.evaluate("location.href") or ""
         if "accounts.google.com" in url or "signin" in url.lower():
-            log("Gemini wants you to sign in — do it in that Brave window, then re-run.")
+            log("Still on the sign-in page — finish signing in, then just re-run (no need to touch Brave).")
         else:
             log("Gemini prompt box never appeared — is the tab on gemini.google.com and loaded?")
             debug_dump(cdp, "startup")
