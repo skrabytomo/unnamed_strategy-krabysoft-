@@ -2,53 +2,39 @@
 
 The renderer (`src/world/HexMapRenderer.cpp`) loads terrain as **contiguous
 variants from `_0`**: `TYPE_0.png`, `TYPE_1.png`, … and **stops at the first
-gap**. If `TYPE_0.png` is missing it ignores every higher-numbered file and
-falls back to the single legacy `TYPE.png`. So a kept tile at, say, `_23` with
-no `_0` is **dead weight — the engine never loads it.** Up to `MAX_VARIANTS=24`
-per type; a healthy type today has ~3.
+gap**. Up to `MAX_VARIANTS=24` per type. A missing `_0` (with no legacy
+`TYPE.png`) would render untextured — but every type here has a fallback, so
+nothing is broken.
 
-**Good news:** nothing renders untextured — every type still has either usable
-variants or a legacy `TYPE.png` fallback.
+## ✅ Rename quick-win — DONE
 
-## ⚠ The catch: 7 types kept a good tile at the wrong index
+The cleanup left 7 types with their only good tile at a high index (`_23`,
+`industrial` also `_10`), which the loader ignored. Those survivors were renamed
+to `_0`/`_1` so the engine now uses them:
 
-You deleted the bad variants but kept a survivor at a **high index** (`_23`, and
-`industrial` also `_10`). Because `_0` is gone, the loader skips them and uses
-the flat legacy texture instead — you lost all variety on these.
+`plains_23→_0`, `forest_23→_0`, `highland_23→_0`, `corrupted_23→_0`,
+`toxic_23→_0`, `rocky_23→_0`, `industrial_10→_0`, `industrial_23→_1`.
 
-**Quick win (no regeneration):** rename each survivor to `_0` and the engine
-uses it immediately.
+## Current variant count per type
 
-| Type | usable from `_0` | orphaned (ignored) | legacy `TYPE.png` | action |
-|---|---|---|---|---|
-| plains     | 0 | `_23`        | yes | rename `_23`→`_0`, then add `_1 _2` |
-| forest     | 0 | `_23`        | yes | rename `_23`→`_0`, then add `_1 _2` |
-| highland   | 0 | `_23`        | yes | rename `_23`→`_0`, then add `_1 _2` |
-| corrupted  | 0 | `_23`        | yes | rename `_23`→`_0`, then add `_1 _2` |
-| toxic      | 0 | `_23`        | yes | rename `_23`→`_0`, then add `_1 _2` |
-| rocky      | 0 | `_23`        | yes | rename `_23`→`_0`, then add `_1 _2` |
-| industrial | 0 | `_10`, `_23` | yes | rename one →`_0`, other →`_1`, add `_2` |
-
-## Types that are fine (contiguous from `_0`)
-
-| Type | variants | note |
+| Type | variants (`_0`…) | to reach 3 |
 |---|---|---|
-| sacred | 1 | has `_0`; add `_1 _2` for variety |
-| water  | 2 | mirrored-repeat scroll; add `_2` optional |
-| mountain | 2 | add `_2` optional |
-| swamp, volcanic, barren, wasteland | 3 | healthy |
-| corrupted_forest, flesh_zone | 3 | healthy (no legacy fallback, but 3 variants) |
+| plains     | 1 | `_1 _2` |
+| forest     | 1 | `_1 _2` |
+| highland   | 1 | `_1 _2` |
+| corrupted  | 1 | `_1 _2` |
+| toxic      | 1 | `_1 _2` |
+| rocky      | 1 | `_1 _2` |
+| sacred     | 1 | `_1 _2` |
+| industrial | 2 | `_2` |
+| water      | 2 | `_2` (optional; mirrored-repeat scroll) |
+| mountain   | 2 | `_2` (optional) |
+| swamp, volcanic, barren, wasteland | 3 | — healthy |
+| corrupted_forest, flesh_zone | 3 | — healthy (no legacy, 3 variants) |
 
-## To bring every type to 3 contiguous variants
+## To generate
 
-After the renames above, the tiles still to **generate** (each 1:1, painterly,
-edge-tileable, same style as the survivors):
-
-- **2 each** for: plains, forest, highland, corrupted, toxic, rocky (`_1`, `_2`)
-- **1** for industrial (`_2`)
-- **2** for sacred (`_1`, `_2`)
-- **1 each** (optional) for water, mountain (`_2`)
-
-= **16 required** + 2 optional. These are square terrain tiles, not the
-seamless-per-edge kind, so Gemini can do them — say the word and I'll add a
-`kind:"terrain"` section to `tools/asset_gen/manifest.json`.
+**15 required** (`_1`,`_2` for the seven 1-variant types + `_2` for industrial)
+plus 2 optional (`water_2`, `mountain_2`). Square terrain tiles, painterly, same
+style as the surviving tiles — Gemini-friendly. Say the word and I'll add a
+`kind:"terrain"` batch to `tools/asset_gen/manifest.json`.
