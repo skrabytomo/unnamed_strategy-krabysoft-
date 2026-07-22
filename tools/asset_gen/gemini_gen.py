@@ -379,6 +379,16 @@ def generate_one(cdp, asset, out_abs):
     if src == "__QUOTA__":
         return "quota"
     if not src:
+        # Under batch load Gemini can deliver the image just after the window.
+        # Grace re-check before giving up (the resume-on-rerun net still covers
+        # true failures).
+        log("  no image in window — grace re-check (45s)…")
+        src = cdp.evaluate(js_call(JS_WAIT_IMAGE, before, CONFIG["image_src_hints"],
+                                   CONFIG["min_image_px"], CONFIG["quota_phrases"], 45 * 1000),
+                           await_promise=True, timeout=65)
+        if src == "__QUOTA__":
+            return "quota"
+    if not src:
         debug_dump(cdp, "no_image_" + asset["id"])
         return "fail"
     try:
@@ -410,7 +420,7 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--repo-root", default=os.path.abspath(os.path.join(here, "..", "..")))
     ap.add_argument("--force", action="store_true")
-    ap.add_argument("--between", type=float, default=3.0)
+    ap.add_argument("--between", type=float, default=6.0)
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 

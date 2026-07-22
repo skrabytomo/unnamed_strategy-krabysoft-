@@ -3,7 +3,7 @@
   "defaults": {
     "wrap_prefix": "Generate a single high-detail image, 1:1 square aspect ratio. ",
     "style": " Art style: dark-fantasy strategy game art, painterly, high contrast, clean readable silhouette, dramatic rim lighting, plain dark background, no text, no words, no watermark, no border, centered composition.",
-    "wait_seconds": 120
+    "wait_seconds": 200
   },
   "assets": [
     { "id": "portrait_f0_1", "kind": "hero", "out": "assets/portraits/faction_0_1.png", "prompt": "Fantasy character portrait bust, facing forward: a radiant Holy Order paladin commander in white-and-gold plate armor, faint golden halo, noble stern face." },
