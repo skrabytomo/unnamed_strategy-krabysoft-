@@ -421,6 +421,8 @@ def main():
     ap.add_argument("--repo-root", default=os.path.abspath(os.path.join(here, "..", "..")))
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--between", type=float, default=6.0)
+    ap.add_argument("--max-backoff", type=float, default=180.0,
+                    help="cap on the progressive throttle backoff after failures")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -478,6 +480,7 @@ def main():
         return 2
 
     ok = fail = 0
+    fail_streak = 0
     for i, (asset, out_abs) in enumerate(pending, 1):
         log(f"[{i}/{len(pending)}]")
         try:
@@ -488,9 +491,19 @@ def main():
         if result == "quota":
             log("Gemini quota reached — stopping cleanly. Re-run later to continue.")
             break
-        ok += (result == "ok")
-        fail += (result != "ok")
-        time.sleep(args.between)
+        if result == "ok":
+            ok += 1
+            fail_streak = 0
+            time.sleep(args.between)
+        else:
+            fail += 1
+            fail_streak += 1
+            # Failures in a batch almost always mean throttling — Google slows
+            # image gen after a burst. Back off progressively so the run can
+            # recover instead of burning through the rest at 1-in-3.
+            backoff = min(args.between + fail_streak * 30, args.max_backoff)
+            log(f"  throttle backoff {backoff:.0f}s (fail streak {fail_streak})")
+            time.sleep(backoff)
 
     log(f"Done. generated={ok}  failed={fail}. Remaining will be picked up next run.")
     return 0
