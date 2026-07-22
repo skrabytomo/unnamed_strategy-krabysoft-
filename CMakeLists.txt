@@ -135,7 +135,12 @@ elseif(UNIX)
 endif()
 
 # ── Post-build: copy assets and create runtime dirs ───────────────────────────
+# Wipe the runtime assets/ first, then copy — copy_directory only ADDS/updates
+# and never removes, so deleting a source asset used to leave a stale copy in
+# build/bin/assets that the game kept loading ("I deleted this terrain but still
+# see it"). The rebuild already re-copies the whole tree, so the wipe is ~free.
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E rm -rf $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets
 )
