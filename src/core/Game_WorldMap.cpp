@@ -2902,10 +2902,69 @@ bool Game::aiTakeHeroTurn(int ehi)
                 }
                 continue;
             } else if (path.empty()) {
-                break;             // no boat and nothing on land
+                // No boat and nothing from the scored list — fall through to
+                // the anti-idle sweep below instead of freezing for the game.
             }
         }
-        if (path.empty()) break;
+
+        // ── ANTI-IDLE FALLBACK ───────────────────────────────────────────
+        // The scored candidate list is capped at the top ~10, and every one
+        // of them can prove unreachable (across water, walled off, or beyond
+        // the cheap horizon) while perfectly reachable free mines sit just
+        // past that cutoff. Rather than break and idle for weeks, sweep EVERY
+        // unclaimed mine / free pickup by nearest distance and walk to the
+        // first one actually reachable. An all-seeing bot must never sit on
+        // unspent movement while free income is grabbable.
+        if (path.empty()) {
+            struct FreeGoal { HexCoord pos; int d; };
+            std::vector<FreeGoal> freebies;
+            for (const auto& r : m_resources) {
+                if (isAllied(r.ownedBy, eHero.ownerId)) continue;      // own/ally already
+                if (r.guardId != 0 && !r.guardBeaten)  continue;       // still guarded → main logic gates it
+                freebies.push_back({r.pos, HexGrid::distance(eHero.pos, r.pos)});
+            }
+            for (const auto& obj : m_worldObjects) {
+                if (obj.collected) continue;
+                // Grab-and-go pickups only — no guarded/naval/combat sites here.
+                if (obj.type == WorldObjectType::ResourceCache ||
+                    obj.type == WorldObjectType::Campfire      ||
+                    obj.type == WorldObjectType::LavaCrystal   ||
+                    obj.type == WorldObjectType::TreasureChest ||
+                    obj.type == WorldObjectType::ArtifactChest ||
+                    obj.type == WorldObjectType::UnitDwelling)
+                    freebies.push_back({obj.pos, HexGrid::distance(eHero.pos, obj.pos)});
+            }
+            std::sort(freebies.begin(), freebies.end(),
+                      [](const FreeGoal& a, const FreeGoal& b){ return a.d < b.d; });
+            int tried = 0;
+            for (const auto& g : freebies) {
+                if (g.pos == eHero.pos) continue;
+                if (routeImpossible(eHero.onBoat, eHero.pos, g.pos)) continue;  // O(1) other-component reject
+                if (failedTargets.count(g.pos)) continue;                       // already proven dead this turn
+                if (++tried > 24) break;                                        // bound the extra A* work
+                std::vector<HexCoord> fp =
+                    Pathfinder::find(m_map, eHero.pos, g.pos, costFn, kAiPathHorizon);
+                if (!fp.empty()) {
+                    path = std::move(fp);
+                    eHero.stepPath     = path;
+                    eHero.stepPathIdx  = 0;
+                    eHero.stepPathGoal = g.pos;
+                    eHero.hasStepPath  = true;
+                    break;
+                }
+                failedTargets[g.pos] = kAiPathHorizon;   // remember the miss for later steps
+            }
+        }
+
+        if (path.empty()) {
+            // Genuinely nothing reachable — truly boxed in (islanded with no
+            // dock, or every free objective walled off). Log it so idle heroes
+            // are visible in the session log instead of silently doing nothing.
+            gLog("  [IDLE] P%u %s stuck at (%d,%d) wk%d d%d — no reachable objective, %d move left\n",
+                 eHero.ownerId, eHero.name.c_str(), eHero.pos.q, eHero.pos.r,
+                 m_turns.week(), m_turns.day(), eHero.movePool);
+            break;
+        }
 
         HexCoord next = path[0];
         const HexTile* nextTile = m_map.getTile(next);
