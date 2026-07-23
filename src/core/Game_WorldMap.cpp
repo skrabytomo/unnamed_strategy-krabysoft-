@@ -682,16 +682,55 @@ void Game::watchAiMovePlayerHero()
             path = Pathfinder::find(m_map, hero.pos, cands[ci].pos, costFn, kAiPathHorizon);
             if (!path.empty()) break;
         }
-        // Everything unreachable by land: buy passage across the water
+        // Everything unreachable by land: buy passage across the water. Fills
+        // `path` with a dock route, or leaves it empty (fall through to the
+        // anti-idle sweep below instead of freezing the watched hero).
         if (path.empty()) {
             std::vector<HexCoord> docks;
             for (const auto& t : m_towns)
                 if (t.ownerId == 1 && t.hasBuilding(BID::TOWN_SHIPYARD))
                     docks.push_back(t.pos);
-            if (!aiTryBoat(m_map, m_worldObjects, docks, hero,
-                           m_playerResources, costFn, path))
-                break;
+            aiTryBoat(m_map, m_worldObjects, docks, hero,
+                      m_playerResources, costFn, path);
         }
+
+        // ── ANTI-IDLE FALLBACK (mirror of aiTakeHeroTurn) ────────────────
+        // The scored top-10 can all prove unreachable while reachable free
+        // mines sit just past the cutoff — the watched side then idled and its
+        // economy starved (measured: watched town reached only 10/24 buildings
+        // vs the AI towns' ~20). Sweep every unclaimed mine / free pickup by
+        // nearest distance and walk to the first one actually reachable.
+        if (path.empty()) {
+            struct FreeGoal { HexCoord pos; int d; };
+            std::vector<FreeGoal> freebies;
+            for (const auto& r : m_resources) {
+                if (r.ownedBy == 1) continue;                     // already watched-owned
+                if (r.guardId != 0 && !r.guardBeaten) continue;   // still guarded
+                freebies.push_back({r.pos, HexGrid::distance(hero.pos, r.pos)});
+            }
+            for (const auto& obj : m_worldObjects) {
+                if (obj.collected) continue;
+                if (obj.type == WorldObjectType::ResourceCache ||
+                    obj.type == WorldObjectType::Campfire      ||
+                    obj.type == WorldObjectType::LavaCrystal   ||
+                    obj.type == WorldObjectType::TreasureChest ||
+                    obj.type == WorldObjectType::ArtifactChest ||
+                    obj.type == WorldObjectType::UnitDwelling)
+                    freebies.push_back({obj.pos, HexGrid::distance(hero.pos, obj.pos)});
+            }
+            std::sort(freebies.begin(), freebies.end(),
+                      [](const FreeGoal& a, const FreeGoal& b){ return a.d < b.d; });
+            int tried = 0;
+            for (const auto& g : freebies) {
+                if (g.pos == hero.pos) continue;
+                if (routeImpossible(hero.onBoat, hero.pos, g.pos)) continue;
+                if (++tried > 24) break;
+                std::vector<HexCoord> fp =
+                    Pathfinder::find(m_map, hero.pos, g.pos, costFn, kAiPathHorizon);
+                if (!fp.empty()) { path = std::move(fp); break; }
+            }
+        }
+
         if (path.empty()) break;
 
         HexCoord next = path[0];
@@ -3694,14 +3733,22 @@ void Game::doEndTurnPost(bool lastPlayerEndedTurn)
                 if (!watchPlayerTown && !aiTown) continue;
                 Resources& pool = watchPlayerTown ? m_playerResources : aiResources(t.ownerId);
                 Resources budget = pool;
-                // Normally spend at most half the pool's gold on troops so
-                // construction isn't starved. But once the economy is
-                // clearly solved (rich pool), pour it into army — a bot
-                // sitting on hundreds of thousands of unspent gold with a
-                // tiny army is the #1 AI failure. Rich = spend it all.
+                // Gold priority depends on whether the build tree is finished.
+                // While it's still going up, CONSTRUCTION wins the gold — a town
+                // that spends half its income on troops every week can't afford
+                // its high tiers (measured: income-limited towns stalled at
+                // ~10/24 buildings). So recruit with only a quarter until the
+                // tree is complete, then pour gold into army. And once the
+                // economy is clearly solved (rich pool), spend it all — a bot
+                // sitting on a huge gold pile with a tiny army is the #1 failure.
                 int poolGold = pool.get(ResourceType::Gold);
+                int tfi = static_cast<int>(t.faction);
+                bool treeDone = true;
+                if (tfi >= 0 && tfi < 9)
+                    for (int bid : kBuildOrder[tfi])
+                        if (!t.hasBuilding(bid)) { treeDone = false; break; }
                 if (poolGold < 50000)
-                    budget.set(ResourceType::Gold, poolGold / 2);
+                    budget.set(ResourceType::Gold, treeDone ? poolGold / 2 : poolGold / 4);
                 Resources before = budget;
                 int got = aiPaidRecruit(t, t.garrison, budget, unitDefs);
                 if (got > 0) {
@@ -3732,12 +3779,20 @@ void Game::doEndTurnPost(bool lastPlayerEndedTurn)
                 bool watchPlayerTown = (town.ownerId == 1 && m_watchingAI);
                 bool aiTown          = isAiOwner(town.ownerId);
                 if (!watchPlayerTown && !aiTown) continue;
-                town.builtToday = 0;
 
-                bool built = false;
                 int fIdx = static_cast<int>(town.faction);
                 Resources& buildRes = watchPlayerTown ? m_playerResources
                                                       : aiResources(town.ownerId);
+
+                // Build up to a human-competitive number of buildings per week
+                // (a human builds 1/day → 7), stopping the instant a full pass
+                // can't afford or unlock anything more. Was ONE build/week —
+                // every AI town ran ~7x behind a human and never finished its
+                // ~24-building tree (measured wk23: best AI town 22, watched 10).
+                constexpr int kMaxBuildsPerWeek = 7;
+                for (int buildPass = 0; buildPass < kMaxBuildsPerWeek; ++buildPass) {
+                town.builtToday = 0;   // clear the 1/day gate for THIS pass
+                bool built = false;
 
                 // Market trading: find the first building we could LEGALLY
                 // build (prereqs/week satisfied) but can't pay for, and
@@ -3889,10 +3944,14 @@ void Game::doEndTurnPost(bool lastPlayerEndedTurn)
                             def.category != BuildingCategory::Support) continue;
                         if (town.build(def.id, allBuildings, buildRes, 1.0f, /*quiet*/true)) {
                             gLog("AI %s built %s\n", town.name.c_str(), def.name.c_str());
+                            built = true;
                             break;
                         }
                     }
                 }
+
+                if (!built) break;   // nothing left to build/afford this week
+                }   // end build-pass loop (up to kMaxBuildsPerWeek)
             }
         }
 
