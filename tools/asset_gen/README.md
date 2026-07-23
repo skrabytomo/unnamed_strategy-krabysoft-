@@ -91,10 +91,37 @@ Every selector/text-match lives in the `CONFIG` block at the top of
 screenshot + HTML into `_debug/` — open it, find the new selector, update
 `CONFIG`. Nothing else needs to change.
 
-## A note on the approach
+## Two ways to generate — pick one
 
-This automates the Gemini **web UI**, which may run against Google's terms of
-service. The sanctioned, more robust route is the **Gemini / Imagen API** (an
-API key + a short HTTP script, no browser). If you'd rather go that way, say so
-and I'll swap `gemini_gen.py` for an API client that reads the same
-`manifest.json`.
+| Script | Transport | Commercial license | Use it for |
+|---|---|---|---|
+| `gemini_gen.py` | scrapes the Gemini **web UI** in Brave | murky (UI automation may breach Google's ToS) | free/hobby, quick tests |
+| **`gemini_api_gen.py`** | official **Generative Language API** (your key) | **clean** — sanctioned path | anything you'll **sell** (Steam etc.) |
+
+**Both read the same `manifest.json`** — same `id`/`kind`/`out`/`prompt`
+fields, same skip-if-exists resume behaviour, same `--only`/`--limit`/`--force`/
+`--dry-run` flags. Only the transport differs, so you can switch freely.
+
+### API path (for a commercial release)
+
+```bash
+# 1. get a key: https://aistudio.google.com/apikey
+#    (a free key works for testing; enable billing for the clean commercial tier)
+export GEMINI_API_KEY=xxxx          # Windows: set GEMINI_API_KEY=xxxx
+# 2. preview / generate
+python gemini_api_gen.py --only terrain --dry-run
+python gemini_api_gen.py --only terrain
+```
+
+Image generation is a few cents per image, so the whole art set is a handful of
+dollars, one time. Model names on the API drift; the default targets Imagen —
+override with `--model` / `GEMINI_IMAGE_MODEL` if Google renames it
+(<https://ai.google.dev/gemini-api/docs/models>). The client handles both the
+Imagen `:predict` and the Gemini `:generateContent` response shapes.
+
+**What it can and can't do:** the API generates **single images** — perfect for
+terrain, portraits, crests, town/building illustrations. It **cannot** produce
+the multi-frame **animation sprite sheets** in `assets/sprites/` (e.g. the
+2928×352 eight-frame strips): a text-to-image model returns one coherent image,
+not eight consistent frames of the same character. Those need a sprite-specific
+tool or hand-assembly and stay out of this manifest.
