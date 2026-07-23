@@ -108,9 +108,25 @@ list(FILTER SOURCES EXCLUDE REGEX ".*/sim/sim_main\\.cpp$")
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+# ── Build-time version stamp (git hash/branch/date) logged at startup ─────────
+# Regenerated every build so incremental builds via run.sh still get a fresh
+# hash; the script only rewrites version_gen.h when the value changes, so
+# main.cpp is recompiled only when the commit actually moves.
+add_custom_target(gen_version ALL
+    BYPRODUCTS ${CMAKE_BINARY_DIR}/version_gen.h
+    COMMAND ${CMAKE_COMMAND}
+            -DSRC=${CMAKE_SOURCE_DIR}
+            -DOUT=${CMAKE_BINARY_DIR}/version_gen.h
+            -P ${CMAKE_SOURCE_DIR}/cmake/gen_version.cmake
+    COMMENT "Stamping build version"
+    VERBATIM)
+add_dependencies(${PROJECT_NAME} gen_version)
+target_compile_definitions(${PROJECT_NAME} PRIVATE GAME_VERSION="${PROJECT_VERSION}")
+
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/third_party   # stb_image, glm go here
+    ${CMAKE_BINARY_DIR}               # generated version_gen.h
     ${SDL2_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIR}
     ${SQLite3_INCLUDE_DIRS}

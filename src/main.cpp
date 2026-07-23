@@ -4,9 +4,17 @@
 #include <stdint.h>
 #include <string>
 #include "core/Game.h"
+#include "version_gen.h"   // GAME_GIT_HASH / GAME_GIT_BRANCH / GAME_BUILD_DATE (build-time)
+
+#ifndef GAME_VERSION
+#define GAME_VERSION "0.0.0"
+#endif
 
 int main(int argc, char* argv[])
 {
+    // First line of every run's log: exactly which build produced it.
+    gLog("[VERSION] Unnamed Strategy v%s  (%s @ %s, built %s)\n",
+         GAME_VERSION, GAME_GIT_BRANCH, GAME_GIT_HASH, GAME_BUILD_DATE);
     // Dev/test hook: --watch-ai-test[=N[:S[:Z]]] skips the menu, runs a
     // hidden (never-shown, no-focus-steal) window, and drops straight into
     // an N-player Watch AI game so AI-vs-AI/alliance behaviour can be
