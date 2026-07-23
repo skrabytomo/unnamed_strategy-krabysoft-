@@ -560,9 +560,18 @@ void Game::renderMainMenu()
                 dl->AddRectFilled(pos, {pos.x + size.x, pos.y + size.y}, IM_COL32(40, 32, 20, 255));
 
             if (icon.ok()) {
-                float iconSz = h * 0.68f;
-                float iy = pos.y + (h - iconSz) * 0.5f;
-                float ix = pos.x + h * 0.32f;
+                // The icons are medium-toned line-art on transparent bg; drawn
+                // straight over the ornate frame they washed out. Give each a
+                // dark disc + gold ring "medallion" so it reads clearly and
+                // ties into the menu's gold theme.
+                float iconSz = h * 0.66f;
+                float cx = pos.x + h * 0.5f;
+                float cy = pos.y + h * 0.5f;
+                float r  = iconSz * 0.62f;
+                dl->AddCircleFilled({cx, cy}, r, IM_COL32(15, 12, 8, 205));
+                dl->AddCircle({cx, cy}, r, IM_COL32(205, 170, 95, 215), 0, 1.5f);
+                float ix = cx - iconSz * 0.5f;
+                float iy = cy - iconSz * 0.5f;
                 dl->AddImage((ImTextureID)(uintptr_t)icon.id(), {ix, iy}, {ix + iconSz, iy + iconSz});
             }
 
