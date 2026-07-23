@@ -522,6 +522,1278 @@
       "wrap_prefix": "Generate a single seamless top-down terrain texture, 1:1 square aspect ratio, that completely fills the frame from corner to corner. ",
       "style": " Art style: overhead orthographic terrain tile for a dark-fantasy hex strategy map, painterly and richly detailed. CRITICAL: the terrain texture MUST FILL THE ENTIRE SQUARE EDGE-TO-EDGE — no border, no frame, no vignette, no rounded or circular mask, no dark corners, no drop shadow, and no single central focal object. It is a flat, evenly-lit, full-bleed repeating ground texture viewed straight from directly above. No text, no words, no watermark, no UI, no creatures, no buildings, no characters.",
       "prompt": "grey dead wasteland ground: cracked ashen earth, drifting ash, bleached debris and dry withered scrub (variation 3)."
+    },
+    {
+      "id": "dwelling_holy_order_squire_barracks",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Squire Barracks.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Squire Barracks', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_squire_barracks_fast_death",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Squire Barracks — Fast Death.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Squire Barracks — Fast Death', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_squire_barracks_hardened",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Squire Barracks — Hardened.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Squire Barracks — Hardened', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_paladin_hall",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Paladin Hall.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Paladin Hall', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_paladin_hall_arsonist",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Paladin Hall — Arsonist.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Paladin Hall — Arsonist', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_paladin_hall_devoted",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Paladin Hall — Devoted.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Paladin Hall — Devoted', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_crusader_chapel",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Crusader Chapel.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Crusader Chapel', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_crusader_sacrifice",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Crusader — Sacrifice.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Crusader — Sacrifice', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_crusader_toxic_cloud",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Crusader — Toxic Cloud.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Crusader — Toxic Cloud', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_holy_champion",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Holy Champion.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Holy Champion', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_holy_champion_wide_aura",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Holy Champion — Wide Aura.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Holy Champion — Wide Aura', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_holy_champion_unchained",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Holy Champion — Unchained.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Holy Champion — Unchained', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_archangel",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Archangel.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Archangel', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_archangel_desperation",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Archangel — Desperation.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Archangel — Desperation', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_holy_order_archangel_both_meters",
+      "kind": "dwelling",
+      "out": "assets/units/holy_order/Archangel — Both Meters.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Archangel — Both Meters', a radiant Holy Order (white marble and gold, holy light, sunlit banners) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_scout_camp",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Scout Camp.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Scout Camp', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_scout_a",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Scout (A).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Scout (A)', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_scout_b",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Scout (B).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Scout (B)', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_ranger_lodge",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Ranger Lodge.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Ranger Lodge', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_ranger_a",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Ranger (A).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Ranger (A)', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_ranger_b",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Ranger (B).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Ranger (B)', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_hunter_s_lodge",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Hunter's Lodge.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Hunter's Lodge', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_hunter_a",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Hunter (A).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Hunter (A)', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_hunter_b",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Hunter (B).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Hunter (B)', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_berserker_hall",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Berserker Hall.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Berserker Hall', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_berserker_a",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Berserker (A).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Berserker (A)', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_berserker_b",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Berserker (B).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Berserker (B)', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_warden_s_tower",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Warden's Tower.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Warden's Tower', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_warden_commander_a",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Warden Commander (A).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Warden Commander (A)', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_warden_commander_b",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Warden Commander (B).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Warden Commander (B)', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_warlord_s_bastion",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Warlord's Bastion.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Warlord's Bastion', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_warlord_a",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Warlord (A).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Warlord (A)', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_crimson_wardens_warlord_b",
+      "kind": "dwelling",
+      "out": "assets/units/crimson_wardens/Warlord (B).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Warlord (B)', a Crimson Wardens (silver-grey highland stone and deep-crimson banners, disciplined and martial) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_skeleton_soldier",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Skeleton Soldier.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Skeleton Soldier', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_skeleton_soldier_a",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Skeleton Soldier (A).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Skeleton Soldier (A)', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_skeleton_soldier_b",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Skeleton Soldier (B).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Skeleton Soldier (B)', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_armoured_skeleton",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Armoured Skeleton.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Armoured Skeleton', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_armoured_skeleton_a",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Armoured Skeleton (A).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Armoured Skeleton (A)', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_armoured_skeleton_b",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Armoured Skeleton (B).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Armoured Skeleton (B)', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_zombie_warrior",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Zombie Warrior.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Zombie Warrior', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_zombie_warrior_a",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Zombie Warrior (A).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Zombie Warrior (A)', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_zombie_warrior_b",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Zombie Warrior (B).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Zombie Warrior (B)', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_death_knight",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Death Knight.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Death Knight', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_death_knight_a",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Death Knight (A).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Death Knight (A)', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_death_knight_b",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Death Knight (B).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Death Knight (B)', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_lich",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Lich.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Lich', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_lich_a",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Lich (A).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Lich (A)', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_lich_b",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Lich (B).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Lich (B)', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_eternal_emperor",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Eternal Emperor.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Eternal Emperor', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_eternal_emperor_a",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Eternal Emperor (A).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Eternal Emperor (A)', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_eternal_empire_eternal_emperor_b",
+      "kind": "dwelling",
+      "out": "assets/units/eternal_empire/Eternal Emperor (B).png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Eternal Emperor (B)', a Eternal Empire undead (black stone and bone spires, a sickly green deathly glow, necropolis) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_sprout_hollow",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Sprout Hollow.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Sprout Hollow', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_seedling_twin_hollow",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Seedling Twin Hollow.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Seedling Twin Hollow', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_ironroot_den",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Ironroot Den.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Ironroot Den', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_briar_thicket",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Briar Thicket.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Briar Thicket', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_briar_pair_thicket",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Briar Pair Thicket.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Briar Pair Thicket', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_thornwall_thicket",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Thornwall Thicket.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Thornwall Thicket', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_vine_den",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Vine Den.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Vine Den', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_vine_duo_den",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Vine Duo Den.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Vine Duo Den', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_elder_vine_den",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Elder Vine Den.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Elder Vine Den', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_guardian_grove",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Guardian Grove.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Guardian Grove', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_grove_bonded_sanctuary",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Grove Bonded Sanctuary.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Grove Bonded Sanctuary', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_ironwood_golem_grove",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Ironwood Golem Grove.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Ironwood Golem Grove', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_elder_circle",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Elder Circle.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Elder Circle', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_ancient_pair_circle",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Ancient Pair Circle.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Ancient Pair Circle', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_world_root_circle",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/World Root Circle.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'World Root Circle', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_world_tree_root",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/World Tree Root.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'World Tree Root', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_twin_thorn_canopy",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Twin Thorn Canopy.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Twin Thorn Canopy', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_thornkin_elder_thorn_root",
+      "kind": "dwelling",
+      "out": "assets/units/thornkin/Elder Thorn Root.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Elder Thorn Root', a Thornkin (living wood, vines and moss, glowing green nature magic) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_bloodling_pen",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Bloodling Pen.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Bloodling Pen', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_blood_fanatic_den",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Blood Fanatic Den.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Blood Fanatic Den', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_pact_warrior_den",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Pact Warrior Den.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Pact Warrior Den', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_berserker_pits",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Berserker Pits.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Berserker Pits', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_blood_berserker_pits",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Blood Berserker Pits.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Blood Berserker Pits', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_ritual_guard_pits",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Ritual Guard Pits.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Ritual Guard Pits', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_shaman_hut",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Shaman Hut.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Shaman Hut', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_high_shaman_hut",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/High Shaman Hut.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'High Shaman Hut', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_pact_shaman_hut",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Pact Shaman Hut.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Pact Shaman Hut', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_ravager_corral",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Ravager Corral.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Ravager Corral', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_blood_ravager_corral",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Blood Ravager Corral.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Blood Ravager Corral', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_pact_ravager_corral",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Pact Ravager Corral.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Pact Ravager Corral', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_warlord_pavilion",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Warlord Pavilion.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Warlord Pavilion', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_blood_avatar_pavilion",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Blood Avatar Pavilion.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Blood Avatar Pavilion', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_ritual_champion_pavilion",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Ritual Champion Pavilion.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Ritual Champion Pavilion', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_avatar_shrine",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Avatar Shrine.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Avatar Shrine', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_blood_god_shrine",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Blood God Shrine.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Blood God Shrine', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_bloodsworn_pact_titan_shrine",
+      "kind": "dwelling",
+      "out": "assets/units/bloodsworn/Pact Titan Shrine.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Pact Titan Shrine', a Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_wisp_hollow",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Wisp Hollow.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Wisp Hollow', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_phase_wisp_hollow",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Phase Wisp Hollow.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Phase Wisp Hollow', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_void_anchor_hollow",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Void Anchor Hollow.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Void Anchor Hollow', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_phase_den",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Phase Den.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Phase Den', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_flicker_den",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Flicker Den.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Flicker Den', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_void_bulwark_den",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Void Bulwark Den.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Void Bulwark Den', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_rift_arch",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Rift Arch.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Rift Arch', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_void_sniper_arch",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Void Sniper Arch.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Void Sniper Arch', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_anchor_archer_arch",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Anchor Archer Arch.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Anchor Archer Arch', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_stalker_gate",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Stalker Gate.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Stalker Gate', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_phase_hunter_gate",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Phase Hunter Gate.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Phase Hunter Gate', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_void_monolith_gate",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Void Monolith Gate.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Void Monolith Gate', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_wraith_spire",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Wraith Spire.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Wraith Spire', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_chaos_wraith_spire",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Chaos Wraith Spire.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Chaos Wraith Spire', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_entropy_anchor_spire",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Entropy Anchor Spire.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Entropy Anchor Spire', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_colossus_rift",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Colossus Rift.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Colossus Rift', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_void_specter_rift",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Void Specter Rift.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Void Specter Rift', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_voidkin_void_titan_rift",
+      "kind": "dwelling",
+      "out": "assets/units/voidkin/Void Titan Rift.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Void Titan Rift', a Voidkin (twisted void-corrupted stone crackling with violet void energy) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_automaton_works",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Automaton Works.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Automaton Works', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_runic_automaton_works",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Runic Automaton Works.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Runic Automaton Works', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_salvage_bot_works",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Salvage Bot Works.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Salvage Bot Works', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_gun_construct_bay",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Gun Construct Bay.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Gun Construct Bay', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_runic_gunner_bay",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Runic Gunner Bay.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Runic Gunner Bay', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_scrap_gunner_bay",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Scrap Gunner Bay.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Scrap Gunner Bay', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_steam_walker_depot",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Steam Walker Depot.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Steam Walker Depot', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_runic_walker_depot",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Runic Walker Depot.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Runic Walker Depot', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_salvage_walker_depot",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Salvage Walker Depot.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Salvage Walker Depot', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_siege_bot_foundry",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Siege Bot Foundry.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Siege Bot Foundry', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_runic_siege_bot_foundry",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Runic Siege Bot Foundry.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Runic Siege Bot Foundry', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_salvage_bot_mkii_foundry",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Salvage Bot MkII Foundry.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Salvage Bot MkII Foundry', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_titan_assembly",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Titan Assembly.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Titan Assembly', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_runic_titan_assembly",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Runic Titan Assembly.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Runic Titan Assembly', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_salvage_titan_assembly",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Salvage Titan Assembly.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Salvage Titan Assembly', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_colossus_prime_dock",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Colossus Prime Dock.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Colossus Prime Dock', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_runic_colossus_dock",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Runic Colossus Dock.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Runic Colossus Dock', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_iron_assembly_salvage_prime_dock",
+      "kind": "dwelling",
+      "out": "assets/units/iron_assembly/Salvage Prime Dock.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Salvage Prime Dock', a Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes, an industrial forge) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_flesh_crawler_vat",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Flesh Crawler Vat.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Flesh Crawler Vat', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_rapid_crawler_vat",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Rapid Crawler Vat.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Rapid Crawler Vat', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_fused_crawler_vat",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Fused Crawler Vat.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Fused Crawler Vat', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_graft_soldier_bay",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Graft Soldier Bay.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Graft Soldier Bay', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_rapid_soldier_bay",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Rapid Soldier Bay.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Rapid Soldier Bay', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_fused_soldier_bay",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Fused Soldier Bay.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Fused Soldier Bay', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_bone_machine_works",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Bone Machine Works.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Bone Machine Works', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_rapid_machine_works",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Rapid Machine Works.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Rapid Machine Works', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_fused_machine_works",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Fused Machine Works.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Fused Machine Works', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_fleshwork_forge",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Fleshwork Forge.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Fleshwork Forge', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_rapid_knight_forge",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Rapid Knight Forge.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Rapid Knight Forge', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_fused_knight_forge",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Fused Knight Forge.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Fused Knight Forge', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_juggernaut_pit",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Juggernaut Pit.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Juggernaut Pit', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_rapid_juggernaut_pit",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Rapid Juggernaut Pit.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Rapid Juggernaut Pit', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_fused_juggernaut_pit",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Fused Juggernaut Pit.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Fused Juggernaut Pit', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_spawn_chamber",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Spawn Chamber.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Spawn Chamber', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_rapid_spawn_chamber",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Rapid Spawn Chamber.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Rapid Spawn Chamber', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_amalgamate_fused_spawn_chamber",
+      "kind": "dwelling",
+      "out": "assets/units/amalgamate/Fused Spawn Chamber.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Fused Spawn Chamber', a Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_awakening_chamber",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Awakening Chamber.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Awakening Chamber', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_mirror_awakening_chamber",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Mirror Awakening Chamber.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Mirror Awakening Chamber', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_harmony_seeker_chamber",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Harmony Seeker Chamber.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Harmony Seeker Chamber', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_synthesis_lab",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Synthesis Lab.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Synthesis Lab', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_mirror_synthesis_lab",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Mirror Synthesis Lab.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Mirror Synthesis Lab', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_harmony_bound_lab",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Harmony Bound Lab.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Harmony Bound Lab', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_harmony_hall",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Harmony Hall.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Harmony Hall', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_mirror_harmony_hall",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Mirror Harmony Hall.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Mirror Harmony Hall', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_resonance_core_hall",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Resonance Core Hall.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Resonance Core Hall', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_resonance_spire",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Resonance Spire.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Resonance Spire', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_mirror_resonance_spire",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Mirror Resonance Spire.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Mirror Resonance Spire', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_harmony_knight_spire",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Harmony Knight Spire.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Harmony Knight Spire', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_transcendence_gate",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Transcendence Gate.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Transcendence Gate', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_mirror_form_gate",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Mirror Form Gate.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Mirror Form Gate', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_transcendent_prime_gate",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Transcendent Prime Gate.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Transcendent Prime Gate', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_unity_forge",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Unity Forge.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Unity Forge', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_mirror_unity_forge",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Mirror Unity Forge.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Mirror Unity Forge', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "dwelling_convergence_harmonic_unity_forge",
+      "kind": "dwelling",
+      "out": "assets/units/convergence/Harmonic Unity Forge.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "A 'Harmonic Unity Forge', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
     }
   ]
 }
