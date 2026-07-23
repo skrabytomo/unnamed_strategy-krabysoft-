@@ -219,8 +219,8 @@ void WorldMapHUD::drawHeroPanel(UIRenderer& rdr,
     m_heroPanel.draw(rdr);
 
     rdr.drawText("Click hero / F8 = details",
-                 m_heroPanel.bounds.x + 4.0f, m_heroPanel.bounds.y + 13.0f,
-                 UIColor::rgba(0.5f, 0.5f, 0.5f, 0.8f), 9.0f);
+                 m_heroPanel.bounds.x + 4.0f, m_heroPanel.bounds.y + 11.0f,
+                 UIColor::rgba(0.6f, 0.6f, 0.6f, 0.85f), 11.0f);
 
     float y = m_heroPanel.bounds.y + 28.0f;
     float x = m_heroPanel.bounds.x + 4.0f;
@@ -257,19 +257,19 @@ void WorldMapHUD::drawHeroPanel(UIRenderer& rdr,
         float tw = btn.x + btn.w - tx - 2.0f;
 
         std::string label = h.name + " L" + std::to_string(h.level);
-        rdr.drawText(label, tx, y + 2.0f, UIColor::hex(UITheme::TEXT_PRIMARY), 11.0f);
+        rdr.drawText(label, tx, y + 1.0f, UIColor::hex(UITheme::TEXT_PRIMARY), 14.0f);
 
         // ATK / DEF
         std::string atk = "ATK " + std::to_string(h.attack) + "  DEF " + std::to_string(h.defense);
-        rdr.drawText(atk, tx, y + 14.0f, UIColor::hex(0xFFCC88), 9.5f);
+        rdr.drawText(atk, tx, y + 18.0f, UIColor::hex(0xFFCC88), 12.0f);
 
         // Mana
         std::string manaStr = "MP " + std::to_string(h.mana) + "/" + std::to_string(h.maxMana);
-        rdr.drawText(manaStr, tx, y + 25.0f, UIColor::hex(0x88AAFF), 9.5f);
+        rdr.drawText(manaStr, tx, y + 31.0f, UIColor::hex(0x88AAFF), 12.0f);
 
         // Move bar
         float moveFrac = h.maxMove > 0 ? static_cast<float>(h.movePool) / h.maxMove : 0.0f;
-        Rect movebar{tx, y + 37.0f, tw, 5.0f};
+        Rect movebar{tx, y + 46.0f, tw, 5.0f};
         rdr.drawBar(movebar, moveFrac,
                     UIColor::hex(UITheme::NATURE_GREEN),
                     UIColor::hex(UITheme::BG_DARK),
@@ -277,7 +277,7 @@ void WorldMapHUD::drawHeroPanel(UIRenderer& rdr,
 
         // XP bar
         float xpFrac = h.xpToNext > 0 ? static_cast<float>(h.xp) / h.xpToNext : 1.0f;
-        Rect xpbar{tx, y + 46.0f, tw, 5.0f};
+        Rect xpbar{tx, y + 53.0f, tw, 5.0f};
         rdr.drawBar(xpbar, xpFrac,
                     UIColor::hex(0xAA55FF),
                     UIColor::hex(UITheme::BG_DARK),
@@ -341,17 +341,17 @@ void WorldMapHUD::drawTownPanel(UIRenderer& rdr, const std::vector<Town>& towns)
         float tx = portX + portSz + 4.0f;
         float tw = btn.x + btn.w - tx - 2.0f;
 
-        rdr.drawText(t->name, tx, y + 2.0f, UIColor::hex(UITheme::TEXT_PRIMARY), 11.0f);
+        rdr.drawText(t->name, tx, y + 1.0f, UIColor::hex(UITheme::TEXT_PRIMARY), 14.0f);
 
         int built = static_cast<int>(t->builtBuildings.size());
         int maxB  = (fid >= 0 && fid < 9) ? m_maxBuildings[fid] : 0;
         char cntStr[24];
         std::snprintf(cntStr, sizeof(cntStr), "%d/%d built", built, maxB > 0 ? maxB : built);
-        rdr.drawText(cntStr, tx, y + 14.0f, UIColor::hex(0xFFCC88), 9.5f);
+        rdr.drawText(cntStr, tx, y + 19.0f, UIColor::hex(0xFFCC88), 12.0f);
 
         // Build-progress bar — the "is this town developed" visual the map icon lacks
         float buildFrac = maxB > 0 ? std::min(1.0f, static_cast<float>(built) / maxB) : 0.0f;
-        Rect buildBar{tx, y + 27.0f, tw, 6.0f};
+        Rect buildBar{tx, y + 34.0f, tw, 6.0f};
         rdr.drawBar(buildBar, buildFrac,
                     UIColor::hex(UITheme::GOLD),
                     UIColor::hex(UITheme::BG_DARK),
@@ -359,8 +359,8 @@ void WorldMapHUD::drawTownPanel(UIRenderer& rdr, const std::vector<Town>& towns)
 
         // Fort status
         const char* fortStr = t->fortHP > 0 ? "Fort up" : "No fort";
-        rdr.drawText(fortStr, tx, y + 38.0f,
-                     t->fortHP > 0 ? UIColor::hex(0x88CC88) : UIColor::hex(0x996666), 9.5f);
+        rdr.drawText(fortStr, tx, y + 44.0f,
+                     t->fortHP > 0 ? UIColor::hex(0x88CC88) : UIColor::hex(0x996666), 12.0f);
 
         y += rowH + 4.0f;
     }
