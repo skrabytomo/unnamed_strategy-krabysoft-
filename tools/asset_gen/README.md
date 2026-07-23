@@ -65,8 +65,10 @@ fills the whole hex. Nine biomes are covered: barren, corrupted,
 corrupted_forest, flesh_zone, mountain, swamp, toxic, volcanic, wasteland. The
 old vignetted PNGs were deleted, so a plain `--only terrain` run recreates them
 in place — no engine change needed. Eyeball the results: if Gemini still frames
-one with a border/vignette, `--force` that single file after tightening its
-prompt in `manifest.json`.
+one with a border/vignette, tighten that entry's prompt in `manifest.json`,
+delete just that one PNG, and re-run `--only terrain` (the script regenerates
+any missing file). `--force` is an all-or-nothing flag — it redoes every
+terrain tile, so prefer the delete-one-and-rerun trick for a single fix.
 
 Per `ART_DROPIN_MANIFEST.md`, the engine currently loads only one portrait per
 faction (`faction_<F>.png`). Once these exist, the loader in
