@@ -794,6 +794,11 @@ void Game::renderTavern()
             ImGui::PushID(1000 + i);
             ImGui::Separator();
             const HeroClassDef* cls = m_classRegistry.getClass(dh.classId);
+            int dfid = static_cast<int>(dh.faction);
+            ImTextureID dPort = (dfid >= 0 && dfid < 9 && m_portraitTex[dfid].ok())
+                              ? (ImTextureID)(uintptr_t)m_portraitTex[dfid].id() : nullptr;
+            if (dPort) { ImGui::Image(dPort, ImVec2(52, 52)); ImGui::SameLine(); }
+            ImGui::BeginGroup();
             char hdr[64];
             std::snprintf(hdr, sizeof(hdr), "%s  L%d  [%s]",
                           dh.name.c_str(), dh.level, cls ? cls->name.c_str() : "?");
@@ -810,6 +815,7 @@ void Game::renderTavern()
                 activeDefeatedPool.erase(activeDefeatedPool.begin() + i);
             }
             if (!canRehire) ImGui::EndDisabled();
+            ImGui::EndGroup();
             ImGui::PopID();
         }
         ImGui::Separator();
@@ -825,6 +831,17 @@ void Game::renderTavern()
 
         ImGui::PushID(c);
         ImGui::Separator();
+
+        // Faction portrait thumbnail to the left of the candidate's details,
+        // so the hire list reads as portraits + info, not a wall of text.
+        int fid = static_cast<int>(cand.faction);
+        ImTextureID portTex = (fid >= 0 && fid < 9 && m_portraitTex[fid].ok())
+                            ? (ImTextureID)(uintptr_t)m_portraitTex[fid].id() : nullptr;
+        if (portTex) {
+            ImGui::Image(portTex, ImVec2(52, 52));
+            ImGui::SameLine();
+        }
+        ImGui::BeginGroup();
 
         // Candidate header
         char hdr[64];
@@ -860,6 +877,7 @@ void Game::renderTavern()
             gLog("Hired hero: %s (%s)\n", cand.name.c_str(), cls ? cls->name.c_str() : "?");
         }
         if (!canAfford) ImGui::EndDisabled();
+        ImGui::EndGroup();
         ImGui::PopID();
     }
 

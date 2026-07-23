@@ -71,7 +71,11 @@ lot has shipped since it was written. Current reality:
 - AI: "some players idle" — largely explained and fixed by the march-cache
   divergence bug (heroes yo-yoed toward docks instead of marching; see
   THREADING.md). Gold-hoarding / trading when rich still unverified.
-- UI: town/hero pickers need icons.
+- UI: ~~town/hero pickers need icons~~ — **done (2026-07-21)**: lobby faction/hero
+  pickers are picture-based; the in-town hire + rehire lists now show a faction
+  portrait per candidate (`Game_Town.cpp`); kingdom overview carries town crests.
+  Right-side HUD hero/town panel text was also enlarged from 9–11px (illegible)
+  to 12–14px.
   ~~kingdom overview is text not visual~~ — **done (2026-07-21)**: `renderKingdomPanel()`
   now shows hero faction portraits, unit-sprite army/garrison thumbnails, town
   faction crests and resource icons in the income table (also fixed a swapped
