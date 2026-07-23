@@ -1,0 +1,22 @@
+// SteamPipe depot-build script — ships the WHOLE self-contained dist/ folder.
+// __DEPOT_ID__ is substituted by upload_steam.sh from STEAM_DEPOT_ID.
+"DepotBuildConfig"
+{
+	"DepotID"	"__DEPOT_ID__"
+
+	// contentroot is inherited from app_build.vdf (..\..\dist). Map every file
+	// in it, recursively, to the depot root. dist/ is already exactly the game
+	// as it should install (exe + runtime DLLs + assets), so a flat mirror is
+	// all we need.
+	"FileMapping"
+	{
+		"LocalPath"	"*"
+		"DepotPath"	"."
+		"recursive"	"1"
+	}
+
+	// Never ship debug symbols or leftover build junk.
+	"FileExclusion"	"*.pdb"
+	"FileExclusion"	"*.ilk"
+	"FileExclusion"	"*.log"
+}

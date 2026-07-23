@@ -1,0 +1,30 @@
+// SteamPipe app-build script for Unnamed Strategy.
+//
+// This is a TEMPLATE: the tokens __APP_ID__ and __DEPOT_ID__ are filled in by
+// upload_steam.sh from the STEAM_APP_ID / STEAM_DEPOT_ID environment variables,
+// so you never hand-edit this file. (You CAN copy it and hardcode the numbers
+// if you prefer running steamcmd yourself — see README.md.)
+//
+// Your App ID and Depot ID come from your Steamworks partner dashboard once the
+// app exists there (https://partner.steamgames.com). The Depot ID is usually
+// App ID + 1.
+"appbuild"
+{
+	"appid"		"__APP_ID__"
+	"desc"		"Unnamed Strategy build"   // shown in Steamworks build history
+
+	"buildoutput"	"..\output"   // steamcmd scratch: logs + content chunks (git-ignored)
+	"contentroot"	"..\..\dist"  // the self-contained folder from build_installer.sh
+
+	// Leave setlive empty so a build is NEVER auto-published to players. You
+	// promote it to a branch (e.g. "default" or "beta") from the Steamworks
+	// site after you've verified it. Set to a branch name to auto-set-live.
+	"setlive"	""
+	"preview"	"0"           // 1 = dry run (build the depot but don't upload)
+	"local"		""
+
+	"depots"
+	{
+		"__DEPOT_ID__"	"depot_build.vdf"
+	}
+}
