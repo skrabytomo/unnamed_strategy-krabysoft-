@@ -2476,7 +2476,12 @@ bool Game::aiTakeHeroTurn(int ehi)
                     for (const auto& t2 : m_towns)
                         if (t2.ownerId == t.ownerId) ++rivalTowns;
                     float val = 600.f * strBoost;
-                    if (rivalTowns == 1) val = 1200.f * strBoost; // elimination kill shot
+                    // Finish the fight. A rival on their last town is one
+                    // capture away from elimination — swarm it so the game
+                    // actually resolves instead of grinding to the week-80
+                    // backstop. A rival down to two towns is next in line.
+                    if (rivalTowns == 1)      val = 4200.f * strBoost; // elimination kill shot
+                    else if (rivalTowns == 2) val = 1500.f * strBoost; // press the advantage
                     // Suicide run: with no town of our own we're dead
                     // in 6 weeks regardless, so ANY enemy town
                     // outweighs every mine/chest on the map. Take one
@@ -3396,7 +3401,11 @@ bool Game::aiTakeHeroTurn(int ehi)
                     int bigIdx = 0;
                     for (int i = 1; i < (int)eHero.army.size(); ++i)
                         if (eHero.army[i].count > eHero.army[bigIdx].count) bigIdx = i;
-                    if (eiStr * 10 >= defStr * 13) {
+                    // Attacker needs ~1.15x the defender's effective
+                    // strength to storm a rival town (was 1.3x). Eased so
+                    // a committed army finishes sieges instead of bouncing
+                    // off Castles for weeks and stalling the game.
+                    if (eiStr * 100 >= defStr * 115) {
                         if (!eHero.army.empty())
                             eHero.army[bigIdx].count = std::max(1, eHero.army[bigIdx].count
                                                         - eHero.army[bigIdx].count / 10);
@@ -3765,7 +3774,15 @@ void Game::doEndTurnPost(bool lastPlayerEndedTurn)
                 // the units accumulate in the dwellings for a HERO to recruit
                 // and take to war instead of turtling in the town.
                 int64_t garStr = stacksStrength(t.garrison, unitDefs);
-                int64_t garCap = 40000LL + (int64_t)m_turns.week() * 12000LL;
+                // Garrison wall grows early, then PLATEAUS — an unbounded
+                // linear cap (40k + 12k/week) reached ~1,000,000 by week 80,
+                // far above any single hero's army, so late-game towns became
+                // impregnable and games stalled at the week-80 backstop with
+                // six players still alive. Plateau at a ceiling a dominant
+                // army can crack (with fort multipliers a maxed Castle still
+                // defends at ~2.5x this) so conquest keeps resolving.
+                int64_t garCap = std::min<int64_t>(150000LL,
+                                     40000LL + (int64_t)m_turns.week() * 4000LL);
                 int got = (garStr < garCap)
                         ? aiPaidRecruit(t, t.garrison, budget, unitDefs) : 0;
                 if (got > 0) {
