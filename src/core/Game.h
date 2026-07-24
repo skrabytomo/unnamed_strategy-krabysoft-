@@ -893,6 +893,10 @@ private:
 
     // ── World-map hero animators ──────────────────────────────────────────────
     std::unordered_map<uint32_t, SpriteAnimator> m_heroMapAnimators;
+    // Smoothed on-screen world position per hero id, so AI / other-player heroes
+    // glide toward their tile instead of snapping (the active player hero uses
+    // the m_moveT path tween instead). Render-only; snaps on teleport/first-seen.
+    std::unordered_map<uint32_t, std::pair<float,float>> m_heroRenderPos;
 
     // ── SDL cursors ───────────────────────────────────────────────────────────
     SDL_Cursor* m_cursorArrow = nullptr;

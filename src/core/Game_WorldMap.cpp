@@ -4878,12 +4878,21 @@ void Game::renderWorldMapImGui()
                         m_watchSummary.push_back(row);
                     }
                 }
+                // Who's winning: the strongest army total. Tag that row so you
+                // can see the leader at a glance instead of eyeballing numbers.
+                uint32_t leaderOwner = 0; long long leaderStr = -1;
+                for (const auto& row : m_watchSummary)
+                    if (row.str > leaderStr) { leaderStr = row.str; leaderOwner = row.owner; }
+
                 for (const auto& row : m_watchSummary) {
                     const char* pers = (row.owner==1u) ? "Watched"
                                      : aiPersonalityName(m_aiPersonality[std::min<uint32_t>(row.owner,9)]);
+                    bool isLeader = (row.owner == leaderOwner);
                     ImGui::TextColored(rowColor(row.owner),
-                        "P%u %-8s  Str:%lld  H:%d T:%d M:%d  Gold:%d",
-                        row.owner, pers, row.str, row.heroes, row.towns, row.mines, row.gold);
+                        "%s P%u %-8s  Str:%lld  H:%d T:%d M:%d  Gold:%d%s",
+                        isLeader ? ">" : " ",
+                        row.owner, pers, row.str, row.heroes, row.towns, row.mines, row.gold,
+                        isLeader ? "   <== STRONGEST" : "");
                 }
             }
         }
@@ -6113,6 +6122,30 @@ void Game::renderWorldOverlay()
         m_camera.worldToScreen(wx, wy, sx, sy);
     };
 
+    // Like project(), but eases the drawn world position toward the target tile
+    // so AI / other-player heroes WALK between hexes instead of teleporting
+    // (readability in Watch mode). Snaps on first sight or a big jump (boat
+    // launch, town portal) so a hero never glides across the whole map.
+    const float kHeroEaseHexW = m_hexRenderer.grid().hexSize();
+    const float kHeroEaseDt   = ImGui::GetIO().DeltaTime;
+    auto projectHeroSmooth = [&](uint32_t id, HexCoord h, float& sx, float& sy) {
+        float tx, ty;
+        m_hexRenderer.grid().hexToWorld(h, tx, ty);
+        float rx = tx, ry = ty;
+        auto it = m_heroRenderPos.find(id);
+        if (it != m_heroRenderPos.end()) {
+            float px = it->second.first, py = it->second.second;
+            float dx = tx - px, dy = ty - py;
+            float snap = kHeroEaseHexW * 3.5f;
+            if (dx*dx + dy*dy <= snap*snap) {           // near enough → ease in
+                float a = std::min(1.0f, kHeroEaseDt * 6.0f);
+                rx = px + dx * a; ry = py + dy * a;
+            }
+        }
+        m_heroRenderPos[id] = {rx, ry};
+        m_camera.worldToScreen(rx, ry, sx, sy);
+    };
+
     // On-screen radius of one hex tile — several per-tile overlays below (roads,
     // movement range) used to hardcode this as 20px, hand-tuned for the old
     // fixed hexSize=40 at zoom=1 (40*0.5=20). Now that hexSize varies by map
@@ -6578,7 +6611,7 @@ void Game::renderWorldOverlay()
         bool revealedByBloodScent = playerHasBloodScent && hero.faction == FactionId::Bloodsworn;
         if (!m_fogDisabled && (!etile || (!etile->visible && !revealedByBloodScent))) continue;
         float sx, sy;
-        project(hero.pos, sx, sy);
+        projectHeroSmooth(hero.id, hero.pos, sx, sy);
 
         int fac = std::min(static_cast<int>(hero.faction), NUM_FACTIONS - 1);
         auto ait = m_heroMapAnimators.find(hero.id);
@@ -6609,7 +6642,7 @@ void Game::renderWorldOverlay()
         char pLabel[16]; std::snprintf(pLabel, sizeof(pLabel), "P%d", pi + 1);
         for (const auto& hero : m_players[pi].heroes) {
             float sx, sy;
-            project(hero.pos, sx, sy);
+            projectHeroSmooth(hero.id, hero.pos, sx, sy);
             if (sy < HUD_TOP || sy > HUD_BOTTOM) continue;
             int fac = std::min(static_cast<int>(hero.faction), NUM_FACTIONS - 1);
             auto ait = m_heroMapAnimators.find(hero.id);
@@ -6638,15 +6671,17 @@ void Game::renderWorldOverlay()
     // ── Player heroes ─────────────────────────────────────────────────────────
     for (int i = 0; i < static_cast<int>(m_heroes.size()); ++i) {
         const auto& hero = m_heroes[i];
-        float wx, wy;
-        if (i == m_activeHeroIdx && m_moveT < 1.0f) {
-            wx = m_moveSrcX + (m_moveDstX - m_moveSrcX) * m_moveT;
-            wy = m_moveSrcY + (m_moveDstY - m_moveSrcY) * m_moveT;
-        } else {
-            m_hexRenderer.grid().hexToWorld(hero.pos, wx, wy);
-        }
         float sx, sy;
-        m_camera.worldToScreen(wx, wy, sx, sy);
+        if (i == m_activeHeroIdx && m_moveT < 1.0f) {
+            // Active hero mid-path (normal play): follow the path tween exactly.
+            float wx = m_moveSrcX + (m_moveDstX - m_moveSrcX) * m_moveT;
+            float wy = m_moveSrcY + (m_moveDstY - m_moveSrcY) * m_moveT;
+            m_camera.worldToScreen(wx, wy, sx, sy);
+            m_heroRenderPos[hero.id] = {wx, wy};   // keep ease state in sync — no jump on handoff
+        } else {
+            // Idle, or AI-driven (Watch mode): ease toward the tile instead of snapping.
+            projectHeroSmooth(hero.id, hero.pos, sx, sy);
+        }
 
         bool  active = (i == m_activeHeroIdx);
         ImU32 ring   = active ? IM_COL32(255, 255, 160, 255) : IM_COL32(200, 200, 80, 200);
