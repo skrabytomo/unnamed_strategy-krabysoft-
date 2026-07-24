@@ -600,6 +600,8 @@ void Game::renderMainMenu()
         ImGui::Spacing();
         if (fancyButton("High Scores", m_menuIconTex[7])) m_menuMode = 7;
         ImGui::Spacing();
+        if (fancyButton("How to Play", m_menuIconTex[2])) m_menuMode = 9;
+        ImGui::Spacing();
         if (fancyButton("Settings",   m_menuIconTex[5])) m_menuMode = 3;
         ImGui::Spacing();
         if (fancyButton("Map Editor", m_menuIconTex[6])) { enterEditor(); }
@@ -933,6 +935,48 @@ void Game::renderMainMenu()
 
         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
         if (ImGui::Button("Back##credits", ImVec2(bw, 30))) m_menuMode = 0;
+    }
+    // ── 9: How to Play ────────────────────────────────────────────────────────
+    else if (m_menuMode == 9) {
+        header("HOW TO PLAY");
+        auto sect = [&](const char* t){
+            ImGui::Spacing();
+            ImGui::TextColored({1.0f, 0.82f, 0.2f, 1.0f}, "%s", t);
+            ImGui::Separator();
+        };
+        auto row = [&](const char* key, const char* what){
+            ImGui::TextColored({0.8f, 0.9f, 1.0f, 1.0f}, "%-16s", key);
+            ImGui::SameLine(150); ImGui::TextDisabled("%s", what);
+        };
+
+        sect("Goal");
+        ImGui::TextWrapped("Explore the hex map, capture mines and towns for income, "
+                           "build up your towns, recruit armies and defeat the enemy. "
+                           "Winning faster on a higher difficulty scores more (see High Scores).");
+
+        sect("World map");
+        row("Left-click",   "Select a tile / move your hero there");
+        row("Right-click hero", "Quick sheet (stats, army, artifacts)");
+        row("Right-click mine", "Mine info & threat estimate");
+        row("Mouse wheel",  "Zoom     -     Drag: pan the map");
+        row("SPACE",        "End turn");
+        row("TAB",          "Next hero");
+        row("M",            "Toggle mini-map");
+        row("G",            "Garrison (dig in / block passage)");
+
+        sect("Panels");
+        row("F7",           "Artifacts");
+        row("F8",           "Hero details");
+        row("Kingdom",      "Overview of all heroes, towns & income");
+        row("ESC",          "Options / close a panel");
+
+        sect("Combat");
+        ImGui::TextWrapped("Battles are turn-based on a hex grid. Click a unit, then a tile "
+                           "to move or an enemy to attack. Ranged units shoot; flyers cross "
+                           "obstacles. Retreat is possible but costs your army.");
+
+        ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+        if (ImGui::Button("Back##howto", ImVec2(bw, 30))) m_menuMode = 0;
     }
 
     ImGui::End();
