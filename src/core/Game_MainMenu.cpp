@@ -604,6 +604,8 @@ void Game::renderMainMenu()
         ImGui::Spacing();
         if (fancyButton("Map Editor", m_menuIconTex[6])) { enterEditor(); }
         ImGui::Spacing();
+        if (fancyButton("Credits",    m_menuIconTex[2])) m_menuMode = 8;
+        ImGui::Spacing();
         if (fancyButton("Quit",       m_menuIconTex[7])) m_running = false;
 
         ImGui::Spacing(); ImGui::Separator();
@@ -904,6 +906,33 @@ void Game::renderMainMenu()
         }
         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
         if (ImGui::Button("Back##hs", ImVec2(bw, 30))) { loaded = false; m_menuMode = 0; }
+    }
+    // ── 8: Credits ────────────────────────────────────────────────────────────
+    else if (m_menuMode == 8) {
+        header("CREDITS");
+        auto head = [&](const char* t){
+            ImGui::Spacing();
+            ImGui::TextColored({1.0f, 0.82f, 0.2f, 1.0f}, "%s", t);
+            ImGui::Separator();
+        };
+
+        head("Unnamed Strategy");
+        ImGui::TextWrapped("A HoMM-inspired hex-grid turn-based strategy game.");
+        ImGui::TextDisabled("Design, code & art direction: krabysoft");
+
+        head("Built with");
+        ImGui::BulletText("C++20  -  SDL2  -  OpenGL 3.3 Core");
+        ImGui::BulletText("Dear ImGui  -  Lua 5.4  -  SQLite3  -  stb_image");
+
+        head("Art");
+        ImGui::TextWrapped("Some 2D art assets were generated with AI tools "
+                           "(Google Gemini / Imagen) and edited by the developer.");
+
+        head("Thanks");
+        ImGui::TextWrapped("To everyone who played, tested, and gave feedback.");
+
+        ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+        if (ImGui::Button("Back##credits", ImVec2(bw, 30))) m_menuMode = 0;
     }
 
     ImGui::End();

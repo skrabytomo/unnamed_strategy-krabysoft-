@@ -3702,6 +3702,7 @@ void Game::doEndTurnPost(bool lastPlayerEndedTurn)
         }
 
         gLog("New week %d - income applied\n", m_turns.week());
+        if (!m_watchingAI && m_turns.week() >= 20) steam::unlockAchievement("ACH_WEEK_20");
 
         // AI weekly recruitment — REAL economy, same rules as the player:
         // each AI town recruits what the team pool affords from its own
@@ -7267,6 +7268,7 @@ void Game::renderArtifactPanel()
                 if (old) hero.artifactInventory.push_back(old);
                 hero.artifacts.equip(aid, slot);
                 hero.artifactInventory.erase(hero.artifactInventory.begin() + j);
+                steam::unlockAchievement("ACH_FIRST_ARTIFACT");
             }
             ImGui::PopID();
         }

@@ -14,6 +14,8 @@ safe that some fire every time the event happens.
 | `ACH_FIRST_TOWN` | You capture your first town | *Land Grab* |
 | `ACH_HERO_LEVEL_5` | A hero reaches level 5 | *Seasoned* |
 | `ACH_HERO_LEVEL_10` | A hero reaches level 10 | *Veteran* |
+| `ACH_FIRST_ARTIFACT` | You equip your first artifact | *Well Equipped* |
+| `ACH_WEEK_20` | You reach week 20 in a game | *The Long Game* |
 | `ACH_WIN_GAME` | You win a game (all enemies defeated / last human standing) | *Conqueror* |
 
 Set these up in Steamworks with matching API Names, upload icons (256×256 for
