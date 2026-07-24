@@ -1061,6 +1061,8 @@ bool Game::loadGameApply(GameSaveData& data)
     m_showEncounterPrompt    = false;
     m_showVictory            = false;
     m_showDefeat             = false;
+    m_scoreRecorded          = false;
+    m_scoreIsBest            = false;
     m_finalDefeat            = false;
     m_showCombatResult       = false;
     m_showWeekSummary        = false;

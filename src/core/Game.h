@@ -8,6 +8,7 @@
 #include <imgui.h>
 
 #include "DevLog.h"
+#include "GameScore.h"
 #include "GameState.h"
 #include "InputState.h"
 #include "TurnManager.h"
@@ -658,6 +659,14 @@ private:
     bool        m_showDefeat     = false;
     bool        m_finalDefeat    = false;  // no heroes with armies and no player towns
     std::string m_victoryMessage;          // set before raising m_showVictory
+
+    // ── End-of-game score (HoMM3-style) ───────────────────────────────────────
+    GameScore   m_finalScore;
+    bool        m_scoreRecorded = false;   // computed+saved once per game end
+    bool        m_scoreIsBest   = false;   // new #1 highscore
+    // Compute the score for a win/loss and persist it to the highscore table,
+    // once. Safe to call every render frame while the modal is up.
+    void recordFinalScore(bool won);
 
     // ── Combat result summary popup ───────────────────────────────────────────
     bool        m_showCombatResult  = false;

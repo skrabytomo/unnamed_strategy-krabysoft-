@@ -1,6 +1,8 @@
 #include "Game.h"
 #include "../platform/SteamIntegration.h"
+#include "../meta/ScoreDB.h"
 #include "WorkerPool.h"
+#include <ctime>
 #include <chrono>
 
 // TEMP INSTRUMENT (THREADING.md Phase 4 claims the per-step candidate rescan is
@@ -7631,8 +7633,62 @@ void Game::renderCombatResultPopup()
 }
 
 // ── Victory modal ─────────────────────────────────────────────────────────────
+void Game::recordFinalScore(bool won)
+{
+    if (m_scoreRecorded) return;
+    m_scoreRecorded = true;
+
+    int days = (m_turns.week() - 1) * 7 + m_turns.day();
+    int townsHeld = 0;
+    for (const auto& t : m_towns)
+        if (t.ownerId == static_cast<uint32_t>(currentPlayerId())) ++townsHeld;
+    int maxLevel = 0;
+    FactionId fac = FactionId::HolyOrder;
+    std::string who = "Commander";
+    for (const auto& h : m_heroes) {
+        if (h.level > maxLevel) { maxLevel = h.level; fac = h.faction; who = h.name; }
+    }
+
+    m_finalScore = computeGameScore(won, days, m_newGameDifficulty, townsHeld, maxLevel);
+
+    // Persist to the shared meta DB (self-creating highscores table).
+    ScoreDB db;
+    if (db.open(metaDbPath())) {
+        HighScore hs;
+        hs.name       = who;
+        hs.faction    = static_cast<int>(fac);
+        hs.score      = m_finalScore.score;
+        hs.days       = m_finalScore.days;
+        hs.difficulty = m_finalScore.difficulty;
+        hs.won        = won;
+        hs.rank       = m_finalScore.rank;
+        hs.when       = static_cast<long long>(std::time(nullptr));
+        db.addScore(hs, &m_scoreIsBest);
+        db.close();
+    }
+    gLog("[SCORE] %s — %d pts (%s), %d days, %s\n",
+         won ? "VICTORY" : "DEFEAT", m_finalScore.score, m_finalScore.rank.c_str(),
+         m_finalScore.days, m_scoreIsBest ? "NEW BEST" : "recorded");
+}
+
+// Shared renderer for the score block inside the victory/defeat modals.
+static void drawScoreBlock(const GameScore& s, bool isBest)
+{
+    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "Score: %d", s.score);
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.8f, 0.85f, 1.0f, 1.0f), "  [%s]", s.rank.c_str());
+    if (isBest) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "  NEW BEST!");
+    }
+    ImGui::Spacing();
+    for (const auto& b : s.breakdown)
+        ImGui::TextDisabled("   %-30s %+d", b.first.c_str(), b.second);
+}
+
 void Game::renderVictoryModal()
 {
+    recordFinalScore(true);
     ImGui::OpenPopup("Victory!");
     ImVec2 centre = ImGui::GetMainViewport()->GetCenter();
     ImGui::SetNextWindowPos(centre, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -7647,6 +7703,10 @@ void Game::renderVictoryModal()
         ImGui::TextDisabled("Day %d  Week %d  |  Gold: %d",
                             m_turns.day(), m_turns.week(),
                             m_playerResources.get(ResourceType::Gold));
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        drawScoreBlock(m_finalScore, m_scoreIsBest);
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
@@ -7670,6 +7730,7 @@ void Game::renderVictoryModal()
 // ── Defeat modal ──────────────────────────────────────────────────────────────
 void Game::renderDefeatModal()
 {
+    if (m_finalDefeat) recordFinalScore(false);
     ImGui::OpenPopup("Defeat");
     ImVec2 centre = ImGui::GetMainViewport()->GetCenter();
     ImGui::SetNextWindowPos(centre, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -7685,6 +7746,10 @@ void Game::renderDefeatModal()
         }
         ImGui::Spacing();
         ImGui::TextDisabled("Day %d  Week %d", m_turns.day(), m_turns.week());
+        if (m_finalDefeat) {
+            ImGui::Spacing();
+            drawScoreBlock(m_finalScore, false);
+        }
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();

@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "../meta/ScoreDB.h"
 #include "../data/SaveLoad.h"
 #include "../hero/HeroClass.h"
 #include "../sim/ArmyBuilder.h"
@@ -597,6 +598,8 @@ void Game::renderMainMenu()
         ImGui::Spacing();
         if (fancyButton("Watch AI vs AI", m_menuIconTex[4])) m_menuMode = 6;
         ImGui::Spacing();
+        if (fancyButton("High Scores", m_menuIconTex[7])) m_menuMode = 7;
+        ImGui::Spacing();
         if (fancyButton("Settings",   m_menuIconTex[5])) m_menuMode = 3;
         ImGui::Spacing();
         if (fancyButton("Map Editor", m_menuIconTex[6])) { enterEditor(); }
@@ -860,6 +863,47 @@ void Game::renderMainMenu()
     else if (m_menuMode == 6) {
         header("WATCH AI vs AI");
         renderSetupBody(true);
+    }
+    // ── 7: High Scores ────────────────────────────────────────────────────────
+    else if (m_menuMode == 7) {
+        header("HIGH SCORES");
+        // Query lazily and cache while the view is open so we don't hit the DB
+        // every frame; refresh on (re)entering the view.
+        static std::vector<HighScore> scores;
+        static bool loaded = false;
+        if (!loaded) {
+            ScoreDB db;
+            if (db.open(metaDbPath())) { scores = db.topScores(15); db.close(); }
+            loaded = true;
+        }
+        if (scores.empty()) {
+            ImGui::TextDisabled("No games finished yet — win or lose one to set a score.");
+        } else {
+            if (ImGui::BeginTable("hs", 5,
+                    ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH, ImVec2(bw, 0))) {
+                ImGui::TableSetupColumn("#",    ImGuiTableColumnFlags_WidthFixed, 26);
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Score",ImGuiTableColumnFlags_WidthFixed, 60);
+                ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 150);
+                ImGui::TableSetupColumn("Days", ImGuiTableColumnFlags_WidthFixed, 44);
+                ImGui::TableHeadersRow();
+                int rank = 1;
+                for (const auto& s : scores) {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn(); ImGui::Text("%d", rank++);
+                    ImGui::TableNextColumn();
+                    ImGui::TextColored(s.won ? ImVec4(0.7f,1.0f,0.7f,1.0f)
+                                             : ImVec4(1.0f,0.6f,0.6f,1.0f),
+                                       "%s%s", s.name.c_str(), s.won ? "" : "  (lost)");
+                    ImGui::TableNextColumn(); ImGui::TextColored({1.0f,0.85f,0.2f,1.0f}, "%d", s.score);
+                    ImGui::TableNextColumn(); ImGui::TextDisabled("%s", s.rank.c_str());
+                    ImGui::TableNextColumn(); ImGui::TextDisabled("%d", s.days);
+                }
+                ImGui::EndTable();
+            }
+        }
+        ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+        if (ImGui::Button("Back##hs", ImVec2(bw, 30))) { loaded = false; m_menuMode = 0; }
     }
 
     ImGui::End();
