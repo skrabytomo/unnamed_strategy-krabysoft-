@@ -12,6 +12,7 @@ struct GameScore {
     int  days  = 0;      // in-game days elapsed
     bool won   = false;
     int  difficulty = 1; // 0=Easy 1=Normal 2=Hard
+    int  faction = 0;    // player faction, for the rank icon
     std::string rank;    // title for this score bracket
     // Human-readable point breakdown for the results screen: (label, points).
     std::vector<std::pair<std::string, int>> breakdown;
@@ -23,3 +24,7 @@ GameScore computeGameScore(bool won, int days, int difficulty,
 
 // Rank title for a final score (exposed so the highscores list can show it too).
 const char* scoreRank(int score);
+
+// Unit tier (1-6) to picture for a score's rank — higher score, higher tier.
+// Lets the results/highscore screens show a faction unit as the rank badge.
+int scoreRankTier(int score);

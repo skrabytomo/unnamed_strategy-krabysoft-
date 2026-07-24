@@ -14,6 +14,17 @@ const char* scoreRank(int score)
     return "Wandering Sellsword";
 }
 
+int scoreRankTier(int score)
+{
+    if (score >= 1800) return 6;
+    if (score >= 1300) return 6;
+    if (score >=  900) return 5;
+    if (score >=  600) return 4;
+    if (score >=  350) return 3;
+    if (score >=  150) return 2;
+    return 1;
+}
+
 GameScore computeGameScore(bool won, int days, int difficulty,
                            int townsHeld, int maxHeroLevel)
 {

@@ -7702,6 +7702,7 @@ void Game::recordFinalScore(bool won)
     }
 
     m_finalScore = computeGameScore(won, days, m_newGameDifficulty, townsHeld, maxLevel);
+    m_finalScore.faction = static_cast<int>(fac);
 
     // Persist to the shared meta DB (self-creating highscores table).
     ScoreDB db;
@@ -7758,7 +7759,19 @@ void Game::renderVictoryModal()
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
-        drawScoreBlock(m_finalScore, m_scoreIsBest);
+        {
+            // Rank badge: a faction unit whose tier rises with the score.
+            int rfac = std::clamp(m_finalScore.faction, 0, NUM_FACTIONS - 1);
+            int rti  = std::clamp(scoreRankTier(m_finalScore.score), 1, NUM_UNIT_TIERS) - 1;
+            if (m_unitTex[rfac][rti].ok()) {
+                ImGui::Image((ImTextureID)(uintptr_t)m_unitTex[rfac][rti].id(),
+                             ImVec2(72, 72), ImVec2(0, 0), ImVec2(0.125f, 1.0f));
+                ImGui::SameLine();
+            }
+            ImGui::BeginGroup();
+            drawScoreBlock(m_finalScore, m_scoreIsBest);
+            ImGui::EndGroup();
+        }
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
@@ -7800,7 +7813,18 @@ void Game::renderDefeatModal()
         ImGui::TextDisabled("Day %d  Week %d", m_turns.day(), m_turns.week());
         if (m_finalDefeat) {
             ImGui::Spacing();
-            drawScoreBlock(m_finalScore, false);
+            {
+                int rfac = std::clamp(m_finalScore.faction, 0, NUM_FACTIONS - 1);
+                int rti  = std::clamp(scoreRankTier(m_finalScore.score), 1, NUM_UNIT_TIERS) - 1;
+                if (m_unitTex[rfac][rti].ok()) {
+                    ImGui::Image((ImTextureID)(uintptr_t)m_unitTex[rfac][rti].id(),
+                                 ImVec2(72, 72), ImVec2(0, 0), ImVec2(0.125f, 1.0f));
+                    ImGui::SameLine();
+                }
+                ImGui::BeginGroup();
+                drawScoreBlock(m_finalScore, false);
+                ImGui::EndGroup();
+            }
         }
         ImGui::Spacing();
         ImGui::Separator();
