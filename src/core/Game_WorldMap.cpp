@@ -6097,6 +6097,16 @@ void Game::renderWorldOverlay()
     if (!m_imguiReady) return;
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
 
+    // Clip every world-entity marker below to the play area, so mine/resource
+    // icons and hero markers never paint over the top bar, the bottom action
+    // bar, or the right-side hero/town panels. The overlay renders on the same
+    // background draw list AFTER the HUD, so without this they draw on top of
+    // it (the "why are these on top of the HUD" bug). Popped before the minimap
+    // block at the end, which manages its own clip.
+    dl->PushClipRect({0.0f, 68.0f},
+                     { static_cast<float>(m_width)  - 185.0f,
+                       static_cast<float>(m_height) - 100.0f }, true);
+
     auto project = [&](HexCoord h, float& sx, float& sy) {
         float wx, wy;
         m_hexRenderer.grid().hexToWorld(h, wx, wy);
@@ -6845,6 +6855,8 @@ void Game::renderWorldOverlay()
             ImGui::EndTooltip();
         }
     }
+
+    dl->PopClipRect();   // end play-area clip; the minimap manages its own
 
     // ── Minimap ────────────────────────────────────────────────────────────────
     if (m_showMinimap && m_map.radius() > 0) {
