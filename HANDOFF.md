@@ -64,7 +64,7 @@ lot has shipped since it was written. Current reality:
 - ~~Siege: units render on/fight atop castle walls~~ — **fixed**: standing on an
   intact wall segment is impossible by construction (`meleePositions` excludes
   battlements, `moveUnit`/`placeUnit` hard-refuse them); flyers now CROSS
-  intact walls (HoMM convention) but cannot end on one (`landableSteps`).
+  intact walls (genre convention) but cannot end on one (`landableSteps`).
 - Siege: wall damage from normal units is already engine-gated (capped 1–6 vs
   engines' `wallDamage` in `CombatEngine::attackWall`) — remaining question is
   *tuning*, needs playtest.
@@ -99,7 +99,7 @@ to session.log). Push logs manually to share.
 ---
 
 ## What this is
-HoMM3-style turn-based strategy game. C++20 / SDL2 / OpenGL 3.3 Core / ImGui 1.90.8.
+classic-strategy-style turn-based strategy game. C++20 / SDL2 / OpenGL 3.3 Core / ImGui 1.90.8.
 9 factions, hex-grid world map, turn-based combat, town building, campaign system.
 See GAME_PROJECT.md for full design document.
 

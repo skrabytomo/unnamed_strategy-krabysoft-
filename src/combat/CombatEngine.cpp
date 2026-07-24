@@ -1496,7 +1496,7 @@ void CombatEngine::aiActStandard(CombatUnit& unit)
 
 // ── Tactical: focus weakest stack, ranged units kite back ─────────────────────
 // Target desirability for a tactical attacker. Bundles the three things a
-// good HoMM player weighs: (1) can I destroy the whole stack this turn — that
+// good genre player weighs: (1) can I destroy the whole stack this turn — that
 // removes its retaliation and future damage entirely; (2) how dangerous is it
 // (a big shooter or high-attack stack hurts most); (3) all else equal, chip the
 // lowest-HP stack. Side-effect-free (uses DamageCalc::estimate).

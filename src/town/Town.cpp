@@ -122,7 +122,7 @@ void Town::onWeekStart(const std::vector<BuildingDef>& defs)
 
     // Add weekly growth to each dwelling. Percentage applies per-tier BEFORE the
     // flat bonus, so it scales with the tier's base (swarm tiers gain many,
-    // elite tiers stay rare) — the HoMM3 model.
+    // elite tiers stay rare) — the classic-strategy model.
     for (auto& dwelling : dwellings) {
         const BuildingDef* def = nullptr;
         for (auto& d : defs) if (d.id == dwelling.buildingId) { def = &d; break; }

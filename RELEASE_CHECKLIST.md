@@ -7,7 +7,7 @@ Detailed how-tos live in `packaging/steam/`.
 
 **Done (code/tooling):** engine, combat, towns, heroes, campaign, conquest,
 save/load, AI (idle fix + economy: build cadence, income priority, watched
-parity), all HUD/visual polish, HoMM-style score + highscores + results screens,
+parity), all HUD/visual polish, classic-strategy-style score + highscores + results screens,
 achievements (7, wired), data-driven balance loading, in-game Credits (with AI
 disclosure) + How-to-Play, Steamworks SDK integration, SteamPipe packaging,
 full art-generation pipeline (every category), store-asset spec.

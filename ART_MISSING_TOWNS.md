@@ -8,7 +8,7 @@
 - STILL MISSING: Upgrade-path (A/B) unit sprites — 0 of 108 exist. Every
   PathA/PathB unit renders using its faction's base tier sprite. This is the
   real remaining unit-art gap (section 1).
-- NOT BUILT: true HoMM3-style painted town scene with clickable buildings.
+- NOT BUILT: true classic-strategy-style painted town scene with clickable buildings.
 
 
 Companion to `ART_SIEGE.md` (siege) and `ART_DROPIN_MANIFEST.md` (portraits).
@@ -17,7 +17,7 @@ This covers two gaps found during the sprite_brief.md audit:
 1. **Unit upgrade-path (A/B) sprites don't exist** — every PathA/PathB unit
    currently renders using its faction's base tier-1..6 sprite (`faction_F_tT.png`).
    No visual distinction between the base unit and its two upgrades.
-2. **No true HoMM3-style town screen (buildings placed in a painted scene)** —
+2. **No true classic-strategy-style town screen (buildings placed in a painted scene)** —
    Holy Order, Crimson Wardens, and Eternal Empire *do* have per-dwelling
    portrait art (`assets/units/<faction>/<building name>.png`, renamed to match
    sprite_brief.md as of this pass) used in the recruit UI, but there's no
@@ -126,7 +126,7 @@ unit each `faction_F_tT` sheet actually depicts:
 
 ## 2. Town screen backgrounds + building art (9 backgrounds + ~99 building sprites)
 
-Two-layer approach (true HoMM3 style — a flat single image can't be clicked
+Two-layer approach (true classic-strategy style — a flat single image can't be clicked
 per-building, so buildings are separate transparent cutouts placed on a
 background):
 
@@ -188,7 +188,7 @@ distinctive ones; T1–T3 base dwellings follow the same naming pattern.)
 ## Town fortification stages (NEW 2026-07) — per-faction town art per fort tier
 
 The Fort ladder is now Fort (+50% growth) → Citadel (+75%) → Castle (+100%),
-with Bastion (siege prep) after Castle. HoMM3 shows the town visually growing
+with Bastion (siege prep) after Castle. classic-strategy shows the town visually growing
 walls as you climb this ladder. We need town art per stage, per faction.
 
 **Naming (drop-in — the loader can pick by stage):**

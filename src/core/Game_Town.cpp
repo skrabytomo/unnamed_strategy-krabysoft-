@@ -1632,7 +1632,7 @@ void Game::renderMarketplace()
         if (t.ownerId == currentPlayerId() && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
     if (!anyMarket) { m_showMarketPanel = false; return; }
 
-    static const int SELL_RATE = 4;  // HoMM3-style 4:1 exchange
+    static const int SELL_RATE = 4;  // classic-strategy-style 4:1 exchange
     static const int BUY_RATE  = 1;
 
     static const char* kResNames[] = {

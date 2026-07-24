@@ -207,7 +207,7 @@ DamageCalc::DamageEstimate DamageCalc::estimate(const CombatUnit& atk, const Com
 }
 
 // ── Main attack formula ────────────────────────────────────────────────────────
-// HoMM3-style: damage = (attacker.attack - defender.defense) modifier * roll
+// classic-strategy-style: damage = (attacker.attack - defender.defense) modifier * roll
 // attack > defense: +5% per point (max +300%)
 // defense > attack: -2.5% per point (min 30% damage)
 DamageResult DamageCalc::attack(CombatUnit& attacker, CombatUnit& defender,

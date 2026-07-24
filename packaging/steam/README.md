@@ -66,7 +66,7 @@ AI-assisted (Google Gemini/Imagen), so:
   *"Some 2D art assets were generated with AI tools (Google Gemini/Imagen) and
   edited by the developer."*
 - Add the same one-liner to the in-game/credits screen.
-- Keep every prompt original — no trademarked names (HoMM etc.) in prompts or
+- Keep every prompt original — no trademarked names (genre etc.) in prompts or
   output. That's the part that actually matters for rights.
 
 ## Checklist

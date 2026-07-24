@@ -228,8 +228,7 @@ and can run concurrently.
 **But disjoint discs are not sufficient on their own, and this is the trap:**
 heroes of the *same owner* are coupled no matter how far apart they are —
 
-- they spend from **one shared treasury** (`aiResources(ownerId)`), so two heroes
-  300 hexes apart still both draw on the same gold in `aiPaidRecruit`;
+- they spend from **one shared treasury** (`aiResources(ownerId)`), so two the classic-strategy genre00 hexes apart still both draw on the same gold in `aiPaidRecruit`;
 - the supply-chain shuttle makes non-raider heroes target **their own raider's
   position**, so same-owner heroes read each other regardless of distance.
 

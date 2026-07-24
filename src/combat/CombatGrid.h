@@ -5,7 +5,7 @@
 #include "CombatUnit.h"
 #include "../world/HexGrid.h"
 
-// Standard HoMM3-style combat grid
+// Standard classic-strategy-style combat grid
 // 11 columns x 9 rows (flat-top hexes, offset layout)
 // Player units start on left side, enemy on right
 

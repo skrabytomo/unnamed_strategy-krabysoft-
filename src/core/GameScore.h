@@ -3,7 +3,7 @@
 #include <vector>
 #include <utility>
 
-// HoMM3-style end-of-game score: speed-dominated, difficulty-multiplied, with a
+// classic-strategy-style end-of-game score: speed-dominated, difficulty-multiplied, with a
 // dominance bonus and a rank title. Fast wins on high difficulty score highest;
 // a loss still earns a small survival score so the board isn't all-or-nothing.
 // (Rank titles are original — no trademarked hero names.)

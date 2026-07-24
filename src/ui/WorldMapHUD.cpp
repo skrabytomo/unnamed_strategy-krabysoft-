@@ -15,7 +15,7 @@ void WorldMapHUD::resize(int screenW, int screenH)
     buildLayout(screenW, screenH);
 }
 
-// Bottom bar is 100px tall (HoMM3-style action row).
+// Bottom bar is 100px tall (classic-strategy-style action row).
 // Buttons: 2 rows × 2 cols at right side, each 150×40.
 static constexpr float BOT_H   = 100.0f;
 static constexpr float BTN_W   = 150.0f;
@@ -29,7 +29,7 @@ void WorldMapHUD::buildLayout(int sw, int sh)
     // Top resource bar
     m_topBar = {0, 0, (float)sw, 68.0f};
 
-    // Bottom action bar — stone-panel style like HoMM3
+    // Bottom action bar — stone-panel style like classic-strategy
     m_bottomBar = {0, (float)sh - BOT_H, (float)sw, BOT_H};
 
     // Button grid: 2 cols × 2 rows, anchored to right edge

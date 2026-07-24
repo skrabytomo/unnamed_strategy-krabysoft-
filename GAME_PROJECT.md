@@ -4,7 +4,7 @@
 ---
 
 ## Core Vision
-Turn-based strategy in HoMM3 vein. Hex world map, separate combat screen, hero progression, campaign + custom maps, procedural world gen, map editor, castle/hideout meta-layer. Single player only for now. Surface map only (no underground).
+Turn-based strategy in classic-strategy vein. Hex world map, separate combat screen, hero progression, campaign + custom maps, procedural world gen, map editor, castle/hideout meta-layer. Single player only for now. Surface map only (no underground).
 
 ---
 
@@ -12,7 +12,7 @@ Turn-based strategy in HoMM3 vein. Hex world map, separate combat screen, hero p
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Language | C++ | Performance, what HoMM3 used |
+| Language | C++ | Performance, what classic-strategy used |
 | Window/Input | SDL2 | Cross-platform, handles input, audio baseline |
 | Renderer | OpenGL 3.3 core | Mature, well documented |
 | Audio | SDL_mixer | Music + SFX, simple |
@@ -108,7 +108,7 @@ Implementation: `CombatEngine::initCombat()` → `applyArchetype` lambda (after 
 ## COMBAT SYSTEM
 
 ### Grid
-- Flat hex grid (HoMM3 style)
+- Flat hex grid (classic-strategy style)
 - **Special tiles** scattered per battle map — damage amplifier, luck bonus, defense bonus, speed boost etc.
 - Tile bonuses randomized or terrain-driven depending on map/biome
 - Obstacle tiles, terrain features per biome
@@ -186,7 +186,7 @@ Siege camp state on `Hero`: `isSiegeCamping`, `siegeTargetTownId`.
 ## ECONOMY
 
 ### Cycle
-- 7-day week, buildings unlock weekly recruitment (HoMM3 style)
+- 7-day week, buildings unlock weekly recruitment (classic-strategy style)
 - Weekly decision focus: Economy vs Units vs Magic
 - Roads between friendly towns: reduce movement cost + add passive income
 - Infrastructure buildings: sewers, markets, warehouses — passive gold/resource generation
@@ -249,7 +249,7 @@ When a hero is selected and not adjacent to an enemy town, a **March** button ap
 **Files:** `Hero.h` (marchCooldownWeek, marchBonusActive), `Game_WorldMap.cpp` (`renderMarchButton`, week-start bonus application in doEndTurn).
 
 ### Fog of War
-- Unexplored only (HoMM3 style) — explored tiles stay visible
+- Unexplored only (classic-strategy style) — explored tiles stay visible
 
 ### World Generator (Procedural)
 - Noise-based terrain generation + rule passes
@@ -1169,7 +1169,7 @@ Player starts campaign as this faction. First 1-2 maps origin story. 4 alignment
 
 ### ARMY STACKS
 
-- Max 7 stacks per army (HoMM3 style)
+- Max 7 stacks per army (classic-strategy style)
 - Unlimited units per stack — just a number
 - Stack slots fixed — no expansion mechanic
 - Hero occupies rear hex, not a stack slot

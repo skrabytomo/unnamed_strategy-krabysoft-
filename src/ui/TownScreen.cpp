@@ -559,7 +559,7 @@ void TownScreen::drawRecruitPanel(UIRenderer& rdr)
 {
     m_recruitPanel.draw(rdr);
 
-    // ── HoMM3-style creature recruitment cards (ImGui) ──────────────────────
+    // ── classic-strategy-style creature recruitment cards (ImGui) ──────────────────────
     ImGui::SetNextWindowPos({m_recruitPanel.bounds.x, m_recruitPanel.bounds.y});
     ImGui::SetNextWindowSize({m_recruitPanel.bounds.w, m_recruitPanel.bounds.h});
     ImGui::PushStyleColor(ImGuiCol_WindowBg,  ImVec4(0,0,0,0));
