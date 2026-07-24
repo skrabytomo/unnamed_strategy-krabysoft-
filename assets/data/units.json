@@ -1,0 +1,5256 @@
+[
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 65
+    },
+    "damageMax": 3,
+    "damageMin": 1,
+    "defense": 3,
+    "faction": 0,
+    "flying": false,
+    "hp": 16,
+    "id": 1001,
+    "name": "Squire",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid",
+      "Holy"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 65
+    },
+    "damageMax": 4,
+    "damageMin": 1,
+    "defense": 3,
+    "faction": 0,
+    "flying": false,
+    "hp": 13,
+    "id": 1002,
+    "name": "Squire (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Humanoid",
+      "Holy"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 70
+    },
+    "damageMax": 2,
+    "damageMin": 1,
+    "defense": 4,
+    "faction": 0,
+    "flying": false,
+    "hp": 18,
+    "id": 1003,
+    "name": "Squire (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 4,
+    "tags": [
+      "Humanoid",
+      "Holy"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "gold": 80,
+      "iron": 1
+    },
+    "damageMax": 5,
+    "damageMin": 2,
+    "defense": 5,
+    "faction": 0,
+    "flying": false,
+    "hp": 20,
+    "id": 1004,
+    "name": "Paladin",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid",
+      "Holy"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "gold": 90,
+      "iron": 1
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 5,
+    "faction": 0,
+    "flying": false,
+    "hp": 18,
+    "id": 1005,
+    "name": "Paladin (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid",
+      "Holy"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "faithStones": 1,
+      "gold": 90
+    },
+    "damageMax": 4,
+    "damageMin": 2,
+    "defense": 5,
+    "faction": 0,
+    "flying": false,
+    "hp": 21,
+    "id": 1006,
+    "name": "Paladin (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid",
+      "Holy"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "faithStones": 1,
+      "gold": 150
+    },
+    "damageMax": 7,
+    "damageMin": 4,
+    "defense": 5,
+    "faction": 0,
+    "flying": false,
+    "hp": 28,
+    "id": 1007,
+    "name": "Crusader",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid",
+      "Holy"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "faithStones": 1,
+      "gold": 170
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 4,
+    "faction": 0,
+    "flying": false,
+    "hp": 26,
+    "id": 1008,
+    "name": "Crusader (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid",
+      "Holy"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 160,
+      "iron": 1
+    },
+    "damageMax": 8,
+    "damageMin": 5,
+    "defense": 5,
+    "faction": 0,
+    "flying": false,
+    "hp": 30,
+    "id": 1009,
+    "name": "Crusader (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid",
+      "Holy"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 9,
+    "cost": {
+      "gold": 300,
+      "iron": 2
+    },
+    "damageMax": 13,
+    "damageMin": 7,
+    "defense": 9,
+    "faction": 0,
+    "flying": true,
+    "hp": 58,
+    "id": 1010,
+    "name": "Battle Cleric",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Humanoid",
+      "Flying",
+      "Holy"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 9,
+    "cost": {
+      "gold": 350,
+      "iron": 2
+    },
+    "damageMax": 13,
+    "damageMin": 7,
+    "defense": 10,
+    "faction": 0,
+    "flying": true,
+    "hp": 63,
+    "id": 1011,
+    "name": "Battle Cleric (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Humanoid",
+      "Flying",
+      "Holy"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 10,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 330
+    },
+    "damageMax": 14,
+    "damageMin": 8,
+    "defense": 7,
+    "faction": 0,
+    "flying": true,
+    "hp": 55,
+    "id": 1012,
+    "name": "Battle Cleric (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Humanoid",
+      "Flying",
+      "BloodBound"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 13,
+    "cost": {
+      "faithStones": 3,
+      "gold": 700
+    },
+    "damageMax": 26,
+    "damageMin": 14,
+    "defense": 12,
+    "faction": 0,
+    "flying": true,
+    "hp": 95,
+    "id": 1013,
+    "name": "Holy Champion",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 9,
+    "tags": [
+      "Humanoid",
+      "Flying",
+      "Holy"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 13,
+    "cost": {
+      "faithStones": 3,
+      "gold": 800
+    },
+    "damageMax": 26,
+    "damageMin": 14,
+    "defense": 12,
+    "faction": 0,
+    "flying": true,
+    "hp": 95,
+    "id": 1014,
+    "name": "Holy Champion (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 9,
+    "tags": [
+      "Humanoid",
+      "Flying",
+      "Holy"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 15,
+    "cost": {
+      "faithStones": 4,
+      "gold": 750
+    },
+    "damageMax": 28,
+    "damageMin": 16,
+    "defense": 11,
+    "faction": 0,
+    "flying": true,
+    "hp": 90,
+    "id": 1015,
+    "name": "Holy Champion (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 11,
+    "tags": [
+      "Humanoid",
+      "Flying",
+      "Holy"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 17,
+    "cost": {
+      "faithStones": 5,
+      "gold": 1500
+    },
+    "damageMax": 38,
+    "damageMin": 23,
+    "defense": 15,
+    "faction": 0,
+    "flying": true,
+    "hp": 165,
+    "id": 1016,
+    "name": "Archangel",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 12,
+    "tags": [
+      "Humanoid",
+      "Flying",
+      "Holy"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 17,
+    "cost": {
+      "faithStones": 6,
+      "gold": 1800
+    },
+    "damageMax": 38,
+    "damageMin": 23,
+    "defense": 15,
+    "faction": 0,
+    "flying": true,
+    "hp": 165,
+    "id": 1017,
+    "name": "Archangel (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 12,
+    "tags": [
+      "Humanoid",
+      "Flying",
+      "Holy"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 17,
+    "cost": {
+      "faithStones": 8,
+      "gold": 1800
+    },
+    "damageMax": 38,
+    "damageMin": 23,
+    "defense": 15,
+    "faction": 0,
+    "flying": true,
+    "hp": 165,
+    "id": 1018,
+    "name": "Archangel (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 12,
+    "tags": [
+      "Humanoid",
+      "Flying",
+      "Holy"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 60
+    },
+    "damageMax": 3,
+    "damageMin": 1,
+    "defense": 3,
+    "faction": 1,
+    "flying": false,
+    "hp": 15,
+    "id": 2001,
+    "name": "Scout",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "gold": 115
+    },
+    "damageMax": 5,
+    "damageMin": 3,
+    "defense": 4,
+    "faction": 1,
+    "flying": false,
+    "hp": 22,
+    "id": 2002,
+    "name": "Ranger",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 6,
+    "cost": {
+      "faithStones": 1,
+      "gold": 180
+    },
+    "damageMax": 10,
+    "damageMin": 6,
+    "defense": 6,
+    "faction": 1,
+    "flying": false,
+    "hp": 45,
+    "id": 2003,
+    "name": "Hunter",
+    "path": "base",
+    "range": 5,
+    "regenerates": true,
+    "shots": 3,
+    "speed": 6,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 9,
+    "cost": {
+      "faithStones": 2,
+      "gold": 360
+    },
+    "damageMax": 14,
+    "damageMin": 8,
+    "defense": 6,
+    "faction": 1,
+    "flying": true,
+    "hp": 55,
+    "id": 2004,
+    "name": "Berserker",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 10,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 4,
+    "vampiric": true
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "faithStones": 3,
+      "gold": 610
+    },
+    "damageMax": 21,
+    "damageMin": 13,
+    "defense": 9,
+    "faction": 1,
+    "flying": false,
+    "hp": 75,
+    "id": 2005,
+    "name": "Warden Commander",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 8,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 17,
+    "cost": {
+      "faithStones": 5,
+      "gold": 1250
+    },
+    "damageMax": 38,
+    "damageMin": 22,
+    "defense": 14,
+    "faction": 1,
+    "flying": true,
+    "hp": 155,
+    "id": 2006,
+    "name": "Warlord",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 11,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "faithStones": 1,
+      "gold": 70
+    },
+    "damageMax": 4,
+    "damageMin": 1,
+    "defense": 3,
+    "faction": 1,
+    "flying": false,
+    "hp": 14,
+    "id": 2011,
+    "name": "Scout (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid",
+      "Holy"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "faithStones": 1,
+      "gold": 130
+    },
+    "damageMax": 5,
+    "damageMin": 3,
+    "defense": 4,
+    "faction": 1,
+    "flying": true,
+    "hp": 22,
+    "id": 2012,
+    "name": "Ranger (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 8,
+    "cost": {
+      "faithStones": 1,
+      "gold": 210
+    },
+    "damageMax": 10,
+    "damageMin": 6,
+    "defense": 6,
+    "faction": 1,
+    "flying": false,
+    "hp": 48,
+    "id": 2013,
+    "name": "Hunter (A)",
+    "path": "A",
+    "range": 5,
+    "regenerates": false,
+    "shots": 4,
+    "speed": 6,
+    "tags": [
+      "Humanoid",
+      "Holy"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 11,
+    "cost": {
+      "faithStones": 2,
+      "gold": 380
+    },
+    "damageMax": 14,
+    "damageMin": 8,
+    "defense": 7,
+    "faction": 1,
+    "flying": true,
+    "hp": 60,
+    "id": 2014,
+    "name": "Berserker (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 10,
+    "tags": [
+      "Humanoid",
+      "Flying",
+      "Holy"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 14,
+    "cost": {
+      "faithStones": 3,
+      "gold": 650
+    },
+    "damageMax": 21,
+    "damageMin": 13,
+    "defense": 10,
+    "faction": 1,
+    "flying": false,
+    "hp": 80,
+    "id": 2015,
+    "name": "Warden Commander (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 8,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 19,
+    "cost": {
+      "faithStones": 5,
+      "gold": 1350
+    },
+    "damageMax": 38,
+    "damageMin": 22,
+    "defense": 14,
+    "faction": 1,
+    "flying": true,
+    "hp": 160,
+    "id": 2016,
+    "name": "Warlord (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 11,
+    "tags": [
+      "Humanoid",
+      "Flying",
+      "Holy"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 2,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 70
+    },
+    "damageMax": 3,
+    "damageMin": 1,
+    "defense": 5,
+    "faction": 1,
+    "flying": false,
+    "hp": 16,
+    "id": 2021,
+    "name": "Scout (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 130
+    },
+    "damageMax": 5,
+    "damageMin": 3,
+    "defense": 5,
+    "faction": 1,
+    "flying": false,
+    "hp": 26,
+    "id": 2022,
+    "name": "Ranger (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 6,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 210
+    },
+    "damageMax": 10,
+    "damageMin": 6,
+    "defense": 8,
+    "faction": 1,
+    "flying": false,
+    "hp": 55,
+    "id": 2023,
+    "name": "Hunter (B)",
+    "path": "B",
+    "range": 5,
+    "regenerates": true,
+    "shots": 3,
+    "speed": 6,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 10,
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 380
+    },
+    "damageMax": 14,
+    "damageMin": 8,
+    "defense": 6,
+    "faction": 1,
+    "flying": true,
+    "hp": 55,
+    "id": 2024,
+    "name": "Berserker (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 10,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 4,
+    "vampiric": true
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 11,
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 650
+    },
+    "damageMax": 21,
+    "damageMin": 13,
+    "defense": 12,
+    "faction": 1,
+    "flying": false,
+    "hp": 90,
+    "id": 2025,
+    "name": "Warden Commander (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": true,
+    "shots": 0,
+    "speed": 8,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 17,
+    "cost": {
+      "bloodEssence": 5,
+      "gold": 1350
+    },
+    "damageMax": 38,
+    "damageMin": 22,
+    "defense": 16,
+    "faction": 1,
+    "flying": true,
+    "hp": 175,
+    "id": 2026,
+    "name": "Warlord (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 11,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 6,
+    "vampiric": true
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 55
+    },
+    "damageMax": 3,
+    "damageMin": 1,
+    "defense": 3,
+    "faction": 2,
+    "flying": false,
+    "hp": 15,
+    "id": 3001,
+    "name": "Vine Sprite",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "gold": 110,
+      "verdantSap": 1
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 4,
+    "faction": 2,
+    "flying": false,
+    "hp": 20,
+    "id": 3002,
+    "name": "Thornkin Warrior",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 170,
+      "verdantSap": 1
+    },
+    "damageMax": 9,
+    "damageMin": 5,
+    "defense": 5,
+    "faction": 2,
+    "flying": false,
+    "hp": 25,
+    "id": 3003,
+    "name": "Forest Guardian",
+    "path": "base",
+    "range": 0,
+    "regenerates": true,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 9,
+    "cost": {
+      "gold": 370,
+      "verdantSap": 2
+    },
+    "damageMax": 15,
+    "damageMin": 9,
+    "defense": 8,
+    "faction": 2,
+    "flying": false,
+    "hp": 58,
+    "id": 3004,
+    "name": "Treant",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "gold": 630,
+      "verdantSap": 3
+    },
+    "damageMax": 22,
+    "damageMin": 13,
+    "defense": 11,
+    "faction": 2,
+    "flying": false,
+    "hp": 92,
+    "id": 3005,
+    "name": "Elder Thornkin",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 16,
+    "cost": {
+      "gold": 1300,
+      "verdantSap": 5
+    },
+    "damageMax": 38,
+    "damageMin": 24,
+    "defense": 14,
+    "faction": 2,
+    "flying": false,
+    "hp": 158,
+    "id": 3006,
+    "name": "Ancient Colossus",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 60,
+      "verdantSap": 1
+    },
+    "damageMax": 3,
+    "damageMin": 1,
+    "defense": 3,
+    "faction": 2,
+    "flying": false,
+    "hp": 10,
+    "id": 3011,
+    "name": "Vine Sprite (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 120,
+      "verdantSap": 1
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 4,
+    "faction": 2,
+    "flying": false,
+    "hp": 18,
+    "id": 3012,
+    "name": "Thornkin Warrior (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 6,
+    "cost": {
+      "gold": 195,
+      "verdantSap": 1
+    },
+    "damageMax": 9,
+    "damageMin": 5,
+    "defense": 5,
+    "faction": 2,
+    "flying": false,
+    "hp": 22,
+    "id": 3013,
+    "name": "Forest Guardian (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 10,
+    "cost": {
+      "gold": 380,
+      "verdantSap": 2
+    },
+    "damageMax": 15,
+    "damageMin": 9,
+    "defense": 8,
+    "faction": 2,
+    "flying": false,
+    "hp": 55,
+    "id": 3014,
+    "name": "Treant (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 13,
+    "cost": {
+      "gold": 650,
+      "verdantSap": 3
+    },
+    "damageMax": 22,
+    "damageMin": 13,
+    "defense": 11,
+    "faction": 2,
+    "flying": false,
+    "hp": 85,
+    "id": 3015,
+    "name": "Elder Thornkin (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 17,
+    "cost": {
+      "gold": 1350,
+      "verdantSap": 5
+    },
+    "damageMax": 38,
+    "damageMin": 24,
+    "defense": 14,
+    "faction": 2,
+    "flying": true,
+    "hp": 150,
+    "id": 3016,
+    "name": "Ancient Colossus (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Beast",
+      "Flying"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 2,
+    "cost": {
+      "gold": 65,
+      "verdantSap": 1
+    },
+    "damageMax": 3,
+    "damageMin": 1,
+    "defense": 4,
+    "faction": 2,
+    "flying": false,
+    "hp": 16,
+    "id": 3021,
+    "name": "Vine Sprite (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "gold": 120,
+      "verdantSap": 1
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 6,
+    "faction": 2,
+    "flying": false,
+    "hp": 24,
+    "id": 3022,
+    "name": "Thornkin Warrior (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 200,
+      "verdantSap": 2
+    },
+    "damageMax": 9,
+    "damageMin": 5,
+    "defense": 7,
+    "faction": 2,
+    "flying": false,
+    "hp": 32,
+    "id": 3023,
+    "name": "Forest Guardian (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": true,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 8,
+    "cost": {
+      "gold": 400,
+      "verdantSap": 3
+    },
+    "damageMax": 15,
+    "damageMin": 9,
+    "defense": 11,
+    "faction": 2,
+    "flying": false,
+    "hp": 68,
+    "id": 3024,
+    "name": "Treant (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 11,
+    "cost": {
+      "gold": 680,
+      "verdantSap": 4
+    },
+    "damageMax": 22,
+    "damageMin": 13,
+    "defense": 14,
+    "faction": 2,
+    "flying": false,
+    "hp": 105,
+    "id": 3025,
+    "name": "Elder Thornkin (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 15,
+    "cost": {
+      "gold": 1400,
+      "verdantSap": 6
+    },
+    "damageMax": 38,
+    "damageMin": 24,
+    "defense": 17,
+    "faction": 2,
+    "flying": false,
+    "hp": 175,
+    "id": 3026,
+    "name": "Ancient Colossus (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Beast"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 2,
+    "cost": {
+      "gold": 65
+    },
+    "damageMax": 3,
+    "damageMin": 1,
+    "defense": 3,
+    "faction": 3,
+    "flying": false,
+    "hp": 12,
+    "id": 4001,
+    "name": "Skeleton Soldier",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 4,
+    "tags": [
+      "Undead",
+      "Humanoid"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 120
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 4,
+    "faction": 3,
+    "flying": false,
+    "hp": 20,
+    "id": 4002,
+    "name": "Armoured Skeleton",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Undead"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 225,
+      "mercury": 1
+    },
+    "damageMax": 8,
+    "damageMin": 4,
+    "defense": 5,
+    "faction": 3,
+    "flying": false,
+    "hp": 32,
+    "id": 4003,
+    "name": "Zombie Warrior",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Undead"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 9,
+    "cost": {
+      "gold": 380,
+      "mercury": 2
+    },
+    "damageMax": 14,
+    "damageMin": 8,
+    "defense": 10,
+    "faction": 3,
+    "flying": false,
+    "hp": 55,
+    "id": 4004,
+    "name": "Death Knight",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Undead",
+      "Construct"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "gold": 600,
+      "mercury": 3
+    },
+    "damageMax": 20,
+    "damageMin": 11,
+    "defense": 11,
+    "faction": 3,
+    "flying": true,
+    "hp": 83,
+    "id": 4005,
+    "name": "Lich",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 8,
+    "tags": [
+      "Undead",
+      "Flying"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 14,
+    "cost": {
+      "gold": 1100,
+      "mercury": 5
+    },
+    "damageMax": 30,
+    "damageMin": 20,
+    "defense": 12,
+    "faction": 3,
+    "flying": true,
+    "hp": 122,
+    "id": 4006,
+    "name": "Eternal Emperor",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 10,
+    "tags": [
+      "Undead",
+      "Flying"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": true,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 2,
+    "cost": {
+      "gold": 70,
+      "mercury": 1
+    },
+    "damageMax": 3,
+    "damageMin": 1,
+    "defense": 3,
+    "faction": 3,
+    "flying": false,
+    "hp": 14,
+    "id": 4011,
+    "name": "Skeleton Soldier (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 4,
+    "tags": [
+      "Undead",
+      "Humanoid"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": true,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "gold": 130,
+      "mercury": 1
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 4,
+    "faction": 3,
+    "flying": false,
+    "hp": 22,
+    "id": 4012,
+    "name": "Armoured Skeleton (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Undead"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": true,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 215,
+      "mercury": 1
+    },
+    "damageMax": 8,
+    "damageMin": 4,
+    "defense": 5,
+    "faction": 3,
+    "flying": false,
+    "hp": 35,
+    "id": 4013,
+    "name": "Zombie Warrior (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Undead"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": true,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": true
+    },
+    "attack": 9,
+    "cost": {
+      "gold": 390,
+      "mercury": 2
+    },
+    "damageMax": 14,
+    "damageMin": 8,
+    "defense": 10,
+    "faction": 3,
+    "flying": false,
+    "hp": 58,
+    "id": 4014,
+    "name": "Death Knight (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Undead",
+      "Construct"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": true,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "gold": 620,
+      "mercury": 3
+    },
+    "damageMax": 20,
+    "damageMin": 11,
+    "defense": 11,
+    "faction": 3,
+    "flying": true,
+    "hp": 88,
+    "id": 4015,
+    "name": "Lich (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 8,
+    "tags": [
+      "Undead",
+      "Flying"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": true,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": true
+    },
+    "attack": 14,
+    "cost": {
+      "gold": 1150,
+      "mercury": 5
+    },
+    "damageMax": 30,
+    "damageMin": 20,
+    "defense": 12,
+    "faction": 3,
+    "flying": true,
+    "hp": 130,
+    "id": 4016,
+    "name": "Eternal Emperor (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 10,
+    "tags": [
+      "Undead",
+      "Flying"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 70
+    },
+    "damageMax": 3,
+    "damageMin": 1,
+    "defense": 2,
+    "faction": 3,
+    "flying": false,
+    "hp": 12,
+    "id": 4021,
+    "name": "Skeleton Soldier (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 4,
+    "tags": [
+      "Undead"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 130
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 4,
+    "faction": 3,
+    "flying": false,
+    "hp": 23,
+    "id": 4022,
+    "name": "Armoured Skeleton (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Undead"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": true,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 6,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 220
+    },
+    "damageMax": 8,
+    "damageMin": 4,
+    "defense": 5,
+    "faction": 3,
+    "flying": false,
+    "hp": 34,
+    "id": 4023,
+    "name": "Zombie Warrior (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Undead"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 10,
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 395
+    },
+    "damageMax": 14,
+    "damageMin": 8,
+    "defense": 9,
+    "faction": 3,
+    "flying": false,
+    "hp": 60,
+    "id": 4024,
+    "name": "Death Knight (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Undead",
+      "Construct"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 13,
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 620
+    },
+    "damageMax": 20,
+    "damageMin": 11,
+    "defense": 10,
+    "faction": 3,
+    "flying": true,
+    "hp": 86,
+    "id": 4025,
+    "name": "Lich (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 8,
+    "tags": [
+      "Undead",
+      "Flying",
+      "Void"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 15,
+    "cost": {
+      "bloodEssence": 5,
+      "gold": 1150
+    },
+    "damageMax": 30,
+    "damageMin": 20,
+    "defense": 11,
+    "faction": 3,
+    "flying": true,
+    "hp": 135,
+    "id": 4026,
+    "name": "Eternal Emperor (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 10,
+    "tags": [
+      "Undead",
+      "Flying"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 65
+    },
+    "damageMax": 4,
+    "damageMin": 2,
+    "defense": 2,
+    "faction": 4,
+    "flying": false,
+    "hp": 13,
+    "id": 5001,
+    "name": "Cultist",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid",
+      "BloodBound"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 135
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 4,
+    "faction": 4,
+    "flying": false,
+    "hp": 20,
+    "id": 5002,
+    "name": "Blood Warrior",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid",
+      "BloodBound"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 185
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 5,
+    "faction": 4,
+    "flying": false,
+    "hp": 27,
+    "id": 5003,
+    "name": "Berserker",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid",
+      "BloodBound"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 10,
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 340
+    },
+    "damageMax": 18,
+    "damageMin": 10,
+    "defense": 7,
+    "faction": 4,
+    "flying": false,
+    "hp": 54,
+    "id": 5004,
+    "name": "Blood Champion",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 8,
+    "tags": [
+      "Humanoid",
+      "BloodBound"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 13,
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 590
+    },
+    "damageMax": 25,
+    "damageMin": 14,
+    "defense": 8,
+    "faction": 4,
+    "flying": false,
+    "hp": 72,
+    "id": 5005,
+    "name": "Oracle",
+    "path": "base",
+    "range": 4,
+    "regenerates": false,
+    "shots": 4,
+    "speed": 9,
+    "tags": [
+      "Humanoid",
+      "BloodBound"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 18,
+    "cost": {
+      "bloodEssence": 5,
+      "gold": 1150
+    },
+    "damageMax": 42,
+    "damageMin": 25,
+    "defense": 9,
+    "faction": 4,
+    "flying": false,
+    "hp": 140,
+    "id": 5006,
+    "name": "Bloodsworn Avatar",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 11,
+    "tags": [
+      "Humanoid",
+      "BloodBound"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 70
+    },
+    "damageMax": 4,
+    "damageMin": 2,
+    "defense": 2,
+    "faction": 4,
+    "flying": false,
+    "hp": 14,
+    "id": 5011,
+    "name": "Cultist (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid",
+      "BloodBound"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 6,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 120
+    },
+    "damageMax": 7,
+    "damageMin": 3,
+    "defense": 4,
+    "faction": 4,
+    "flying": false,
+    "hp": 21,
+    "id": 5012,
+    "name": "Blood Warrior (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid",
+      "BloodBound"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 6,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 190
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 5,
+    "faction": 4,
+    "flying": false,
+    "hp": 28,
+    "id": 5013,
+    "name": "Berserker (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid",
+      "BloodBound"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 360
+    },
+    "damageMax": 18,
+    "damageMin": 10,
+    "defense": 7,
+    "faction": 4,
+    "flying": false,
+    "hp": 56,
+    "id": 5014,
+    "name": "Blood Champion (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 8,
+    "tags": [
+      "Humanoid",
+      "BloodBound"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 15,
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 610
+    },
+    "damageMax": 25,
+    "damageMin": 14,
+    "defense": 8,
+    "faction": 4,
+    "flying": false,
+    "hp": 75,
+    "id": 5015,
+    "name": "Oracle (A)",
+    "path": "A",
+    "range": 4,
+    "regenerates": false,
+    "shots": 4,
+    "speed": 9,
+    "tags": [
+      "Humanoid",
+      "BloodBound"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 20,
+    "cost": {
+      "bloodEssence": 6,
+      "gold": 1200
+    },
+    "damageMax": 42,
+    "damageMin": 25,
+    "defense": 9,
+    "faction": 4,
+    "flying": false,
+    "hp": 148,
+    "id": 5016,
+    "name": "Bloodsworn Avatar (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 11,
+    "tags": [
+      "Humanoid",
+      "BloodBound"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 70,
+      "iron": 1
+    },
+    "damageMax": 4,
+    "damageMin": 2,
+    "defense": 3,
+    "faction": 4,
+    "flying": false,
+    "hp": 15,
+    "id": 5021,
+    "name": "Cultist (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "gold": 120,
+      "iron": 1
+    },
+    "damageMax": 7,
+    "damageMin": 3,
+    "defense": 6,
+    "faction": 4,
+    "flying": false,
+    "hp": 23,
+    "id": 5022,
+    "name": "Blood Warrior (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 195,
+      "iron": 1
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 7,
+    "faction": 4,
+    "flying": false,
+    "hp": 30,
+    "id": 5023,
+    "name": "Berserker (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 9,
+    "cost": {
+      "gold": 360,
+      "iron": 2
+    },
+    "damageMax": 18,
+    "damageMin": 10,
+    "defense": 10,
+    "faction": 4,
+    "flying": false,
+    "hp": 60,
+    "id": 5024,
+    "name": "Blood Champion (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 8,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "gold": 610,
+      "iron": 3
+    },
+    "damageMax": 25,
+    "damageMin": 14,
+    "defense": 12,
+    "faction": 4,
+    "flying": false,
+    "hp": 80,
+    "id": 5025,
+    "name": "Oracle (B)",
+    "path": "B",
+    "range": 4,
+    "regenerates": false,
+    "shots": 4,
+    "speed": 9,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 17,
+    "cost": {
+      "gold": 1200,
+      "iron": 6
+    },
+    "damageMax": 42,
+    "damageMin": 25,
+    "defense": 13,
+    "faction": 4,
+    "flying": false,
+    "hp": 155,
+    "id": 5026,
+    "name": "Bloodsworn Avatar (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 11,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "gold": 70
+    },
+    "damageMax": 3,
+    "damageMin": 1,
+    "defense": 3,
+    "faction": 5,
+    "flying": true,
+    "hp": 20,
+    "id": 6001,
+    "name": "Void Sprite",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 130,
+      "verdantSap": 1
+    },
+    "damageMax": 6,
+    "damageMin": 2,
+    "defense": 6,
+    "faction": 5,
+    "flying": true,
+    "hp": 27,
+    "id": 6002,
+    "name": "Void Scout",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 6,
+    "cost": {
+      "gold": 205,
+      "verdantSap": 1
+    },
+    "damageMax": 9,
+    "damageMin": 4,
+    "defense": 5,
+    "faction": 5,
+    "flying": true,
+    "hp": 28,
+    "id": 6003,
+    "name": "Void Stalker",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 9,
+    "cost": {
+      "gold": 360,
+      "verdantSap": 2
+    },
+    "damageMax": 15,
+    "damageMin": 9,
+    "defense": 9,
+    "faction": 5,
+    "flying": true,
+    "hp": 48,
+    "id": 6004,
+    "name": "Void Mage",
+    "path": "base",
+    "range": 5,
+    "regenerates": false,
+    "shots": 3,
+    "speed": 10,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "gold": 640,
+      "verdantSap": 3
+    },
+    "damageMax": 24,
+    "damageMin": 15,
+    "defense": 11,
+    "faction": 5,
+    "flying": true,
+    "hp": 82,
+    "id": 6005,
+    "name": "Void Wraith",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 12,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 16,
+    "cost": {
+      "gold": 1180,
+      "verdantSap": 5
+    },
+    "damageMax": 34,
+    "damageMin": 22,
+    "defense": 14,
+    "faction": 5,
+    "flying": true,
+    "hp": 135,
+    "id": 6006,
+    "name": "Void Herald",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 13,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 75,
+      "verdantSap": 1
+    },
+    "damageMax": 3,
+    "damageMin": 1,
+    "defense": 3,
+    "faction": 5,
+    "flying": true,
+    "hp": 18,
+    "id": 6011,
+    "name": "Void Sprite (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 140,
+      "verdantSap": 1
+    },
+    "damageMax": 6,
+    "damageMin": 2,
+    "defense": 6,
+    "faction": 5,
+    "flying": true,
+    "hp": 24,
+    "id": 6012,
+    "name": "Void Scout (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 7,
+    "cost": {
+      "gold": 235,
+      "verdantSap": 1
+    },
+    "damageMax": 9,
+    "damageMin": 4,
+    "defense": 5,
+    "faction": 5,
+    "flying": true,
+    "hp": 28,
+    "id": 6013,
+    "name": "Void Stalker (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 8,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 10,
+    "cost": {
+      "gold": 380,
+      "verdantSap": 2
+    },
+    "damageMax": 15,
+    "damageMin": 9,
+    "defense": 9,
+    "faction": 5,
+    "flying": true,
+    "hp": 44,
+    "id": 6014,
+    "name": "Void Mage (A)",
+    "path": "A",
+    "range": 6,
+    "regenerates": false,
+    "shots": 3,
+    "speed": 11,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 13,
+    "cost": {
+      "gold": 660,
+      "verdantSap": 3
+    },
+    "damageMax": 22,
+    "damageMin": 13,
+    "defense": 11,
+    "faction": 5,
+    "flying": true,
+    "hp": 72,
+    "id": 6015,
+    "name": "Void Wraith (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 13,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 17,
+    "cost": {
+      "gold": 1280,
+      "verdantSap": 5
+    },
+    "damageMax": 34,
+    "damageMin": 22,
+    "defense": 14,
+    "faction": 5,
+    "flying": true,
+    "hp": 135,
+    "id": 6016,
+    "name": "Void Herald (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 14,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 2,
+    "cost": {
+      "gold": 75,
+      "verdantSap": 1
+    },
+    "damageMax": 3,
+    "damageMin": 1,
+    "defense": 4,
+    "faction": 5,
+    "flying": true,
+    "hp": 22,
+    "id": 6021,
+    "name": "Void Sprite (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 140,
+      "verdantSap": 1
+    },
+    "damageMax": 6,
+    "damageMin": 2,
+    "defense": 8,
+    "faction": 5,
+    "flying": true,
+    "hp": 30,
+    "id": 6022,
+    "name": "Void Scout (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 235,
+      "verdantSap": 2
+    },
+    "damageMax": 9,
+    "damageMin": 4,
+    "defense": 6,
+    "faction": 5,
+    "flying": true,
+    "hp": 34,
+    "id": 6023,
+    "name": "Void Stalker (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 8,
+    "cost": {
+      "gold": 380,
+      "verdantSap": 2
+    },
+    "damageMax": 15,
+    "damageMin": 9,
+    "defense": 13,
+    "faction": 5,
+    "flying": true,
+    "hp": 55,
+    "id": 6024,
+    "name": "Void Mage (B)",
+    "path": "B",
+    "range": 5,
+    "regenerates": false,
+    "shots": 3,
+    "speed": 9,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 10,
+    "cost": {
+      "gold": 660,
+      "verdantSap": 3
+    },
+    "damageMax": 22,
+    "damageMin": 13,
+    "defense": 14,
+    "faction": 5,
+    "flying": true,
+    "hp": 85,
+    "id": 6025,
+    "name": "Void Wraith (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 11,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 14,
+    "cost": {
+      "gold": 1280,
+      "verdantSap": 6
+    },
+    "damageMax": 34,
+    "damageMin": 22,
+    "defense": 18,
+    "faction": 5,
+    "flying": true,
+    "hp": 155,
+    "id": 6026,
+    "name": "Void Herald (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 12,
+    "tags": [
+      "Flying",
+      "Void"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 75,
+      "iron": 1
+    },
+    "damageMax": 4,
+    "damageMin": 2,
+    "defense": 3,
+    "faction": 6,
+    "flying": false,
+    "hp": 12,
+    "id": 7001,
+    "name": "Automaton",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "gold": 140,
+      "iron": 2
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 5,
+    "faction": 6,
+    "flying": false,
+    "hp": 20,
+    "id": 7002,
+    "name": "Infantry Unit",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 6,
+    "cost": {
+      "gold": 240,
+      "iron": 3
+    },
+    "damageMax": 10,
+    "damageMin": 5,
+    "defense": 6,
+    "faction": 6,
+    "flying": false,
+    "hp": 30,
+    "id": 7003,
+    "name": "Clockwork Warrior",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 8,
+    "cost": {
+      "gold": 400,
+      "iron": 5
+    },
+    "damageMax": 13,
+    "damageMin": 7,
+    "defense": 9,
+    "faction": 6,
+    "flying": false,
+    "hp": 58,
+    "id": 7004,
+    "name": "Gunner",
+    "path": "base",
+    "range": 5,
+    "regenerates": false,
+    "shots": 2,
+    "speed": 4,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 11,
+    "cost": {
+      "gold": 660,
+      "iron": 7
+    },
+    "damageMax": 24,
+    "damageMin": 15,
+    "defense": 11,
+    "faction": 6,
+    "flying": false,
+    "hp": 75,
+    "id": 7005,
+    "name": "Steam Colossus",
+    "path": "base",
+    "range": 4,
+    "regenerates": false,
+    "shots": 3,
+    "speed": 5,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 15,
+    "cost": {
+      "gold": 1350,
+      "iron": 10
+    },
+    "damageMax": 42,
+    "damageMin": 26,
+    "defense": 14,
+    "faction": 6,
+    "flying": false,
+    "hp": 150,
+    "id": 7006,
+    "name": "Iron Titan",
+    "path": "base",
+    "range": 4,
+    "regenerates": false,
+    "shots": 4,
+    "speed": 6,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "gold": 85,
+      "iron": 2
+    },
+    "damageMax": 4,
+    "damageMin": 2,
+    "defense": 5,
+    "faction": 6,
+    "flying": false,
+    "hp": 14,
+    "id": 7011,
+    "name": "Automaton (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 155,
+      "iron": 3
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 6,
+    "faction": 6,
+    "flying": false,
+    "hp": 22,
+    "id": 7012,
+    "name": "Infantry Unit (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 7,
+    "cost": {
+      "gold": 235,
+      "iron": 4
+    },
+    "damageMax": 10,
+    "damageMin": 5,
+    "defense": 7,
+    "faction": 6,
+    "flying": false,
+    "hp": 33,
+    "id": 7013,
+    "name": "Clockwork Warrior (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 9,
+    "cost": {
+      "gold": 430,
+      "iron": 6
+    },
+    "damageMax": 13,
+    "damageMin": 7,
+    "defense": 10,
+    "faction": 6,
+    "flying": false,
+    "hp": 63,
+    "id": 7014,
+    "name": "Gunner (A)",
+    "path": "A",
+    "range": 5,
+    "regenerates": false,
+    "shots": 3,
+    "speed": 4,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "gold": 700,
+      "iron": 8
+    },
+    "damageMax": 24,
+    "damageMin": 15,
+    "defense": 13,
+    "faction": 6,
+    "flying": false,
+    "hp": 82,
+    "id": 7015,
+    "name": "Steam Colossus (A)",
+    "path": "A",
+    "range": 4,
+    "regenerates": false,
+    "shots": 3,
+    "speed": 5,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 16,
+    "cost": {
+      "gold": 1450,
+      "iron": 11
+    },
+    "damageMax": 42,
+    "damageMin": 26,
+    "defense": 16,
+    "faction": 6,
+    "flying": false,
+    "hp": 160,
+    "id": 7016,
+    "name": "Iron Titan (A)",
+    "path": "A",
+    "range": 4,
+    "regenerates": false,
+    "shots": 4,
+    "speed": 6,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 75,
+      "iron": 1
+    },
+    "damageMax": 4,
+    "damageMin": 2,
+    "defense": 4,
+    "faction": 6,
+    "flying": false,
+    "hp": 12,
+    "id": 7021,
+    "name": "Automaton (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "gold": 135,
+      "iron": 2
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 5,
+    "faction": 6,
+    "flying": false,
+    "hp": 20,
+    "id": 7022,
+    "name": "Infantry Unit (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 6,
+    "cost": {
+      "gold": 210,
+      "iron": 2
+    },
+    "damageMax": 10,
+    "damageMin": 5,
+    "defense": 6,
+    "faction": 6,
+    "flying": false,
+    "hp": 30,
+    "id": 7023,
+    "name": "Clockwork Warrior (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 8,
+    "cost": {
+      "gold": 385,
+      "iron": 4
+    },
+    "damageMax": 13,
+    "damageMin": 7,
+    "defense": 9,
+    "faction": 6,
+    "flying": false,
+    "hp": 58,
+    "id": 7024,
+    "name": "Gunner (B)",
+    "path": "B",
+    "range": 5,
+    "regenerates": false,
+    "shots": 3,
+    "speed": 4,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 11,
+    "cost": {
+      "gold": 645,
+      "iron": 6
+    },
+    "damageMax": 24,
+    "damageMin": 15,
+    "defense": 11,
+    "faction": 6,
+    "flying": false,
+    "hp": 75,
+    "id": 7025,
+    "name": "Steam Colossus (B)",
+    "path": "B",
+    "range": 4,
+    "regenerates": false,
+    "shots": 3,
+    "speed": 5,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 15,
+    "cost": {
+      "gold": 1290,
+      "iron": 8
+    },
+    "damageMax": 42,
+    "damageMin": 26,
+    "defense": 14,
+    "faction": 6,
+    "flying": false,
+    "hp": 150,
+    "id": 7026,
+    "name": "Iron Titan (B)",
+    "path": "B",
+    "range": 4,
+    "regenerates": false,
+    "shots": 4,
+    "speed": 6,
+    "tags": [
+      "Mechanical"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 2,
+    "cost": {
+      "gold": 65
+    },
+    "damageMax": 4,
+    "damageMin": 1,
+    "defense": 3,
+    "faction": 7,
+    "flying": false,
+    "hp": 14,
+    "id": 8001,
+    "name": "Crawler",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "OrganicMech"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "gold": 105,
+      "iron": 1
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 4,
+    "faction": 7,
+    "flying": false,
+    "hp": 18,
+    "id": 8002,
+    "name": "Flesh Warrior",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "OrganicMech"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 195,
+      "iron": 2
+    },
+    "damageMax": 7,
+    "damageMin": 4,
+    "defense": 5,
+    "faction": 7,
+    "flying": false,
+    "hp": 28,
+    "id": 8003,
+    "name": "Brute",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "OrganicMech"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 9,
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 360
+    },
+    "damageMax": 16,
+    "damageMin": 9,
+    "defense": 7,
+    "faction": 7,
+    "flying": true,
+    "hp": 60,
+    "id": 8004,
+    "name": "Behemoth",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Flying",
+      "OrganicMech"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 600
+    },
+    "damageMax": 23,
+    "damageMin": 14,
+    "defense": 10,
+    "faction": 7,
+    "flying": false,
+    "hp": 95,
+    "id": 8005,
+    "name": "Flesh Colossus",
+    "path": "base",
+    "range": 3,
+    "regenerates": false,
+    "shots": 3,
+    "speed": 8,
+    "tags": [
+      "OrganicMech"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 16,
+    "cost": {
+      "bloodEssence": 5,
+      "gold": 1200
+    },
+    "damageMax": 37,
+    "damageMin": 23,
+    "defense": 14,
+    "faction": 7,
+    "flying": true,
+    "hp": 155,
+    "id": 8006,
+    "name": "Apex",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 9,
+    "tags": [
+      "Flying",
+      "OrganicMech"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": true,
+      "secondLifeFullHeal": false
+    },
+    "attack": 2,
+    "cost": {
+      "gold": 70,
+      "iron": 1
+    },
+    "damageMax": 4,
+    "damageMin": 1,
+    "defense": 3,
+    "faction": 7,
+    "flying": false,
+    "hp": 11,
+    "id": 8011,
+    "name": "Crawler (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "OrganicMech"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": true,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "gold": 125,
+      "iron": 2
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 4,
+    "faction": 7,
+    "flying": false,
+    "hp": 18,
+    "id": 8012,
+    "name": "Flesh Warrior (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "OrganicMech"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": true,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 205,
+      "iron": 2
+    },
+    "damageMax": 7,
+    "damageMin": 4,
+    "defense": 5,
+    "faction": 7,
+    "flying": false,
+    "hp": 28,
+    "id": 8013,
+    "name": "Brute (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "OrganicMech"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": true,
+      "secondLifeFullHeal": false
+    },
+    "attack": 9,
+    "cost": {
+      "gold": 380,
+      "iron": 3
+    },
+    "damageMax": 16,
+    "damageMin": 9,
+    "defense": 7,
+    "faction": 7,
+    "flying": true,
+    "hp": 60,
+    "id": 8014,
+    "name": "Behemoth (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Flying",
+      "OrganicMech"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": true,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "gold": 640,
+      "iron": 4
+    },
+    "damageMax": 23,
+    "damageMin": 14,
+    "defense": 10,
+    "faction": 7,
+    "flying": false,
+    "hp": 95,
+    "id": 8015,
+    "name": "Flesh Colossus (A)",
+    "path": "A",
+    "range": 3,
+    "regenerates": false,
+    "shots": 3,
+    "speed": 8,
+    "tags": [
+      "OrganicMech"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": true,
+      "secondLifeFullHeal": false
+    },
+    "attack": 16,
+    "cost": {
+      "gold": 1250,
+      "iron": 5
+    },
+    "damageMax": 37,
+    "damageMin": 23,
+    "defense": 14,
+    "faction": 7,
+    "flying": true,
+    "hp": 155,
+    "id": 8016,
+    "name": "Apex (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 9,
+    "tags": [
+      "Flying",
+      "OrganicMech"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": true,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 2,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 70
+    },
+    "damageMax": 4,
+    "damageMin": 1,
+    "defense": 3,
+    "faction": 7,
+    "flying": false,
+    "hp": 14,
+    "id": 8021,
+    "name": "Crawler (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "OrganicMech"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": true,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 4,
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 120
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 4,
+    "faction": 7,
+    "flying": false,
+    "hp": 22,
+    "id": 8022,
+    "name": "Flesh Warrior (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "OrganicMech"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": true,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 205
+    },
+    "damageMax": 7,
+    "damageMin": 4,
+    "defense": 5,
+    "faction": 7,
+    "flying": false,
+    "hp": 34,
+    "id": 8023,
+    "name": "Brute (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "OrganicMech"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": true,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 9,
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 370
+    },
+    "damageMax": 16,
+    "damageMin": 9,
+    "defense": 7,
+    "faction": 7,
+    "flying": true,
+    "hp": 70,
+    "id": 8024,
+    "name": "Behemoth (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 7,
+    "tags": [
+      "Flying",
+      "OrganicMech"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": true,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 620
+    },
+    "damageMax": 23,
+    "damageMin": 14,
+    "defense": 10,
+    "faction": 7,
+    "flying": false,
+    "hp": 110,
+    "id": 8025,
+    "name": "Flesh Colossus (B)",
+    "path": "B",
+    "range": 3,
+    "regenerates": false,
+    "shots": 3,
+    "speed": 8,
+    "tags": [
+      "OrganicMech"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": true,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 15,
+    "cost": {
+      "bloodEssence": 5,
+      "gold": 1200
+    },
+    "damageMax": 37,
+    "damageMin": 23,
+    "defense": 14,
+    "faction": 7,
+    "flying": true,
+    "hp": 175,
+    "id": 8026,
+    "name": "Apex (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 9,
+    "tags": [
+      "Flying",
+      "OrganicMech"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 70
+    },
+    "damageMax": 4,
+    "damageMin": 2,
+    "defense": 3,
+    "faction": 8,
+    "flying": false,
+    "hp": 12,
+    "id": 9001,
+    "name": "Initiate",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 125
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 5,
+    "faction": 8,
+    "flying": false,
+    "hp": 21,
+    "id": 9002,
+    "name": "Soldier",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 6,
+    "cost": {
+      "gold": 230
+    },
+    "damageMax": 10,
+    "damageMin": 5,
+    "defense": 6,
+    "faction": 8,
+    "flying": false,
+    "hp": 33,
+    "id": 9003,
+    "name": "Mirror Warrior",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 10,
+    "cost": {
+      "gold": 370
+    },
+    "damageMax": 16,
+    "damageMin": 9,
+    "defense": 10,
+    "faction": 8,
+    "flying": true,
+    "hp": 58,
+    "id": 9004,
+    "name": "Champion",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 8,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "gold": 640
+    },
+    "damageMax": 23,
+    "damageMin": 14,
+    "defense": 13,
+    "faction": 8,
+    "flying": true,
+    "hp": 74,
+    "id": 9005,
+    "name": "Elite",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 10,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 16,
+    "cost": {
+      "gold": 1250
+    },
+    "damageMax": 37,
+    "damageMin": 23,
+    "defense": 15,
+    "faction": 8,
+    "flying": true,
+    "hp": 132,
+    "id": 9006,
+    "name": "Convergence Prime",
+    "path": "base",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 12,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 75
+    },
+    "damageMax": 4,
+    "damageMin": 2,
+    "defense": 3,
+    "faction": 8,
+    "flying": false,
+    "hp": 12,
+    "id": 9011,
+    "name": "Initiate (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 135
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 5,
+    "faction": 8,
+    "flying": true,
+    "hp": 21,
+    "id": 9012,
+    "name": "Soldier (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 7,
+    "cost": {
+      "gold": 225
+    },
+    "damageMax": 10,
+    "damageMin": 5,
+    "defense": 7,
+    "faction": 8,
+    "flying": true,
+    "hp": 33,
+    "id": 9013,
+    "name": "Mirror Warrior (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 10,
+    "cost": {
+      "gold": 390
+    },
+    "damageMax": 16,
+    "damageMin": 9,
+    "defense": 10,
+    "faction": 8,
+    "flying": true,
+    "hp": 58,
+    "id": 9014,
+    "name": "Champion (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 8,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "gold": 670
+    },
+    "damageMax": 23,
+    "damageMin": 14,
+    "defense": 13,
+    "faction": 8,
+    "flying": true,
+    "hp": 74,
+    "id": 9015,
+    "name": "Elite (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 10,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 16,
+    "cost": {
+      "gold": 1320
+    },
+    "damageMax": 37,
+    "damageMin": 23,
+    "defense": 15,
+    "faction": 8,
+    "flying": true,
+    "hp": 132,
+    "id": 9016,
+    "name": "Convergence Prime (A)",
+    "path": "A",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 12,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 6,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 3,
+    "cost": {
+      "gold": 75
+    },
+    "damageMax": 4,
+    "damageMin": 2,
+    "defense": 3,
+    "faction": 8,
+    "flying": false,
+    "hp": 13,
+    "id": 9021,
+    "name": "Initiate (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 5,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 1,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 5,
+    "cost": {
+      "gold": 135
+    },
+    "damageMax": 6,
+    "damageMin": 3,
+    "defense": 5,
+    "faction": 8,
+    "flying": false,
+    "hp": 23,
+    "id": 9022,
+    "name": "Soldier (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 2,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 7,
+    "cost": {
+      "gold": 225
+    },
+    "damageMax": 10,
+    "damageMin": 5,
+    "defense": 7,
+    "faction": 8,
+    "flying": false,
+    "hp": 36,
+    "id": 9023,
+    "name": "Mirror Warrior (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 6,
+    "tags": [
+      "Humanoid"
+    ],
+    "tier": 3,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 10,
+    "cost": {
+      "gold": 390
+    },
+    "damageMax": 16,
+    "damageMin": 9,
+    "defense": 10,
+    "faction": 8,
+    "flying": true,
+    "hp": 62,
+    "id": 9024,
+    "name": "Champion (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 8,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 4,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 12,
+    "cost": {
+      "gold": 670
+    },
+    "damageMax": 23,
+    "damageMin": 14,
+    "defense": 13,
+    "faction": 8,
+    "flying": true,
+    "hp": 80,
+    "id": 9025,
+    "name": "Elite (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 10,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 5,
+    "vampiric": false
+  },
+  {
+    "abilities": {
+      "adaptationDouble": false,
+      "hasSecondLife": false,
+      "moraleImmune": false,
+      "rapidEvolution": false,
+      "secondLifeFullHeal": false
+    },
+    "attack": 16,
+    "cost": {
+      "gold": 1320
+    },
+    "damageMax": 37,
+    "damageMin": 23,
+    "defense": 15,
+    "faction": 8,
+    "flying": true,
+    "hp": 145,
+    "id": 9026,
+    "name": "Convergence Prime (B)",
+    "path": "B",
+    "range": 0,
+    "regenerates": false,
+    "shots": 0,
+    "speed": 12,
+    "tags": [
+      "Humanoid",
+      "Flying"
+    ],
+    "tier": 6,
+    "vampiric": false
+  }
+]

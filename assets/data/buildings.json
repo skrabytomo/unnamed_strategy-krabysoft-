@@ -1,0 +1,5395 @@
+[
+  {
+    "category": "Fort",
+    "cost": {
+      "gold": 2000,
+      "iron": 4
+    },
+    "description": "Walls + gate for siege defense, and +50% weekly unit growth",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 50,
+    "id": 1,
+    "minWeek": 0,
+    "name": "Fort",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Fort",
+    "cost": {
+      "gold": 2500,
+      "iron": 5
+    },
+    "description": "Upgrades the Fort — +75% weekly unit growth and stronger walls",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 75,
+    "id": 24,
+    "minWeek": 0,
+    "name": "Citadel",
+    "path": "base",
+    "prerequisites": [
+      1
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Fort",
+    "cost": {
+      "gold": 5000,
+      "iron": 10
+    },
+    "description": "Upgrades the Citadel — +100% weekly unit growth (double) and a moat",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 100,
+    "id": 25,
+    "minWeek": 0,
+    "name": "Castle",
+    "path": "base",
+    "prerequisites": [
+      24
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 1000
+    },
+    "description": "Converts resources - +500 Gold weekly, +1 unit growth",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 1,
+    "growthMultPct": 0,
+    "id": 2,
+    "minWeek": 0,
+    "name": "Market",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 500
+    }
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "gold": 1500,
+      "iron": 6
+    },
+    "description": "Heroes can buy boats here - a way off island starts",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 22,
+    "minWeek": 0,
+    "name": "Shipyard",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Fort",
+    "cost": {
+      "gold": 1800,
+      "iron": 8
+    },
+    "description": "Post-Castle siege defenses: spikes, nets, shield walls, plating",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 23,
+    "minWeek": 0,
+    "name": "Bastion",
+    "path": "base",
+    "prerequisites": [
+      25
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 600,
+      "iron": 2
+    },
+    "description": "Resource storage - +2 Iron weekly",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 3,
+    "minWeek": 0,
+    "name": "Warehouse",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "iron": 2
+    }
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 1200,
+      "iron": 4
+    },
+    "description": "Expanded storage - +4 Iron weekly",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 7,
+    "minWeek": 0,
+    "name": "Warehouse (Expanded)",
+    "path": "base",
+    "prerequisites": [
+      3
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "iron": 4
+    }
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 2500,
+      "iron": 6
+    },
+    "description": "Industrial storage complex - +6 Iron weekly",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 8,
+    "minWeek": 3,
+    "name": "Warehouse (Industrial)",
+    "path": "base",
+    "prerequisites": [
+      7
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "iron": 6
+    }
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 2500
+    },
+    "description": "Organized governance - +1500 Gold weekly",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 11,
+    "minWeek": 0,
+    "name": "Town Hall",
+    "path": "base",
+    "prerequisites": [
+      2
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 1500
+    }
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 7000
+    },
+    "description": "Thriving metropolis - +3500 Gold weekly",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 12,
+    "minWeek": 3,
+    "name": "City Hall",
+    "path": "base",
+    "prerequisites": [
+      11
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 3500
+    }
+  },
+  {
+    "category": "MageGuild",
+    "cost": {
+      "faithStones": 3,
+      "gold": 2000
+    },
+    "description": "Teaches 2 faction spells. Upgrade for more spells and discounts.",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 5,
+    "minWeek": 0,
+    "name": "Mage Guild",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "MageGuild",
+    "cost": {
+      "faithStones": 5,
+      "gold": 3000
+    },
+    "description": "Unlocks all 4 faction spells for purchase.",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 6,
+    "minWeek": 0,
+    "name": "Mage Guild (Tier 2)",
+    "path": "base",
+    "prerequisites": [
+      5
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "faithStones": 10,
+      "gold": 12000
+    },
+    "description": "Holy Order capitol — +6000 Gold/wk, +5 Faith Stones/wk, hero gains +3 Light Power on visit",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 13,
+    "minWeek": 5,
+    "name": "Sacred Sanctum",
+    "path": "base",
+    "prerequisites": [
+      12,
+      100
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "faithStones": 5,
+      "gold": 6000
+    }
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "faithStones": 10,
+      "gold": 12000
+    },
+    "description": "Crimson Wardens capitol — +6000 Gold/wk, +5 Faith Stones/wk",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 14,
+    "minWeek": 5,
+    "name": "Warden's Citadel",
+    "path": "base",
+    "prerequisites": [
+      12,
+      200
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "faithStones": 5,
+      "gold": 6000
+    }
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 12000,
+      "verdantSap": 10
+    },
+    "description": "Thornkin capitol — +6000 Gold/wk, +5 Verdant Sap/wk, all unit growth +3/wk",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 3,
+    "growthMultPct": 0,
+    "id": 15,
+    "minWeek": 5,
+    "name": "Ancient Heartwood",
+    "path": "base",
+    "prerequisites": [
+      12,
+      300
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 6000,
+      "verdantSap": 5
+    }
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 12000,
+      "mercury": 10
+    },
+    "description": "Eternal Empire capitol — +6000 Gold/wk, +5 Mercury/wk, garrison gets +4 defense",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 16,
+    "minWeek": 5,
+    "name": "Eternal Citadel",
+    "path": "base",
+    "prerequisites": [
+      12,
+      400
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 6000,
+      "mercury": 5
+    }
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "faithStones": 10,
+      "gold": 12000
+    },
+    "description": "Bloodsworn capitol — +6000 Gold/wk, +5 Faith Stones/wk, Blood Pool fills 2x faster",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 17,
+    "minWeek": 5,
+    "name": "Bloodspire Fortress",
+    "path": "base",
+    "prerequisites": [
+      12,
+      500
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "faithStones": 5,
+      "gold": 6000
+    }
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 12000,
+      "mercury": 10
+    },
+    "description": "Voidkin capitol — +6000 Gold/wk, +5 Mercury/wk, Void abilities cost -2 mana",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 18,
+    "minWeek": 5,
+    "name": "Void Core Nexus",
+    "path": "base",
+    "prerequisites": [
+      12,
+      600
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 6000,
+      "mercury": 5
+    }
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 12000,
+      "iron": 15
+    },
+    "description": "Iron Assembly capitol — +6000 Gold/wk, +8 Iron/wk, all Constructs gain +2 ATK",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 19,
+    "minWeek": 5,
+    "name": "Grand Megaforge",
+    "path": "base",
+    "prerequisites": [
+      12,
+      700
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 6000,
+      "iron": 8
+    }
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "bloodEssence": 10,
+      "gold": 12000
+    },
+    "description": "Amalgamate capitol — +6000 Gold/wk, +5 Blood Essence/wk, grafted units regenerate +5 HP/round",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 20,
+    "minWeek": 5,
+    "name": "Grand Fleshpit",
+    "path": "base",
+    "prerequisites": [
+      12,
+      800
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "bloodEssence": 5,
+      "gold": 6000
+    }
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 12000,
+      "verdantSap": 10
+    },
+    "description": "Convergence capitol — +6000 Gold/wk, +5 Verdant Sap/wk, mirrored abilities persist 1 extra round",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 21,
+    "minWeek": 5,
+    "name": "Synthesis Nexus",
+    "path": "base",
+    "prerequisites": [
+      12,
+      900
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 6000,
+      "verdantSap": 5
+    }
+  },
+  {
+    "category": "MageGuild",
+    "cost": {
+      "faithStones": 8,
+      "gold": 5000
+    },
+    "description": "All 4 spells available at 30% discount. Advanced magical research.",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 9,
+    "minWeek": 3,
+    "name": "Mage Guild (Tier 3)",
+    "path": "base",
+    "prerequisites": [
+      6
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "MageGuild",
+    "cost": {
+      "faithStones": 12,
+      "gold": 8000
+    },
+    "description": "All 4 spells at 50% discount. Hero gains +5 max mana when visiting.",
+    "faction": 9,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 10,
+    "minWeek": 5,
+    "name": "Mage Guild (Tier 4)",
+    "path": "base",
+    "prerequisites": [
+      9
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "faithStones": 2,
+      "gold": 500
+    },
+    "description": "Town Hall - +1000 Gold weekly, +2 unit growth",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 2,
+    "growthMultPct": 0,
+    "id": 100,
+    "minWeek": 0,
+    "name": "Cathedral Hall",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 1000
+    }
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 300
+    },
+    "description": "Produces Squires each week",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 101,
+    "minWeek": 0,
+    "name": "Squire Barracks",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 1,
+    "upgradeA": 102,
+    "upgradeB": 103,
+    "weeklyGrowth": 14,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 500,
+      "iron": 2
+    },
+    "description": "Squires die faster, feed Desperation harder",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 102,
+    "minWeek": 0,
+    "name": "Squire Barracks - Fast Death",
+    "path": "A",
+    "prerequisites": [
+      101
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 18,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 500,
+      "iron": 2
+    },
+    "description": "Squires tankier, slower meter feed",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 103,
+    "minWeek": 0,
+    "name": "Squire Barracks - Hardened",
+    "path": "B",
+    "prerequisites": [
+      101
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 12,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 500,
+      "iron": 2
+    },
+    "description": "Produces Paladins",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 104,
+    "minWeek": 0,
+    "name": "Paladin Hall",
+    "path": "base",
+    "prerequisites": [
+      101
+    ],
+    "tier": 2,
+    "upgradeA": 105,
+    "upgradeB": 106,
+    "weeklyGrowth": 10,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 700,
+      "iron": 4
+    },
+    "description": "Paladins spread fire on death",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 105,
+    "minWeek": 0,
+    "name": "Paladin Hall - Arsonist",
+    "path": "A",
+    "prerequisites": [
+      104
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 10,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 1,
+      "gold": 700,
+      "iron": 3
+    },
+    "description": "Paladins empower nearby units while alive",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 106,
+    "minWeek": 0,
+    "name": "Paladin Hall - Devoted",
+    "path": "B",
+    "prerequisites": [
+      104
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 9,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 2,
+      "gold": 800
+    },
+    "description": "Produces Crusaders",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 107,
+    "minWeek": 0,
+    "name": "Crusader Chapel",
+    "path": "base",
+    "prerequisites": [
+      104
+    ],
+    "tier": 3,
+    "upgradeA": 108,
+    "upgradeB": 109,
+    "weeklyGrowth": 7,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 1,
+      "gold": 1000,
+      "iron": 4
+    },
+    "description": "",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 108,
+    "minWeek": 0,
+    "name": "Crusader Chapel - Sacrifice",
+    "path": "A",
+    "prerequisites": [
+      107
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 7,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1000,
+      "iron": 6
+    },
+    "description": "",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 109,
+    "minWeek": 0,
+    "name": "Crusader Chapel - Toxic Cloud",
+    "path": "B",
+    "prerequisites": [
+      107
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 6,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1500,
+      "iron": 4
+    },
+    "description": "",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 110,
+    "minWeek": 0,
+    "name": "Battle Cleric Sanctum",
+    "path": "base",
+    "prerequisites": [
+      107
+    ],
+    "tier": 4,
+    "upgradeA": 111,
+    "upgradeB": 112,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 2000,
+      "iron": 7
+    },
+    "description": "",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 111,
+    "minWeek": 0,
+    "name": "Battle Cleric Sanctum - Shield",
+    "path": "A",
+    "prerequisites": [
+      110
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 2000,
+      "iron": 5
+    },
+    "description": "",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 112,
+    "minWeek": 0,
+    "name": "Battle Cleric Sanctum - Bleed",
+    "path": "B",
+    "prerequisites": [
+      110
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 4,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 5,
+      "gold": 3000
+    },
+    "description": "",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 113,
+    "minWeek": 0,
+    "name": "Holy Champion Spire",
+    "path": "base",
+    "prerequisites": [
+      110
+    ],
+    "tier": 5,
+    "upgradeA": 114,
+    "upgradeB": 115,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 3,
+      "gold": 4000,
+      "iron": 6
+    },
+    "description": "",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 114,
+    "minWeek": 0,
+    "name": "Holy Champion Spire - Wide Aura",
+    "path": "A",
+    "prerequisites": [
+      113
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 4,
+      "gold": 4000,
+      "iron": 6
+    },
+    "description": "",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 115,
+    "minWeek": 0,
+    "name": "Holy Champion Spire - Unchained",
+    "path": "B",
+    "prerequisites": [
+      113
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 8,
+      "gold": 6000
+    },
+    "description": "",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 116,
+    "minWeek": 0,
+    "name": "Archangel Cathedral",
+    "path": "base",
+    "prerequisites": [
+      113
+    ],
+    "tier": 6,
+    "upgradeA": 117,
+    "upgradeB": 118,
+    "weeklyGrowth": 1,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 6,
+      "gold": 8000,
+      "iron": 7
+    },
+    "description": "",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 117,
+    "minWeek": 0,
+    "name": "Archangel Cathedral - Desperation",
+    "path": "A",
+    "prerequisites": [
+      116
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 1,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 8,
+      "gold": 8000,
+      "iron": 7
+    },
+    "description": "",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 118,
+    "minWeek": 0,
+    "name": "Archangel Cathedral - Both Meters",
+    "path": "B",
+    "prerequisites": [
+      116
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 1,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "faithStones": 3,
+      "gold": 1500
+    },
+    "description": "+2 Light Power for all heroes garrisoned here",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 119,
+    "minWeek": 0,
+    "name": "Light Shrine",
+    "path": "base",
+    "prerequisites": [
+      100
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "faithStones": 4,
+      "gold": 2000
+    },
+    "description": "Holy units start battle with +20 Desperation pre-charged",
+    "faction": 0,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 120,
+    "minWeek": 0,
+    "name": "Reliquary",
+    "path": "base",
+    "prerequisites": [
+      119
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "faithStones": 2,
+      "gold": 500
+    },
+    "description": "Town Hall - +1000 Gold weekly, +2 unit growth",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 2,
+    "growthMultPct": 0,
+    "id": 200,
+    "minWeek": 0,
+    "name": "Warden's Hold",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 1000
+    }
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 300
+    },
+    "description": "Produces Scouts",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 201,
+    "minWeek": 0,
+    "name": "Scout Camp",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 1,
+    "upgradeA": 211,
+    "upgradeB": 212,
+    "weeklyGrowth": 15,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 1,
+      "gold": 600
+    },
+    "description": "Produces Rangers",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 202,
+    "minWeek": 0,
+    "name": "Ranger Lodge",
+    "path": "base",
+    "prerequisites": [
+      201
+    ],
+    "tier": 2,
+    "upgradeA": 213,
+    "upgradeB": 214,
+    "weeklyGrowth": 11,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 2,
+      "gold": 1000
+    },
+    "description": "Produces Hunters",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 203,
+    "minWeek": 0,
+    "name": "Hunter's Lodge",
+    "path": "base",
+    "prerequisites": [
+      202
+    ],
+    "tier": 3,
+    "upgradeA": 215,
+    "upgradeB": 216,
+    "weeklyGrowth": 7,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 3,
+      "gold": 1800
+    },
+    "description": "Produces Berserkers",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 204,
+    "minWeek": 0,
+    "name": "Berserker Hall",
+    "path": "base",
+    "prerequisites": [
+      203
+    ],
+    "tier": 4,
+    "upgradeA": 217,
+    "upgradeB": 218,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 4,
+      "gold": 3000
+    },
+    "description": "Produces Warden Commanders",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 205,
+    "minWeek": 0,
+    "name": "Warden's Tower",
+    "path": "base",
+    "prerequisites": [
+      204
+    ],
+    "tier": 5,
+    "upgradeA": 219,
+    "upgradeB": 220,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 6,
+      "gold": 5500
+    },
+    "description": "Produces Warlords",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 206,
+    "minWeek": 0,
+    "name": "Warlord's Bastion",
+    "path": "base",
+    "prerequisites": [
+      205
+    ],
+    "tier": 6,
+    "upgradeA": 221,
+    "upgradeB": 222,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 2,
+      "gold": 500,
+      "iron": 2
+    },
+    "description": "Upgrades Scouts to Scouts (A)",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 211,
+    "minWeek": 0,
+    "name": "Scout Camp (A)",
+    "path": "A",
+    "prerequisites": [
+      201
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 14,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 2,
+      "gold": 700,
+      "iron": 3
+    },
+    "description": "Upgrades Rangers to Rangers (A)",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 213,
+    "minWeek": 0,
+    "name": "Ranger Lodge (A)",
+    "path": "A",
+    "prerequisites": [
+      202
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 10,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 2,
+      "gold": 1100,
+      "iron": 4
+    },
+    "description": "Upgrades Hunters to Hunters (A)",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 215,
+    "minWeek": 0,
+    "name": "Hunter's Lodge (A)",
+    "path": "A",
+    "prerequisites": [
+      203
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 6,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 3,
+      "gold": 2000,
+      "iron": 5
+    },
+    "description": "Upgrades Berserkers to Berserkers (A)",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 217,
+    "minWeek": 0,
+    "name": "Berserker Hall (A)",
+    "path": "A",
+    "prerequisites": [
+      204
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 4,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 4,
+      "gold": 3500,
+      "iron": 6
+    },
+    "description": "Upgrades Warden Commanders to Warden Commanders (A)",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 219,
+    "minWeek": 0,
+    "name": "Warden's Tower (A)",
+    "path": "A",
+    "prerequisites": [
+      205
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "faithStones": 6,
+      "gold": 6500,
+      "iron": 7
+    },
+    "description": "Upgrades Warlords to Warlords (A)",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 221,
+    "minWeek": 0,
+    "name": "Warlord's Bastion (A)",
+    "path": "A",
+    "prerequisites": [
+      206
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 1,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 500,
+      "iron": 2
+    },
+    "description": "Upgrades Scouts to Scouts (B)",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 212,
+    "minWeek": 0,
+    "name": "Scout Camp (B)",
+    "path": "B",
+    "prerequisites": [
+      201
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 15,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 700,
+      "iron": 3
+    },
+    "description": "Upgrades Rangers to Rangers (B)",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 214,
+    "minWeek": 0,
+    "name": "Ranger Lodge (B)",
+    "path": "B",
+    "prerequisites": [
+      202
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 11,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 1100,
+      "iron": 4
+    },
+    "description": "Upgrades Hunters to Hunters (B)",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 216,
+    "minWeek": 0,
+    "name": "Hunter's Lodge (B)",
+    "path": "B",
+    "prerequisites": [
+      203
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 7,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 2000,
+      "iron": 5
+    },
+    "description": "Upgrades Berserkers to Berserkers (B)",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 218,
+    "minWeek": 0,
+    "name": "Berserker Hall (B)",
+    "path": "B",
+    "prerequisites": [
+      204
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 4,
+      "gold": 3500,
+      "iron": 6
+    },
+    "description": "Upgrades Warden Commanders to Warden Commanders (B)",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 220,
+    "minWeek": 0,
+    "name": "Warden's Tower (B)",
+    "path": "B",
+    "prerequisites": [
+      205
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 6,
+      "gold": 6500,
+      "iron": 7
+    },
+    "description": "Upgrades Warlords to Warlords (B)",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 222,
+    "minWeek": 0,
+    "name": "Warlord's Bastion (B)",
+    "path": "B",
+    "prerequisites": [
+      206
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "faithStones": 3,
+      "gold": 1500
+    },
+    "description": "+3 Death Power for all heroes garrisoned here",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 207,
+    "minWeek": 0,
+    "name": "Death Altar",
+    "path": "base",
+    "prerequisites": [
+      200
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "faithStones": 4,
+      "gold": 2500
+    },
+    "description": "Warden's Mark affects one additional target",
+    "faction": 1,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 208,
+    "minWeek": 0,
+    "name": "Warden's Brand Chamber",
+    "path": "base",
+    "prerequisites": [
+      207
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 500,
+      "verdantSap": 2
+    },
+    "description": "Town Hall - +1000 Gold weekly, +2 unit growth",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 2,
+    "growthMultPct": 0,
+    "id": 300,
+    "minWeek": 0,
+    "name": "Grove Heart",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 1000
+    }
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 300
+    },
+    "description": "Produces Vine Sprites",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 301,
+    "minWeek": 0,
+    "name": "Sprout Hollow",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 1,
+    "upgradeA": 311,
+    "upgradeB": 312,
+    "weeklyGrowth": 14,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 600,
+      "verdantSap": 1
+    },
+    "description": "Produces Thornkin Warriors",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 302,
+    "minWeek": 0,
+    "name": "Briar Thicket",
+    "path": "base",
+    "prerequisites": [
+      301
+    ],
+    "tier": 2,
+    "upgradeA": 313,
+    "upgradeB": 314,
+    "weeklyGrowth": 10,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1000,
+      "verdantSap": 2
+    },
+    "description": "Produces Forest Guardians",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 303,
+    "minWeek": 0,
+    "name": "Vine Den",
+    "path": "base",
+    "prerequisites": [
+      302
+    ],
+    "tier": 3,
+    "upgradeA": 315,
+    "upgradeB": 316,
+    "weeklyGrowth": 7,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1800,
+      "verdantSap": 3
+    },
+    "description": "Produces Treants",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 304,
+    "minWeek": 0,
+    "name": "Guardian Grove",
+    "path": "base",
+    "prerequisites": [
+      303
+    ],
+    "tier": 4,
+    "upgradeA": 317,
+    "upgradeB": 318,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3000,
+      "verdantSap": 4
+    },
+    "description": "Produces Elder Thornkin",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 305,
+    "minWeek": 0,
+    "name": "Elder Circle",
+    "path": "base",
+    "prerequisites": [
+      304
+    ],
+    "tier": 5,
+    "upgradeA": 319,
+    "upgradeB": 320,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 5500,
+      "verdantSap": 6
+    },
+    "description": "Produces Ancient Colossi",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 306,
+    "minWeek": 0,
+    "name": "World Tree Root",
+    "path": "base",
+    "prerequisites": [
+      305
+    ],
+    "tier": 6,
+    "upgradeA": 321,
+    "upgradeB": 322,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 500,
+      "iron": 2,
+      "verdantSap": 2
+    },
+    "description": "Upgrades Vine Sprites to Vine Sprites (A)",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 311,
+    "minWeek": 0,
+    "name": "Sprout Hollow (A)",
+    "path": "A",
+    "prerequisites": [
+      301
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 13,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 700,
+      "iron": 3,
+      "verdantSap": 2
+    },
+    "description": "Upgrades Thornkin Warriors to Thornkin Warriors (A)",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 313,
+    "minWeek": 0,
+    "name": "Briar Thicket (A)",
+    "path": "A",
+    "prerequisites": [
+      302
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 9,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1100,
+      "iron": 4,
+      "verdantSap": 2
+    },
+    "description": "Upgrades Forest Guardians to Forest Guardians (A)",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 315,
+    "minWeek": 0,
+    "name": "Vine Den (A)",
+    "path": "A",
+    "prerequisites": [
+      303
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 6,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 2000,
+      "iron": 5,
+      "verdantSap": 3
+    },
+    "description": "Upgrades Treants to Treants (A)",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 317,
+    "minWeek": 0,
+    "name": "Guardian Grove (A)",
+    "path": "A",
+    "prerequisites": [
+      304
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 4,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3500,
+      "iron": 6,
+      "verdantSap": 4
+    },
+    "description": "Upgrades Elder Thornkin to Elder Thornkin (A)",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 319,
+    "minWeek": 0,
+    "name": "Elder Circle (A)",
+    "path": "A",
+    "prerequisites": [
+      305
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 6500,
+      "iron": 7,
+      "verdantSap": 6
+    },
+    "description": "Upgrades Ancient Colossi to Ancient Colossi (A) (Flying)",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 321,
+    "minWeek": 0,
+    "name": "World Tree Root (A)",
+    "path": "A",
+    "prerequisites": [
+      306
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 1,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 500,
+      "iron": 2,
+      "verdantSap": 2
+    },
+    "description": "Upgrades Vine Sprites to Vine Sprites (B)",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 312,
+    "minWeek": 0,
+    "name": "Sprout Hollow (B)",
+    "path": "B",
+    "prerequisites": [
+      301
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 14,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 700,
+      "iron": 3,
+      "verdantSap": 2
+    },
+    "description": "Upgrades Thornkin Warriors to Thornkin Warriors (B)",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 314,
+    "minWeek": 0,
+    "name": "Briar Thicket (B)",
+    "path": "B",
+    "prerequisites": [
+      302
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 10,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1100,
+      "iron": 4,
+      "verdantSap": 3
+    },
+    "description": "Upgrades Forest Guardians to Forest Guardians (B)",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 316,
+    "minWeek": 0,
+    "name": "Vine Den (B)",
+    "path": "B",
+    "prerequisites": [
+      303
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 7,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 2000,
+      "iron": 5,
+      "verdantSap": 4
+    },
+    "description": "Upgrades Treants to Treants (B)",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 318,
+    "minWeek": 0,
+    "name": "Guardian Grove (B)",
+    "path": "B",
+    "prerequisites": [
+      304
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3500,
+      "iron": 6,
+      "verdantSap": 5
+    },
+    "description": "Upgrades Elder Thornkin to Elder Thornkin (B)",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 320,
+    "minWeek": 0,
+    "name": "Elder Circle (B)",
+    "path": "B",
+    "prerequisites": [
+      305
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 6500,
+      "iron": 7,
+      "verdantSap": 7
+    },
+    "description": "Upgrades Ancient Colossi to Ancient Colossi (B)",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 322,
+    "minWeek": 0,
+    "name": "World Tree Root (B)",
+    "path": "B",
+    "prerequisites": [
+      306
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "gold": 1500,
+      "verdantSap": 3
+    },
+    "description": "+3 Nature Power for all heroes garrisoned here",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 307,
+    "minWeek": 0,
+    "name": "Ancient Circle",
+    "path": "base",
+    "prerequisites": [
+      300
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "gold": 2500,
+      "verdantSap": 4
+    },
+    "description": "Bond pairs share stat bonuses from Symbiosis skill",
+    "faction": 2,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 308,
+    "minWeek": 0,
+    "name": "Symbiosis Web",
+    "path": "base",
+    "prerequisites": [
+      307
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 500,
+      "mercury": 2
+    },
+    "description": "Town Hall - +1000 Gold weekly, +2 unit growth",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 2,
+    "growthMultPct": 0,
+    "id": 400,
+    "minWeek": 0,
+    "name": "Imperial Throne",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 1000
+    }
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 300
+    },
+    "description": "Produces Skeleton Soldiers",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 401,
+    "minWeek": 0,
+    "name": "Skeleton Pen",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 1,
+    "upgradeA": 411,
+    "upgradeB": 412,
+    "weeklyGrowth": 13,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 600
+    },
+    "description": "Produces Armoured Skeletons",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 402,
+    "minWeek": 0,
+    "name": "Armoured Crypt",
+    "path": "base",
+    "prerequisites": [
+      401
+    ],
+    "tier": 2,
+    "upgradeA": 413,
+    "upgradeB": 414,
+    "weeklyGrowth": 10,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1000,
+      "mercury": 1
+    },
+    "description": "Produces Zombie Warriors",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 403,
+    "minWeek": 0,
+    "name": "Zombie Gallery",
+    "path": "base",
+    "prerequisites": [
+      402
+    ],
+    "tier": 3,
+    "upgradeA": 415,
+    "upgradeB": 416,
+    "weeklyGrowth": 7,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1800,
+      "mercury": 2
+    },
+    "description": "Produces Death Knights",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 404,
+    "minWeek": 0,
+    "name": "Death Knight Foundry",
+    "path": "base",
+    "prerequisites": [
+      403
+    ],
+    "tier": 4,
+    "upgradeA": 417,
+    "upgradeB": 418,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3000,
+      "mercury": 3
+    },
+    "description": "Produces Liches",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 405,
+    "minWeek": 0,
+    "name": "Lich Keep",
+    "path": "base",
+    "prerequisites": [
+      404
+    ],
+    "tier": 5,
+    "upgradeA": 419,
+    "upgradeB": 420,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 5500,
+      "mercury": 5
+    },
+    "description": "Produces Eternal Emperors (Second Life)",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 406,
+    "minWeek": 0,
+    "name": "Emperor's Vault",
+    "path": "base",
+    "prerequisites": [
+      405
+    ],
+    "tier": 6,
+    "upgradeA": 421,
+    "upgradeB": 422,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 500,
+      "iron": 2,
+      "mercury": 2
+    },
+    "description": "Upgrades Skeleton Soldiers to Skeleton Soldiers (A)",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 411,
+    "minWeek": 0,
+    "name": "Skeleton Pen (A)",
+    "path": "A",
+    "prerequisites": [
+      401
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 12,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 700,
+      "iron": 3,
+      "mercury": 2
+    },
+    "description": "Upgrades Armoured Skeletons to Armoured Skeletons (A)",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 413,
+    "minWeek": 0,
+    "name": "Armoured Crypt (A)",
+    "path": "A",
+    "prerequisites": [
+      402
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 9,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1100,
+      "iron": 4,
+      "mercury": 2
+    },
+    "description": "Upgrades Zombie Warriors to Zombie Warriors (A)",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 415,
+    "minWeek": 0,
+    "name": "Zombie Gallery (A)",
+    "path": "A",
+    "prerequisites": [
+      403
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 6,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 2000,
+      "iron": 5,
+      "mercury": 3
+    },
+    "description": "Upgrades Death Knights to Death Knights (A)",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 417,
+    "minWeek": 0,
+    "name": "Death Knight Foundry (A)",
+    "path": "A",
+    "prerequisites": [
+      404
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 4,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3500,
+      "iron": 6,
+      "mercury": 4
+    },
+    "description": "Upgrades Liches to Liches (A)",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 419,
+    "minWeek": 0,
+    "name": "Lich Keep (A)",
+    "path": "A",
+    "prerequisites": [
+      405
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 6500,
+      "iron": 7,
+      "mercury": 6
+    },
+    "description": "Upgrades Eternal Emperors to Eternal Emperors (A)",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 421,
+    "minWeek": 0,
+    "name": "Emperor's Vault (A)",
+    "path": "A",
+    "prerequisites": [
+      406
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 1,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 500,
+      "iron": 2
+    },
+    "description": "Upgrades Skeleton Soldiers to Skeleton Soldiers (B)",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 412,
+    "minWeek": 0,
+    "name": "Skeleton Pen (B)",
+    "path": "B",
+    "prerequisites": [
+      401
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 13,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 700,
+      "iron": 3
+    },
+    "description": "Upgrades Armoured Skeletons to Armoured Skeletons (B)",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 414,
+    "minWeek": 0,
+    "name": "Armoured Crypt (B)",
+    "path": "B",
+    "prerequisites": [
+      402
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 10,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 1100,
+      "iron": 4
+    },
+    "description": "Upgrades Zombie Warriors to Zombie Warriors (B)",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 416,
+    "minWeek": 0,
+    "name": "Zombie Gallery (B)",
+    "path": "B",
+    "prerequisites": [
+      403
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 7,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 2000,
+      "iron": 5
+    },
+    "description": "Upgrades Death Knights to Death Knights (B)",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 418,
+    "minWeek": 0,
+    "name": "Death Knight Foundry (B)",
+    "path": "B",
+    "prerequisites": [
+      404
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 4,
+      "gold": 3500,
+      "iron": 6
+    },
+    "description": "Upgrades Liches to Liches (B)",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 420,
+    "minWeek": 0,
+    "name": "Lich Keep (B)",
+    "path": "B",
+    "prerequisites": [
+      405
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 6,
+      "gold": 6500,
+      "iron": 7
+    },
+    "description": "Upgrades Eternal Emperors to Eternal Emperors (B)",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 422,
+    "minWeek": 0,
+    "name": "Emperor's Vault (B)",
+    "path": "B",
+    "prerequisites": [
+      406
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 1500
+    },
+    "description": "+3 Death Power; fallen enemies have 15% chance to rise as Conscripts",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 407,
+    "minWeek": 0,
+    "name": "Necropolis Gate",
+    "path": "base",
+    "prerequisites": [
+      400
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "gold": 2500,
+      "mercury": 4
+    },
+    "description": "Undead and Holy units gain Second Life - revive once at half HP on death",
+    "faction": 3,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 408,
+    "minWeek": 0,
+    "name": "Monument of Eternity",
+    "path": "base",
+    "prerequisites": [
+      407
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 500
+    },
+    "description": "Town Hall - +1000 Gold weekly, +2 unit growth",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 2,
+    "growthMultPct": 0,
+    "id": 500,
+    "minWeek": 0,
+    "name": "War Hall",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 1000
+    }
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 300
+    },
+    "description": "Produces Cultists",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 501,
+    "minWeek": 0,
+    "name": "Cultist Pen",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 1,
+    "upgradeA": 511,
+    "upgradeB": 512,
+    "weeklyGrowth": 14,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 1,
+      "gold": 600
+    },
+    "description": "Produces Blood Warriors",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 502,
+    "minWeek": 0,
+    "name": "Blood Warrior Pits",
+    "path": "base",
+    "prerequisites": [
+      501
+    ],
+    "tier": 2,
+    "upgradeA": 513,
+    "upgradeB": 514,
+    "weeklyGrowth": 10,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 1000
+    },
+    "description": "Produces Berserkers",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 503,
+    "minWeek": 0,
+    "name": "Berserker Hut",
+    "path": "base",
+    "prerequisites": [
+      502
+    ],
+    "tier": 3,
+    "upgradeA": 515,
+    "upgradeB": 516,
+    "weeklyGrowth": 7,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 1800
+    },
+    "description": "Produces Blood Champions",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 504,
+    "minWeek": 0,
+    "name": "Blood Champion Corral",
+    "path": "base",
+    "prerequisites": [
+      503
+    ],
+    "tier": 4,
+    "upgradeA": 517,
+    "upgradeB": 518,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 4,
+      "gold": 3000
+    },
+    "description": "Produces Oracles",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 505,
+    "minWeek": 0,
+    "name": "Oracle Pavilion",
+    "path": "base",
+    "prerequisites": [
+      504
+    ],
+    "tier": 5,
+    "upgradeA": 519,
+    "upgradeB": 520,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 6,
+      "gold": 5500
+    },
+    "description": "Produces Bloodsworn Avatars",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 506,
+    "minWeek": 0,
+    "name": "Bloodsworn Avatar Shrine",
+    "path": "base",
+    "prerequisites": [
+      505
+    ],
+    "tier": 6,
+    "upgradeA": 521,
+    "upgradeB": 522,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 500,
+      "iron": 2
+    },
+    "description": "Upgrades Cultists to Cultists (A)",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 511,
+    "minWeek": 0,
+    "name": "Cultist Pen (A)",
+    "path": "A",
+    "prerequisites": [
+      501
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 13,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 700,
+      "iron": 3
+    },
+    "description": "Upgrades Blood Warriors to Blood Warriors (A)",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 513,
+    "minWeek": 0,
+    "name": "Blood Warrior Pits (A)",
+    "path": "A",
+    "prerequisites": [
+      502
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 9,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 1100,
+      "iron": 4
+    },
+    "description": "Upgrades Berserkers to Berserkers (A)",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 515,
+    "minWeek": 0,
+    "name": "Berserker Hut (A)",
+    "path": "A",
+    "prerequisites": [
+      503
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 6,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 2000,
+      "iron": 5
+    },
+    "description": "Upgrades Blood Champions to Blood Champions (A)",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 517,
+    "minWeek": 0,
+    "name": "Blood Champion Corral (A)",
+    "path": "A",
+    "prerequisites": [
+      504
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 4,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 4,
+      "gold": 3500,
+      "iron": 6
+    },
+    "description": "Upgrades Oracles to Oracles (A)",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 519,
+    "minWeek": 0,
+    "name": "Oracle Pavilion (A)",
+    "path": "A",
+    "prerequisites": [
+      505
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 7,
+      "gold": 6500,
+      "iron": 7
+    },
+    "description": "Upgrades Bloodsworn Avatars to Bloodsworn Avatars (A)",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 521,
+    "minWeek": 0,
+    "name": "Bloodsworn Avatar Shrine (A)",
+    "path": "A",
+    "prerequisites": [
+      506
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 1,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 500,
+      "iron": 4
+    },
+    "description": "Upgrades Cultists to Cultists (B)",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 512,
+    "minWeek": 0,
+    "name": "Cultist Pen (B)",
+    "path": "B",
+    "prerequisites": [
+      501
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 14,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 700,
+      "iron": 5
+    },
+    "description": "Upgrades Blood Warriors to Blood Warriors (B)",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 514,
+    "minWeek": 0,
+    "name": "Blood Warrior Pits (B)",
+    "path": "B",
+    "prerequisites": [
+      502
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 10,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1100,
+      "iron": 6
+    },
+    "description": "Upgrades Berserkers to Berserkers (B)",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 516,
+    "minWeek": 0,
+    "name": "Berserker Hut (B)",
+    "path": "B",
+    "prerequisites": [
+      503
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 7,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 2000,
+      "iron": 8
+    },
+    "description": "Upgrades Blood Champions to Blood Champions (B)",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 518,
+    "minWeek": 0,
+    "name": "Blood Champion Corral (B)",
+    "path": "B",
+    "prerequisites": [
+      504
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3500,
+      "iron": 10
+    },
+    "description": "Upgrades Oracles to Oracles (B)",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 520,
+    "minWeek": 0,
+    "name": "Oracle Pavilion (B)",
+    "path": "B",
+    "prerequisites": [
+      505
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 6500,
+      "iron": 14
+    },
+    "description": "Upgrades Bloodsworn Avatars to Bloodsworn Avatars (B)",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 522,
+    "minWeek": 0,
+    "name": "Bloodsworn Avatar Shrine (B)",
+    "path": "B",
+    "prerequisites": [
+      506
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 1500
+    },
+    "description": "+3 Blood Power for all heroes garrisoned here",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 507,
+    "minWeek": 0,
+    "name": "Blood Altar",
+    "path": "base",
+    "prerequisites": [
+      500
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "bloodEssence": 4,
+      "gold": 2500
+    },
+    "description": "BloodBound units gain +15 Morale at battle start",
+    "faction": 4,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 508,
+    "minWeek": 0,
+    "name": "War Shrine",
+    "path": "base",
+    "prerequisites": [
+      507
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 500
+    },
+    "description": "Town Hall - +1000 Gold, +2 VerdantSap weekly, +2 unit growth",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 2,
+    "growthMultPct": 0,
+    "id": 600,
+    "minWeek": 0,
+    "name": "Void Nexus",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 1000,
+      "verdantSap": 2
+    }
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 300
+    },
+    "description": "Produces Void Sprites",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 601,
+    "minWeek": 0,
+    "name": "Sprite Hollow",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 1,
+    "upgradeA": 611,
+    "upgradeB": 612,
+    "weeklyGrowth": 13,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 600
+    },
+    "description": "Produces Void Scouts",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 602,
+    "minWeek": 0,
+    "name": "Scout Den",
+    "path": "base",
+    "prerequisites": [
+      601
+    ],
+    "tier": 2,
+    "upgradeA": 613,
+    "upgradeB": 614,
+    "weeklyGrowth": 10,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1000,
+      "verdantSap": 2
+    },
+    "description": "Produces Void Mages",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 603,
+    "minWeek": 0,
+    "name": "Stalker Arch",
+    "path": "base",
+    "prerequisites": [
+      602
+    ],
+    "tier": 3,
+    "upgradeA": 615,
+    "upgradeB": 616,
+    "weeklyGrowth": 7,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1800,
+      "verdantSap": 3
+    },
+    "description": "Produces Void Stalkers",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 604,
+    "minWeek": 0,
+    "name": "Mage Gate",
+    "path": "base",
+    "prerequisites": [
+      603
+    ],
+    "tier": 4,
+    "upgradeA": 617,
+    "upgradeB": 618,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3000,
+      "verdantSap": 4
+    },
+    "description": "Produces Void Wraiths",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 605,
+    "minWeek": 0,
+    "name": "Wraith Spire",
+    "path": "base",
+    "prerequisites": [
+      604
+    ],
+    "tier": 5,
+    "upgradeA": 619,
+    "upgradeB": 620,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 5500,
+      "verdantSap": 6
+    },
+    "description": "Produces Void Heralds",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 606,
+    "minWeek": 0,
+    "name": "Herald Rift",
+    "path": "base",
+    "prerequisites": [
+      605
+    ],
+    "tier": 6,
+    "upgradeA": 621,
+    "upgradeB": 622,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 500,
+      "iron": 2,
+      "verdantSap": 2
+    },
+    "description": "Upgrades Void Sprites to Void Sprites (A)",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 611,
+    "minWeek": 0,
+    "name": "Sprite Hollow (A)",
+    "path": "A",
+    "prerequisites": [
+      601
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 12,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 700,
+      "iron": 3,
+      "verdantSap": 2
+    },
+    "description": "Upgrades Void Scouts to Void Scouts (A)",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 613,
+    "minWeek": 0,
+    "name": "Scout Den (A)",
+    "path": "A",
+    "prerequisites": [
+      602
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 9,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1100,
+      "iron": 4,
+      "verdantSap": 2
+    },
+    "description": "Upgrades Void Stalkers to Void Stalkers (A)",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 615,
+    "minWeek": 0,
+    "name": "Stalker Arch (A)",
+    "path": "A",
+    "prerequisites": [
+      603
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 6,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 2000,
+      "iron": 5,
+      "verdantSap": 3
+    },
+    "description": "Upgrades Void Mages to Void Mages (A)",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 617,
+    "minWeek": 0,
+    "name": "Mage Gate (A)",
+    "path": "A",
+    "prerequisites": [
+      604
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 4,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3500,
+      "iron": 6,
+      "verdantSap": 4
+    },
+    "description": "Upgrades Void Wraiths to Void Wraiths (A)",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 619,
+    "minWeek": 0,
+    "name": "Wraith Spire (A)",
+    "path": "A",
+    "prerequisites": [
+      605
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 6500,
+      "iron": 7,
+      "verdantSap": 6
+    },
+    "description": "Upgrades Void Heralds to Void Heralds (A)",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 621,
+    "minWeek": 0,
+    "name": "Herald Rift (A)",
+    "path": "A",
+    "prerequisites": [
+      606
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 1,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 500,
+      "iron": 2,
+      "verdantSap": 2
+    },
+    "description": "Upgrades Void Sprites to Void Sprites (B)",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 612,
+    "minWeek": 0,
+    "name": "Sprite Hollow (B)",
+    "path": "B",
+    "prerequisites": [
+      601
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 13,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 700,
+      "iron": 3,
+      "verdantSap": 2
+    },
+    "description": "Upgrades Void Scouts to Void Scouts (B)",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 614,
+    "minWeek": 0,
+    "name": "Scout Den (B)",
+    "path": "B",
+    "prerequisites": [
+      602
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 10,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1100,
+      "iron": 4,
+      "verdantSap": 3
+    },
+    "description": "Upgrades Void Stalkers to Void Stalkers (B)",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 616,
+    "minWeek": 0,
+    "name": "Stalker Arch (B)",
+    "path": "B",
+    "prerequisites": [
+      603
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 7,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 2000,
+      "iron": 5,
+      "verdantSap": 3
+    },
+    "description": "Upgrades Void Mages to Void Mages (B)",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 618,
+    "minWeek": 0,
+    "name": "Mage Gate (B)",
+    "path": "B",
+    "prerequisites": [
+      604
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3500,
+      "iron": 6,
+      "verdantSap": 4
+    },
+    "description": "Upgrades Void Wraiths to Void Wraiths (B)",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 620,
+    "minWeek": 0,
+    "name": "Wraith Spire (B)",
+    "path": "B",
+    "prerequisites": [
+      605
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 6500,
+      "iron": 7,
+      "verdantSap": 7
+    },
+    "description": "Upgrades Void Heralds to Void Heralds (B)",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 622,
+    "minWeek": 0,
+    "name": "Herald Rift (B)",
+    "path": "B",
+    "prerequisites": [
+      606
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "gold": 1500,
+      "verdantSap": 3
+    },
+    "description": "+3 Nature Power for all heroes garrisoned here",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 607,
+    "minWeek": 0,
+    "name": "Rift Gate",
+    "path": "base",
+    "prerequisites": [
+      600
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "gold": 2500,
+      "verdantSap": 4
+    },
+    "description": "Void units gain +1 Attack at battle start",
+    "faction": 5,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 608,
+    "minWeek": 0,
+    "name": "Void Lens",
+    "path": "base",
+    "prerequisites": [
+      607
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 500,
+      "iron": 3
+    },
+    "description": "Town Hall - +1000 Gold weekly, +2 unit growth",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 2,
+    "growthMultPct": 0,
+    "id": 700,
+    "minWeek": 0,
+    "name": "Forge Hall",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 1000
+    }
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 350,
+      "iron": 2
+    },
+    "description": "Produces Automatons",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 701,
+    "minWeek": 0,
+    "name": "Automaton Works",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 1,
+    "upgradeA": 711,
+    "upgradeB": 712,
+    "weeklyGrowth": 12,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 700,
+      "iron": 3
+    },
+    "description": "Produces Infantry Units",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 702,
+    "minWeek": 0,
+    "name": "Infantry Bay",
+    "path": "base",
+    "prerequisites": [
+      701
+    ],
+    "tier": 2,
+    "upgradeA": 713,
+    "upgradeB": 714,
+    "weeklyGrowth": 9,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1100,
+      "iron": 4
+    },
+    "description": "Produces Clockwork Warriors",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 703,
+    "minWeek": 0,
+    "name": "Clockwork Depot",
+    "path": "base",
+    "prerequisites": [
+      702
+    ],
+    "tier": 3,
+    "upgradeA": 715,
+    "upgradeB": 716,
+    "weeklyGrowth": 6,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 2000,
+      "iron": 6
+    },
+    "description": "Produces Gunners (available week 3)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 704,
+    "minWeek": 3,
+    "name": "Gunner Foundry",
+    "path": "base",
+    "prerequisites": [
+      703
+    ],
+    "tier": 4,
+    "upgradeA": 717,
+    "upgradeB": 718,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3500,
+      "iron": 8
+    },
+    "description": "Produces Steam Colossi (available week 5)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 705,
+    "minWeek": 5,
+    "name": "Steam Colossus Assembly",
+    "path": "base",
+    "prerequisites": [
+      704
+    ],
+    "tier": 5,
+    "upgradeA": 719,
+    "upgradeB": 720,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 6000,
+      "iron": 12
+    },
+    "description": "Produces Iron Titans (available week 7)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 706,
+    "minWeek": 7,
+    "name": "Iron Titan Dock",
+    "path": "base",
+    "prerequisites": [
+      705
+    ],
+    "tier": 6,
+    "upgradeA": 721,
+    "upgradeB": 722,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 500,
+      "iron": 5
+    },
+    "description": "Upgrades Automatons to Automatons (A)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 711,
+    "minWeek": 0,
+    "name": "Automaton Works (A)",
+    "path": "A",
+    "prerequisites": [
+      701
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 11,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 700,
+      "iron": 7
+    },
+    "description": "Upgrades Infantry Units to Infantry Units (A)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 713,
+    "minWeek": 0,
+    "name": "Infantry Bay (A)",
+    "path": "A",
+    "prerequisites": [
+      702
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 8,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1200,
+      "iron": 9
+    },
+    "description": "Upgrades Clockwork Warriors to Clockwork Warriors (A)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 715,
+    "minWeek": 0,
+    "name": "Clockwork Depot (A)",
+    "path": "A",
+    "prerequisites": [
+      703
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 2200,
+      "iron": 12
+    },
+    "description": "Upgrades Gunners to Gunners (A)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 717,
+    "minWeek": 3,
+    "name": "Gunner Foundry (A)",
+    "path": "A",
+    "prerequisites": [
+      704
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 4,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 4000,
+      "iron": 15
+    },
+    "description": "Upgrades Steam Colossi to Steam Colossi (A)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 719,
+    "minWeek": 5,
+    "name": "Steam Colossus Assembly (A)",
+    "path": "A",
+    "prerequisites": [
+      705
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 7000,
+      "iron": 20
+    },
+    "description": "Upgrades Iron Titans to Iron Titans (A)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 721,
+    "minWeek": 7,
+    "name": "Iron Titan Dock (A)",
+    "path": "A",
+    "prerequisites": [
+      706
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 1,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 450,
+      "iron": 4
+    },
+    "description": "Upgrades Automatons to Automatons (B)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 712,
+    "minWeek": 0,
+    "name": "Automaton Works (B)",
+    "path": "B",
+    "prerequisites": [
+      701
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 12,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 650,
+      "iron": 6
+    },
+    "description": "Upgrades Infantry Units to Infantry Units (B)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 714,
+    "minWeek": 0,
+    "name": "Infantry Bay (B)",
+    "path": "B",
+    "prerequisites": [
+      702
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 9,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1050,
+      "iron": 7
+    },
+    "description": "Upgrades Clockwork Warriors to Clockwork Warriors (B)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 716,
+    "minWeek": 0,
+    "name": "Clockwork Depot (B)",
+    "path": "B",
+    "prerequisites": [
+      703
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 6,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1900,
+      "iron": 10
+    },
+    "description": "Upgrades Gunners to Gunners (B)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 718,
+    "minWeek": 3,
+    "name": "Gunner Foundry (B)",
+    "path": "B",
+    "prerequisites": [
+      704
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3400,
+      "iron": 13
+    },
+    "description": "Upgrades Steam Colossi to Steam Colossi (B)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 720,
+    "minWeek": 5,
+    "name": "Steam Colossus Assembly (B)",
+    "path": "B",
+    "prerequisites": [
+      705
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 5800,
+      "iron": 17
+    },
+    "description": "Upgrades Iron Titans to Iron Titans (B)",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 722,
+    "minWeek": 7,
+    "name": "Iron Titan Dock (B)",
+    "path": "B",
+    "prerequisites": [
+      706
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "gold": 1500,
+      "iron": 4
+    },
+    "description": "+3 Forge Power for all heroes garrisoned here",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 707,
+    "minWeek": 0,
+    "name": "Blueprint Vault",
+    "path": "base",
+    "prerequisites": [
+      700
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "gold": 2500,
+      "iron": 6
+    },
+    "description": "All mechanical units gain +1 speed in combat",
+    "faction": 6,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 708,
+    "minWeek": 3,
+    "name": "Overclock Chamber",
+    "path": "base",
+    "prerequisites": [
+      707
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 500
+    },
+    "description": "Town Hall - +1000 Gold weekly, +2 unit growth",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 2,
+    "growthMultPct": 0,
+    "id": 800,
+    "minWeek": 0,
+    "name": "Grafting Hall",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 1000
+    }
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 300
+    },
+    "description": "Produces Crawlers",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 801,
+    "minWeek": 0,
+    "name": "Crawler Vat",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 1,
+    "upgradeA": 811,
+    "upgradeB": 812,
+    "weeklyGrowth": 13,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 650,
+      "iron": 1
+    },
+    "description": "Produces Flesh Warriors",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 802,
+    "minWeek": 0,
+    "name": "Flesh Warrior Bay",
+    "path": "base",
+    "prerequisites": [
+      801
+    ],
+    "tier": 2,
+    "upgradeA": 813,
+    "upgradeB": 814,
+    "weeklyGrowth": 9,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1100,
+      "iron": 2
+    },
+    "description": "Produces Brutes",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 803,
+    "minWeek": 0,
+    "name": "Brute Works",
+    "path": "base",
+    "prerequisites": [
+      802
+    ],
+    "tier": 3,
+    "upgradeA": 815,
+    "upgradeB": 816,
+    "weeklyGrowth": 6,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 1900
+    },
+    "description": "Produces Behemoths",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 804,
+    "minWeek": 0,
+    "name": "Behemoth Forge",
+    "path": "base",
+    "prerequisites": [
+      803
+    ],
+    "tier": 4,
+    "upgradeA": 817,
+    "upgradeB": 818,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 3200
+    },
+    "description": "Produces Flesh Colossi",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 805,
+    "minWeek": 0,
+    "name": "Flesh Colossus Pit",
+    "path": "base",
+    "prerequisites": [
+      804
+    ],
+    "tier": 5,
+    "upgradeA": 819,
+    "upgradeB": 820,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 5,
+      "gold": 5800
+    },
+    "description": "Produces Apex",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 806,
+    "minWeek": 0,
+    "name": "Apex Chamber",
+    "path": "base",
+    "prerequisites": [
+      805
+    ],
+    "tier": 6,
+    "upgradeA": 821,
+    "upgradeB": 822,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 500,
+      "iron": 4
+    },
+    "description": "Upgrades Crawlers to Crawlers (A)",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 811,
+    "minWeek": 0,
+    "name": "Crawler Vat (A)",
+    "path": "A",
+    "prerequisites": [
+      801
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 12,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 700,
+      "iron": 5
+    },
+    "description": "Upgrades Flesh Warriors to Flesh Warriors (A)",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 813,
+    "minWeek": 0,
+    "name": "Flesh Warrior Bay (A)",
+    "path": "A",
+    "prerequisites": [
+      802
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 8,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1200,
+      "iron": 7
+    },
+    "description": "Upgrades Brutes to Brutes (A)",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 815,
+    "minWeek": 0,
+    "name": "Brute Works (A)",
+    "path": "A",
+    "prerequisites": [
+      803
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 2100,
+      "iron": 8
+    },
+    "description": "Upgrades Behemoths to Behemoths (A)",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 817,
+    "minWeek": 0,
+    "name": "Behemoth Forge (A)",
+    "path": "A",
+    "prerequisites": [
+      804
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 4,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3500,
+      "iron": 10
+    },
+    "description": "Upgrades Flesh Colossi to Flesh Colossi (A)",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 819,
+    "minWeek": 0,
+    "name": "Flesh Colossus Pit (A)",
+    "path": "A",
+    "prerequisites": [
+      805
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 6500,
+      "iron": 13
+    },
+    "description": "Upgrades Apex to Apex (A)",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 821,
+    "minWeek": 0,
+    "name": "Apex Chamber (A)",
+    "path": "A",
+    "prerequisites": [
+      806
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 1,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 500,
+      "iron": 2
+    },
+    "description": "Upgrades Crawlers to Crawlers (B)",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 812,
+    "minWeek": 0,
+    "name": "Crawler Vat (B)",
+    "path": "B",
+    "prerequisites": [
+      801
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 13,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 700,
+      "iron": 3
+    },
+    "description": "Upgrades Flesh Warriors to Flesh Warriors (B)",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 814,
+    "minWeek": 0,
+    "name": "Flesh Warrior Bay (B)",
+    "path": "B",
+    "prerequisites": [
+      802
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 9,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 1200,
+      "iron": 4
+    },
+    "description": "Upgrades Brutes to Brutes (B)",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 816,
+    "minWeek": 0,
+    "name": "Brute Works (B)",
+    "path": "B",
+    "prerequisites": [
+      803
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 6,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 3,
+      "gold": 2100,
+      "iron": 5
+    },
+    "description": "Upgrades Behemoths to Behemoths (B)",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 818,
+    "minWeek": 0,
+    "name": "Behemoth Forge (B)",
+    "path": "B",
+    "prerequisites": [
+      804
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 4,
+      "gold": 3500,
+      "iron": 6
+    },
+    "description": "Upgrades Flesh Colossi to Flesh Colossi (B)",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 820,
+    "minWeek": 0,
+    "name": "Flesh Colossus Pit (B)",
+    "path": "B",
+    "prerequisites": [
+      805
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "bloodEssence": 6,
+      "gold": 6500,
+      "iron": 7
+    },
+    "description": "Upgrades Apex to Apex (B)",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 822,
+    "minWeek": 0,
+    "name": "Apex Chamber (B)",
+    "path": "B",
+    "prerequisites": [
+      806
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "bloodEssence": 2,
+      "gold": 1500
+    },
+    "description": "+3 Flesh Power for all heroes garrisoned here",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 807,
+    "minWeek": 0,
+    "name": "Flesh Vault",
+    "path": "base",
+    "prerequisites": [
+      800
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "gold": 2500,
+      "iron": 3
+    },
+    "description": "OrganicMech units adapt after 2 hits instead of 3",
+    "faction": 7,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 808,
+    "minWeek": 0,
+    "name": "Merge Chamber",
+    "path": "base",
+    "prerequisites": [
+      807
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Economy",
+    "cost": {
+      "gold": 500,
+      "mercury": 1
+    },
+    "description": "Town Hall - +1000 Gold weekly, +2 unit growth",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 2,
+    "growthMultPct": 0,
+    "id": 900,
+    "minWeek": 0,
+    "name": "Synthesis Hub",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {
+      "gold": 1000
+    }
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 350
+    },
+    "description": "Produces Initiates",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 901,
+    "minWeek": 0,
+    "name": "Initiate Chamber",
+    "path": "base",
+    "prerequisites": [],
+    "tier": 1,
+    "upgradeA": 911,
+    "upgradeB": 912,
+    "weeklyGrowth": 11,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 700
+    },
+    "description": "Produces Soldiers",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 902,
+    "minWeek": 0,
+    "name": "Soldier Lab",
+    "path": "base",
+    "prerequisites": [
+      901
+    ],
+    "tier": 2,
+    "upgradeA": 913,
+    "upgradeB": 914,
+    "weeklyGrowth": 8,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1100
+    },
+    "description": "Produces Mirror Warriors",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 903,
+    "minWeek": 0,
+    "name": "Mirror Warrior Hall",
+    "path": "base",
+    "prerequisites": [
+      902
+    ],
+    "tier": 3,
+    "upgradeA": 915,
+    "upgradeB": 916,
+    "weeklyGrowth": 6,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 2000
+    },
+    "description": "Produces Champions",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 904,
+    "minWeek": 0,
+    "name": "Champion Spire",
+    "path": "base",
+    "prerequisites": [
+      903
+    ],
+    "tier": 4,
+    "upgradeA": 917,
+    "upgradeB": 918,
+    "weeklyGrowth": 4,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3200
+    },
+    "description": "Produces Elites",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 905,
+    "minWeek": 0,
+    "name": "Elite Gate",
+    "path": "base",
+    "prerequisites": [
+      904
+    ],
+    "tier": 5,
+    "upgradeA": 919,
+    "upgradeB": 920,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 5500
+    },
+    "description": "Produces Convergence Primes",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 906,
+    "minWeek": 0,
+    "name": "Convergence Prime Forge",
+    "path": "base",
+    "prerequisites": [
+      905
+    ],
+    "tier": 6,
+    "upgradeA": 921,
+    "upgradeB": 922,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 550,
+      "iron": 2
+    },
+    "description": "Upgrades Initiates to Initiates (A)",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 911,
+    "minWeek": 0,
+    "name": "Initiate Chamber (A)",
+    "path": "A",
+    "prerequisites": [
+      901
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 10,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 900,
+      "iron": 3
+    },
+    "description": "Upgrades Soldiers to Soldiers (A) (Flying)",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 913,
+    "minWeek": 0,
+    "name": "Soldier Lab (A)",
+    "path": "A",
+    "prerequisites": [
+      902
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 7,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1350,
+      "iron": 4
+    },
+    "description": "Upgrades Mirror Warriors to Mirror Warriors (A)",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 915,
+    "minWeek": 0,
+    "name": "Mirror Warrior Hall (A)",
+    "path": "A",
+    "prerequisites": [
+      903
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 5,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 2400,
+      "iron": 5
+    },
+    "description": "Upgrades Champions to Champions (A)",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 917,
+    "minWeek": 0,
+    "name": "Champion Spire (A)",
+    "path": "A",
+    "prerequisites": [
+      904
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3900,
+      "iron": 6
+    },
+    "description": "Upgrades Elites to Elites (A)",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 919,
+    "minWeek": 0,
+    "name": "Elite Gate (A)",
+    "path": "A",
+    "prerequisites": [
+      905
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 6600,
+      "iron": 7
+    },
+    "description": "Upgrades Convergence Primes to Convergence Primes (A)",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 921,
+    "minWeek": 0,
+    "name": "Convergence Prime Forge (A)",
+    "path": "A",
+    "prerequisites": [
+      906
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 1,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 550,
+      "iron": 2
+    },
+    "description": "Upgrades Initiates to Initiates (B)",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 912,
+    "minWeek": 0,
+    "name": "Initiate Chamber (B)",
+    "path": "B",
+    "prerequisites": [
+      901
+    ],
+    "tier": 1,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 11,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 900,
+      "iron": 3
+    },
+    "description": "Upgrades Soldiers to Soldiers (B)",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 914,
+    "minWeek": 0,
+    "name": "Soldier Lab (B)",
+    "path": "B",
+    "prerequisites": [
+      902
+    ],
+    "tier": 2,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 8,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 1350,
+      "iron": 4
+    },
+    "description": "Upgrades Mirror Warriors to Mirror Warriors (B)",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 916,
+    "minWeek": 0,
+    "name": "Mirror Warrior Hall (B)",
+    "path": "B",
+    "prerequisites": [
+      903
+    ],
+    "tier": 3,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 6,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 2400,
+      "iron": 5
+    },
+    "description": "Upgrades Champions to Champions (B)",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 918,
+    "minWeek": 0,
+    "name": "Champion Spire (B)",
+    "path": "B",
+    "prerequisites": [
+      904
+    ],
+    "tier": 4,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 4,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 3900,
+      "iron": 6
+    },
+    "description": "Upgrades Elites to Elites (B)",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 920,
+    "minWeek": 0,
+    "name": "Elite Gate (B)",
+    "path": "B",
+    "prerequisites": [
+      905
+    ],
+    "tier": 5,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 3,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "UnitDwelling",
+    "cost": {
+      "gold": 6600,
+      "iron": 7
+    },
+    "description": "Upgrades Convergence Primes to Convergence Primes (B)",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 922,
+    "minWeek": 0,
+    "name": "Convergence Prime Forge (B)",
+    "path": "B",
+    "prerequisites": [
+      906
+    ],
+    "tier": 6,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 2,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "gold": 2000
+    },
+    "description": "Convergence units gain +1 Attack and Defense at battle start (synergizes with Mirroring)",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 907,
+    "minWeek": 0,
+    "name": "Resonance Well",
+    "path": "base",
+    "prerequisites": [
+      900
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  },
+  {
+    "category": "Support",
+    "cost": {
+      "gold": 3500
+    },
+    "description": "Convergence units gain an additional +1 Attack and Defense; hero gains +1 Attack and Defense",
+    "faction": 8,
+    "growthA": 0,
+    "growthB": 0,
+    "growthBonus": 0,
+    "growthMultPct": 0,
+    "id": 908,
+    "minWeek": 0,
+    "name": "Mirror Chamber",
+    "path": "base",
+    "prerequisites": [
+      907
+    ],
+    "tier": 0,
+    "upgradeA": 0,
+    "upgradeB": 0,
+    "weeklyGrowth": 0,
+    "weeklyIncome": {}
+  }
+]
