@@ -2836,6 +2836,294 @@
       "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
       "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
       "prompt": "a coastal shipyard with wooden docks and a boat under construction, in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "siege_wall_f0",
+      "kind": "siege",
+      "out": "assets/siege/wall_0.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single intact section of castle curtain wall with battlements, in the style of radiant Holy Order (white marble and gold)."
+    },
+    {
+      "id": "siege_wall_dmg_f0",
+      "kind": "siege",
+      "out": "assets/siege/wall_0_damaged.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single section of castle wall, cracked and battle-damaged with a breach, in the style of radiant Holy Order (white marble and gold)."
+    },
+    {
+      "id": "siege_gate_f0",
+      "kind": "siege",
+      "out": "assets/siege/gate_0.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a fortified castle gatehouse with a raised portcullis, in the style of radiant Holy Order (white marble and gold)."
+    },
+    {
+      "id": "siege_moat_f0",
+      "kind": "siege",
+      "out": "assets/siege/moat_0.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a defensive moat segment (water or hazard trench) in front of a wall, in the style of radiant Holy Order (white marble and gold)."
+    },
+    {
+      "id": "siege_wall_f1",
+      "kind": "siege",
+      "out": "assets/siege/wall_1.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single intact section of castle curtain wall with battlements, in the style of Crimson Wardens (silver-grey highland stone, crimson banners)."
+    },
+    {
+      "id": "siege_wall_dmg_f1",
+      "kind": "siege",
+      "out": "assets/siege/wall_1_damaged.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single section of castle wall, cracked and battle-damaged with a breach, in the style of Crimson Wardens (silver-grey highland stone, crimson banners)."
+    },
+    {
+      "id": "siege_gate_f1",
+      "kind": "siege",
+      "out": "assets/siege/gate_1.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a fortified castle gatehouse with a raised portcullis, in the style of Crimson Wardens (silver-grey highland stone, crimson banners)."
+    },
+    {
+      "id": "siege_moat_f1",
+      "kind": "siege",
+      "out": "assets/siege/moat_1.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a defensive moat segment (water or hazard trench) in front of a wall, in the style of Crimson Wardens (silver-grey highland stone, crimson banners)."
+    },
+    {
+      "id": "siege_wall_f2",
+      "kind": "siege",
+      "out": "assets/siege/wall_2.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single intact section of castle curtain wall with battlements, in the style of Thornkin (living wood and vines)."
+    },
+    {
+      "id": "siege_wall_dmg_f2",
+      "kind": "siege",
+      "out": "assets/siege/wall_2_damaged.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single section of castle wall, cracked and battle-damaged with a breach, in the style of Thornkin (living wood and vines)."
+    },
+    {
+      "id": "siege_gate_f2",
+      "kind": "siege",
+      "out": "assets/siege/gate_2.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a fortified castle gatehouse with a raised portcullis, in the style of Thornkin (living wood and vines)."
+    },
+    {
+      "id": "siege_moat_f2",
+      "kind": "siege",
+      "out": "assets/siege/moat_2.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a defensive moat segment (water or hazard trench) in front of a wall, in the style of Thornkin (living wood and vines)."
+    },
+    {
+      "id": "siege_wall_f3",
+      "kind": "siege",
+      "out": "assets/siege/wall_3.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single intact section of castle curtain wall with battlements, in the style of Eternal Empire undead (black stone and bone, sickly green glow)."
+    },
+    {
+      "id": "siege_wall_dmg_f3",
+      "kind": "siege",
+      "out": "assets/siege/wall_3_damaged.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single section of castle wall, cracked and battle-damaged with a breach, in the style of Eternal Empire undead (black stone and bone, sickly green glow)."
+    },
+    {
+      "id": "siege_gate_f3",
+      "kind": "siege",
+      "out": "assets/siege/gate_3.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a fortified castle gatehouse with a raised portcullis, in the style of Eternal Empire undead (black stone and bone, sickly green glow)."
+    },
+    {
+      "id": "siege_moat_f3",
+      "kind": "siege",
+      "out": "assets/siege/moat_3.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a defensive moat segment (water or hazard trench) in front of a wall, in the style of Eternal Empire undead (black stone and bone, sickly green glow)."
+    },
+    {
+      "id": "siege_wall_f4",
+      "kind": "siege",
+      "out": "assets/siege/wall_4.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single intact section of castle curtain wall with battlements, in the style of Bloodsworn (red-and-black stone, horns)."
+    },
+    {
+      "id": "siege_wall_dmg_f4",
+      "kind": "siege",
+      "out": "assets/siege/wall_4_damaged.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single section of castle wall, cracked and battle-damaged with a breach, in the style of Bloodsworn (red-and-black stone, horns)."
+    },
+    {
+      "id": "siege_gate_f4",
+      "kind": "siege",
+      "out": "assets/siege/gate_4.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a fortified castle gatehouse with a raised portcullis, in the style of Bloodsworn (red-and-black stone, horns)."
+    },
+    {
+      "id": "siege_moat_f4",
+      "kind": "siege",
+      "out": "assets/siege/moat_4.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a defensive moat segment (water or hazard trench) in front of a wall, in the style of Bloodsworn (red-and-black stone, horns)."
+    },
+    {
+      "id": "siege_wall_f5",
+      "kind": "siege",
+      "out": "assets/siege/wall_5.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single intact section of castle curtain wall with battlements, in the style of Voidkin (void-corrupted stone, violet energy)."
+    },
+    {
+      "id": "siege_wall_dmg_f5",
+      "kind": "siege",
+      "out": "assets/siege/wall_5_damaged.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single section of castle wall, cracked and battle-damaged with a breach, in the style of Voidkin (void-corrupted stone, violet energy)."
+    },
+    {
+      "id": "siege_gate_f5",
+      "kind": "siege",
+      "out": "assets/siege/gate_5.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a fortified castle gatehouse with a raised portcullis, in the style of Voidkin (void-corrupted stone, violet energy)."
+    },
+    {
+      "id": "siege_moat_f5",
+      "kind": "siege",
+      "out": "assets/siege/moat_5.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a defensive moat segment (water or hazard trench) in front of a wall, in the style of Voidkin (void-corrupted stone, violet energy)."
+    },
+    {
+      "id": "siege_wall_f6",
+      "kind": "siege",
+      "out": "assets/siege/wall_6.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single intact section of castle curtain wall with battlements, in the style of Iron Assembly (riveted iron and brass)."
+    },
+    {
+      "id": "siege_wall_dmg_f6",
+      "kind": "siege",
+      "out": "assets/siege/wall_6_damaged.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single section of castle wall, cracked and battle-damaged with a breach, in the style of Iron Assembly (riveted iron and brass)."
+    },
+    {
+      "id": "siege_gate_f6",
+      "kind": "siege",
+      "out": "assets/siege/gate_6.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a fortified castle gatehouse with a raised portcullis, in the style of Iron Assembly (riveted iron and brass)."
+    },
+    {
+      "id": "siege_moat_f6",
+      "kind": "siege",
+      "out": "assets/siege/moat_6.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a defensive moat segment (water or hazard trench) in front of a wall, in the style of Iron Assembly (riveted iron and brass)."
+    },
+    {
+      "id": "siege_wall_f7",
+      "kind": "siege",
+      "out": "assets/siege/wall_7.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single intact section of castle curtain wall with battlements, in the style of Amalgamate (fused flesh and metal)."
+    },
+    {
+      "id": "siege_wall_dmg_f7",
+      "kind": "siege",
+      "out": "assets/siege/wall_7_damaged.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single section of castle wall, cracked and battle-damaged with a breach, in the style of Amalgamate (fused flesh and metal)."
+    },
+    {
+      "id": "siege_gate_f7",
+      "kind": "siege",
+      "out": "assets/siege/gate_7.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a fortified castle gatehouse with a raised portcullis, in the style of Amalgamate (fused flesh and metal)."
+    },
+    {
+      "id": "siege_moat_f7",
+      "kind": "siege",
+      "out": "assets/siege/moat_7.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a defensive moat segment (water or hazard trench) in front of a wall, in the style of Amalgamate (fused flesh and metal)."
+    },
+    {
+      "id": "siege_wall_f8",
+      "kind": "siege",
+      "out": "assets/siege/wall_8.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single intact section of castle curtain wall with battlements, in the style of Convergence (prismatic crystal)."
+    },
+    {
+      "id": "siege_wall_dmg_f8",
+      "kind": "siege",
+      "out": "assets/siege/wall_8_damaged.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a single section of castle wall, cracked and battle-damaged with a breach, in the style of Convergence (prismatic crystal)."
+    },
+    {
+      "id": "siege_gate_f8",
+      "kind": "siege",
+      "out": "assets/siege/gate_8.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a fortified castle gatehouse with a raised portcullis, in the style of Convergence (prismatic crystal)."
+    },
+    {
+      "id": "siege_moat_f8",
+      "kind": "siege",
+      "out": "assets/siege/moat_8.png",
+      "wrap_prefix": "Generate a single fortification art piece, 1:1 square aspect ratio, one element centered, side-on view. ",
+      "style": " Art style: dark-fantasy strategy-game siege art, painterly, a single modular castle-defense piece for a combat grid, centered on a plain transparent-like dark background, no ground, no text, no words, no watermark, no UI, no characters.",
+      "prompt": "a defensive moat segment (water or hazard trench) in front of a wall, in the style of Convergence (prismatic crystal)."
     }
   ]
 }
