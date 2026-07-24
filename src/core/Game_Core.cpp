@@ -292,6 +292,10 @@ bool Game::init(const std::string& title, int width, int height, bool hidden)
 
     // Building registry
     m_registry.init();
+    // Data-driven balance: override unit/building numbers from assets/data/*.json
+    // if present (see BuildingRegistry_Balance.cpp). No-op when the files are
+    // absent, so the hardcoded defaults stand.
+    m_registry.applyBalanceOverrides(m_basePath);
 
     // Hero class registry
     m_classRegistry.init();

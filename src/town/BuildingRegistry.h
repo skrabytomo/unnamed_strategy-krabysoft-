@@ -212,6 +212,15 @@ class BuildingRegistry
 public:
     void init(); // populate all definitions
 
+    // After init(), override balance numbers from data files if they exist:
+    //   <basePath>assets/data/units.json  and  buildings.json
+    // (the same shape `--export-content` writes). Entries are matched by id and
+    // only override numeric/stat fields; missing files or unknown ids are
+    // ignored, so the hardcoded defaults always stand and a bad file can't brick
+    // the game. Lets balance be tweaked WITHOUT recompiling. Returns nothing;
+    // logs a [BALANCE] summary. Defined in BuildingRegistry_Balance.cpp.
+    void applyBalanceOverrides(const std::string& basePath);
+
     const BuildingDef* getBuildingDef(int id) const;
     const UnitDef*     getUnitDef(int id)     const;
 
