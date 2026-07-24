@@ -47,6 +47,11 @@ It **skips any file that already exists**, so when Gemini cuts you off just
 re-run later — it continues where it stopped. `--force` regenerates existing
 files.
 
+**Adding new art = edit `manifest.json` only, never the script.** `--only`
+accepts *any* `kind` you put in the manifest (a typo just lists the kinds that
+exist). So to add a batch: append entries with a new `kind`, then
+`python gemini_gen.py --only <that-kind>`. No code change, same script forever.
+
 ## What it writes
 
 | Kind | Files | Drops into the game? |

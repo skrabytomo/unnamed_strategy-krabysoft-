@@ -133,7 +133,9 @@ def main():
     here = os.path.dirname(os.path.abspath(__file__))
     ap = argparse.ArgumentParser(description="Generate game art via the official Google Generative Language API (stdlib only).")
     ap.add_argument("--manifest", default=os.path.join(here, "manifest.json"))
-    ap.add_argument("--only", choices=["hero", "icon", "town", "collage", "terrain", "dwelling", "capsule", "all"], default="all")
+    ap.add_argument("--only", default="all",
+                    help="manifest 'kind' to generate (e.g. terrain, dwelling, hero, capsule) or 'all'. "
+                         "ANY kind you add to manifest.json works — no script edit needed.")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--repo-root", default=os.path.abspath(os.path.join(here, "..", "..")))
     ap.add_argument("--force", action="store_true", help="regenerate even if the output PNG already exists")
@@ -147,6 +149,13 @@ def main():
 
     root = os.path.abspath(args.repo_root)
     man = load_manifest(args.manifest)
+
+    # Validate --only against the kinds actually in the manifest, so a new kind
+    # needs zero code changes (just add entries) yet a typo is caught helpfully.
+    kinds = sorted({a.get("kind", "?") for a in man["assets"]})
+    if args.only != "all" and args.only not in kinds:
+        log(f"--only '{args.only}' matches no manifest kind. Available: {', '.join(kinds)}")
+        return 2
 
     pending = []
     for a in man["assets"]:
