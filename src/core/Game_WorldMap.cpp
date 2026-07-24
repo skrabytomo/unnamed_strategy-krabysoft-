@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "../platform/SteamIntegration.h"
 #include "WorkerPool.h"
 #include <chrono>
 
@@ -5994,6 +5995,7 @@ void Game::checkTileEvents()
                 t.ownerId = 1;
                 t.garrison.clear();
                 gLog("Captured town: %s\n", t.name.c_str());
+                steam::unlockAchievement("ACH_FIRST_TOWN");
                 m_capturedTownName = t.name;
                 m_showCapturePopup = true;
                 m_hideout.completeMilestone(Milestone::FIRST_TOWN_CAPTURED);

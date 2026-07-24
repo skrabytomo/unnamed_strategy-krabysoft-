@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "../platform/SteamIntegration.h"
 #include "../hero/SkillRegistry.h"
 #include "../hero/HeroClass.h"
 #include "../magic/SpellRegistry.h"
@@ -1848,6 +1849,7 @@ void Game::enterCombat(Hero& playerHero,
 void Game::exitCombat(bool playerWon)
 {
     gLog("Combat ended — %s\n", playerWon ? "Victory" : "Defeat/Retreat");
+    if (playerWon) steam::unlockAchievement("ACH_FIRST_WIN");
 
     // ── Conquest mode battle: no world-map hero to sync — grant rewards,
     // update the node graph, and return to the conquest screen.
@@ -2310,6 +2312,7 @@ void Game::exitCombat(bool playerWon)
                     m_victoryMessage = "Victory! All enemies have been defeated.";
                 m_showVictory = true;
                 m_audio.playSound("victory");
+                steam::unlockAchievement("ACH_WIN_GAME");
             }
         }
         // Check if any other human player was just eliminated
@@ -2327,6 +2330,7 @@ void Game::exitCombat(bool playerWon)
                                      + " has been eliminated.";
                     m_showVictory = true;
                     m_audio.playSound("victory");
+                    steam::unlockAchievement("ACH_WIN_GAME");
                 }
             }
         }
@@ -2345,8 +2349,8 @@ void Game::exitCombat(bool playerWon)
             if (hero.addXp(xp)) {
                 int levelsGained = hero.level - oldLevel;
                 gLog("Hero leveled up to %d! (%d levels gained)\n", hero.level, levelsGained);
-                if (hero.level >= 5)  m_hideout.completeMilestone(Milestone::HERO_LEVEL_5);
-                if (hero.level >= 10) m_hideout.completeMilestone(Milestone::HERO_LEVEL_10);
+                if (hero.level >= 5)  { m_hideout.completeMilestone(Milestone::HERO_LEVEL_5);  steam::unlockAchievement("ACH_HERO_LEVEL_5"); }
+                if (hero.level >= 10) { m_hideout.completeMilestone(Milestone::HERO_LEVEL_10); steam::unlockAchievement("ACH_HERO_LEVEL_10"); }
                 ScriptContext lvlCtx; lvlCtx.heroId = hero.id;
                 m_triggers.fire(TriggerType::HeroLevel, lvlCtx);
                 const HeroClassDef* cls = m_classRegistry.getClass(hero.classId);
