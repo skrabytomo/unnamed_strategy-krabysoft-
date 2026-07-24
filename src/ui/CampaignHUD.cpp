@@ -3,21 +3,8 @@
 #include <cmath>
 #include <cstdio>
 
-static const char* factionName(FactionId f)
-{
-    switch (f) {
-    case FactionId::HolyOrder:      return "Holy Order";
-    case FactionId::CrimsonWardens: return "Crimson Wardens";
-    case FactionId::Thornkin:       return "Thornkin";
-    case FactionId::EternalEmpire:  return "Eternal Empire";
-    case FactionId::Bloodsworn:     return "Bloodsworn";
-    case FactionId::Voidkin:        return "Voidkin";
-    case FactionId::IronAssembly:   return "Iron Assembly";
-    case FactionId::Amalgamate:     return "Amalgamate";
-    case FactionId::Convergence:    return "Convergence";
-    default:                        return "Unknown";
-    }
-}
+// factionName() now comes from hero/FactionId.h (via CampaignHUD.h → ... →
+// Hero.h) — the local copy this file used to carry was identical.
 
 void CampaignHUD::render(CampaignManager& mgr, LuaEngine& lua)
 {

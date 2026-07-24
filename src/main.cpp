@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string>
 #include "core/Game.h"
+#include "data/ContentExport.h"
 #include "version_gen.h"   // GAME_GIT_HASH / GAME_GIT_BRANCH / GAME_BUILD_DATE (build-time)
 
 #ifndef GAME_VERSION
@@ -25,6 +26,19 @@ int main(int argc, char* argv[])
     // combat RNGs all derive from it) so any run — watch-AI test or normal
     // game — is reproducible. Without it every run gets a time-based seed;
     // either way the chosen seed is logged as [SEED] at game start.
+    // --export-content=DIR dumps the hardcoded content registries (buildings,
+    // units, factions, resources, terrain, asset inventory) to JSON in DIR and
+    // exits. Runs before SDL init so it works headless / in CI. This is how
+    // other front-ends get the balance data without a second copy of it.
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg.rfind("--export-content=", 0) == 0) {
+            std::string dir = arg.substr(17);
+            if (dir.empty()) dir = "export";
+            return exportContentJson(dir) ? 0 : 1;
+        }
+    }
+
     bool     watchAiTest  = false;
     int      watchPlayers = 6;
     int      watchShape   = 0;

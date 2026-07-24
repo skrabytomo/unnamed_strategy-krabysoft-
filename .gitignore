@@ -18,3 +18,4 @@ session.log
 session.log
 imgui.ini
 sim_*.txt
+export/
