@@ -150,6 +150,15 @@ elseif(UNIX)
     target_link_libraries(${PROJECT_NAME} PRIVATE GL)
 endif()
 
+if(WIN32)
+    # Ship the RELEASE exe as a GUI-subsystem app so players don't get a stray
+    # console window next to the game. Debug/dev builds stay console-subsystem so
+    # run.sh's stdout -> `tee session.log` logging keeps working. SDL2's main
+    # shim provides the WinMain entry point, so plain main() still works.
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+                          WIN32_EXECUTABLE $<CONFIG:Release>)
+endif()
+
 # ── Steamworks (optional) ─────────────────────────────────────────────────────
 # OFF by default so the game builds with zero Steam dependency. Turn on with:
 #   cmake -B build -DUSE_STEAMWORKS=ON -DSTEAMWORKS_SDK_ROOT=/path/to/sdk -DSTEAM_APP_ID=1234560
