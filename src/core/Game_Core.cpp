@@ -818,6 +818,9 @@ void Game::run()
         if (dt > 0.1f) dt = 0.1f;
         prev = now;
         steam::runCallbacks();   // no-op unless built with Steamworks
+        // Freeze game time while the Steam overlay is open, so animations,
+        // timers and the Watch-AI clock don't run behind it. No-op without Steam.
+        if (steam::overlayActive()) dt = 0.0f;
         m_input.beginFrame();
         processEvents();
         update(dt);
