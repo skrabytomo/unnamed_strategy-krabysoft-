@@ -22,9 +22,9 @@ the SDK download and your App ID — no call sites change.
    (`build/bin/`) containing just your App ID (e.g. `1234560`). This lets the
    built game attach to your running Steam client without launching from the
    library. **Do not ship `steam_appid.txt`** — it's dev-only.
-4. **Bundle the redistributable** with the game: copy
-   `redistributable_bin/win64/steam_api64.dll` next to the exe (add it to
-   `dist/` in `build_installer.sh` when you go live).
+4. **The redistributable is bundled automatically** — with `USE_STEAMWORKS=ON`
+   the build copies `steam_api64.dll` next to the exe and into `dist/` (the
+   install), so a Steamworks build runs without any manual copy.
 
 If any of that is missing at runtime, `steam::init()` logs a `[STEAM]` line and
 returns false — the game runs fine without Steam.

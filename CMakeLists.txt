@@ -184,7 +184,23 @@ if(USE_STEAMWORKS)
             ${STEAMWORKS_SDK_ROOT}/redistributable_bin/linux64/libsteam_api.so)
     endif()
     target_compile_definitions(${PROJECT_NAME} PRIVATE USE_STEAMWORKS STEAM_APP_ID=${STEAM_APP_ID})
-    message(STATUS "Steamworks: ON (app id ${STEAM_APP_ID}) — remember to bundle steam_api64.dll and add steam_appid.txt for dev")
+
+    # Bundle the Steam redistributable next to the exe (so dev builds run) and
+    # into the install/dist (so the shipped folder runs). Without this a
+    # Steamworks build fails to start — missing steam_api64.dll.
+    if(WIN32)
+        set(_steam_redist "${STEAMWORKS_SDK_ROOT}/redistributable_bin/win64/steam_api64.dll")
+    elseif(APPLE)
+        set(_steam_redist "${STEAMWORKS_SDK_ROOT}/redistributable_bin/osx/libsteam_api.dylib")
+    else()
+        set(_steam_redist "${STEAMWORKS_SDK_ROOT}/redistributable_bin/linux64/libsteam_api.so")
+    endif()
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${_steam_redist}" "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
+    install(FILES "${_steam_redist}" DESTINATION .)
+
+    message(STATUS "Steamworks: ON (app id ${STEAM_APP_ID}) — redistributable bundled; add steam_appid.txt next to the exe for dev testing")
 endif()
 
 # ── Asset sync: mirror source assets/ to the runtime dir on EVERY build ───────
