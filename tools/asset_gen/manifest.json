@@ -1812,6 +1812,1030 @@
       "wrap_prefix": "Generate a single piece of epic key art (NO text, NO logo, NO words anywhere in the image). ",
       "style": " Art style: dramatic dark-fantasy strategy-game cover art, painterly and highly detailed, cinematic lighting, a sweeping hex-grid fantasy battlefield with clashing faction armies (holy knights, undead, demons, void-corrupted, iron machines) and heroes on a war-torn continent. Rich focal composition with clear empty space toward one side for a title to be added later. No text, no words, no watermark, no UI, no borders.",
       "prompt": "A tall portrait composition: a lone faction champion in the foreground overlooking a vast hex battlefield below, storm-lit sky above with room at the top for a title."
+    },
+    {
+      "id": "building_fort_f0",
+      "kind": "building",
+      "out": "assets/buildings/fort/fort_f0.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a fortified stone military fort with a gate and battlements, in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_fort_f1",
+      "kind": "building",
+      "out": "assets/buildings/fort/fort_f1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a fortified stone military fort with a gate and battlements, in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_fort_f2",
+      "kind": "building",
+      "out": "assets/buildings/fort/fort_f2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a fortified stone military fort with a gate and battlements, in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_fort_f3",
+      "kind": "building",
+      "out": "assets/buildings/fort/fort_f3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a fortified stone military fort with a gate and battlements, in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_fort_f4",
+      "kind": "building",
+      "out": "assets/buildings/fort/fort_f4.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a fortified stone military fort with a gate and battlements, in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_fort_f5",
+      "kind": "building",
+      "out": "assets/buildings/fort/fort_f5.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a fortified stone military fort with a gate and battlements, in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_fort_f6",
+      "kind": "building",
+      "out": "assets/buildings/fort/fort_f6.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a fortified stone military fort with a gate and battlements, in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_fort_f7",
+      "kind": "building",
+      "out": "assets/buildings/fort/fort_f7.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a fortified stone military fort with a gate and battlements, in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_fort_f8",
+      "kind": "building",
+      "out": "assets/buildings/fort/fort_f8.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a fortified stone military fort with a gate and battlements, in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_market_f0",
+      "kind": "building",
+      "out": "assets/buildings/market/market_f0.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a bustling marketplace hall with stalls and awnings, in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_market_f1",
+      "kind": "building",
+      "out": "assets/buildings/market/market_f1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a bustling marketplace hall with stalls and awnings, in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_market_f2",
+      "kind": "building",
+      "out": "assets/buildings/market/market_f2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a bustling marketplace hall with stalls and awnings, in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_market_f3",
+      "kind": "building",
+      "out": "assets/buildings/market/market_f3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a bustling marketplace hall with stalls and awnings, in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_market_f4",
+      "kind": "building",
+      "out": "assets/buildings/market/market_f4.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a bustling marketplace hall with stalls and awnings, in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_market_f5",
+      "kind": "building",
+      "out": "assets/buildings/market/market_f5.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a bustling marketplace hall with stalls and awnings, in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_market_f6",
+      "kind": "building",
+      "out": "assets/buildings/market/market_f6.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a bustling marketplace hall with stalls and awnings, in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_market_f7",
+      "kind": "building",
+      "out": "assets/buildings/market/market_f7.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a bustling marketplace hall with stalls and awnings, in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_market_f8",
+      "kind": "building",
+      "out": "assets/buildings/market/market_f8.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a bustling marketplace hall with stalls and awnings, in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_town_hall_f0",
+      "kind": "building",
+      "out": "assets/buildings/town_hall/town_hall_f0.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a stately town hall administrative building, in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_town_hall_f1",
+      "kind": "building",
+      "out": "assets/buildings/town_hall/town_hall_f1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a stately town hall administrative building, in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_town_hall_f2",
+      "kind": "building",
+      "out": "assets/buildings/town_hall/town_hall_f2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a stately town hall administrative building, in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_town_hall_f3",
+      "kind": "building",
+      "out": "assets/buildings/town_hall/town_hall_f3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a stately town hall administrative building, in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_town_hall_f4",
+      "kind": "building",
+      "out": "assets/buildings/town_hall/town_hall_f4.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a stately town hall administrative building, in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_town_hall_f5",
+      "kind": "building",
+      "out": "assets/buildings/town_hall/town_hall_f5.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a stately town hall administrative building, in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_town_hall_f6",
+      "kind": "building",
+      "out": "assets/buildings/town_hall/town_hall_f6.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a stately town hall administrative building, in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_town_hall_f7",
+      "kind": "building",
+      "out": "assets/buildings/town_hall/town_hall_f7.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a stately town hall administrative building, in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_town_hall_f8",
+      "kind": "building",
+      "out": "assets/buildings/town_hall/town_hall_f8.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a stately town hall administrative building, in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_city_hall_f0",
+      "kind": "building",
+      "out": "assets/buildings/city_hall/city_hall_f0.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a grand ornate city hall, larger and grander than a town hall, in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_city_hall_f1",
+      "kind": "building",
+      "out": "assets/buildings/city_hall/city_hall_f1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a grand ornate city hall, larger and grander than a town hall, in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_city_hall_f2",
+      "kind": "building",
+      "out": "assets/buildings/city_hall/city_hall_f2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a grand ornate city hall, larger and grander than a town hall, in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_city_hall_f3",
+      "kind": "building",
+      "out": "assets/buildings/city_hall/city_hall_f3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a grand ornate city hall, larger and grander than a town hall, in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_city_hall_f4",
+      "kind": "building",
+      "out": "assets/buildings/city_hall/city_hall_f4.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a grand ornate city hall, larger and grander than a town hall, in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_city_hall_f5",
+      "kind": "building",
+      "out": "assets/buildings/city_hall/city_hall_f5.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a grand ornate city hall, larger and grander than a town hall, in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_city_hall_f6",
+      "kind": "building",
+      "out": "assets/buildings/city_hall/city_hall_f6.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a grand ornate city hall, larger and grander than a town hall, in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_city_hall_f7",
+      "kind": "building",
+      "out": "assets/buildings/city_hall/city_hall_f7.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a grand ornate city hall, larger and grander than a town hall, in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_city_hall_f8",
+      "kind": "building",
+      "out": "assets/buildings/city_hall/city_hall_f8.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a grand ornate city hall, larger and grander than a town hall, in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_mage_guild_f0_t1",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f0_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 1 of 4 (taller and more magically elaborate at higher tiers), in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_mage_guild_f0_t2",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f0_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 2 of 4 (taller and more magically elaborate at higher tiers), in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_mage_guild_f0_t3",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f0_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 3 of 4 (taller and more magically elaborate at higher tiers), in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_mage_guild_f0_t4",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f0_t4.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 4 of 4 (taller and more magically elaborate at higher tiers), in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_mage_guild_f1_t1",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f1_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 1 of 4 (taller and more magically elaborate at higher tiers), in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_mage_guild_f1_t2",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f1_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 2 of 4 (taller and more magically elaborate at higher tiers), in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_mage_guild_f1_t3",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f1_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 3 of 4 (taller and more magically elaborate at higher tiers), in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_mage_guild_f1_t4",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f1_t4.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 4 of 4 (taller and more magically elaborate at higher tiers), in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_mage_guild_f2_t1",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f2_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 1 of 4 (taller and more magically elaborate at higher tiers), in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_mage_guild_f2_t2",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f2_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 2 of 4 (taller and more magically elaborate at higher tiers), in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_mage_guild_f2_t3",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f2_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 3 of 4 (taller and more magically elaborate at higher tiers), in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_mage_guild_f2_t4",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f2_t4.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 4 of 4 (taller and more magically elaborate at higher tiers), in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_mage_guild_f3_t1",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f3_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 1 of 4 (taller and more magically elaborate at higher tiers), in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_mage_guild_f3_t2",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f3_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 2 of 4 (taller and more magically elaborate at higher tiers), in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_mage_guild_f3_t3",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f3_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 3 of 4 (taller and more magically elaborate at higher tiers), in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_mage_guild_f3_t4",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f3_t4.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 4 of 4 (taller and more magically elaborate at higher tiers), in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_mage_guild_f4_t1",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f4_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 1 of 4 (taller and more magically elaborate at higher tiers), in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_mage_guild_f4_t2",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f4_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 2 of 4 (taller and more magically elaborate at higher tiers), in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_mage_guild_f4_t3",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f4_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 3 of 4 (taller and more magically elaborate at higher tiers), in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_mage_guild_f4_t4",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f4_t4.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 4 of 4 (taller and more magically elaborate at higher tiers), in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_mage_guild_f5_t1",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f5_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 1 of 4 (taller and more magically elaborate at higher tiers), in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_mage_guild_f5_t2",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f5_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 2 of 4 (taller and more magically elaborate at higher tiers), in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_mage_guild_f5_t3",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f5_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 3 of 4 (taller and more magically elaborate at higher tiers), in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_mage_guild_f5_t4",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f5_t4.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 4 of 4 (taller and more magically elaborate at higher tiers), in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_mage_guild_f6_t1",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f6_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 1 of 4 (taller and more magically elaborate at higher tiers), in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_mage_guild_f6_t2",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f6_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 2 of 4 (taller and more magically elaborate at higher tiers), in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_mage_guild_f6_t3",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f6_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 3 of 4 (taller and more magically elaborate at higher tiers), in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_mage_guild_f6_t4",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f6_t4.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 4 of 4 (taller and more magically elaborate at higher tiers), in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_mage_guild_f7_t1",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f7_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 1 of 4 (taller and more magically elaborate at higher tiers), in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_mage_guild_f7_t2",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f7_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 2 of 4 (taller and more magically elaborate at higher tiers), in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_mage_guild_f7_t3",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f7_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 3 of 4 (taller and more magically elaborate at higher tiers), in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_mage_guild_f7_t4",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f7_t4.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 4 of 4 (taller and more magically elaborate at higher tiers), in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_mage_guild_f8_t1",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f8_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 1 of 4 (taller and more magically elaborate at higher tiers), in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_mage_guild_f8_t2",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f8_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 2 of 4 (taller and more magically elaborate at higher tiers), in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_mage_guild_f8_t3",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f8_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 3 of 4 (taller and more magically elaborate at higher tiers), in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_mage_guild_f8_t4",
+      "kind": "building",
+      "out": "assets/buildings/mage_guild/mage_guild_f8_t4.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a mage guild arcane tower, tier 4 of 4 (taller and more magically elaborate at higher tiers), in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_warehouse_f0_t1",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f0_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 1 of 3 (larger at higher tiers), in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_warehouse_f0_t2",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f0_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 2 of 3 (larger at higher tiers), in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_warehouse_f0_t3",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f0_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 3 of 3 (larger at higher tiers), in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_warehouse_f1_t1",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f1_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 1 of 3 (larger at higher tiers), in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_warehouse_f1_t2",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f1_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 2 of 3 (larger at higher tiers), in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_warehouse_f1_t3",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f1_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 3 of 3 (larger at higher tiers), in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_warehouse_f2_t1",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f2_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 1 of 3 (larger at higher tiers), in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_warehouse_f2_t2",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f2_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 2 of 3 (larger at higher tiers), in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_warehouse_f2_t3",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f2_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 3 of 3 (larger at higher tiers), in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_warehouse_f3_t1",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f3_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 1 of 3 (larger at higher tiers), in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_warehouse_f3_t2",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f3_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 2 of 3 (larger at higher tiers), in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_warehouse_f3_t3",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f3_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 3 of 3 (larger at higher tiers), in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_warehouse_f4_t1",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f4_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 1 of 3 (larger at higher tiers), in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_warehouse_f4_t2",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f4_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 2 of 3 (larger at higher tiers), in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_warehouse_f4_t3",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f4_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 3 of 3 (larger at higher tiers), in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_warehouse_f5_t1",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f5_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 1 of 3 (larger at higher tiers), in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_warehouse_f5_t2",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f5_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 2 of 3 (larger at higher tiers), in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_warehouse_f5_t3",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f5_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 3 of 3 (larger at higher tiers), in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_warehouse_f6_t1",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f6_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 1 of 3 (larger at higher tiers), in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_warehouse_f6_t2",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f6_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 2 of 3 (larger at higher tiers), in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_warehouse_f6_t3",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f6_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 3 of 3 (larger at higher tiers), in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_warehouse_f7_t1",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f7_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 1 of 3 (larger at higher tiers), in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_warehouse_f7_t2",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f7_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 2 of 3 (larger at higher tiers), in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_warehouse_f7_t3",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f7_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 3 of 3 (larger at higher tiers), in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_warehouse_f8_t1",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f8_t1.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 1 of 3 (larger at higher tiers), in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_warehouse_f8_t2",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f8_t2.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 2 of 3 (larger at higher tiers), in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_warehouse_f8_t3",
+      "kind": "building",
+      "out": "assets/buildings/warehouse/warehouse_f8_t3.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a resource storehouse/warehouse, tier 3 of 3 (larger at higher tiers), in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_capitol_f0",
+      "kind": "building",
+      "out": "assets/buildings/capitol/Sacred Sanctum.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Sacred Sanctum', the faction's grand central capitol — the largest and most impressive structure of the town, in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_power_f0",
+      "kind": "building",
+      "out": "assets/buildings/special/Light Shrine.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Light Shrine', a special magical power building, in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_support_f0",
+      "kind": "building",
+      "out": "assets/buildings/special/Reliquary.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Reliquary', a special support building, in the style of radiant Holy Order (white marble and gold, holy light, sunlit banners)."
+    },
+    {
+      "id": "building_capitol_f1",
+      "kind": "building",
+      "out": "assets/buildings/capitol/Grand Necropolis.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Grand Necropolis', the faction's grand central capitol — the largest and most impressive structure of the town, in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_power_f1",
+      "kind": "building",
+      "out": "assets/buildings/special/Death Altar.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Death Altar', a special magical power building, in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_support_f1",
+      "kind": "building",
+      "out": "assets/buildings/special/Warden's Brand Chamber.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Warden's Brand Chamber', a special support building, in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_capitol_f2",
+      "kind": "building",
+      "out": "assets/buildings/capitol/Ancient Heartwood.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Ancient Heartwood', the faction's grand central capitol — the largest and most impressive structure of the town, in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_power_f2",
+      "kind": "building",
+      "out": "assets/buildings/special/Ancient Circle.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Ancient Circle', a special magical power building, in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_support_f2",
+      "kind": "building",
+      "out": "assets/buildings/special/Symbiosis Web.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Symbiosis Web', a special support building, in the style of Thornkin (living wood, vines and moss, glowing green nature magic)."
+    },
+    {
+      "id": "building_capitol_f3",
+      "kind": "building",
+      "out": "assets/buildings/capitol/Eternal Citadel.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Eternal Citadel', the faction's grand central capitol — the largest and most impressive structure of the town, in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_power_f3",
+      "kind": "building",
+      "out": "assets/buildings/special/Necropolis Gate.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Necropolis Gate', a special magical power building, in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_support_f3",
+      "kind": "building",
+      "out": "assets/buildings/special/Monument of Eternity.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Monument of Eternity', a special support building, in the style of Eternal Empire undead (black stone and bone, a sickly green deathly glow)."
+    },
+    {
+      "id": "building_capitol_f4",
+      "kind": "building",
+      "out": "assets/buildings/capitol/Bloodspire Fortress.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Bloodspire Fortress', the faction's grand central capitol — the largest and most impressive structure of the town, in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_power_f4",
+      "kind": "building",
+      "out": "assets/buildings/special/Blood Altar.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Blood Altar', a special magical power building, in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_support_f4",
+      "kind": "building",
+      "out": "assets/buildings/special/War Shrine.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'War Shrine', a special support building, in the style of Bloodsworn blood-cult (red-and-black stone, horns and braziers, dripping crimson)."
+    },
+    {
+      "id": "building_capitol_f5",
+      "kind": "building",
+      "out": "assets/buildings/capitol/Void Core Nexus.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Void Core Nexus', the faction's grand central capitol — the largest and most impressive structure of the town, in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_power_f5",
+      "kind": "building",
+      "out": "assets/buildings/special/Rift Gate.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Rift Gate', a special magical power building, in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_support_f5",
+      "kind": "building",
+      "out": "assets/buildings/special/Void Lens.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Void Lens', a special support building, in the style of Voidkin (twisted void-corrupted stone crackling with violet void energy)."
+    },
+    {
+      "id": "building_capitol_f6",
+      "kind": "building",
+      "out": "assets/buildings/capitol/Grand Megaforge.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Grand Megaforge', the faction's grand central capitol — the largest and most impressive structure of the town, in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_power_f6",
+      "kind": "building",
+      "out": "assets/buildings/special/Blueprint Vault.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Blueprint Vault', a special magical power building, in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_support_f6",
+      "kind": "building",
+      "out": "assets/buildings/special/Overclock Chamber.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Overclock Chamber', a special support building, in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
+    },
+    {
+      "id": "building_capitol_f7",
+      "kind": "building",
+      "out": "assets/buildings/capitol/Grand Fleshpit.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Grand Fleshpit', the faction's grand central capitol — the largest and most impressive structure of the town, in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_power_f7",
+      "kind": "building",
+      "out": "assets/buildings/special/Flesh Vault.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Flesh Vault', a special magical power building, in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_support_f7",
+      "kind": "building",
+      "out": "assets/buildings/special/Merge Chamber.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Merge Chamber', a special support building, in the style of Amalgamate (fused flesh and metal, pulsing organic machinery, chrome and sinew)."
+    },
+    {
+      "id": "building_capitol_f8",
+      "kind": "building",
+      "out": "assets/buildings/capitol/Synthesis Nexus.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Synthesis Nexus', the faction's grand central capitol — the largest and most impressive structure of the town, in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_power_f8",
+      "kind": "building",
+      "out": "assets/buildings/special/Resonance Well.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Resonance Well', a special magical power building, in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_support_f8",
+      "kind": "building",
+      "out": "assets/buildings/special/Mirror Chamber.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "the 'Mirror Chamber', a special support building, in the style of Convergence (shifting prismatic crystal and floating runic platforms, arcane light)."
+    },
+    {
+      "id": "building_bastion",
+      "kind": "building",
+      "out": "assets/buildings/special/Bastion.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a strong defensive bastion fortification with thick walls, in the style of Crimson Wardens (silver-grey highland stone and deep-crimson banners)."
+    },
+    {
+      "id": "building_shipyard",
+      "kind": "building",
+      "out": "assets/buildings/special/Shipyard.png",
+      "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
+      "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
+      "prompt": "a coastal shipyard with wooden docks and a boat under construction, in the style of Iron Assembly (brass pipes, riveted iron, turning gears and glowing runes)."
     }
   ]
 }
