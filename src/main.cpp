@@ -5,6 +5,7 @@
 #include <string>
 #include "core/Game.h"
 #include "data/ContentExport.h"
+#include "platform/SteamIntegration.h"
 #include "version_gen.h"   // GAME_GIT_HASH / GAME_GIT_BRANCH / GAME_BUILD_DATE (build-time)
 
 #ifndef GAME_VERSION
@@ -73,14 +74,20 @@ int main(int argc, char* argv[])
         }
     }
 
+    // Steam (no-op unless built with -DUSE_STEAMWORKS=ON). Init before the
+    // window so RestartAppIfNecessary can relaunch through the client cleanly.
+    steam::init();
+
     Game game;
     if (!game.init("Unnamed Strategy", 1280, 720, watchAiTest)) {
         fprintf(stderr, "Failed to initialize game\n");
+        steam::shutdown();
         return 1;
     }
     if (seedSet)     game.setForcedSeed(seedVal);
     if (watchAiTest) game.autoStartWatchAI(watchPlayers, watchShape, watchSize);
     game.run();
     game.shutdown();
+    steam::shutdown();
     return 0;
 }

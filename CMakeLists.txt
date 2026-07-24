@@ -150,6 +150,34 @@ elseif(UNIX)
     target_link_libraries(${PROJECT_NAME} PRIVATE GL)
 endif()
 
+# ── Steamworks (optional) ─────────────────────────────────────────────────────
+# OFF by default so the game builds with zero Steam dependency. Turn on with:
+#   cmake -B build -DUSE_STEAMWORKS=ON -DSTEAMWORKS_SDK_ROOT=/path/to/sdk -DSTEAM_APP_ID=1234560
+# src/platform/SteamIntegration.cpp is always compiled; without the flag it is
+# pure no-ops, so the call sites in main.cpp / the game loop cost nothing.
+option(USE_STEAMWORKS "Build with the Steamworks SDK (achievements/cloud/overlay)" OFF)
+if(USE_STEAMWORKS)
+    if(NOT STEAMWORKS_SDK_ROOT)
+        message(FATAL_ERROR "USE_STEAMWORKS=ON requires -DSTEAMWORKS_SDK_ROOT=<path to the extracted Steamworks SDK 'sdk' folder>")
+    endif()
+    if(NOT DEFINED STEAM_APP_ID)
+        set(STEAM_APP_ID 0)
+    endif()
+    target_include_directories(${PROJECT_NAME} PRIVATE ${STEAMWORKS_SDK_ROOT}/public)
+    if(WIN32)
+        target_link_libraries(${PROJECT_NAME} PRIVATE
+            ${STEAMWORKS_SDK_ROOT}/redistributable_bin/win64/steam_api64.lib)
+    elseif(APPLE)
+        target_link_libraries(${PROJECT_NAME} PRIVATE
+            ${STEAMWORKS_SDK_ROOT}/redistributable_bin/osx/libsteam_api.dylib)
+    else()
+        target_link_libraries(${PROJECT_NAME} PRIVATE
+            ${STEAMWORKS_SDK_ROOT}/redistributable_bin/linux64/libsteam_api.so)
+    endif()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE USE_STEAMWORKS STEAM_APP_ID=${STEAM_APP_ID})
+    message(STATUS "Steamworks: ON (app id ${STEAM_APP_ID}) — remember to bundle steam_api64.dll and add steam_appid.txt for dev")
+endif()
+
 # ── Asset sync: mirror source assets/ to the runtime dir on EVERY build ───────
 # The game loads from <exe dir>/assets. Two footguns this avoids:
 #  * copy_directory only ADDS/updates, never removes -> deleted source assets

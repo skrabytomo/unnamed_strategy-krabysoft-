@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "../platform/SteamIntegration.h"
 #include "../magic/SpellRegistry.h"
 #include "../hero/SkillRegistry.h"
 #include "../hero/LevelUpSystem.h"
@@ -812,6 +813,7 @@ void Game::run()
         float dt = static_cast<float>(now - prev) / static_cast<float>(freq);
         if (dt > 0.1f) dt = 0.1f;
         prev = now;
+        steam::runCallbacks();   // no-op unless built with Steamworks
         m_input.beginFrame();
         processEvents();
         update(dt);
