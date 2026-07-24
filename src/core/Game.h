@@ -455,7 +455,7 @@ private:
     // ── Faction town art (world map + town screen banner) ─────────────────────
     // File: assets/towns/faction_N.png  (N=0-8)
     Texture           m_townTex[NUM_FACTIONS];
-    // Fortification-stage town art (HoMM3-style: town grows walls as you build
+    // Fortification-stage town art (classic-strategy-style: town grows walls as you build
     // Fort->Citadel->Castle[+Bastion]). Stage 0 = basic (no fort), 1 = Fort,
     // 2 = Citadel, 3 = Castle, 4 = Castle+Bastion. Loaded from
     // assets/towns/faction_<F>_<stage>.png; any missing stage falls back to the
@@ -660,7 +660,7 @@ private:
     bool        m_finalDefeat    = false;  // no heroes with armies and no player towns
     std::string m_victoryMessage;          // set before raising m_showVictory
 
-    // ── End-of-game score (HoMM3-style) ───────────────────────────────────────
+    // ── End-of-game score (classic-strategy-style) ───────────────────────────────────────
     GameScore   m_finalScore;
     bool        m_scoreRecorded = false;   // computed+saved once per game end
     bool        m_scoreIsBest   = false;   // new #1 highscore
@@ -919,7 +919,7 @@ private:
     int  m_newGameDifficulty = 1;   // 0=Easy, 1=Normal, 2=Hard
     int  m_newGameClassId    = 0;   // classId of chosen hero class (0=auto)
 
-    // ── HoMM-style game setup slots ───────────────────────────────────────────
+    // ── classic-strategy-style game setup slots ───────────────────────────────────────────
     // Slot 0 is always you. Each additional slot is Human (hot-seat) or Bot,
     // with its own faction (9 = Random) and starting bonus.
     static constexpr int MAX_SETUP_SLOTS = 8;

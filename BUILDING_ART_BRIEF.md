@@ -11,7 +11,7 @@ Same format spec as `sprite_brief.md` for anything animated; buildings are
 Generate a single static building illustration for a 2D strategy game town screen.
 
 CANVAS: 512×512 pixels, transparent background (PNG)
-STYLE: 16-bit pixel art, HoMM3 / Final Fantasy Tactics aesthetic,
+STYLE: 16-bit pixel art, classic-strategy / Final Fantasy Tactics aesthetic,
        clean dark outlines, limited palette (~24 colours), no anti-aliasing,
        dithering only, isometric or 3/4 front view, centered, no text, no watermark
 GROUNDING: base of the building touches the bottom edge of the canvas

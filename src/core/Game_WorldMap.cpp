@@ -1164,8 +1164,11 @@ void Game::updateWorldMap(float dt)
                     if (ownerTowns(o) > 0 || ownerStrength(o) > 0)
                         alive.push_back(o);
 
-                bool watchedAlive = std::find(alive.begin(), alive.end(), 1u) != alive.end();
-                bool gameOver = (alive.size() <= 1) || !watchedAlive;
+                // Last player standing — the game runs until ONE owner remains,
+                // whoever it is. It used to ALSO end the moment the watched
+                // player (owner 1) died, so every game "ended" early the instant
+                // P1 was knocked out instead of playing on to a real conqueror.
+                bool gameOver = (alive.size() <= 1);
 
                 // Early stop: one surviving player dwarfs ALL other survivors
                 // combined (>=6×) past week 5 — the outcome is settled. This is
@@ -2010,7 +2013,7 @@ void Game::aiTurnSetup()
     }
 
     // ── Consolidate armies into each player's raider ─────────────────────────
-    //    HoMM opening: extra heroes act as army shuttles — any non-raider hero
+    //    genre opening: extra heroes act as army shuttles — any non-raider hero
     //    adjacent to its player's raider dumps its army into it (7-slot cap,
     //    largest stacks first), so the AI fields one fat stack.
     for (int ri = 0; ri < (int)m_enemyHeroes.size(); ++ri) {
@@ -2396,7 +2399,7 @@ bool Game::aiTakeHeroTurn(int ehi)
             // A clean two-state ferry: carrying troops → deliver to
             // the raider (dominant pull, no detours); empty-handed →
             // go to own town and grab the piled-up garrison. This is
-            // the HoMM scout-chain that keeps the raider on the front
+            // the genre scout-chain that keeps the raider on the front
             // line instead of breaking off to collect units itself.
             bool didShuttle = false;
             if (!isRaider) {
@@ -7699,6 +7702,7 @@ void Game::recordFinalScore(bool won)
     }
 
     m_finalScore = computeGameScore(won, days, m_newGameDifficulty, townsHeld, maxLevel);
+    m_finalScore.faction = static_cast<int>(fac);
 
     // Persist to the shared meta DB (self-creating highscores table).
     ScoreDB db;
@@ -7755,7 +7759,19 @@ void Game::renderVictoryModal()
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
-        drawScoreBlock(m_finalScore, m_scoreIsBest);
+        {
+            // Rank badge: a faction unit whose tier rises with the score.
+            int rfac = std::clamp(m_finalScore.faction, 0, NUM_FACTIONS - 1);
+            int rti  = std::clamp(scoreRankTier(m_finalScore.score), 1, NUM_UNIT_TIERS) - 1;
+            if (m_unitTex[rfac][rti].ok()) {
+                ImGui::Image((ImTextureID)(uintptr_t)m_unitTex[rfac][rti].id(),
+                             ImVec2(72, 72), ImVec2(0, 0), ImVec2(0.125f, 1.0f));
+                ImGui::SameLine();
+            }
+            ImGui::BeginGroup();
+            drawScoreBlock(m_finalScore, m_scoreIsBest);
+            ImGui::EndGroup();
+        }
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
@@ -7797,7 +7813,18 @@ void Game::renderDefeatModal()
         ImGui::TextDisabled("Day %d  Week %d", m_turns.day(), m_turns.week());
         if (m_finalDefeat) {
             ImGui::Spacing();
-            drawScoreBlock(m_finalScore, false);
+            {
+                int rfac = std::clamp(m_finalScore.faction, 0, NUM_FACTIONS - 1);
+                int rti  = std::clamp(scoreRankTier(m_finalScore.score), 1, NUM_UNIT_TIERS) - 1;
+                if (m_unitTex[rfac][rti].ok()) {
+                    ImGui::Image((ImTextureID)(uintptr_t)m_unitTex[rfac][rti].id(),
+                                 ImVec2(72, 72), ImVec2(0, 0), ImVec2(0.125f, 1.0f));
+                    ImGui::SameLine();
+                }
+                ImGui::BeginGroup();
+                drawScoreBlock(m_finalScore, false);
+                ImGui::EndGroup();
+            }
         }
         ImGui::Spacing();
         ImGui::Separator();

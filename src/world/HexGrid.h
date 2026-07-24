@@ -22,7 +22,7 @@ struct HexCoordHash {
     }
 };
 
-// ── Flat-top hex layout (HoMM3 style) ─────────────────────────────────────────
+// ── Flat-top hex layout (classic-strategy style) ─────────────────────────────────────────
 // Flat-top: hexes have flat edges on top/bottom, pointy on left/right
 // Axial coordinate system — standard for hex grids
 

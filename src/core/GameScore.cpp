@@ -4,7 +4,7 @@
 
 const char* scoreRank(int score)
 {
-    // Original fantasy rank ladder (deliberately NOT HoMM3's hero names).
+    // Original fantasy rank ladder (deliberately NOT classic-strategy's hero names).
     if (score >= 1800) return "Immortal Sovereign";
     if (score >= 1300) return "Grand Marshal";
     if (score >=  900) return "Warlord";
@@ -12,6 +12,17 @@ const char* scoreRank(int score)
     if (score >=  350) return "Knight-Captain";
     if (score >=  150) return "Squire";
     return "Wandering Sellsword";
+}
+
+int scoreRankTier(int score)
+{
+    if (score >= 1800) return 6;
+    if (score >= 1300) return 6;
+    if (score >=  900) return 5;
+    if (score >=  600) return 4;
+    if (score >=  350) return 3;
+    if (score >=  150) return 2;
+    return 1;
 }
 
 GameScore computeGameScore(bool won, int days, int difficulty,
@@ -40,7 +51,7 @@ GameScore computeGameScore(bool won, int days, int difficulty,
     int subtotal = 0;
     for (auto& b : gs.breakdown) subtotal += b.second;
 
-    // Difficulty coefficient, applied last (HoMM3 does this too).
+    // Difficulty coefficient, applied last (classic-strategy does this too).
     static const float kMult[3] = { 0.8f, 1.0f, 1.3f };
     float mult = kMult[gs.difficulty];
     gs.score = static_cast<int>(std::lround(subtotal * mult));

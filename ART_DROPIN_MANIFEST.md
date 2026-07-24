@@ -81,7 +81,7 @@ slicing constants.
 
 ## 4. Multiple hero portraits also feed the right-click hero sheet (planned)
 
-When the "right-click hero → artifact/stats sheet (HoMM3-style)" UI is built,
+When the "right-click hero → artifact/stats sheet (classic-strategy-style)" UI is built,
 it will reuse the same `assets/portraits/faction_<F>_<N>.png` files as a large
 portrait. No extra art needed beyond #1 — just flagging so the portraits are
 generated at a size that still looks good enlarged (≥256×256 recommended).

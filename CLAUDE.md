@@ -1,7 +1,7 @@
 # Claude Code — Project Instructions
 
 ## Project overview
-HoMM3-style hex-grid strategy game. C++20 / SDL2 / OpenGL 3.3 Core / ImGui 1.90.8.
+classic-strategy-style hex-grid strategy game. C++20 / SDL2 / OpenGL 3.3 Core / ImGui 1.90.8.
 See `GAME_PROJECT.md` for full design document, `HANDOFF.md` for architecture.
 
 ## Branch — STRICT, NO EXCEPTIONS

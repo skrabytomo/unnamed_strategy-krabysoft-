@@ -155,7 +155,7 @@ void Game::renderMainMenu()
         }
         ImGui::Spacing();
 
-        // ── Player slots (HoMM-style lobby) ─────────────────────────────────
+        // ── Player slots (classic-strategy-style lobby) ─────────────────────────────────
         ImGui::Text("Players:");
         constexpr int kNumPlayerChoices = MAX_SETUP_SLOTS - 1; // 2..8
         float pcw = (bw - 4.0f * (kNumPlayerChoices - 1)) / kNumPlayerChoices;
@@ -919,7 +919,8 @@ void Game::renderMainMenu()
         };
 
         head("Unnamed Strategy");
-        ImGui::TextWrapped("A HoMM-inspired hex-grid turn-based strategy game.");
+        ImGui::TextWrapped("A hex-grid turn-based strategy game of conquest, "
+                           "town-building and heroic warfare.");
         ImGui::TextDisabled("Design, code & art direction: krabysoft");
 
         head("Built with");

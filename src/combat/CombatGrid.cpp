@@ -149,7 +149,7 @@ std::vector<HexCoord> CombatGrid::reachable(HexCoord from, int movePoints,
             if (!tile) continue;
             if (tile->type == CombatTileType::Obstacle) continue;
             // Intact walls stop ground troops dead; flyers sail OVER them
-            // (HoMM convention — wings are how you assault an unbreached
+            // (genre convention — wings are how you assault an unbreached
             // castle). Nobody may END a move on the battlements, so wall
             // tiles are traversed but never offered as destinations.
             bool wallTile = (tile->type == CombatTileType::Wall && tile->wallHP > 0);

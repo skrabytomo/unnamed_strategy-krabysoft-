@@ -23,7 +23,7 @@ void BuildingRegistry::init()
         b.description = "Walls + gate for siege defense, and +50% weekly unit growth";
         b.category = BuildingCategory::Fort;
         b.cost = goldAndRes(2000, ResourceType::Iron, 4);
-        b.growthMultPct = 50;   // HoMM3 Fort: +50% growth
+        b.growthMultPct = 50;   // classic-strategy Fort: +50% growth
         m_buildings.push_back(b);
     }
     {
@@ -33,7 +33,7 @@ void BuildingRegistry::init()
         b.category = BuildingCategory::Fort;
         b.cost = goldAndRes(2500, ResourceType::Iron, 5);
         b.prerequisites = {BID::FORT};
-        b.growthMultPct = 75;   // HoMM3 Citadel: +75% growth
+        b.growthMultPct = 75;   // classic-strategy Citadel: +75% growth
         m_buildings.push_back(b);
     }
     {
@@ -43,7 +43,7 @@ void BuildingRegistry::init()
         b.category = BuildingCategory::Fort;
         b.cost = goldAndRes(5000, ResourceType::Iron, 10);
         b.prerequisites = {BID::CITADEL};
-        b.growthMultPct = 100;  // HoMM3 Castle: +100% growth (double)
+        b.growthMultPct = 100;  // classic-strategy Castle: +100% growth (double)
         m_buildings.push_back(b);
     }
     {

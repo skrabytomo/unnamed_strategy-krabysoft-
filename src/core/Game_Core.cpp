@@ -1244,7 +1244,7 @@ void Game::startNewGame()
     // Reset campaign state so leftover campaign data doesn't affect skirmish
     m_campaign.reset();
 
-    // ── Resolve the setup slots (HoMM-style lobby) ────────────────────────────
+    // ── Resolve the setup slots (classic-strategy-style lobby) ────────────────────────────
     // Slot 0 = you. Humans are packed first (owner ids 1..N), bots follow —
     // downstream code (towns, AI start index) relies on that ordering.
     int  slotCount = std::clamp(m_setupPlayerCount, 2, MAX_SETUP_SLOTS);
