@@ -572,12 +572,35 @@ void Game::watchAiMovePlayerHero()
             // fight as weeks pass (135% → 100% by week 35), so a balanced
             // game still ends in sieges instead of a stalemate where neither
             // side ever feels strong enough to attack.
+            //
+            // The watched player used to score every enemy town a flat 150/200
+            // and divide by raw distance — so it "barely played," forever
+            // re-grabbing the nearest mine while distant capitals stayed buried
+            // under adjacent trinkets. Bring it to PARITY with the enemy AI:
+            // value scales with our own strength, a rival on their last town is
+            // a kill shot, and a gentler sqrt(dist) falloff lets a strong army
+            // commit to the long march instead of orbiting home.
             int reqPct = std::max(100, 135 - m_turns.week());
+            float strBoost = 1.f + std::min(8.f, (float)myStr / 60000.f);
             for (const auto& t : m_towns) {
                 if (t.ownerId == 1) continue;
                 int garStr = stacksStrength(t.garrison, udefs);
                 if (garStr > 0 && (int64_t)myStr * 100 < (int64_t)garStr * reqPct) continue;
-                add(t.pos, t.ownerId == 0 ? 150.f : 200.f);
+                float val;
+                if (t.ownerId == 0) {
+                    val = 150.f;                       // neutral/homeless town
+                } else {
+                    int rivalTowns = 0;
+                    for (const auto& t2 : m_towns)
+                        if (t2.ownerId == t.ownerId) ++rivalTowns;
+                    val = 600.f * strBoost;
+                    if (rivalTowns == 1)      val = 4200.f * strBoost; // elimination
+                    else if (rivalTowns == 2) val = 1500.f * strBoost;
+                }
+                // add() divides by dist; pre-multiply by sqrt(dist) so the
+                // effective falloff is 1/sqrt(dist), not 1/dist.
+                int d = std::max(1, HexGrid::distance(hero.pos, t.pos));
+                add(t.pos, val * std::sqrt((float)d));
             }
             // Resources — prioritise the mine type blocking our next build
             {
