@@ -3623,11 +3623,30 @@ void Game::doEndTurnPost(bool lastPlayerEndedTurn)
         // runs exactly once per game-week (hot-seat early-outs before
         // endTurn for all but the last player).
         {
+            // Difficulty finally means something for the AI's *economy*, not
+            // just the human's starting handicap. Higher difficulty grants the
+            // AI a flat income multiplier (classic-strategy does the same) so
+            // Hard fields bigger armies and builds faster — the AI actually
+            // gets stronger, instead of the game only making YOU weaker.
+            // Easy 90% / Normal 100% / Hard 130%. In watch mode every player is
+            // an AI, so the multiplier applies evenly and stays fair.
+            static const int kAiEconPct[3] = { 90, 100, 130 };
+            const int econPct = kAiEconPct[std::clamp(m_newGameDifficulty, 0, 2)];
             int aiTowns = 0, aiMines = 0;
             for (const auto& t : m_towns)
-                if (isAiOwner(t.ownerId)) { aiResources(t.ownerId).addAll(t.weeklyIncome); ++aiTowns; }
+                if (isAiOwner(t.ownerId)) {
+                    for (int ri = 0; ri < RESOURCE_COUNT; ++ri) {
+                        auto rt = static_cast<ResourceType>(ri);
+                        int inc = t.weeklyIncome.get(rt);
+                        if (inc) aiResources(t.ownerId).add(rt, inc * econPct / 100);
+                    }
+                    ++aiTowns;
+                }
             for (const auto& r : m_resources)
-                if (isAiOwner(r.ownedBy)) { aiResources(r.ownedBy).add(r.type, mineYield(r)); ++aiMines; }
+                if (isAiOwner(r.ownedBy)) {
+                    aiResources(r.ownedBy).add(r.type, mineYield(r) * econPct / 100);
+                    ++aiMines;
+                }
             int totalGold = 0, totalIron = 0;
             for (const auto& res : m_aiResources) {
                 totalGold += res.get(ResourceType::Gold);
@@ -8924,6 +8943,60 @@ void Game::renderKingdomPanel()
             ImGui::TreePop();
         }
         ImGui::PopID();
+    }
+
+    ImGui::Spacing();
+
+    // ── RIVAL HEROES (strongest first) ─────────────────────────────────────────
+    //    The panel used to show only your own heroes, so in Watch mode you could
+    //    never see the leading AI's actual army — only aggregate Str in the HUD.
+    //    List every rival hero ranked by strength, top one flagged, each with its
+    //    unit stacks so you can see WHAT the strongest player is fielding.
+    {
+        const auto& udefs = m_registry.units();
+        std::vector<const Hero*> rivals;
+        for (const auto& h : m_enemyHeroes)
+            if (!h.eliminated) rivals.push_back(&h);
+        std::sort(rivals.begin(), rivals.end(), [&](const Hero* a, const Hero* b){
+            return heroStrength(*a, udefs) > heroStrength(*b, udefs);
+        });
+        ImGui::TextColored({1.0f, 0.82f, 0.2f, 1.0f}, "RIVAL HEROES");
+        ImGui::Separator();
+        if (rivals.empty()) {
+            ImGui::TextDisabled("No rival heroes on the map.");
+        } else {
+            int shown = 0;
+            for (const Hero* rp : rivals) {
+                if (shown >= 8) break;               // keep the panel bounded
+                const Hero& h = *rp;
+                ImGui::PushID(9000 + shown);
+                ImTextureID port = factionPortrait(h.faction);
+                if (port) { ImGui::Image(port, {26, 26}); ImGui::SameLine(0, 6); }
+                bool isLeader = (shown == 0);
+                char hdr[160];
+                std::snprintf(hdr, sizeof(hdr),
+                    "%sP%u  %s  (Lv %d, Str %lld)%s",
+                    isLeader ? ">" : " ", h.ownerId, h.name.c_str(), h.level,
+                    (long long)heroStrength(h, udefs),
+                    isLeader ? "   <== STRONGEST" : "");
+                bool open = ImGui::TreeNodeEx(hdr,
+                    isLeader ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+                if (open) {
+                    ImGui::TextColored({0.9f, 0.75f, 0.75f, 1.0f}, "Army:");
+                    bool any = false;
+                    for (const auto& s : h.army) {
+                        if (s.count <= 0) continue;
+                        ImGui::SameLine(0, 8);
+                        drawUnitIcon(s.defId, s.count, 22.0f);
+                        any = true;
+                    }
+                    if (!any) { ImGui::SameLine(); ImGui::TextDisabled("(none)"); }
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
+                ++shown;
+            }
+        }
     }
 
     ImGui::Spacing();
