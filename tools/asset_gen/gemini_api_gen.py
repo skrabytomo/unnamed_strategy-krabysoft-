@@ -133,7 +133,7 @@ def main():
     here = os.path.dirname(os.path.abspath(__file__))
     ap = argparse.ArgumentParser(description="Generate game art via the official Google Generative Language API (stdlib only).")
     ap.add_argument("--manifest", default=os.path.join(here, "manifest.json"))
-    ap.add_argument("--only", choices=["hero", "icon", "town", "collage", "terrain", "dwelling", "all"], default="all")
+    ap.add_argument("--only", choices=["hero", "icon", "town", "collage", "terrain", "dwelling", "capsule", "all"], default="all")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--repo-root", default=os.path.abspath(os.path.join(here, "..", "..")))
     ap.add_argument("--force", action="store_true", help="regenerate even if the output PNG already exists")

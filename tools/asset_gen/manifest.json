@@ -1794,6 +1794,24 @@
       "wrap_prefix": "Generate a single fantasy building illustration, 1:1 square aspect ratio, one structure centered and fully in frame. ",
       "style": " Art style: isometric dark-fantasy strategy-game building illustration, painterly and richly detailed, dramatic lighting, on a plain dark background, the structure centered and complete, no ground tile, no text, no words, no watermark, no UI, no characters, no creatures.",
       "prompt": "A 'Harmonic Unity Forge', a Convergence (shifting prismatic crystal and floating runic platforms, many-colored arcane light) creature-dwelling / recruitment building."
+    },
+    {
+      "id": "capsule_hero_wide",
+      "kind": "capsule",
+      "out": "assets/store/key_art_wide.png",
+      "aspect": "16:9",
+      "wrap_prefix": "Generate a single piece of epic key art (NO text, NO logo, NO words anywhere in the image). ",
+      "style": " Art style: dramatic dark-fantasy strategy-game cover art, painterly and highly detailed, cinematic lighting, a sweeping hex-grid fantasy battlefield with clashing faction armies (holy knights, undead, demons, void-corrupted, iron machines) and heroes on a war-torn continent. Rich focal composition with clear empty space toward one side for a title to be added later. No text, no words, no watermark, no UI, no borders.",
+      "prompt": "A wide landscape hero shot: the massed armies of the nine factions converging on a central glowing hex citadel at dusk, banners and magic in the sky."
+    },
+    {
+      "id": "capsule_vertical",
+      "kind": "capsule",
+      "out": "assets/store/key_art_tall.png",
+      "aspect": "9:16",
+      "wrap_prefix": "Generate a single piece of epic key art (NO text, NO logo, NO words anywhere in the image). ",
+      "style": " Art style: dramatic dark-fantasy strategy-game cover art, painterly and highly detailed, cinematic lighting, a sweeping hex-grid fantasy battlefield with clashing faction armies (holy knights, undead, demons, void-corrupted, iron machines) and heroes on a war-torn continent. Rich focal composition with clear empty space toward one side for a title to be added later. No text, no words, no watermark, no UI, no borders.",
+      "prompt": "A tall portrait composition: a lone faction champion in the foreground overlooking a vast hex battlefield below, storm-lit sky above with room at the top for a title."
     }
   ]
 }

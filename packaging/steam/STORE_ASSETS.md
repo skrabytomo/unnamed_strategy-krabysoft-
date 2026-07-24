@@ -45,6 +45,22 @@ rest.
   (Google Gemini/Imagen) and edited by the developer."* Put the same line in the
   in-game credits.
 
+## Capsule KEY ART — generate it through the asset pipeline
+
+The capsule backgrounds are wired into `tools/asset_gen` like the rest of the
+art. Two master pieces (wide + tall, **no text** — the title/logo is composited
+on after) that you crop to every capsule size:
+
+```bash
+python gemini_api_gen.py --only capsule      # (or gemini_gen.py for the web UI)
+# -> assets/store/key_art_wide.png  (16:9 → header/main/library-hero crops)
+# -> assets/store/key_art_tall.png  (9:16 → vertical capsule/library capsule)
+```
+
+AI can't reliably render the game title, so these are deliberately text-free —
+add the logo yourself in an editor. Screenshots and the trailer still come from
+the running game (below); those aren't AI-generated.
+
 ## Tips for generating them
 
 - Screenshots: run the game at 1920×1080 and use the OS/Steam capture — no HUD-
