@@ -3757,7 +3757,17 @@ void Game::doEndTurnPost(bool lastPlayerEndedTurn)
                 if (poolGold < 50000)
                     budget.set(ResourceType::Gold, treeDone ? poolGold / 2 : poolGold / 4);
                 Resources before = budget;
-                int got = aiPaidRecruit(t, t.garrison, budget, unitDefs);
+                // Cap garrison growth so towns stay defended but BEATABLE.
+                // Unbounded weekly garrison recruiting made towns impregnable —
+                // a full-economy game hit week 80 with 0 captures because no
+                // hero could ever satisfy the garrison-strength gate. Once the
+                // garrison is a solid (week-scaled) wall, stop pouring units in;
+                // the units accumulate in the dwellings for a HERO to recruit
+                // and take to war instead of turtling in the town.
+                int64_t garStr = stacksStrength(t.garrison, unitDefs);
+                int64_t garCap = 40000LL + (int64_t)m_turns.week() * 12000LL;
+                int got = (garStr < garCap)
+                        ? aiPaidRecruit(t, t.garrison, budget, unitDefs) : 0;
                 if (got > 0) {
                     for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {
                         auto type = static_cast<ResourceType>(rt);
