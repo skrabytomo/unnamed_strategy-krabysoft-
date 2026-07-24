@@ -7,10 +7,13 @@ Detailed how-tos live in `packaging/steam/`.
 
 **Done (code/tooling):** engine, combat, towns, heroes, campaign, conquest,
 save/load, AI (idle fix + economy: build cadence, income priority, watched
-parity), all HUD/visual polish, classic-strategy-style score + highscores + results screens,
-achievements (7, wired), data-driven balance loading, in-game Credits (with AI
-disclosure) + How-to-Play, Steamworks SDK integration, SteamPipe packaging,
-full art-generation pipeline (every category), store-asset spec.
+parity; decisive conquest: elimination priority, beatable garrison cap,
+eased AI-vs-AI storm threshold so games resolve), all HUD/visual polish,
+classic-strategy-style score + highscores + results screens,
+achievements (7, wired), data-driven balance loading (editable JSON ships
+in `assets/data/`), in-game Credits (with AI disclosure) + How-to-Play,
+Steamworks SDK integration, SteamPipe packaging, full art-generation
+pipeline (every category), store-asset spec.
 
 **Blocked (needs a file from the dev, then code finishes it):**
 - [ ] Push one regenerated terrain tile → fix the full-bleed artifact
@@ -23,8 +26,10 @@ full art-generation pipeline (every category), store-asset spec.
       (kinds: terrain, dwelling, building, siege, hero, icon, town, collage,
       capsule). Use the **paid API** for clean commercial licensing.
 - [ ] **Tune balance** by editing `assets/data/units.json` / `buildings.json`
-      (seed them with `--export-content=assets/data`). Loads at startup, no
-      recompile. See `[BALANCE]` log line.
+      — these now ship in the repo, pre-seeded from the compiled defaults and
+      ready to edit. Loads at startup, no recompile. See `assets/data/README.md`
+      and the `[BALANCE]` log line. (Re-seed anytime with
+      `--export-content=assets/data`.)
 - [ ] **Playtest** a few full games start→finish: crashes, softlocks, balance,
       that towns finish their trees and armies grow (the AI economy fix).
 - [ ] **Store art**: generate the two capsule masters
