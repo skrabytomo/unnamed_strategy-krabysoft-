@@ -825,6 +825,26 @@ void Game::run()
         processEvents();
         update(dt);
         render();
+
+        // --watch-ai-test self-termination (setWatchAiAutoExit): end the
+        // process when the watched game resolves, or at the week cap. Only
+        // ever active in the hidden test mode — normal Watch games are
+        // unaffected. Exit reason is gLog'd so headless scripts can grep it.
+        if (m_watchAiAutoExit && m_watchingAI) {
+            if (m_showVictory || m_showDefeat) {
+                gLog("[WATCH-AI] game over (day %d week %d): %s\n",
+                     m_turns.day(), m_turns.week(),
+                     m_showVictory
+                         ? (m_victoryMessage.empty() ? "victory"
+                                                     : m_victoryMessage.c_str())
+                         : "defeat");
+                m_running = false;
+            } else if (m_watchAiMaxWeeks > 0 && m_turns.week() > m_watchAiMaxWeeks) {
+                gLog("[WATCH-AI] week cap reached (%d weeks) — exiting cleanly\n",
+                     m_watchAiMaxWeeks);
+                m_running = false;
+            }
+        }
     }
 }
 

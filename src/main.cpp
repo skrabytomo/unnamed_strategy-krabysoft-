@@ -27,6 +27,9 @@ int main(int argc, char* argv[])
     // combat RNGs all derive from it) so any run — watch-AI test or normal
     // game — is reproducible. Without it every run gets a time-based seed;
     // either way the chosen seed is logged as [SEED] at game start.
+    // --max-weeks=N (with --watch-ai-test): exit cleanly at the end of week N
+    // instead of running to game over — bounded headless verification runs.
+    // Either way the test self-terminates and logs the reason as [WATCH-AI].
     // --export-content=DIR dumps the hardcoded content registries (buildings,
     // units, factions, resources, terrain, asset inventory) to JSON in DIR and
     // exits. Runs before SDL init so it works headless / in CI. This is how
@@ -44,6 +47,7 @@ int main(int argc, char* argv[])
     int      watchPlayers = 6;
     int      watchShape   = 0;
     int      watchSize    = 0;
+    int      maxWeeks     = 0;   // --max-weeks=N: watch-ai-test week cap (0 = run to game over)
     bool     seedSet      = false;
     uint32_t seedVal      = 0;
     for (int i = 1; i < argc; ++i) {
@@ -51,6 +55,8 @@ int main(int argc, char* argv[])
         if (arg.rfind("--seed=", 0) == 0) {
             seedSet = true;
             seedVal = static_cast<uint32_t>(strtoul(arg.c_str() + 7, nullptr, 10));
+        } else if (arg.rfind("--max-weeks=", 0) == 0) {
+            maxWeeks = atoi(arg.c_str() + 12);
         } else if (arg.rfind("--watch-ai-test", 0) == 0) {
             watchAiTest = true;
             auto eq = arg.find('=');
@@ -85,7 +91,12 @@ int main(int argc, char* argv[])
         return 1;
     }
     if (seedSet)     game.setForcedSeed(seedVal);
-    if (watchAiTest) game.autoStartWatchAI(watchPlayers, watchShape, watchSize);
+    if (watchAiTest) {
+        game.autoStartWatchAI(watchPlayers, watchShape, watchSize);
+        // Test runs self-terminate: on game over, or at --max-weeks=N.
+        // Exit reason is gLog'd as [WATCH-AI] — grep-able from CI.
+        game.setWatchAiAutoExit(maxWeeks);
+    }
     game.run();
     game.shutdown();
     steam::shutdown();

@@ -71,6 +71,13 @@ public:
     // in main.cpp.
     void autoStartWatchAI(int playerCount = 6, int shape = 0, int size = 0);
 
+    // --watch-ai-test self-termination: quit the process when the watched
+    // game ends (victory/defeat), or at the end of week `maxWeeks` if > 0.
+    // Makes headless/CI verification runs one command with no babysitting —
+    // the exit reason is gLog'd as [WATCH-AI] so scripts can grep for it.
+    void setWatchAiAutoExit(int maxWeeks)
+        { m_watchAiAutoExit = true; m_watchAiMaxWeeks = maxWeeks; }
+
     // --seed CLI: force the next startNewGame()'s world seed (worldgen,
     // faction rolls, AI personalities, combat RNGs all derive from it), making
     // runs reproducible — the missing piece for A/B-testing AI changes and the
@@ -984,6 +991,8 @@ private:
 
     // ── Watch AI vs AI mode ────────────────────────────────────────────────────
     bool  m_watchingAI      = false;   // both sides controlled by AI
+    bool  m_watchAiAutoExit = false;   // --watch-ai-test: quit when game ends
+    int   m_watchAiMaxWeeks = 0;       // --max-weeks=N week cap (0 = no cap)
     // Watched-side heroes that already took their move this game-day (by id) —
     // survives combat interruption so no hero double-moves after a fight.
     std::vector<uint32_t> m_watchMovedThisDay;

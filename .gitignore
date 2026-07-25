@@ -15,7 +15,7 @@ unnamed_strategy-krabysoft-/
 dist/
 packaging/Output/
 session.log
-session.log
+diag_*.log
 imgui.ini
 sim_*.txt
 export/

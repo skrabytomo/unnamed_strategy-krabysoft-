@@ -20,7 +20,13 @@ pipeline (every category), store-asset spec.
       DONE 2026-07-25: 23-tile terrain batch landed; the black-gap artifact
       was renderer-side (missing mipmaps), fixed in `a65556f`. See
       `ART_MISSING_TERRAIN.md`.
-- [ ] Push a fresh `session.log` from a current build → verify AI economy
+- [x] ~~Push a fresh `session.log` from a current build → verify AI economy~~
+      DONE 2026-07-25: verified directly with a headless seeded run
+      (`--watch-ai-test=6 --seed=42` under Xvfb, current `main` build).
+      16 weeks: towns kept building every single week (all 6 towns, 14–22
+      builds each, still advancing trees at week 16), recruitment grew
+      18→~30 units/week, 9 town storms, heroes to level 5, AI turn avg
+      111 ms / max 547 ms. Economy confirmed healthy on a current build.
 
 ## 1. Dev tasks (no account/money needed — do these first)
 
