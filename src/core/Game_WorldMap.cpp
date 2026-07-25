@@ -478,14 +478,17 @@ static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
     // connectivity said reachable while A* ran out of nodes. This search
     // only runs when a hero actually wants passage, so the wider budget is
     // affordable.
-    // Modest budget on purpose. Two earlier attempts blamed these limits for
-    // the "no land route to the shipyard" failure and inflated them (maxNodes
-    // 120k, then maxCost 4000); neither produced a single boat and both made
-    // AI turns 5-6x slower (~110ms -> ~600-750ms), because the wasted searches
-    // were for docks on OTHER ISLANDS and explored the whole landmass before
-    // failing. The connectivity filter above removes those candidates outright,
-    // so what reaches this loop is genuinely walkable and a normal budget is
-    // enough. Do not raise these without evidence that a REACHABLE dock failed.
+    // Modest budget on purpose. Two attempts (2026-07-25) blamed these limits
+    // for the "no land route to the shipyard" failure and inflated them
+    // (maxNodes 120k, then maxCost 4000). Neither produced a single boat, so
+    // the limits were never the cause — reverted to a normal budget.
+    // Do not raise these without evidence that a REACHABLE dock failed.
+    //
+    // Correction to an earlier note here: those attempts were also blamed for a
+    // "5-6x AI turn slowdown". That was a measurement error — Ring-map turns
+    // were compared against Hexagon-map turns. The pre-change Ring baseline was
+    // already ~610-740ms (max 772ms), i.e. the same range. Ring maps are simply
+    // expensive; nothing here regressed it.
     constexpr int kDockMaxCost  = 1200;
     constexpr int kDockMaxNodes = 30000;
     size_t tries = 0;
