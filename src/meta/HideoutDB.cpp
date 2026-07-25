@@ -168,6 +168,25 @@ bool HideoutDB::unlockNextTier(const std::string& branch, int xpCost)
     // Deduct XP
     setInt("xp", getXP() - xpCost);
 
+    // Mark the matching tier milestone. Without this the Hideout screen lists
+    // seven milestones (Castle T1-3, Barracks T1-2, Vault T1-2) that nothing
+    // ever completes — half the milestone list was permanently unachievable
+    // even after buying the upgrade it names.
+    {
+        const char* ms = nullptr;
+        if (branch == HideoutBranch::CASTLE)
+            ms = (newTier == 1) ? Milestone::CASTLE_T1
+               : (newTier == 2) ? Milestone::CASTLE_T2
+               : (newTier == 3) ? Milestone::CASTLE_T3 : nullptr;
+        else if (branch == HideoutBranch::BARRACKS)
+            ms = (newTier == 1) ? Milestone::BARRACKS_T1
+               : (newTier == 2) ? Milestone::BARRACKS_T2 : nullptr;
+        else if (branch == HideoutBranch::VAULT)
+            ms = (newTier == 1) ? Milestone::VAULT_T1
+               : (newTier == 2) ? Milestone::VAULT_T2 : nullptr;
+        if (ms) completeMilestone(ms);
+    }
+
     // Check Convergence unlock condition
     if (isConvergenceUnlocked() && !isMilestoneComplete(Milestone::CONVERGENCE_UNLOCK))
         completeMilestone(Milestone::CONVERGENCE_UNLOCK);
@@ -190,9 +209,39 @@ bool HideoutDB::isMilestoneComplete(const std::string& name) const
     return done;
 }
 
+// One-time XP paid the first time a GAMEPLAY milestone completes. Milestones
+// used to be inert badges: reaching hero level 10 or surviving to week 10 moved
+// the hideout not at all, so the only way to progress was grinding battles at
+// 50 XP each. Paying them out gives the meta-layer more than one pace.
+// Upgrade-tier milestones are deliberately absent — they are *bought* with XP,
+// so refunding XP for them would be circular.
+int HideoutDB::milestoneReward(const std::string& name)
+{
+    if (name == Milestone::FIRST_BATTLE_WON)    return 25;
+    if (name == Milestone::FIRST_TOWN_CAPTURED) return 75;
+    if (name == Milestone::HERO_LEVEL_5)        return 100;
+    if (name == Milestone::HERO_LEVEL_10)       return 250;
+    if (name == Milestone::WEEK_10_REACHED)     return 100;
+    if (name == Milestone::CAMPAIGN_WON)        return 300;
+    if (name == Milestone::GAME_WON)            return 200;
+    return 0;
+}
+
 void HideoutDB::completeMilestone(const std::string& name)
 {
     if (!m_db) return;
+    // Award the first-completion bonus BEFORE writing, while the "was it
+    // already done?" answer is still meaningful. completeMilestone is called
+    // unconditionally from gameplay (every battle won, every town captured),
+    // so without this guard the reward would be paid every single time.
+    if (!isMilestoneComplete(name)) {
+        int reward = milestoneReward(name);
+        if (reward > 0) {
+            addXP(reward);
+            gLog("HideoutDB: milestone '%s' first completion — +%d XP\n",
+                 name.c_str(), reward);
+        }
+    }
     const char* sql =
         "INSERT INTO hideout_milestones(name, completed, completed_at) "
         "VALUES(?1, 1, datetime('now')) "

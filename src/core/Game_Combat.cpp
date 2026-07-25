@@ -2313,6 +2313,19 @@ void Game::exitCombat(bool playerWon)
                 m_showVictory = true;
                 m_audio.playSound("victory");
                 steam::unlockAchievement("ACH_WIN_GAME");
+                // Winning the whole game used to pay NO hideout XP — only the
+                // +50 per individual battle. You could conquer an entire map
+                // and the meta-layer would not notice. Pay a real reward,
+                // scaled by difficulty so Hard is worth playing, plus the
+                // one-time GAME_WON milestone bonus.
+                if (m_hideout.isOpen()) {
+                    static constexpr int kWinXP[3] = { 150, 250, 400 }; // Easy/Normal/Hard
+                    int diffIdx = std::clamp(m_newGameDifficulty, 0, 2);
+                    m_hideout.addXP(kWinXP[diffIdx]);
+                    m_hideout.completeMilestone(Milestone::GAME_WON);
+                    gLog("Hideout: game won on difficulty %d — +%d XP\n",
+                         diffIdx, kWinXP[diffIdx]);
+                }
             }
         }
         // Check if any other human player was just eliminated

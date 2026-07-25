@@ -35,6 +35,7 @@ namespace Milestone
     inline constexpr const char* HERO_LEVEL_10      = "hero_level_10";
     inline constexpr const char* WEEK_10_REACHED    = "week_10_reached";
     inline constexpr const char* CAMPAIGN_WON       = "campaign_won";
+    inline constexpr const char* GAME_WON           = "game_won";
 }
 
 // ── HideoutDB ─────────────────────────────────────────────────────────────────
@@ -64,7 +65,13 @@ public:
 
     // ── Milestones ────────────────────────────────────────────────────────────
     bool isMilestoneComplete(const std::string& name) const;
+    // Marks a milestone done. The FIRST completion of a gameplay milestone also
+    // pays milestoneReward() XP, so milestones drive progression instead of
+    // being inert badges. Safe to call repeatedly — the bonus is paid once.
     void completeMilestone(const std::string& name);
+    // One-time XP for first completion; 0 for upgrade-tier milestones (those
+    // are bought with XP, so paying XP back would be circular).
+    static int milestoneReward(const std::string& name);
 
     // ── Convergence unlock check ──────────────────────────────────────────────
     // Returns true if Castle T2 + Barracks T1 + Vault T1 are all complete

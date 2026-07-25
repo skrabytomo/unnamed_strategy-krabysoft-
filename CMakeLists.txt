@@ -324,3 +324,21 @@ if(WIN32)
     set(CPACK_CREATE_DESKTOP_LINKS "${PROJECT_NAME}")
 endif()
 include(CPack)
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+# Small, dependency-light checks for logic that is easy to break silently.
+# Build with -DBUILD_TESTS=ON, then run: ctest --test-dir build --output-on-failure
+option(BUILD_TESTS "Build unit tests" OFF)
+if (BUILD_TESTS)
+    enable_testing()
+    # Hideout meta-progression: milestone XP must pay exactly once, and buying
+    # an upgrade tier must complete its milestone. Both were broken before
+    # 2026-07-25 and neither is visible without playing many full games.
+    add_executable(test_hideout
+        tests/test_hideout.cpp
+        src/meta/HideoutDB.cpp
+        src/core/DevLog.cpp)
+    target_include_directories(test_hideout PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    target_link_libraries(test_hideout PRIVATE ${SQLITE_TARGET})
+    add_test(NAME hideout_progression COMMAND test_hideout)
+endif()

@@ -155,6 +155,7 @@ void HideoutScreen::drawMilestones(HideoutDB& db)
         { Milestone::HERO_LEVEL_5,       "Hero reached level 5" },
         { Milestone::HERO_LEVEL_10,      "Hero reached level 10" },
         { Milestone::WEEK_10_REACHED,    "Survived to week 10" },
+        { Milestone::GAME_WON,           "Won a game" },
         { Milestone::CAMPAIGN_WON,       "The Fracture campaign completed" },
         // Hideout upgrades
         { Milestone::CASTLE_T1,          "Castle Tier 1 unlocked" },
@@ -174,10 +175,18 @@ void HideoutScreen::drawMilestones(HideoutDB& db)
     ImGui::Spacing();
 
     for (auto& e : ENTRIES) {
-        bool done = db.isMilestoneComplete(e.key);
+        bool done   = db.isMilestoneComplete(e.key);
+        int  reward = HideoutDB::milestoneReward(e.key);
         if (done)
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "[x] %s", e.desc);
         else
             ImGui::TextDisabled("[ ] %s", e.desc);
+        // Show what an unearned milestone is worth, so the screen reads as
+        // "here is how to progress" rather than a list of badges.
+        if (reward > 0) {
+            ImGui::SameLine();
+            if (done) ImGui::TextDisabled("(+%d XP claimed)", reward);
+            else      ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "(+%d XP)", reward);
+        }
     }
 }
