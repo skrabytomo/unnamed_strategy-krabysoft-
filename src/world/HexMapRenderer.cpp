@@ -242,8 +242,11 @@ bool HexMapRenderer::init(float hexSize, const std::string& basePath,
             std::string full = basePath + rel;
             // quiet=true: probing for the next variant, a miss just means
             // "no more variants" — not an error worth logging.
-            if (m_terrainTex[i][v].load(full, false, false, false, mirror, true) ||
-                (!basePath.empty() && m_terrainTex[i][v].load(rel, false, false, false, mirror, true))) {
+            // mipmap=true: map-zoom hexes are ~40 px but source art is up to
+            // 1024² — without a mip chain that ~25× minification speckles dark
+            // texels along hex edges, which reads as black gaps between tiles.
+            if (m_terrainTex[i][v].load(full, false, false, false, mirror, true, true) ||
+                (!basePath.empty() && m_terrainTex[i][v].load(rel, false, false, false, mirror, true, true))) {
                 m_variantCount[i]++;
             } else {
                 break; // stop at first missing variant
@@ -253,8 +256,8 @@ bool HexMapRenderer::init(float hexSize, const std::string& basePath,
         if (m_variantCount[i] == 0) {
             std::string rel  = std::string(s_terrainBase[i]) + ".png";
             std::string full = basePath + rel;
-            if (m_terrainTex[i][0].load(full, false, false, false, mirror) ||
-                (!basePath.empty() && m_terrainTex[i][0].load(rel, false, false, false, mirror)))
+            if (m_terrainTex[i][0].load(full, false, false, false, mirror, false, true) ||
+                (!basePath.empty() && m_terrainTex[i][0].load(rel, false, false, false, mirror, false, true)))
                 m_variantCount[i] = 1;
         }
         if (m_variantCount[i] > 0) loaded++;
