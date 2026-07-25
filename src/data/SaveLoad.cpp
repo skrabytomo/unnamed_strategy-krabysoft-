@@ -7,8 +7,10 @@
 using json = nlohmann::json;
 
 // ── HexCoord serialization ────────────────────────────────────────────────────
-static json coordToJson(int q, int r)  { return {{"q", q}, {"r", r}}; }
-static void jsonToCoord(const json& j, int& q, int& r)
+// Currently unreferenced: coords are serialized inline at each call site.
+// Kept as the canonical shape if that is ever centralised again.
+[[maybe_unused]] static json coordToJson(int q, int r)  { return {{"q", q}, {"r", r}}; }
+[[maybe_unused]] static void jsonToCoord(const json& j, int& q, int& r)
 {
     q = j.at("q").get<int>();
     r = j.at("r").get<int>();

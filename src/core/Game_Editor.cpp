@@ -86,7 +86,6 @@ void Game::renderEditor()
     // Clip bounds for the overlay (avoid panels: left 200, right 200, top 70)
     const float CLIP_LEFT   = 200.f;
     const float CLIP_RIGHT  = (float)(sw - 200);
-    const float CLIP_TOP    = 70.f;
     const float CLIP_BOTTOM = (float)(sh - 20);
 
     auto inView = [&](float sx, float sy) {

@@ -148,6 +148,7 @@ struct Hero
     HexCoord marchFailGoal{};
     int      marchFailTurn = -1000000;   // linear turn stamp (week*7 + day)
     int  boatCount = 0;      // boats built so far (cost escalates per boat)
+    int  boatFailWeek = -1;  // last week we logged "wanted passage but couldn't"
 
     // Specialty progression: tracked stats for specialty effects
     int battlesWon = 0;         // total combat victories (Veteran specialty)

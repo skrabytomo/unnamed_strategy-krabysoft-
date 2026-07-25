@@ -356,28 +356,52 @@ static int dwellingPaidRecruit(WorldObject& obj, std::vector<UnitStack>& into,
 // On the shipyard tile: buy (if affordable). Otherwise: return a path to it.
 // Returns true if `outPath` was filled (caller keeps moving); buying returns
 // false so the caller re-scores candidates with water now traversable.
+// Why a hero that wanted passage didn't get it. Naval failures used to be
+// completely silent, which is how "every town built a Shipyard, no hero ever
+// sailed" survived a full 80-week game unnoticed. The caller logs this at most
+// once per hero per week.
+enum class BoatFail { None, NoDock, NoCoast, NoGold, NoPathToDock };
+static BoatFail g_lastBoatFail = BoatFail::None;
+static const char* boatFailName(BoatFail f)
+{
+    switch (f) {
+        case BoatFail::NoDock:       return "no allied Shipyard town exists";
+        case BoatFail::NoCoast:      return "shipyard town has no free adjacent water tile";
+        case BoatFail::NoGold:       return "cannot afford a hull";
+        case BoatFail::NoPathToDock: return "no land route to the shipyard";
+        case BoatFail::None:         break;
+    }
+    return "ok";
+}
+
 static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
                       const std::vector<HexCoord>& townDocks,
                       Hero& hero, Resources& payer,
                       const Pathfinder::CostFn& costFn,
                       std::vector<HexCoord>& outPath)
 {
+    g_lastBoatFail = BoatFail::None;
     if (hero.onBoat) return false;
     // Nearest boat source: a coastal Shipyard object OR an owned town that
     // built the Shipyard structure.
-    HexCoord dockPos{0, 0};
-    bool found = false;
-    int bestD = INT_MAX;
-    for (auto& obj : objs) {
-        if (obj.type != WorldObjectType::Shipyard) continue;
-        int d = HexGrid::distance(hero.pos, obj.pos);
-        if (d < bestD) { bestD = d; dockPos = obj.pos; found = true; }
-    }
-    for (const auto& dp : townDocks) {
-        int d = HexGrid::distance(hero.pos, dp);
-        if (d < bestD) { bestD = d; dockPos = dp; found = true; }
-    }
-    if (!found) return false;
+    // Gather EVERY dock, nearest first. Committing to only the closest one by
+    // hex distance meant a single unroutable dock (across a bay, behind
+    // mountains) killed naval movement outright even with usable docks
+    // further away — measured as "wants passage (1 dock) but no land route
+    // to the shipyard", repeating for the rest of the game.
+    std::vector<std::pair<int, HexCoord>> allDocks;
+    for (auto& obj : objs)
+        if (obj.type == WorldObjectType::Shipyard)
+            allDocks.push_back({HexGrid::distance(hero.pos, obj.pos), obj.pos});
+    for (const auto& dp : townDocks)
+        allDocks.push_back({HexGrid::distance(hero.pos, dp), dp});
+    if (allDocks.empty()) { g_lastBoatFail = BoatFail::NoDock; return false; }
+    std::sort(allDocks.begin(), allDocks.end(),
+              [](const auto& a, const auto& b){ return a.first < b.first; });
+
+    // Distance to the nearest dock — 0 means the hero is standing on it and
+    // boards below; the destination itself is chosen in the reachability loop.
+    int bestD = allDocks.front().first;
 
     if (bestD == 0) {
         // Hull choice: a rich side buys a War hull (it sinks anything it meets
@@ -405,7 +429,10 @@ static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
                     launch = nb; haveLaunch = true; break;
                 }
             }
-            if (!haveLaunch) return false;   // dock has no free coast tile
+            if (!haveLaunch) {               // dock has no free coast tile
+                g_lastBoatFail = BoatFail::NoCoast;
+                return false;
+            }
             payer.add(ResourceType::Gold, -goldCost);
             if (HexTile* oldT = map.getTile(hero.pos)) oldT->heroId = 0;
             hero.pos     = launch;
@@ -414,10 +441,23 @@ static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
             if (HexTile* nT = map.getTile(hero.pos)) nT->heroId = hero.id;
             gLog("%s launched a boat at shipyard (-%dg)\n", hero.name.c_str(), goldCost);
         }
+        else g_lastBoatFail = BoatFail::NoGold;
         return false;  // re-score: hero is afloat now
     }
-    outPath = Pathfinder::find(map, hero.pos, dockPos, costFn);
-    return !outPath.empty();
+    // Walk the dock list nearest-first and take the first one we can actually
+    // reach, instead of failing on the closest unroutable one. Capped so a
+    // hero with many docks doesn't pay for a dozen A* searches every turn.
+    constexpr size_t kMaxDockTries = 4;
+    size_t tries = 0;
+    for (const auto& [d, dp] : allDocks) {
+        if (d == 0) continue;                 // handled by the bestD==0 branch
+        if (++tries > kMaxDockTries) break;
+        outPath = Pathfinder::find(map, hero.pos, dp, costFn);
+        if (!outPath.empty()) return true;
+    }
+    g_lastBoatFail = BoatFail::NoPathToDock;
+    outPath.clear();
+    return false;
 }
 
 // Starting retinue for a hired hero — same formula the human tavern uses
@@ -3053,9 +3093,18 @@ bool Game::aiTakeHeroTurn(int ehi)
         }
         g_pathNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
                         std::chrono::steady_clock::now() - tPathStart).count();
+        // An enemy town ALWAYS justifies passage, whatever its score.
+        // Scores are distance-diluted (add() divides by hex distance), so an
+        // overseas capital 50 hexes away scores ~600/sqrt(50) = 85 — under the
+        // flat 150 gate, which silently made naval conquest impossible beyond
+        // ~16 hexes. Measured 2026-07-25 on a Ring map: all six towns built
+        // Shipyards, heroes wanted passage all game, and not one boat was ever
+        // bought — every AI farmed its own island to the week-80 backstop with
+        // 5 of 6 players still alive. The score gate still guards non-town
+        // targets so heroes don't buy boats to chase a distant mine.
         bool wantBoatForBestTarget =
             (!cands.empty() && !eHero.onBoat && !bestReachable
-             && cands[0].score >= 150.f);
+             && (topIsEnemyTown || cands[0].score >= 150.f));
         // Everything unreachable by land, OR the best target needs a
         // boat: buy passage across the water.
         if (path.empty() || wantBoatForBestTarget) {
@@ -3082,8 +3131,20 @@ bool Game::aiTakeHeroTurn(int ehi)
             HexCoord seaTarget{};
             bool haveSeaTarget = false;
             if (!cands.empty()) { seaTarget = cands[0].pos; haveSeaTarget = true; }
-            if (aiTryBoat(m_map, m_worldObjects, docks, eHero,
-                           aiResources(eHero.ownerId), costFn, boatPath)) {
+            bool gotBoatPath = aiTryBoat(m_map, m_worldObjects, docks, eHero,
+                                         aiResources(eHero.ownerId), costFn, boatPath);
+            // Surface WHY passage failed — once per hero per week, so a stalled
+            // naval game says so in the log instead of looking like the AI
+            // simply chose not to sail.
+            if (!gotBoatPath && !eHero.onBoat && wantBoatForBestTarget
+                && g_lastBoatFail != BoatFail::None
+                && eHero.boatFailWeek != m_turns.week()) {
+                eHero.boatFailWeek = m_turns.week();
+                gLog("[NAVAL] P%u %s wants passage (%zu dock(s)) but %s\n",
+                     eHero.ownerId, eHero.name.c_str(), docks.size(),
+                     boatFailName(g_lastBoatFail));
+            }
+            if (gotBoatPath) {
                 path = boatPath;   // head to the dock
             } else if (!wasOnBoat && eHero.onBoat) {
                 // Just BOARDED at the dock this call. aiTryBoat returns

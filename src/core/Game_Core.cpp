@@ -351,13 +351,8 @@ bool Game::init(const std::string& title, int width, int height, bool hidden)
     // Load building category icon atlas
     m_buildingIconTex.load(m_basePath + "assets/buildings/icons_buildings.png", true, false);
 
-    // Load per-faction single-tier building art (3x3 spritesheet, row-major faction order)
-    static const struct { const char* dir; const char* base; } kFactionBuildings[] = {
-        { "fort",      "fort"      },
-        { "market",    "market"    },
-        { "town_hall", "town_hall" },
-        { "city_hall", "city_hall" },
-    };
+    // Per-faction single-tier building art is loaded by the explicit
+    // per-category loops below; the old shared table is gone.
     auto loadFactionTiles = [&](Texture* tex, const char* dir, const char* base) {
         for (int f = 0; f < NUM_FACTIONS; ++f) {
             char buf[128];
@@ -1880,7 +1875,6 @@ void Game::startNewGame()
 
         HexCoord startPos = m_heroes.empty() ? HexCoord{0,0} : m_heroes[0].pos;
         // Pick a tile — prefer tiles within minDist..maxDist of start (for first N objects)
-        int nearPickCount = 0;
         auto pickTile = [&](int minDist = 0, int maxDist = 999) -> HexCoord {
             for (auto& c : allCoords) {
                 const HexTile* t = m_map.getTile(c);

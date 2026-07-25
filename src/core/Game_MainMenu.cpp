@@ -35,7 +35,10 @@ static const char* factionShortName(int factionId)
     }
 }
 
-static SlotMeta readSlotMeta(const std::string& path)
+// Unreferenced today — scaffolding for a save-slot picker that shows
+// day/week/hero/faction per slot. Left in place (not deleted) because the
+// struct above describes exactly what such a picker needs.
+[[maybe_unused]] static SlotMeta readSlotMeta(const std::string& path)
 {
     SlotMeta m;
     GameSaveData data;
