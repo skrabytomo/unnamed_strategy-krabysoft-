@@ -362,6 +362,10 @@ static int dwellingPaidRecruit(WorldObject& obj, std::vector<UnitStack>& into,
 // once per hero per week.
 enum class BoatFail { None, NoDock, NoCoast, NoGold, NoPathToDock };
 static BoatFail g_lastBoatFail = BoatFail::None;
+// Distance to the dock we gave up on, so the log distinguishes "my own dock is
+// 4 hexes away and something is blocking the tile" from "it is 90 hexes away
+// across an ocean".
+static int      g_lastBoatDockDist = -1;
 static const char* boatFailName(BoatFail f)
 {
     switch (f) {
@@ -456,6 +460,7 @@ static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
         if (!outPath.empty()) return true;
     }
     g_lastBoatFail = BoatFail::NoPathToDock;
+    g_lastBoatDockDist = allDocks.front().first;
     outPath.clear();
     return false;
 }
@@ -3140,9 +3145,12 @@ bool Game::aiTakeHeroTurn(int ehi)
                 && g_lastBoatFail != BoatFail::None
                 && eHero.boatFailWeek != m_turns.week()) {
                 eHero.boatFailWeek = m_turns.week();
-                gLog("[NAVAL] P%u %s wants passage (%zu dock(s)) but %s\n",
-                     eHero.ownerId, eHero.name.c_str(), docks.size(),
-                     boatFailName(g_lastBoatFail));
+                gLog("[NAVAL] P%u %s at (%d,%d) wants passage (%zu dock(s)) but %s"
+                     " [nearest dock %d hexes, sameLandmass=%d]\n",
+                     eHero.ownerId, eHero.name.c_str(), eHero.pos.q, eHero.pos.r,
+                     docks.size(), boatFailName(g_lastBoatFail),
+                     g_lastBoatDockDist,
+                     (!docks.empty() && !routeImpossible(false, eHero.pos, docks[0])) ? 1 : 0);
             }
             if (gotBoatPath) {
                 path = boatPath;   // head to the dock
