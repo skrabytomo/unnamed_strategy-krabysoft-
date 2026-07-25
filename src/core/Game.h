@@ -206,6 +206,10 @@ private:
         ResourceType denialRes = ResourceType::Gold;
         int  aggrPct = 5, retreatPct = 4;
         std::unordered_map<uint32_t, ResourceType> aiNeededResByOwner;
+        // Tech scouting #3 (AI_ROADMAP): owners whose treasury is 50–99% of
+        // a big economy/fort purchase (City Hall / Capitol / Castle) — rivals
+        // read the hoard and raid these owners' gold mines to break the save.
+        std::unordered_set<uint32_t> hoardingOwners;
         struct RivalHero { HexCoord pos; int str; uint32_t ownerId; };
         std::vector<RivalHero> allHeroesForTargeting;
         std::vector<int> heroRank;          // 0=raider,1=economic,2+=defender

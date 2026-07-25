@@ -8,6 +8,36 @@
 Everything below the addendum is still broadly accurate for architecture, but a
 lot has shipped since it was written. Current reality:
 
+**Shipped 2026-07-25 (this session):**
+- **Terrain art regen landed** — the 23-tile Gemini batch is on main; every
+  manifest terrain target exists. The "black gaps between tiles" artifact was
+  diagnosed as renderer-side (terrain textures loaded WITHOUT mipmaps — ~40px
+  hexes minifying 1024² art speckled dark texels at hex edges) and fixed by
+  enabling the mip chain in `HexMapRenderer.cpp`. The art was never the
+  problem — see `ART_MISSING_TERRAIN.md` before ever "regenerating to fix
+  seams" again.
+- **Watch-AI test runs self-terminate** — `--watch-ai-test` exits on game
+  over; `--max-weeks=N` caps a run; exit reason logged as `[WATCH-AI]`.
+  `scripts/verify_ai.sh [WEEKS] [SEED]` is the one-command headless economy
+  check (auto-xvfb) — prints builds/recruits per week and fails on a
+  zero-build week. AI economy verified healthy this way (16 weeks, seed 42).
+- **AI tech scouting** (Psychic Bundle #2+#3 — see `AI_ROADMAP.md`): pre-wall
+  strike window on unwalled rival towns (`[SCOUT]` log tag), caster-wary
+  hunting vs owners with T3/T4 mage guilds, and resource-hoarding prediction
+  (owners saving 50–99% toward City Hall/Capitol/Castle get their gold mines
+  raid-boosted to break the save).
+- **session.log untracked** (was in .gitignore but still tracked — kept
+  dirtying the tree and breaking rebases). Logs are stdout-only; redirect to
+  a file if you need one.
+- **README.md** added (repo had none); **UNIT_ROLES.md** generated from
+  units.json for the sprite design-match check — flags that 4 of 9 factions
+  field zero ranged units.
+- **Art gaps remaining** (all already in `tools/asset_gen/manifest.json`, so
+  one `gemini_gen.py` run fills them): the whole `eternal_empire/` dwelling
+  folder (18), `holy_order/Squire Barracks.png`, `crimson_wardens/Warden
+  Commander (B).png`, 16 new terrain variants, 11 hero portraits, 3 collages,
+  2 capsules, 1 icon.
+
 **Shipped since original handoff:**
 - **Conquest mode** — full 5-phase persistent progression mode (SQLite-backed):
   permanent hero, weekly seeded node maps, chests + collection pool, 6-slot

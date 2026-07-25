@@ -1981,6 +1981,50 @@ void Game::aiTurnSetup()
         }
     }
 
+    // ── Tech scouting #3: resource-hoarding prediction (AI_ROADMAP) ──────────
+    // Read every owner's treasury against the big purchases still open to
+    // them (City Hall → faction Capitol chain, or Castle walls). An owner
+    // sitting at 50–99% of such a cost is saving up — the raid window where
+    // cutting their gold line forces emergency spending. Below 50% a raid
+    // barely matters; at 100% they buy next tick and the window is gone.
+    S.hoardingOwners.clear();
+    {
+        const auto& allDefs = m_registry.buildings();
+        auto goldCost = [&](int bid) -> int {
+            for (const auto& d : allDefs)
+                if (d.id == bid) return d.cost.get(ResourceType::Gold);
+            return 0;
+        };
+        for (const auto& t : m_towns) {
+            if (t.ownerId == 0 || S.hoardingOwners.count(t.ownerId)) continue;
+            int gold = (t.ownerId == 1)
+                     ? m_playerResources.get(ResourceType::Gold)
+                     : (isAiOwner(t.ownerId)
+                            ? (int)aiResources(t.ownerId).get(ResourceType::Gold)
+                            : -1);
+            if (gold < 0) continue;
+            int tfi = static_cast<int>(t.faction);
+            int cheapest = 0;
+            auto consider = [&](int bid) {
+                int c = goldCost(bid);
+                if (c > 0 && (cheapest == 0 || c < cheapest)) cheapest = c;
+            };
+            if (t.hasBuilding(BID::TOWN_HALL) && !t.hasBuilding(BID::CITY_HALL))
+                consider(BID::CITY_HALL);
+            if (tfi >= 0 && tfi < 9 && t.hasBuilding(BID::CITY_HALL)
+                && !t.hasBuilding(13 + tfi))            // faction Capitol
+                consider(13 + tfi);
+            if (t.hasBuilding(BID::CITADEL) && !t.hasBuilding(BID::CASTLE))
+                consider(BID::CASTLE);
+            if (cheapest > 0 && gold * 2 >= cheapest && gold < cheapest) {
+                S.hoardingOwners.insert(t.ownerId);
+                if (m_turns.day() == 1)   // once a week, not every day
+                    gLog("[SCOUT] P%u is hoarding (%dg toward a %dg purchase) — "
+                         "gold mines marked for raids\n", t.ownerId, gold, cheapest);
+            }
+        }
+    }
+
     // Difficulty tunes how boldly the AI commits. Hard attacks at a lower
     // strength ratio and retreats less readily; Easy is more timid.
     int diffIdx = std::clamp(m_newGameDifficulty, 0, 2);
@@ -2084,6 +2128,7 @@ bool Game::aiTakeHeroTurn(int ehi)
     auto& allHeroesForTargeting = S.allHeroesForTargeting;
     auto& heroRank          = S.heroRank;
     auto& aiNeededResByOwner = S.aiNeededResByOwner;
+    auto& hoardingOwners    = S.hoardingOwners;
     using RivalHero = AiTurnState::RivalHero;
     // Nearest RIVAL (any owner other than selfOwnerId or an ally) — human or bot.
     auto nearestRival = [&](HexCoord from, uint32_t selfOwnerId, int& outStr) -> const RivalHero* {
@@ -2570,6 +2615,12 @@ bool Game::aiTakeHeroTurn(int ehi)
                     if (r.type == enemyKeyRes)  val = std::max(val, 110.f);
                     // Mine type blocking our own build queue wins
                     if (r.type == myNeededRes)  val = std::max(val, 180.f);
+                    // Tech scouting #3: this mine's owner is one purchase
+                    // away from a big building — cut their gold line NOW
+                    // to force emergency spending (see aiTurnSetup).
+                    if (r.ownedBy != 0 && r.type == ResourceType::Gold
+                        && hoardingOwners.count(r.ownedBy))
+                        val = std::max(val, 200.f);
                     addMine(r.pos, val);
                 }
             }

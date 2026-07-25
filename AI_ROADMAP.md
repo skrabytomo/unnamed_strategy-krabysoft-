@@ -80,9 +80,14 @@ lag/refactor traps. Recommended build order:
      spells are hero-cast here, the caster isn't a unit on the board.
    There is no literal build *queue* (builds are instant), so scouting reads
    built tech — same payoff.
-3. [FITS] **Resource-hoarding prediction** — AI tracks the player's gold/turn and
-   treasury. When the player is ~1 purchase away from a big building (e.g.
-   Capitol), the AI times a mine raid to force emergency spending. High payoff.
+3. [SHIPPED 2026-07-25] **Resource-hoarding prediction** — `aiTurnSetup`
+   reads every owner's treasury against the big purchases still open to them
+   (City Hall → faction Capitol, or Castle). At 50–99% of the cheapest such
+   cost the owner is "hoarding" (`S.hoardingOwners`, logged weekly as
+   `[SCOUT] P<n> is hoarding`), and rivals' mine scoring boosts that owner's
+   GOLD mines to 200 (above key-resource denial, below own-build-blocker) —
+   the raid lands in the window where it forces emergency spending. Below
+   50% a raid barely matters; at 100% they buy next tick, window gone.
 4. [FITS] **Strategic town abandonment** — AI evaluates each town's
    defend-cost vs income; pulls troops from a remote low-value town instead of
    dying to defend it, redeploying to the real fight.
