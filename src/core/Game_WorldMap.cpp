@@ -198,6 +198,38 @@ static bool isWatchSupportName(const std::string& n)
     return n == "Supply Courier" || n == "Scout Rider" || n == "Scout Vanguard";
 }
 
+// ── Tech scouting #4: strategic town abandonment (AI_ROADMAP) ─────────────────
+// A town is a WRITE-OFF when a non-allied hero within striking range (8 hexes)
+// fields at least 3x the strength that would defend it (current garrison plus
+// extraDefStr — pass a rescuing hero's strength to ask "even with me?"), AND
+// the owner holds a better-developed town elsewhere. Pouring gold or a rescue
+// hero into that fight is throwing value away; the AI redeploys instead.
+// Never true for the owner's last town or most-built town — those fights are
+// existential and are always taken.
+bool Game::aiTownIsWriteOff(const Town& t, int extraDefStr,
+                            const std::vector<UnitDef>& defs) const
+{
+    int owned = 0;
+    size_t bestBuilt = 0;
+    for (const auto& o : m_towns)
+        if (o.ownerId == t.ownerId) {
+            ++owned;
+            bestBuilt = std::max(bestBuilt, o.builtBuildings.size());
+        }
+    if (owned <= 1) return false;                      // last town: fight for it
+    if (t.builtBuildings.size() >= bestBuilt) return false; // best town: keep it
+    int64_t defStr = (int64_t)stacksStrength(t.garrison, defs) + extraDefStr;
+    auto overwhelms = [&](const Hero& h) {
+        return !h.eliminated
+            && !isAllied(h.ownerId, t.ownerId)
+            && HexGrid::distance(h.pos, t.pos) <= 8
+            && (int64_t)heroStrength(h, defs) >= std::max<int64_t>(1, defStr) * 3;
+    };
+    for (const auto& oh : m_enemyHeroes) if (overwhelms(oh)) return true;
+    for (const auto& ph : m_heroes)      if (overwhelms(ph)) return true;
+    return false;
+}
+
 // ── Fair-economy AI helpers ───────────────────────────────────────────────────
 // AI sides recruit through the same paid path as the human player
 // (Town::recruit — real unit costs, partial-affordable fallback).
@@ -2277,6 +2309,15 @@ bool Game::aiTakeHeroTurn(int ehi)
                     && !isAllied(static_cast<uint32_t>(currentPlayerId()), eHero.ownerId)
                     && HexGrid::distance(m_heroes[0].pos, t.pos) <= 6)
                     underThreat = true;
+                // Tech scouting #4: don't teleport home just to die — if the
+                // attacker overwhelms even garrison+this hero, write the town
+                // off and keep fighting where the hero actually matters.
+                if (underThreat && aiTownIsWriteOff(t, eiStr, unitDefs)) {
+                    gLog("[SCOUT] P%u %s lets %s fall — defense is hopeless, "
+                         "redeploying\n", eHero.ownerId, eHero.name.c_str(),
+                         t.name.c_str());
+                    underThreat = false;
+                }
                 if (underThreat) { threatened = &t; break; }
             }
             if (threatened) {
@@ -3908,7 +3949,15 @@ void Game::doEndTurnPost(bool lastPlayerEndedTurn)
                 // defends at ~2.5x this) so conquest keeps resolving.
                 int64_t garCap = std::min<int64_t>(150000LL,
                                      40000LL + (int64_t)m_turns.week() * 4000LL);
-                int got = (garStr < garCap)
+                // Tech scouting #4: don't pour this week's gold into a town
+                // that's about to fall to overwhelming force — hold the money
+                // and let it flow to the towns that will still exist next week.
+                bool writeOff = aiTownIsWriteOff(t, 0, unitDefs);
+                if (writeOff)
+                    gLog("[SCOUT] P%u writes off %s garrison this week — "
+                         "overwhelming force inbound, gold redeployed\n",
+                         t.ownerId, t.name.c_str());
+                int got = (!writeOff && garStr < garCap)
                         ? aiPaidRecruit(t, t.garrison, budget, unitDefs) : 0;
                 if (got > 0) {
                     for (int rt = 0; rt < RESOURCE_COUNT; ++rt) {

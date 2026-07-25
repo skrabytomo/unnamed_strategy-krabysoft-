@@ -21,11 +21,13 @@ lot has shipped since it was written. Current reality:
   `scripts/verify_ai.sh [WEEKS] [SEED]` is the one-command headless economy
   check (auto-xvfb) — prints builds/recruits per week and fails on a
   zero-build week. AI economy verified healthy this way (16 weeks, seed 42).
-- **AI tech scouting** (Psychic Bundle #2+#3 — see `AI_ROADMAP.md`): pre-wall
-  strike window on unwalled rival towns (`[SCOUT]` log tag), caster-wary
-  hunting vs owners with T3/T4 mage guilds, and resource-hoarding prediction
-  (owners saving 50–99% toward City Hall/Capitol/Castle get their gold mines
-  raid-boosted to break the save).
+- **AI tech scouting** (Psychic Bundle #2+#3+#4 — see `AI_ROADMAP.md`):
+  pre-wall strike window on unwalled rival towns (`[SCOUT]` log tag),
+  caster-wary hunting vs owners with T3/T4 mage guilds, resource-hoarding
+  prediction (owners saving 50–99% toward City Hall/Capitol/Castle get their
+  gold mines raid-boosted to break the save), and strategic town abandonment
+  (`aiTownIsWriteOff` — doomed secondary towns get no garrison gold and no
+  Town-Portal rescue; last/best towns always defended).
 - **session.log untracked** (was in .gitignore but still tracked — kept
   dirtying the tree and breaking rebases). Logs are stdout-only; redirect to
   a file if you need one.

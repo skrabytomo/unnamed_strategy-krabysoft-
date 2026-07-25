@@ -64,7 +64,8 @@ meant to work going forward (a harness around the *real* planner).
 Delivers the doc's actual fantasy (AI that feels omniscient) without the
 lag/refactor traps. Recommended build order:
 
-1. [PLANNED] **Remove richRes** from the sim tool (trivial).
+1. [OBSOLETE] **Remove richRes** from the sim tool — moot since `fullgame_sim`
+   (the tool that had it) was deleted 2026-07-17.
 2. [SHIPPED 2026-07-25] **Tech scouting** — the AI reads rival built tech and
    reacts strategically (`Game_WorldMap.cpp`, grep "Tech scouting"):
    - *Pre-wall strike window*: rival towns with no Fort are boosted attack
@@ -88,9 +89,19 @@ lag/refactor traps. Recommended build order:
    GOLD mines to 200 (above key-resource denial, below own-build-blocker) —
    the raid lands in the window where it forces emergency spending. Below
    50% a raid barely matters; at 100% they buy next tick, window gone.
-4. [FITS] **Strategic town abandonment** — AI evaluates each town's
-   defend-cost vs income; pulls troops from a remote low-value town instead of
-   dying to defend it, redeploying to the real fight.
+4. [SHIPPED 2026-07-25] **Strategic town abandonment** — `aiTownIsWriteOff()`
+   (Game_WorldMap.cpp): a town is a write-off when a non-allied hero within
+   8 hexes fields ≥3× the strength that would defend it (garrison + any
+   rescuing hero) AND the owner has a better-developed town elsewhere. The
+   last town and the most-built town are never written off — those fights
+   are existential. Wired into two decisions:
+   - weekly garrison recruiting skips a write-off town (gold flows to towns
+     that will still exist next week) — logs `[SCOUT] P<n> writes off …`;
+   - Town Portal defense skips a town that's hopeless even with the jumping
+     hero's strength added — logs `[SCOUT] … lets <town> fall`.
+   Scope note: this is the bounded version — no proactive garrison
+   *evacuation* by passing heroes yet (heroes already pick up garrisons when
+   standing on own towns, which covers most of that value).
 5. [FITS] **Toward-optimal pathfinding** — we already cap the search horizon;
    tighten so the AI wastes no movement points on sub-optimal tiles.
 

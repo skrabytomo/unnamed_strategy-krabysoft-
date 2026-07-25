@@ -216,6 +216,12 @@ private:
     };
     AiTurnState m_aiTurn;
     void aiTurnSetup();
+    // Tech scouting #4 (AI_ROADMAP): true when defending town `t` is throwing
+    // value away — a non-allied hero in striking range fields >=3x the strength
+    // that would hold it (garrison + extraDefStr) AND the owner has a
+    // better-developed town elsewhere. Never true for the last/best town.
+    bool aiTownIsWriteOff(const Town& t, int extraDefStr,
+                          const std::vector<UnitDef>& defs) const;
     bool aiTakeHeroTurn(int ehi);   // false = combat aborted the AI round
     void aiTurnStep();              // one frame's budgeted slice (Watch mode)
     void doEndTurnPost(bool lastPlayerEndedTurn);
