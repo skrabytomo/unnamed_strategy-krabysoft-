@@ -2281,7 +2281,6 @@ bool Game::aiTakeHeroTurn(int ehi)
     // is only reachable from the human UI panel), which is why it
     // never founded a single Utopia city and never repositioned.
     {
-        Resources& spellRes = aiResources(eHero.ownerId);
         auto knows = [&](int sid) {
             for (int s : eHero.knownSpells) if (s == sid) return true;
             return false;
@@ -5008,10 +5007,6 @@ void Game::renderWorldMapImGui()
         ImGuiWindowFlags wf = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                               ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
         if (ImGui::Begin("##watchai_hud", nullptr, wf)) {
-            static const char* kFacNames[] = {
-                "Holy Order","Crimson Wardens","Thornkin","Eternal Empire",
-                "Bloodsworn","Voidkin","Iron Assembly","Amalgamate","Convergence"
-            };
             const auto& udefs = m_registry.units();
             ImGui::TextColored({1.f,0.82f,0.2f,1.f}, "WATCH AI vs AI");
             ImGui::SameLine(0, 16);
@@ -5055,12 +5050,9 @@ void Game::renderWorldMapImGui()
                 m_state = GameState::MainMenu;
             }
             ImGui::PopStyleColor();
-            // Show army strength comparison
+            // Per-player strength/activity table (superseded the old
+            // two-hero "player vs enemy" strength line).
             if (!m_heroes.empty() && !m_enemyHeroes.empty()) {
-                const Hero& ph = m_heroes[m_activeHeroIdx];
-                const Hero& eh = m_enemyHeroes[0];
-                int pStr = heroStrength(ph, udefs);
-                int eStr = heroStrength(eh, udefs);
                 ImGui::Separator();
                 // Per-player summary — one line each so you can see who's active
                 // vs idle. Rebuilt ONCE PER WEEK (cached) — computing it every
@@ -7163,10 +7155,8 @@ void Game::renderWorldOverlay()
                               terrainColor(t->terrain, m_fogDisabled || t->visible));
         }
 
-        // Towns: 4×4 colored square with white outline
-        uint32_t otherHumanId = (m_numHumanPlayers >= 2)
-            ? static_cast<uint32_t>((m_currentPlayerIdx == 0) ? 2 : 1)
-            : 0u;
+        // Towns: 4×4 colored square with white outline (per-owner hue via
+        // ownerColor — superseded the old two-player "other human" special case)
         for (const auto& town : m_towns) {
             const HexTile* tt = m_map.getTile(town.pos);
             if (!tt || (!m_fogDisabled && !tt->explored)) continue;

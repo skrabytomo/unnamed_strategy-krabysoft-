@@ -55,7 +55,7 @@ void Game::renderTown()
                 m_showMageGuildPanel = !m_showMageGuildPanel;
             ImGui::SameLine();
         }
-        if (town && town->ownerId == currentPlayerId()) {
+        if (town && town->ownerId == static_cast<uint32_t>(currentPlayerId())) {
             if (ImGui::Button(m_showTavernPanel ? "[Tavern X]" : "Tavern"))
                 m_showTavernPanel = !m_showTavernPanel;
             ImGui::SameLine();
@@ -72,7 +72,7 @@ void Game::renderTown()
         {
             bool anyMarket = false;
             for (const auto& t : m_towns)
-                if (t.ownerId == currentPlayerId() && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
+                if (t.ownerId == static_cast<uint32_t>(currentPlayerId()) && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
             if (!anyMarket) ImGui::BeginDisabled();
             if (ImGui::Button(m_showMarketPanel ? "[Market X]" : "Market"))
                 m_showMarketPanel = !m_showMarketPanel;
@@ -90,7 +90,7 @@ void Game::renderTown()
             ImGui::SameLine();
         }
         // Shipyard: buy a boat for the visiting hero
-        if (town && town->ownerId == currentPlayerId()
+        if (town && town->ownerId == static_cast<uint32_t>(currentPlayerId())
             && town->hasBuilding(BID::TOWN_SHIPYARD)
             && !m_heroes.empty()) {
             Hero& sh = m_heroes[m_activeHeroIdx];
@@ -452,7 +452,6 @@ void Game::renderMageGuild()
 
     // Faction spell offerings — 4 spells per faction, guild T1 shows first 2
     struct GuildEntry { int spellId; int goldCost; };
-    using GE = GuildEntry;
 
     auto getEntries = [](FactionId f) -> std::vector<GuildEntry> {
         switch (f) {
@@ -681,7 +680,7 @@ void Game::renderArtifactForge()
 void Game::renderTavern()
 {
     const Town* town = m_townScreen.currentTown();
-    if (!town || town->ownerId != currentPlayerId()) return;  // only in owned towns
+    if (!town || town->ownerId != static_cast<uint32_t>(currentPlayerId())) return;  // only in owned towns
 
     static constexpr int HIRE_COST  = 2500;
     static constexpr int MAX_HEROES = 3;
@@ -1629,7 +1628,7 @@ void Game::renderMarketplace()
     // Gate: need at least one player town with MARKET
     bool anyMarket = false;
     for (const auto& t : m_towns)
-        if (t.ownerId == currentPlayerId() && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
+        if (t.ownerId == static_cast<uint32_t>(currentPlayerId()) && t.hasBuilding(BID::MARKET)) { anyMarket = true; break; }
     if (!anyMarket) { m_showMarketPanel = false; return; }
 
     static const int SELL_RATE = 4;  // classic-strategy-style 4:1 exchange

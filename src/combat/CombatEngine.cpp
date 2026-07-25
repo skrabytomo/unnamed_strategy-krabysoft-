@@ -1014,13 +1014,14 @@ bool CombatEngine::submitAction(const CombatAction& action)
             case SpellSchool::Nature: schoolPow = caster.naturePower; break;
             case SpellSchool::Forge:  schoolPow = caster.forgePower;  break;
             case SpellSchool::Flesh:  schoolPow = caster.fleshPower;  break;
+            // Neutral scales with no school — explicit so adding a school
+            // can't silently fall through to zero power.
+            case SpellSchool::Neutral: schoolPow = 0; break;
         }
         int potency = spell->power + schoolPow;
 
         // Collect targets
         std::vector<CombatUnit*> targets;
-        bool wantPlayer  = unit->isPlayer;   // ally
-        bool wantEnemy   = !unit->isPlayer;  // enemy
         switch (spell->target) {
             case SpellTarget::SingleAlly: {
                 auto* t = m_grid.getUnit(action.targetUnitId);
@@ -1042,6 +1043,11 @@ bool CombatEngine::submitAction(const CombatAction& action)
                 break;
             case SpellTarget::Self:
                 targets.push_back(unit);
+                break;
+            // World-map spells (Reveal/Teleport/Found City) have no combat
+            // target. Leaving targets empty aborts the cast below — explicit
+            // so the compiler flags any new SpellTarget that lands here.
+            case SpellTarget::WorldMap:
                 break;
         }
         if (targets.empty()) return false;
@@ -1145,6 +1151,15 @@ bool CombatEngine::submitAction(const CombatAction& action)
                     if (potency > t->burnDamage) t->burnDamage = potency;
                     t->burnRounds = std::max(t->burnRounds, 2);
                     ss << " → " << t->name << " burned (" << potency << " dmg/round, 2 rounds)";
+                    break;
+                // World-map-only effects: never reachable in combat (their
+                // SpellTarget::WorldMap collects no targets, so this loop
+                // doesn't run). Listed explicitly so adding a combat effect
+                // without handling it here is a compiler warning, not a
+                // silent no-op cast that still spends the caster's mana.
+                case SpellEffect::WorldReveal:
+                case SpellEffect::WorldTeleport:
+                case SpellEffect::WorldFoundCity:
                     break;
             }
         }
@@ -2099,6 +2114,9 @@ void CombatEngine::castHeroSpellAI(bool casterIsPlayer)
             case SpellSchool::Nature: schoolPow = hero.naturePower; break;
             case SpellSchool::Forge:  schoolPow = hero.forgePower;  break;
             case SpellSchool::Flesh:  schoolPow = hero.fleshPower;  break;
+            // Neutral scales with no school — explicit so adding a school
+            // can't silently fall through to zero power.
+            case SpellSchool::Neutral: schoolPow = 0; break;
         }
         int potency = spell->power + schoolPow;
 
@@ -2269,6 +2287,9 @@ void CombatEngine::castHeroSpellAI(bool casterIsPlayer)
             case SpellSchool::Nature: spow = hero.naturePower; break;
             case SpellSchool::Forge:  spow = hero.forgePower;  break;
             case SpellSchool::Flesh:  spow = hero.fleshPower;  break;
+            // Neutral scales with no school — explicit so adding a school
+            // can't silently fall through to zero power.
+            case SpellSchool::Neutral: spow = 0; break;
         }
         int potency2 = bestSpell->power + spow;
 
@@ -2330,6 +2351,9 @@ void CombatEngine::castHeroSpellAI(bool casterIsPlayer)
         case SpellSchool::Nature: schoolPow = hero.naturePower; break;
         case SpellSchool::Forge:  schoolPow = hero.forgePower;  break;
         case SpellSchool::Flesh:  schoolPow = hero.fleshPower;  break;
+        // Neutral scales with no school — explicit so adding a school
+        // can't silently fall through to zero power.
+        case SpellSchool::Neutral: schoolPow = 0; break;
     }
     int potency = bestSpell->power + schoolPow;
 

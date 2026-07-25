@@ -108,6 +108,21 @@ list(FILTER SOURCES EXCLUDE REGEX ".*/sim/sim_main\\.cpp$")
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+# ── Warnings (game code only — never third_party/imgui) ──────────────────────
+# The tree is warning-CLEAN as of 2026-07-25; keeping these on is what stops it
+# drifting back. -Wswitch is the one that earns its keep here: it catches a new
+# SpellSchool/SpellTarget/SpellEffect enum value that no switch handles, which
+# otherwise reads as a spell that silently does nothing while still spending
+# the caster's mana. -Wunused-parameter is off: virtual/callback signatures
+# legitimately ignore arguments. NOT -Werror — a warning shouldn't block the
+# dev's build mid-experiment.
+if (MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /W3)
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        -Wall -Wextra -Wno-unused-parameter)
+endif()
+
 # ── Build-time version stamp (git hash/branch/date) logged at startup ─────────
 # Regenerated every build so incremental builds via run.sh still get a fresh
 # hash; the script only rewrites version_gen.h when the value changes, so
