@@ -1,5 +1,6 @@
 #include "HideoutScreen.h"
 #include <imgui.h>
+#include <algorithm>
 #include <cstdio>
 
 // XP cost to unlock each tier, indexed by (tier - 1)
@@ -8,9 +9,6 @@ static constexpr int BARRACKS_COSTS[] = { 150, 400 };
 static constexpr int VAULT_COSTS[]    = { 200, 500 };
 static constexpr int SHRINE_COSTS[]   = { 250 };
 static constexpr int SANCTUM_COSTS[]  = { 400 };
-
-// Approximate XP needed for the next level (mirrors HideoutDB XP pool)
-static constexpr int XP_DISPLAY_MAX = 1000;
 
 void HideoutScreen::draw(HideoutDB& db, bool& open)
 {
@@ -80,11 +78,47 @@ void HideoutScreen::draw(HideoutDB& db, bool& open)
 void HideoutScreen::drawXPBar(HideoutDB& db)
 {
     int xp = db.getXP();
-    char buf[64];
-    std::snprintf(buf, sizeof(buf), "XP: %d", xp);
-    float frac = static_cast<float>(xp % XP_DISPLAY_MAX) / static_cast<float>(XP_DISPLAY_MAX);
-    ImGui::ProgressBar(frac, ImVec2(-1, 18), buf);
-    ImGui::TextDisabled("Total accumulated XP: %d", xp);
+
+    // Progress toward the CHEAPEST upgrade still available. The bar used to
+    // show (xp % 1000), which is meaningless for a spendable currency: it
+    // implied a level track that does not exist, and buying anything made it
+    // lurch backwards for no reason the player could see.
+    struct Branch { const char* key; const char* label; int maxTiers; const int* costs; };
+    static const Branch BRANCHES[] = {
+        { HideoutBranch::CASTLE,   "Castle",   3, CASTLE_COSTS   },
+        { HideoutBranch::BARRACKS, "Barracks", 2, BARRACKS_COSTS },
+        { HideoutBranch::VAULT,    "Vault",    2, VAULT_COSTS    },
+        { HideoutBranch::SHRINE,   "Shrine",   1, SHRINE_COSTS   },
+        { HideoutBranch::SANCTUM,  "Sanctum",  1, SANCTUM_COSTS  },
+    };
+    int         nextCost  = 0;
+    const char* nextLabel = nullptr;
+    int         nextTier  = 0;
+    for (const auto& b : BRANCHES) {
+        int cur = db.getUpgradeLevel(b.key);
+        if (cur >= b.maxTiers) continue;
+        int cost = b.costs[cur];
+        if (nextCost == 0 || cost < nextCost) {
+            nextCost = cost; nextLabel = b.label; nextTier = cur + 1;
+        }
+    }
+
+    char buf[96];
+    if (nextCost > 0) {
+        float frac = std::min(1.0f, static_cast<float>(xp) / static_cast<float>(nextCost));
+        if (xp >= nextCost)
+            std::snprintf(buf, sizeof(buf), "%d XP — can afford %s T%d",
+                          xp, nextLabel, nextTier);
+        else
+            std::snprintf(buf, sizeof(buf), "%d / %d XP — next: %s T%d",
+                          xp, nextCost, nextLabel, nextTier);
+        ImGui::ProgressBar(frac, ImVec2(-1, 18), buf);
+    } else {
+        std::snprintf(buf, sizeof(buf), "%d XP — all upgrades unlocked", xp);
+        ImGui::ProgressBar(1.0f, ImVec2(-1, 18), buf);
+    }
+    ImGui::TextDisabled("XP is spent on upgrades below. Earn it by winning "
+                        "battles, games, and milestones.");
 }
 
 // Returns a brief description for each branch tier (1-based tier)
