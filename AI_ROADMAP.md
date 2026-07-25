@@ -132,6 +132,30 @@ specifically that **naval invasion is not wired into the AI's conquest
 path**. Highest-value AI work remaining; it directly blocks the
 "games resolve" requirement in `RELEASE_CHECKLIST.md`.
 
+### Naval investigation (in progress 2026-07-25)
+
+Instrumented the silent failure paths — that is what made these findable.
+`[NAVAL]` now logs, once per hero per week, exactly why passage failed.
+
+**Fixed so far:**
+1. **Boat-score gate.** Candidate scores are distance-diluted (`add()` divides
+   by hex distance), so an overseas capital 50 hexes out scores
+   `600/sqrt(50) ≈ 85` — under the flat `score >= 150` gate that authorised
+   buying passage. Naval conquest was impossible beyond ~16 hexes at any army
+   strength. An enemy town now always justifies passage.
+2. **Single-dock dead end.** `aiTryBoat` committed to the nearest dock by hex
+   distance and gave up if unroutable. Now walks all docks nearest-first and
+   takes the first reachable one (max 4 A* per turn).
+
+**Still open — heroes reach `wants passage (1 dock) but no land route to the
+shipyard`.** Next step is reading the new distance/`sameLandmass` fields on
+that log line: if the dock is close and on the same landmass, suspect the
+destination tile being blocked (`costFn` returns 999 for occupied/blocked
+tiles and A* applies it to the goal too); if far, suspect
+`Pathfinder::find`'s default `maxNodes = 20000` running out on a large map.
+Note the AI also only builds Shipyards from week ~6, so early-game
+`0 dock(s)` complaints are correct behaviour, not a bug.
+
 Repro: `./build/bin/unnamed_strategy --watch-ai-test=6:3:0 --seed=999`
 (shape 3 = Ring). Self-terminates and logs `[WATCH-AI]`.
 
