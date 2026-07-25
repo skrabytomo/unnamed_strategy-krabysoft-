@@ -162,7 +162,18 @@ Two dead ends, so nobody repeats them:
 - **A "5-6x perf regression" from those attempts was a measurement error** —
   Ring turns compared against Hexagon turns. Ring was always ~610-740ms.
 
-**Next step — stop guessing, instrument the decision.** The `[NAVAL]` log
+**Latest measurement (dock-walk logging).** Heroes DO walk to docks and close
+distance — Seraphiel 40→27 hexes, Unity Seeker 71→59, Briar Sovereign 61→39
+across weeks 6→7. Then the walk logs **stop entirely at week 7** and no boat is
+ever bought. So the hero abandons the dock walk partway: `wantBoatForBestTarget`
+stops being true once something else outbids the overseas town (or the march
+lock drops), and the hero turns back to local targets having wasted the trip.
+The remaining fix is to make a committed dock walk STICKY — latch it like
+`marchGoal` already latches an overseas target after boarding — rather than
+re-deciding from scratch every turn. Ruled out by this measurement: oscillation
+(distance genuinely shrinks) and the boat branch never being entered.
+
+**Earlier step — stop guessing, instrument the decision.** The `[NAVAL]` log
 proved insufficient because it reported `sameLandmass` for `docks[0]` (an
 allied town) while the actual failure was against a different, nearer,
 unreachable Shipyard *object* — so it read as "reachable but no route", which
