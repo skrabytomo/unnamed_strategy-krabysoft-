@@ -461,8 +461,16 @@ static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
     // connectivity said reachable while A* ran out of nodes. This search
     // only runs when a hero actually wants passage, so the wider budget is
     // affordable.
-    constexpr int kDockMaxCost  = 900;
-    constexpr int kDockMaxNodes = 120000;
+    // maxCost is the binding constraint, not node count. Cost accumulates
+    // terrain move cost per hex, so a 200-hex trek around a ring runs to
+    // ~800-1000 — right at Pathfinder's 999 default, which is why the walk
+    // "failed" while land connectivity said the dock was reachable. (A first
+    // attempt raised maxNodes to 120k and LOWERED maxCost to 900: it fixed
+    // nothing and made AI turns 6x slower, ~110ms -> ~750ms, because failing
+    // searches explored everything before giving up. Raise the cost ceiling;
+    // keep the node budget modest so a genuinely unreachable dock stays cheap.)
+    constexpr int kDockMaxCost  = 4000;
+    constexpr int kDockMaxNodes = 40000;
     size_t tries = 0;
     for (const auto& [d, dp] : allDocks) {
         if (d == 0) continue;                 // handled by the bestD==0 branch
