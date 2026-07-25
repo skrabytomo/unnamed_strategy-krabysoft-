@@ -4,6 +4,10 @@
 > Game_Combat.cpp) and the sprite reframing DID land. The only still-open
 > item is the "unit design-match check" near the bottom (verify intended
 > ranged/melee roles against the sprite sheet). Everything above that is done.
+> UPDATE 2026-07-25: the data half of that check is generated —
+> `UNIT_ROLES.md` lists every unit's intended role (ranged/melee/fly) from
+> units.json; eyeball each RANGED/FLY row against its sprite. It also flags
+> a design question: 4 of 9 factions field zero shooters.
 
 ## Update (this session) — renderer-side readability fix landed
 Implemented option 3 from "Recommended fix next session" below instead of more
