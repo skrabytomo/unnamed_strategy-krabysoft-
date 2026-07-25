@@ -3234,6 +3234,19 @@ bool Game::aiTakeHeroTurn(int ehi)
                      g_lastBoatPathExit[0] ? g_lastBoatPathExit : "n/a");
             }
             if (gotBoatPath) {
+                // Success side: is the hero actually CLOSING on the dock, or
+                // re-deciding every turn and never arriving? Logging only
+                // failures could not tell those apart. Distance should shrink
+                // week over week; a flat number means oscillation.
+                if (eHero.boatFailWeek != m_turns.week()) {
+                    eHero.boatFailWeek = m_turns.week();
+                    gLog("[NAVAL] P%u %s walking to dock: %zu steps queued,"
+                         " dock %d hexes away\n",
+                         eHero.ownerId, eHero.name.c_str(), boatPath.size(),
+                         boatPath.empty()
+                             ? -1
+                             : HexGrid::distance(eHero.pos, boatPath.back()));
+                }
                 path = boatPath;   // head to the dock
             } else if (!wasOnBoat && eHero.onBoat) {
                 // Just BOARDED at the dock this call. aiTryBoat returns
