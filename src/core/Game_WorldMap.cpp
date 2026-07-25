@@ -378,10 +378,17 @@ static const char* boatFailName(BoatFail f)
     return "ok";
 }
 
+// `sameLandmass` is the caller's O(1) land-connectivity test. Without it this
+// function spends its whole A* budget on docks it can never walk to: the map
+// scatters coastal Shipyard OBJECTS across every island, they sort nearest-
+// first by hex distance, and they filled every attempt while the hero's own
+// reachable town dock was never tried. That is the actual reason heroes kept
+// reporting "no land route to the shipyard" — not a search-budget limit.
 static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
                       const std::vector<HexCoord>& townDocks,
                       Hero& hero, Resources& payer,
                       const Pathfinder::CostFn& costFn,
+                      const std::function<bool(HexCoord)>& sameLandmass,
                       std::vector<HexCoord>& outPath)
 {
     g_lastBoatFail = BoatFail::None;
@@ -400,6 +407,16 @@ static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
     for (const auto& dp : townDocks)
         allDocks.push_back({HexGrid::distance(hero.pos, dp), dp});
     if (allDocks.empty()) { g_lastBoatFail = BoatFail::NoDock; return false; }
+    // Drop docks we provably cannot walk to (different land component) BEFORE
+    // spending any A* on them. This is the fix for the "3 tries all wasted on
+    // island shipyards" failure, and it also removes the pathological cost of
+    // repeatedly searching for routes that cannot exist.
+    if (sameLandmass) {
+        std::vector<std::pair<int, HexCoord>> walkable;
+        for (const auto& d : allDocks)
+            if (d.first == 0 || sameLandmass(d.second)) walkable.push_back(d);
+        if (!walkable.empty()) allDocks.swap(walkable);
+    }
     std::sort(allDocks.begin(), allDocks.end(),
               [](const auto& a, const auto& b){ return a.first < b.first; });
 
@@ -461,16 +478,16 @@ static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
     // connectivity said reachable while A* ran out of nodes. This search
     // only runs when a hero actually wants passage, so the wider budget is
     // affordable.
-    // maxCost is the binding constraint, not node count. Cost accumulates
-    // terrain move cost per hex, so a 200-hex trek around a ring runs to
-    // ~800-1000 — right at Pathfinder's 999 default, which is why the walk
-    // "failed" while land connectivity said the dock was reachable. (A first
-    // attempt raised maxNodes to 120k and LOWERED maxCost to 900: it fixed
-    // nothing and made AI turns 6x slower, ~110ms -> ~750ms, because failing
-    // searches explored everything before giving up. Raise the cost ceiling;
-    // keep the node budget modest so a genuinely unreachable dock stays cheap.)
-    constexpr int kDockMaxCost  = 4000;
-    constexpr int kDockMaxNodes = 40000;
+    // Modest budget on purpose. Two earlier attempts blamed these limits for
+    // the "no land route to the shipyard" failure and inflated them (maxNodes
+    // 120k, then maxCost 4000); neither produced a single boat and both made
+    // AI turns 5-6x slower (~110ms -> ~600-750ms), because the wasted searches
+    // were for docks on OTHER ISLANDS and explored the whole landmass before
+    // failing. The connectivity filter above removes those candidates outright,
+    // so what reaches this loop is genuinely walkable and a normal budget is
+    // enough. Do not raise these without evidence that a REACHABLE dock failed.
+    constexpr int kDockMaxCost  = 1200;
+    constexpr int kDockMaxNodes = 30000;
     size_t tries = 0;
     for (const auto& [d, dp] : allDocks) {
         if (d == 0) continue;                 // handled by the bestD==0 branch
@@ -813,8 +830,11 @@ void Game::watchAiMovePlayerHero()
             for (const auto& t : m_towns)
                 if (t.ownerId == 1 && t.hasBuilding(BID::TOWN_SHIPYARD))
                     docks.push_back(t.pos);
+            auto sameLandmass = [this, &hero](HexCoord c) {
+                return !routeImpossible(hero.onBoat, hero.pos, c);
+            };
             aiTryBoat(m_map, m_worldObjects, docks, hero,
-                      m_playerResources, costFn, path);
+                      m_playerResources, costFn, sameLandmass, path);
         }
 
         // ── ANTI-IDLE FALLBACK (mirror of aiTakeHeroTurn) ────────────────
@@ -3156,8 +3176,12 @@ bool Game::aiTakeHeroTurn(int ehi)
             HexCoord seaTarget{};
             bool haveSeaTarget = false;
             if (!cands.empty()) { seaTarget = cands[0].pos; haveSeaTarget = true; }
+            auto sameLandmass = [this, &eHero](HexCoord c) {
+                return !routeImpossible(eHero.onBoat, eHero.pos, c);
+            };
             bool gotBoatPath = aiTryBoat(m_map, m_worldObjects, docks, eHero,
-                                         aiResources(eHero.ownerId), costFn, boatPath);
+                                         aiResources(eHero.ownerId), costFn,
+                                         sameLandmass, boatPath);
             // Surface WHY passage failed — once per hero per week, so a stalled
             // naval game says so in the log instead of looking like the AI
             // simply chose not to sail.
