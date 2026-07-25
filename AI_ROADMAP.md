@@ -65,9 +65,21 @@ Delivers the doc's actual fantasy (AI that feels omniscient) without the
 lag/refactor traps. Recommended build order:
 
 1. [PLANNED] **Remove richRes** from the sim tool (trivial).
-2. [FITS] **Tech scouting** — AI reads the player's town build queue and reacts.
-   e.g. player builds a Mage Guild → AI prioritizes anti-magic / focuses the
-   enemy caster in combat. Bounded, concrete, strong "how did it know" payoff.
+2. [SHIPPED 2026-07-25] **Tech scouting** — the AI reads rival built tech and
+   reacts strategically (`Game_WorldMap.cpp`, grep "Tech scouting"):
+   - *Pre-wall strike window*: rival towns with no Fort are boosted attack
+     targets (×1.35 — open-field capture before the walls go up); Castle
+     walls slightly deprioritized (×0.85). Kill shots/desperation untouched.
+     March commits log `[SCOUT: pre-wall window]` — verified on seed 42:
+     multiple AIs independently converge on the unwalled town.
+   - *Caster-wary hunting*: if the hunted rival's owner has a T3/T4 mage
+     guild, their hero counts as +15%/+25% effectively stronger, so the AI
+     needs a real edge to engage a caster and disengages sooner (flows into
+     aggressive/veryWeak/strRatio/dominant via nearHumanStr).
+   - NOT included (engine mismatch): combat-side "focus the enemy caster" —
+     spells are hero-cast here, the caster isn't a unit on the board.
+   There is no literal build *queue* (builds are instant), so scouting reads
+   built tech — same payoff.
 3. [FITS] **Resource-hoarding prediction** — AI tracks the player's gold/turn and
    treasury. When the player is ~1 purchase away from a big building (e.g.
    Capitol), the AI times a mine raid to force emergency spending. High payoff.

@@ -2256,6 +2256,23 @@ bool Game::aiTakeHeroTurn(int ehi)
     HexCoord targetPos = target ? target->pos : playerHero.pos;
     if (nearHumanStr <= 0) nearHumanStr = plStr;
 
+    // ── Tech scouting: respect magic tech (AI_ROADMAP "Psychic Bundle" #2) ──
+    // The AI reads the hunted rival's built tech: a T3/T4 mage guild means
+    // their hero fights with heavily discounted spells, so raw army strength
+    // understates them. Count the caster as effectively stronger (+15%/+25%)
+    // — this flows into aggressive/veryWeak/strRatio/dominant below, so the
+    // AI wants a real edge before engaging a mage and disengages earlier.
+    if (target) {
+        int guildTier = 0;
+        for (const auto& tw : m_towns) {
+            if (tw.ownerId != target->ownerId) continue;
+            if (tw.hasBuilding(BID::MAGE_GUILD_T4)) { guildTier = 4; break; }
+            if (tw.hasBuilding(BID::MAGE_GUILD_T3))   guildTier = 3;
+        }
+        if      (guildTier == 4) nearHumanStr = nearHumanStr * 5 / 4;
+        else if (guildTier == 3) nearHumanStr = nearHumanStr * 23 / 20;
+    }
+
     // Raider: attack at the difficulty-scaled ratio OR when the opponent
     // is wounded; Economic: only at 1.5×; Defender: never.
     // ── Personality modifies aggression per this hero's owner ─────
@@ -2510,6 +2527,17 @@ bool Game::aiTakeHeroTurn(int ehi)
                     // outweighs every mine/chest on the map. Take one
                     // or die trying.
                     if (townlessDesperate) val = 20000.f;
+                    // ── Tech scouting: the pre-wall strike window ─────
+                    // (AI_ROADMAP "Psychic Bundle" #2.) The AI reads the
+                    // defender's fort tech: no Fort yet = an open-field
+                    // capture — hit that window before the walls go up.
+                    // Castle walls = a costly grind — prefer softer
+                    // targets. Kill shots (last town) and desperation
+                    // keep their absolute priority untouched.
+                    else if (rivalTowns > 1) {
+                        if      (!t.hasBuilding(BID::FORT))    val *= 1.35f;
+                        else if (t.hasBuilding(BID::CASTLE))   val *= 0.85f;
+                    }
                     // Gentler distance penalty for towns: use sqrt(dist)
                     // instead of dist so a strong army will cross the
                     // map for the kill. add() divides by dist, so we
@@ -2657,9 +2685,13 @@ bool Game::aiTakeHeroTurn(int ehi)
             eHero.marchGoalTurns = 0;
             for (const auto& t : m_towns)
                 if (t.pos == cands[0].pos) {
-                    gLog("P%u %s committing to march on %s (P%u) dist %d\n",
+                    // Tag commits where tech scouting saw an open window,
+                    // so seeded verification runs can grep the behavior.
+                    const char* scout = (!t.hasBuilding(BID::FORT))
+                                      ? " [SCOUT: pre-wall window]" : "";
+                    gLog("P%u %s committing to march on %s (P%u) dist %d%s\n",
                          eHero.ownerId, eHero.name.c_str(), t.name.c_str(),
-                         t.ownerId, HexGrid::distance(eHero.pos, t.pos));
+                         t.ownerId, HexGrid::distance(eHero.pos, t.pos), scout);
                     break;
                 }
         }
