@@ -37,6 +37,22 @@ public:
         int           maxNodes = 20000
     );
 
+    // Why the LAST find() returned empty. An empty result has four very
+    // different meanings and callers cannot tell them apart, which is how a
+    // naval bug got mis-diagnosed twice as a search-budget problem when the
+    // real answer was "the goal tile is impassable". Set on every find();
+    // read it immediately after, single-threaded use only.
+    enum class Exit {
+        Found,          // a path was returned
+        SameTile,       // start == goal
+        GoalOutOfBounds,
+        GoalImpassable, // costFn rejects the goal itself — no route can exist
+        NodeLimit,      // hit maxNodes
+        Exhausted       // explored everything reachable; genuinely no route
+    };
+    static Exit lastExit();
+    static const char* exitName(Exit e);
+
     // Returns all reachable hexes within movementPoints budget
     // Used for movement range highlight
     static std::vector<HexCoord> reachable(

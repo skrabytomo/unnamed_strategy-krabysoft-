@@ -5,6 +5,22 @@
 #include <climits>
 #include <algorithm>
 
+// Diagnostic: why the last find() came back empty. See Pathfinder::Exit.
+static Pathfinder::Exit g_lastExit = Pathfinder::Exit::Found;
+Pathfinder::Exit Pathfinder::lastExit() { return g_lastExit; }
+const char* Pathfinder::exitName(Exit e)
+{
+    switch (e) {
+        case Exit::Found:           return "found";
+        case Exit::SameTile:        return "start==goal";
+        case Exit::GoalOutOfBounds: return "goal out of bounds";
+        case Exit::GoalImpassable:  return "goal tile impassable";
+        case Exit::NodeLimit:       return "hit node limit";
+        case Exit::Exhausted:       return "explored all, no route";
+    }
+    return "?";
+}
+
 // ── A* ─────────────────────────────────────────────────────────────────────────
 std::vector<HexCoord> Pathfinder::find(
     const HexMap& map,
@@ -14,8 +30,12 @@ std::vector<HexCoord> Pathfinder::find(
     int           maxCost,
     int           maxNodes)
 {
-    if (start == goal) return {};
-    if (!map.inBounds(goal)) return {};
+    if (start == goal)       { g_lastExit = Exit::SameTile;        return {}; }
+    if (!map.inBounds(goal)) { g_lastExit = Exit::GoalOutOfBounds; return {}; }
+    // The goal itself must be enterable, otherwise the search is guaranteed to
+    // sweep everything and report a misleading "no route".
+    if (costFn(goal) >= 99)  { g_lastExit = Exit::GoalImpassable;  return {}; }
+    g_lastExit = Exit::Exhausted;
 
     struct Node {
         int      f;
@@ -36,7 +56,7 @@ std::vector<HexCoord> Pathfinder::find(
         // maxCost radius (~305 ms each, measured) before returning empty.
         // Bailing out early reports "unreachable", which is what the caller
         // was about to conclude anyway — just ~60x sooner.
-        if (++expanded > maxNodes) return {};
+        if (++expanded > maxNodes) { g_lastExit = Exit::NodeLimit; return {}; }
 
         auto [f, current] = open.top(); open.pop();
 
@@ -49,6 +69,7 @@ std::vector<HexCoord> Pathfinder::find(
                 c = cameFrom[c];
             }
             std::reverse(path.begin(), path.end());
+            g_lastExit = Exit::Found;
             return path;
         }
 

@@ -366,6 +366,9 @@ static BoatFail g_lastBoatFail = BoatFail::None;
 // 4 hexes away and something is blocking the tile" from "it is 90 hexes away
 // across an ocean".
 static int      g_lastBoatDockDist = -1;
+static HexCoord g_lastBoatDockPos{0, 0};      // the dock actually tried
+static size_t   g_lastBoatWalkableDocks = 0;  // docks surviving the connectivity filter
+static const char* g_lastBoatPathExit = "";   // Pathfinder's exit reason
 static const char* boatFailName(BoatFail f)
 {
     switch (f) {
@@ -415,6 +418,7 @@ static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
         std::vector<std::pair<int, HexCoord>> walkable;
         for (const auto& d : allDocks)
             if (d.first == 0 || sameLandmass(d.second)) walkable.push_back(d);
+        g_lastBoatWalkableDocks = walkable.size();
         if (!walkable.empty()) allDocks.swap(walkable);
     }
     std::sort(allDocks.begin(), allDocks.end(),
@@ -498,6 +502,12 @@ static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
         outPath = Pathfinder::find(map, hero.pos, dp, costFn,
                                    kDockMaxCost, kDockMaxNodes);
         if (!outPath.empty()) return true;
+        // Record the dock we actually tried and exactly why it was rejected.
+        // The previous log reported connectivity for a DIFFERENT dock than the
+        // one that failed, which sent two fix attempts chasing search limits.
+        g_lastBoatDockPos  = dp;
+        g_lastBoatDockDist = d;
+        g_lastBoatPathExit = Pathfinder::exitName(Pathfinder::lastExit());
     }
     g_lastBoatFail = BoatFail::NoPathToDock;
     g_lastBoatDockDist = allDocks.front().first;
@@ -3192,12 +3202,15 @@ bool Game::aiTakeHeroTurn(int ehi)
                 && g_lastBoatFail != BoatFail::None
                 && eHero.boatFailWeek != m_turns.week()) {
                 eHero.boatFailWeek = m_turns.week();
-                gLog("[NAVAL] P%u %s at (%d,%d) wants passage (%zu dock(s)) but %s"
-                     " [nearest dock %d hexes, sameLandmass=%d]\n",
+                gLog("[NAVAL] P%u %s at (%d,%d) wants passage: %s"
+                     " [towndocks=%zu walkable=%zu triedDock=(%d,%d) dist=%d"
+                     " pathfinder=%s]\n",
                      eHero.ownerId, eHero.name.c_str(), eHero.pos.q, eHero.pos.r,
-                     docks.size(), boatFailName(g_lastBoatFail),
+                     boatFailName(g_lastBoatFail),
+                     docks.size(), g_lastBoatWalkableDocks,
+                     g_lastBoatDockPos.q, g_lastBoatDockPos.r,
                      g_lastBoatDockDist,
-                     (!docks.empty() && !routeImpossible(false, eHero.pos, docks[0])) ? 1 : 0);
+                     g_lastBoatPathExit[0] ? g_lastBoatPathExit : "n/a");
             }
             if (gotBoatPath) {
                 path = boatPath;   // head to the dock
