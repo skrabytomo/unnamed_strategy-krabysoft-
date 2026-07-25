@@ -414,10 +414,23 @@ static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
     // spending any A* on them. This is the fix for the "3 tries all wasted on
     // island shipyards" failure, and it also removes the pathological cost of
     // repeatedly searching for routes that cannot exist.
-    if (sameLandmass) {
+    {
         std::vector<std::pair<int, HexCoord>> walkable;
-        for (const auto& d : allDocks)
-            if (d.first == 0 || sameLandmass(d.second)) walkable.push_back(d);
+        for (const auto& d : allDocks) {
+            if (d.first == 0) { walkable.push_back(d); continue; }
+            // The dock tile must be one this hero can actually stand on.
+            // Coastal Shipyard OBJECTS sit on WATER, so a land hero can never
+            // reach one — and the land-connectivity test cannot reject them,
+            // because water tiles are absent from the land component map and
+            // routeImpossible() answers "unknown, let A* decide" for absent
+            // tiles. They therefore passed the filter and then failed as an
+            // impassable goal. This was the real "no land route to the
+            // shipyard": not a search budget, not connectivity, just a dock
+            // standing in the sea.
+            if (costFn(d.second) >= 99) continue;
+            if (sameLandmass && !sameLandmass(d.second)) continue;
+            walkable.push_back(d);
+        }
         g_lastBoatWalkableDocks = walkable.size();
         if (!walkable.empty()) allDocks.swap(walkable);
     }
@@ -2914,10 +2927,18 @@ bool Game::aiTakeHeroTurn(int ehi)
             if (!t || !eHero.canEnter(t->terrain) || t->blocked) return 999;
             // One combat per day: block the player's tile once a fight is queued
             if (combatTriggered && c == playerHero.pos) return 999;
-            // Only block passage through player towns, not destination
+            // Only block passage through RIVAL player towns. An allied town is
+            // friendly ground and must stay enterable — an AI allied with the
+            // watched player (Watch AI puts slots 0 and 1 on one team) has its
+            // ally's town as its only Shipyard, and blocking it here made that
+            // dock an impassable goal. That is the actual reason AI heroes
+            // never sailed: not scoring, not connectivity, not search budget —
+            // they were forbidden from standing on their own ally's dock.
             if (!aggressive && t->townId != 0) {
                 for (const auto& town : m_towns)
-                    if (town.id == t->townId && town.ownerId > 0 && town.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)) return 999;
+                    if (town.id == t->townId && town.ownerId > 0
+                        && town.ownerId <= static_cast<uint32_t>(m_numHumanPlayers)
+                        && !isAllied(town.ownerId, eHero.ownerId)) return 999;
             }
             int base = eHero.moveCost(t->terrain);
             if (m_roadHexes.count(c)) base = std::max(1, base / 2);
