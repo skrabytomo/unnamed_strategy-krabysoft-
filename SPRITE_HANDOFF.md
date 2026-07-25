@@ -8,6 +8,15 @@
 > `UNIT_ROLES.md` lists every unit's intended role (ranged/melee/fly) from
 > units.json; eyeball each RANGED/FLY row against its sprite. It also flags
 > a design question: 4 of 9 factions field zero shooters.
+>
+> THORNKIN HOLEY-SILHOUETTE FIX — PREPARED, NOT APPLIED (dev chose to hold).
+> Measured: the t1–t6 bodies are only 4–9% pixel coverage — thin lattice,
+> gaps mostly border-connected, so hole-filling alone can't fix it. Working
+> recipe (verified on a rendered before/after, big improvement): per frame,
+> mask = alpha≥64 → binary_closing with a radius-7 disk → fill_holes →
+> new pixels get (mean color of alpha≥160 pixels) × 0.75, alpha 235 — a
+> shadow body UNDER the original strokes; interior linework stays readable.
+> ~15 lines of numpy/scipy; 75% shade beat 55% and 35% in comparison.
 
 ## Update (this session) — renderer-side readability fix landed
 Implemented option 3 from "Recommended fix next session" below instead of more
