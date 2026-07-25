@@ -41,6 +41,11 @@ pipeline (every category), store-asset spec.
       `--export-content=assets/data`.)
 - [ ] **Playtest** a few full games start→finish: crashes, softlocks, balance,
       that towns finish their trees and armies grow (the AI economy fix).
+      *Headless evidence so far (2026-07-25): a full 6-player AI game (seed
+      123) ran start→resolution (dominance win, week 8) with zero crashes,
+      asserts or softlocks; a 16-week seed-42 run confirmed towns keep
+      building and armies grow. Still needs YOUR hands-on runs for feel,
+      balance and UI issues — headless can't judge those.*
 - [ ] **Store art**: generate the two capsule masters
       (`--only capsule`), crop to the sizes in `packaging/steam/STORE_ASSETS.md`,
       add your title/logo. Capture 5–10 **screenshots** at 1920×1080 and cut a

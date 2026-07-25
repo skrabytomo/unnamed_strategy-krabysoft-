@@ -1268,6 +1268,16 @@ void Game::updateWorldMap(float dt)
                          alive.size(), winner,
                          winner ? ownerStrength(winner) : 0,
                          winner ? ownerTowns(winner) : 0);
+                    // --watch-ai-test self-termination: this watch-only
+                    // game-over path never raises m_showVictory/m_showDefeat
+                    // (it drops to the main menu), so without this a headless
+                    // test run would sit at the menu forever after the game
+                    // resolved. End the process here with the [WATCH-AI] tag.
+                    if (m_watchAiAutoExit) {
+                        gLog("[WATCH-AI] game over (week %d): winner owner %u\n",
+                             m_turns.week(), winner);
+                        m_running = false;
+                    }
                     m_watchingAI  = false;
                     m_fogDisabled = false;
                     m_state       = GameState::MainMenu;

@@ -200,6 +200,15 @@ is already pure (all state function-local) — verified, no change needed.
 Use a **persistent** worker pool, created once. Spawning threads per turn would
 erase the win. Mirror the existing pattern in `SimulatorWindow.h`.
 
+**Value check (2026-07-25, measured):** after the serial pathfinding
+optimizations, a 12-week seed-42 headless run shows `path=~3ms` and
+`cand=~3ms` of a `total=~117ms` avg AI turn — the A* fan-out is no longer
+where the time goes, so Phase 2's speedup is now ≈nothing. The unaccounted
+~110ms/turn (combat resolution, recruiting, target-lock bookkeeping) is the
+real cost and hasn't been broken down yet; profile THAT before building any
+of this. Phase 3 (off-thread) still matters for frame pacing, but the
+fan-out parallelism itself is not worth the risk today.
+
 ### Phase 3 — AI off the render thread ← fixes the 0 FPS
 Split the AI block into `plan → apply`:
 - **Plan** (worker pool, `const` snapshot): per-hero goal + path + score.
@@ -208,9 +217,10 @@ Split the AI block into `plan → apply`:
 `updateWorldMap()` dispatches the job and returns immediately; the frame loop
 keeps rendering; apply happens on the frame the job completes.
 
-**Known race to fix first:** `DevLog::lines()` returns a reference to the shared
-vector with **no lock**, while `gLog()` appends under one. An AI thread logging
-while the UI renders the log = reallocation under a reader = crash.
+**Known race — FIXED (verified 2026-07-25):** `DevLog::lines()` no longer
+exists; `DevLog::snapshot()` returns a copy taken under the lock (see
+`DevLog.cpp`), so an AI thread logging while the UI renders the log is safe.
+Nothing to do here before Phase 3.
 
 #### Conflict detection: disjoint reach (the scheduling rule)
 
