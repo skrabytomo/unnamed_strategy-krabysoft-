@@ -451,12 +451,24 @@ static bool aiTryBoat(HexMap& map, std::vector<WorldObject>& objs,
     // Walk the dock list nearest-first and take the first one we can actually
     // reach, instead of failing on the closest unroutable one. Capped so a
     // hero with many docks doesn't pay for a dozen A* searches every turn.
-    constexpr size_t kMaxDockTries = 4;
+    constexpr size_t kMaxDockTries = 3;
+    // Budget for the walk to the dock. Pathfinder's defaults (maxCost 999,
+    // maxNodes 20000) are tuned for ordinary short hops and are NOT enough
+    // here: hex distance badly understates the real walk on a ring or a
+    // coastline, so a dock 40 hexes away can be a 200+ hex trek around the
+    // land. Measured on a Ring map — "wants passage (1 dock) but no land
+    // route to the shipyard [nearest dock 40 hexes, sameLandmass=1]", i.e.
+    // connectivity said reachable while A* ran out of nodes. This search
+    // only runs when a hero actually wants passage, so the wider budget is
+    // affordable.
+    constexpr int kDockMaxCost  = 900;
+    constexpr int kDockMaxNodes = 120000;
     size_t tries = 0;
     for (const auto& [d, dp] : allDocks) {
         if (d == 0) continue;                 // handled by the bestD==0 branch
         if (++tries > kMaxDockTries) break;
-        outPath = Pathfinder::find(map, hero.pos, dp, costFn);
+        outPath = Pathfinder::find(map, hero.pos, dp, costFn,
+                                   kDockMaxCost, kDockMaxNodes);
         if (!outPath.empty()) return true;
     }
     g_lastBoatFail = BoatFail::NoPathToDock;
