@@ -107,6 +107,36 @@ lag/refactor traps. Recommended build order:
 
 ---
 
+## ⚠ MEASURED 2026-07-25 — games still don't resolve on water-separated maps
+
+Three full headless games (`scripts/verify_ai.sh` / `--watch-ai-test`, current
+`main`) exposed a real shipping issue: **map shape decides whether a game ever
+resolves.**
+
+| Seed | Shape / size | Outcome |
+|---|---|---|
+| 123 | Hexagon, Small | Resolved **week 8** by dominance — healthy |
+| 7 | JebusCross, Medium | Week-80 **backstop**, 3 players still alive; 9 storms, 34 combats |
+| 999 | **Ring**, Small | Week-80 **backstop**, **5 of 6 players still alive**, "winner" held 2 towns; only **6 combats and 11 march commits in 553 turns** |
+
+Root cause on Ring (evidence in the seed-999 log): players are separated by
+water, and **the AI never put a single hero on a boat in 80 weeks** — zero
+naval lines, and 4 of 16 long-path calls failed outright. Land pathing
+rejects the unreachable rivals, so the AI falls back to farming its own
+island forever. The week-80 backstop then hands the win to whoever has the
+biggest pile — which is why the game "ends" with almost everyone alive.
+
+This is not the old "AI never targets towns" bug (targeting works — the AI
+commits to marches at 40-66 hexes and the SCOUT tags fire). It is
+specifically that **naval invasion is not wired into the AI's conquest
+path**. Highest-value AI work remaining; it directly blocks the
+"games resolve" requirement in `RELEASE_CHECKLIST.md`.
+
+Repro: `./build/bin/unnamed_strategy --watch-ai-test=6:3:0 --seed=999`
+(shape 3 = Ring). Self-terminates and logs `[WATCH-AI]`.
+
+---
+
 ## Formalize what we already have (optional, low priority)
 
 - [FITS/LOW] **Explicit "God View" accessor** — a named `AIGodView` wrapper over

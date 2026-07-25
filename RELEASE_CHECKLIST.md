@@ -46,6 +46,13 @@ pipeline (every category), store-asset spec.
       asserts or softlocks; a 16-week seed-42 run confirmed towns keep
       building and armies grow. Still needs YOUR hands-on runs for feel,
       balance and UI issues — headless can't judge those.*
+- [ ] **Decide what to do about water-separated maps before release.** Same
+      soak found Ring and JebusCross games grinding to the week-80 backstop
+      with most players still alive, because the AI never uses boats — see
+      the measured table in `AI_ROADMAP.md`. Options: wire naval invasion
+      into the AI, or ship with Hexagon as the default/only recommended
+      shape until it is. A player who picks Ring today gets a game that
+      cannot be won by conquest.
 - [ ] **Store art**: generate the two capsule masters
       (`--only capsule`), crop to the sizes in `packaging/steam/STORE_ASSETS.md`,
       add your title/logo. Capture 5–10 **screenshots** at 1920×1080 and cut a
