@@ -147,13 +147,31 @@ Instrumented the silent failure paths — that is what made these findable.
    distance and gave up if unroutable. Now walks all docks nearest-first and
    takes the first reachable one (max 4 A* per turn).
 
-**Still open — heroes reach `wants passage (1 dock) but no land route to the
-shipyard`.** Next step is reading the new distance/`sameLandmass` fields on
-that log line: if the dock is close and on the same landmass, suspect the
-destination tile being blocked (`costFn` returns 999 for occupied/blocked
-tiles and A* applies it to the goal too); if far, suspect
-`Pathfinder::find`'s default `maxNodes = 20000` running out on a large map.
-Note the AI also only builds Shipyards from week ~6, so early-game
+3. **Unreachable docks were eating every attempt.** The map scatters coastal
+   Shipyard *objects* across every island; sorted by hex distance they filled
+   all attempts while the hero's own reachable town dock was never tried.
+   Docks are now filtered by the O(1) land-connectivity check before any A*.
+
+**STILL BROKEN — zero boats after four attempts.** Do not assume the naval
+chain works; it does not. What is actually verified is only that heroes *want*
+passage and *enumerate* docks. No `launched a boat` line has ever appeared.
+
+Two dead ends, so nobody repeats them:
+- **Not a search-budget limit.** `maxNodes` 120k and `maxCost` 4000 were both
+  tried; neither produced a boat. Limits are back to 1200/30000.
+- **A "5-6x perf regression" from those attempts was a measurement error** —
+  Ring turns compared against Hexagon turns. Ring was always ~610-740ms.
+
+**Next step — stop guessing, instrument the decision.** The `[NAVAL]` log
+proved insufficient because it reported `sameLandmass` for `docks[0]` (an
+allied town) while the actual failure was against a different, nearer,
+unreachable Shipyard *object* — so it read as "reachable but no route", which
+is what sent two attempts chasing search limits. Log the *specific dock
+coordinate that was tried and rejected*, and `Pathfinder::find`'s exit reason
+(goal-unreachable vs cost-exceeded vs node-exceeded), before touching any
+more constants.
+
+Also note the AI only builds Shipyards from week ~6, so early-game
 `0 dock(s)` complaints are correct behaviour, not a bug.
 
 Repro: `./build/bin/unnamed_strategy --watch-ai-test=6:3:0 --seed=999`
