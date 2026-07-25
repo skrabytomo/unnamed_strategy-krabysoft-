@@ -495,9 +495,13 @@ Both players share one machine, alternating turns on the same screen.
 - [ ] Actual campaign content (your design)
 
 ### Phase 9 — Hideout Meta-Layer
-- [ ] Persistent SQLite state
-- [ ] Castle upgrade tree (cosmetic)
-- [ ] 9th faction unlock milestones
+- [x] Persistent SQLite state (`hideout.db` in the per-user data dir)
+- [x] Castle upgrade tree — 5 branches, 9 tiers, real effects (not cosmetic:
+      starting gold, hero ATK/DEF, rare resources, extra spell, max mana)
+- [x] 9th faction unlock milestones (Convergence: Castle T2 + Barracks T1 +
+      Vault T1)
+- [x] XP economy rebalanced 2026-07-25 — see `HIDEOUT_PROGRESSION.md` for the
+      full table and tuning knobs
 - [ ] World map mob spawn scheduler
 - [ ] Level map unit injection
 

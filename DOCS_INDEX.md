@@ -14,6 +14,7 @@ rest with real state).
 | `HANDOFF.md` | Architecture + **current-state addendum at top** (read first). |
 | `CLAUDE.md` | Claude Code project instructions (build, branch rules). |
 | `CONQUEST_MODE.md` | Conquest mode design — all 5 phases IMPLEMENTED. |
+| `HIDEOUT_PROGRESSION.md` | The between-runs meta-layer: every XP source, what it buys, pacing maths, and the tuning knobs. Read before changing hideout numbers. |
 | `AI_ROADMAP.md` | Triaged "Project Omniscient" AI plan (DONE/FITS/NO-FIT tiers). |
 | `THREADING.md` | AI off the render thread. **The 0 FPS Watch freeze is FIXED (2026-07-20)**: resumable AI round, frame-spread in Watch mode, verified by a `--seed` determinism differential. Remaining: worker-thread planning inside the new seams. Read before touching `doEndTurn()` or adding threads. |
 | `packaging/README.md` | One-click installer / packaging instructions. |
