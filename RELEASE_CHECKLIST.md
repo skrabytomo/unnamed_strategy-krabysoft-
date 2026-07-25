@@ -16,7 +16,10 @@ Steamworks SDK integration, SteamPipe packaging, full art-generation
 pipeline (every category), store-asset spec.
 
 **Blocked (needs a file from the dev, then code finishes it):**
-- [ ] Push one regenerated terrain tile → fix the full-bleed artifact
+- [x] ~~Push one regenerated terrain tile → fix the full-bleed artifact~~
+      DONE 2026-07-25: 23-tile terrain batch landed; the black-gap artifact
+      was renderer-side (missing mipmaps), fixed in `a65556f`. See
+      `ART_MISSING_TERRAIN.md`.
 - [ ] Push a fresh `session.log` from a current build → verify AI economy
 
 ## 1. Dev tasks (no account/money needed — do these first)
