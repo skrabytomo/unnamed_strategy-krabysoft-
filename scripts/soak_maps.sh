@@ -17,6 +17,9 @@
 #                           water-separated shape.
 #
 # Each game runs to completion, so this takes a while (tens of minutes).
+# Sizes are deliberately pinned to Small: a measured XLarge JebusCross3 game
+# was still going at week 63 after 40 minutes, which is too slow to be a
+# routine check. Soak shape coverage here; test big maps individually.
 set -uo pipefail
 
 SEED="${1:-999}"
