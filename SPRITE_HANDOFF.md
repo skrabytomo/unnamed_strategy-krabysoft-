@@ -9,6 +9,25 @@
 > units.json; eyeball each RANGED/FLY row against its sprite. It also flags
 > a design question: 4 of 9 factions field zero shooters.
 >
+> BAKED CHECKERBOARD BACKGROUNDS — 17 SHEETS FIXED 2026-07-25. The editor's
+> transparency checkerboard had been flattened into 18 PNGs as real opaque
+> pixels, so those sprites rendered sitting on a gray-and-white tiled plate
+> in game (worst: `hero_0`, `summon_skeleton`, `summon_ghost` — full-frame
+> plates; also 12 siege engines/towers and 3 faction sheets). Removed with
+> `tools/asset_gen/strip_checker.py`, which keys on the two flat checker
+> tones and only clears what is CONNECTED to existing transparency, so
+> same-coloured artwork (the white horse, silver armour) is never touched.
+> **Still imperfect, re-export would beat the script on 3 files:**
+> - `summon_ghost.png` — deliberately NOT processed. The ghost is translucent
+>   and was flattened over the checker, so its glow *contains* checker pixels;
+>   stripping leaves a hard opaque halo that looks worse than the plate.
+> - `hero_0.png`, `summon_skeleton.png` — plate is gone but a white edge
+>   remnant (~5-6k px) survives where checker squares were antialiased into
+>   the sprite outline. Better than before, not clean.
+> Re-export these three from a source with real alpha and the problem is gone.
+> Note: do NOT run strip_checker twice on one file — with the checker gone it
+> re-locks onto the artwork's own grays (bone, steel) and would eat the sprite.
+>
 > THORNKIN HOLEY-SILHOUETTE FIX — PREPARED, NOT APPLIED (dev chose to hold).
 > Measured: the t1–t6 bodies are only 4–9% pixel coverage — thin lattice,
 > gaps mostly border-connected, so hole-filling alone can't fix it. Working
