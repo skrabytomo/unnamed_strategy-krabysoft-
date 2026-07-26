@@ -601,6 +601,12 @@ void Game::renderMainMenu()
         ImGui::Spacing();
         if (fancyButton("Watch AI vs AI", m_menuIconTex[4])) m_menuMode = 6;
         ImGui::Spacing();
+        // Hideout from the MAIN MENU: the meta-layer is where you spend XP
+        // between runs, but it used to be reachable only via F6 inside a
+        // running game — the one place you least need it. Same window, same
+        // toggle flag; it just also renders in the menu state now.
+        if (fancyButton("Hideout",    m_menuIconTex[5])) m_showHideoutScreen = !m_showHideoutScreen;
+        ImGui::Spacing();
         if (fancyButton("High Scores", m_menuIconTex[7])) m_menuMode = 7;
         ImGui::Spacing();
         if (fancyButton("How to Play", m_menuIconTex[2])) m_menuMode = 9;
@@ -984,5 +990,11 @@ void Game::renderMainMenu()
     }
 
     ImGui::End();
+
+    // Hideout window over the menu (opened by the Hideout button above).
+    // Drawn before endImGuiFrame so it lives in the same ImGui frame.
+    if (m_showHideoutScreen)
+        m_hideoutScreen.draw(m_hideout, m_showHideoutScreen);
+
     endImGuiFrame();
 }
