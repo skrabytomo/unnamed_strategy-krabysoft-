@@ -308,7 +308,7 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
         return s.empty() ? "free" : s;
     };
 
-    ImGui::TextDisabled("— click to build, click art for a full preview");
+    ImGui::TextDisabled("— left-click to build, right-click for a full art preview");
 
     int  col        = 0;
     bool needRebuild = false;
@@ -467,9 +467,13 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
         }
 
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) &&
-            ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            // Clicking the already-previewed building's art closes it again —
-            // no need to reach for the separate Close button for the common case.
+            ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+            // Right-click toggles the art preview. This used to be on LEFT
+            // click checked via the same IsItemHovered() as the Button() above
+            // — so a single left-click on a buildable T1 dwelling both tried to
+            // build it AND toggled the preview, and the preview stole the
+            // click ("I click but nothing builds"). Right-click removes any
+            // overlap with the build action.
             m_previewBuildingId = (m_previewBuildingId == def.id) ? -1 : def.id;
         }
 
