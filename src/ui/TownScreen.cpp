@@ -320,6 +320,37 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
         bool limitReach = m_town->builtToday >= 1;
         bool prereqMet  = m_town->canBuild(def.id, m_registry->buildings(),
                                             m_currentWeek, m_blueprintDiscount);
+
+        // Work out WHY it's locked, if it is — canBuild only returns a bool,
+        // and the old UI showed cost + a greyed unclickable button with zero
+        // explanation (the "I can afford it but can't click it" bug report).
+        std::string lockReason;
+        if (!built && !prereqMet) {
+            int effMinWk = std::max(1, def.minWeek - m_blueprintDiscount);
+            std::vector<std::string> missingPrereqs;
+            for (int prereq : def.prerequisites) {
+                if (m_town->hasBuilding(prereq)) continue;
+                for (const auto& pd : m_registry->buildings())
+                    if (pd.id == prereq) { missingPrereqs.push_back(pd.name); break; }
+            }
+            bool pathConflict = false;
+            if (def.path != UpgradePath::None && def.tier > 0) {
+                for (const auto& d : m_town->dwellings)
+                    if (d.tier == def.tier && d.path != UpgradePath::None && d.path != def.path)
+                        pathConflict = true;
+            }
+            if (!missingPrereqs.empty()) {
+                lockReason = "Requires: ";
+                for (size_t i = 0; i < missingPrereqs.size(); ++i)
+                    lockReason += (i ? ", " : "") + missingPrereqs[i];
+            } else if (pathConflict) {
+                lockReason = "Already committed to the other upgrade path for this tier";
+            } else if (m_currentWeek > 0 && def.minWeek > 0 && m_currentWeek < effMinWk) {
+                lockReason = "Unlocks week " + std::to_string(effMinWk);
+            } else if (def.faction != FactionId::None && def.faction != m_town->faction) {
+                lockReason = "Not available for this faction";
+            }
+        }
         float bldCostMult = (m_hero && m_hero->efficientSpecialty) ? 0.8f : 1.0f;
         Resources effCost = def.cost;
         if (bldCostMult != 1.0f)
@@ -332,14 +363,10 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
             label = "[\xE2\x9C\x93] " + def.name;   // check mark — clearly built
         } else if (limitReach && prereqMet) {
             label = "[1/day] " + def.name + "  [" + costStr(def.cost) + "]";
-        } else if (!prereqMet && m_currentWeek > 0 && def.minWeek > 0) {
-            int effectiveMin = std::max(1, def.minWeek - m_blueprintDiscount);
-            if (m_currentWeek < effectiveMin)
-                label = "[Wk" + std::to_string(effectiveMin) + "] " + def.name + " " + costStr(def.cost);
-            else
-                label = def.name + "  [" + costStr(def.cost) + "]";
+        } else if (!lockReason.empty()) {
+            label = "[locked] " + def.name + "  [" + costStr(def.cost) + "]";
         } else {
-            label = def.name + (built ? "" : "  [" + costStr(def.cost) + "]");
+            label = def.name + "  [" + costStr(def.cost) + "]";
         }
 
         if (built) {
@@ -407,6 +434,14 @@ void TownScreen::drawBuildingTree(UIRenderer& rdr)
                 ImGui::TextDisabled("%s", def.description.c_str());
             if (!built) {
                 ImGui::Separator();
+                if (limitReach && prereqMet) {
+                    ImGui::TextColored({0.95f, 0.55f, 0.3f, 1.0f},
+                        "Already built a building this week — try again next week.");
+                } else if (!lockReason.empty()) {
+                    ImGui::TextColored({0.95f, 0.55f, 0.3f, 1.0f}, "%s", lockReason.c_str());
+                } else if (!affordable) {
+                    ImGui::TextColored({0.9f, 0.4f, 0.4f, 1.0f}, "Not enough resources.");
+                }
                 ImGui::TextUnformatted("Cost:");
                 static const int kResIconIdx[RESOURCE_COUNT] = { 32, 33, 34, 35, 36, 37 };
                 bool first = true;
