@@ -22,7 +22,7 @@ faction keys (Path A/B choice) → push Arena for rank → weekly ladder reset.
 |---|---|---|
 | XP | victory: 50 × nodeTier × (1 + streak×0.1) | hero levels → skill/spell picks |
 | Gold | battles, quests, nodes | city upgrades, direct unit purchase |
-| Gems (mode-only) | daily/weekly quests, arena, milestones | hero respec, buying chests |
+| Gems (mode-only) | daily/weekly quests, arena, milestones, **gold exchange (25g:1gem)** | hero respec, buying chests |
 | Keys (9 faction kinds) | boss nodes, weekly quest, arena ranks | unit path upgrades (§5) |
 
 ## 3. Chests & collection
@@ -37,6 +37,13 @@ faction keys (Path A/B choice) → push Arena for rank → weekly ladder reset.
 Units land in a persistent collection pool (defId → count). Team assembly: pick
 any 6 stacks from the pool, cross-faction freely. **Map battles cost real
 casualties** (units leave the pool). Chests refill it.
+
+**Balance fix (2026-07):** gems were the only chest currency and had a thin
+income stream (quest rewards only, ~70-120/week), while victory gold
+(100-400+/battle) had no sink besides the cheap recruit shop — Golden (150
+gems) and Grand (400 gems) chests were a multi-week grind even for a player
+winning constantly. Added a Gold→Gems exchange (25 gold = 1 gem) in the Gem
+Shop, so banked battle winnings convert into real chest-buying power.
 
 ## 4. Quests
 

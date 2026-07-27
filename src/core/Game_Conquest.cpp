@@ -494,6 +494,22 @@ void Game::renderConquest()
                 m_conquest.buyChestWithGems(ct);
             if (!afford) ImGui::EndDisabled();
         }
+        ImGui::Separator();
+        ImGui::TextDisabled("Gold: %d", m_conquest.gold());
+        ImGui::TextWrapped("Exchange gold for gems (%d gold = 1 gem) — put your "
+                            "battle winnings toward Golden/Grand chests.",
+                            ConquestMode::GOLD_PER_GEM);
+        static const int kExchangeAmounts[] = {10, 50, 150};
+        for (int amt : kExchangeAmounts) {
+            int cost = amt * ConquestMode::GOLD_PER_GEM;
+            char elbl[64];
+            std::snprintf(elbl, sizeof(elbl), "+%d gems (%dg)##ex%d", amt, cost, amt);
+            bool canEx = m_conquest.gold() >= cost;
+            if (!canEx) ImGui::BeginDisabled();
+            if (ImGui::Button(elbl, ImVec2(-1, 26)))
+                m_conquest.exchangeGoldForGems(amt);
+            if (!canEx) ImGui::EndDisabled();
+        }
         ImGui::End();
     }
 

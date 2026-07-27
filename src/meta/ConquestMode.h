@@ -106,6 +106,15 @@ public:
     // Buy a chest with gems. Returns false if too few gems.
     bool buyChestWithGems(ChestType t);
     static int chestGemPrice(ChestType t);
+    // Gold -> Gems exchange rate and helper. Gold's ONLY other sink is the
+    // cheap recruit shop (40/90/180g) — meanwhile gems are the currency that
+    // actually buys Golden (150) and Grand (400) chests, and gem income from
+    // quests alone (~70-120/week) makes those a multi-week grind even though
+    // gold from winning (100-400+/battle) piles up with nothing to spend it on.
+    // 25 gold -> 1 gem lets banked victory gold convert into real chest-buying
+    // power instead of sitting idle.
+    static constexpr int GOLD_PER_GEM = 25;
+    bool exchangeGoldForGems(int gemsWanted);
     // Hero respec: refund one attribute point cost, etc. (kept minimal for now)
     bool spendGems(int amount);
 

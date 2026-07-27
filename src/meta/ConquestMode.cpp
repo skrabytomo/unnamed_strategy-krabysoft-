@@ -492,6 +492,16 @@ bool ConquestMode::spendGems(int amount)
     return true;
 }
 
+bool ConquestMode::exchangeGoldForGems(int gemsWanted)
+{
+    if (gemsWanted <= 0) return false;
+    int cost = gemsWanted * GOLD_PER_GEM;
+    if (m_db.gold() < cost) return false;
+    m_db.addGold(-cost);
+    m_db.addGems(gemsWanted);
+    return true;
+}
+
 // ── Keys & path upgrades (Phase 4) ───────────────────────────────────────────
 
 int ConquestMode::keyCostForTier(int tier)
