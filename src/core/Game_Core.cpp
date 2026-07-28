@@ -1270,6 +1270,10 @@ void Game::startNewGame()
         uint32_t frng = (m_forcedSeedSet ? m_forcedSeed
                                          : static_cast<uint32_t>(SDL_GetTicks()))
                         ^ 0xC0FFEE11u;
+        // Capture BEFORE resolveFac() overwrites slot 0 with a concrete
+        // faction — this is the only point we can tell "was Random chosen".
+        m_thisGameFactionWasRandom = (m_slotFaction[0] == 9);
+        m_skirmishQuestsReported = false;
         auto resolveFac = [&](int f) {
             if (f >= 0 && f <= 8) return f;
             frng = frng * 1664525u + 1013904223u;

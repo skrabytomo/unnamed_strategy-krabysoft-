@@ -934,6 +934,14 @@ private:
     int  m_newGameMapShape   = 0;   // 0=Hexagon, 1=JebusCross, 2=JebusCross3, 3=Ring
     int  m_newGameFaction    = 0;   // 0=HolyOrder ... 8=Convergence
     int  m_newGameDifficulty = 1;   // 0=Easy, 1=Normal, 2=Hard
+    // True if the human player's faction was set to "Random" (slot value 9) at
+    // setup for THIS game — resolveFac() immediately picks a real faction and
+    // doesn't remember the choice was random, so this flag captures it at
+    // startNewGame() time for the skirmish-quest report at game-over.
+    bool m_thisGameFactionWasRandom = false;
+    // Have we already reported this game's SkirmishPlayed/Won quest events?
+    // Guards against reporting twice if the victory/defeat check re-runs.
+    bool m_skirmishQuestsReported = false;
     int  m_newGameClassId    = 0;   // classId of chosen hero class (0=auto)
 
     // ── classic-strategy-style game setup slots ───────────────────────────────────────────

@@ -16,6 +16,14 @@ enum class QuestEvent : uint8_t
     ArenaWon,           // arena fight won (Phase 5; wired now, harmless until then)
     ChestOpened,        // any chest opened
     MultiFactionWin,    // won a battle with 3+ distinct factions in the team
+    // ── Skirmish-sourced events (reported from REGULAR games, not Conquest's
+    // own node map). Conquest is the persistent out-of-game progression layer;
+    // skirmish/watch games are where you actually play, and their outcomes
+    // feed Conquest quests/rewards. param encodes event-specific context (see
+    // each quest's generation comment) and -1 in a quest's `param` means "any".
+    SkirmishPlayed,     // finished a skirmish game (win or lose), any faction
+    SkirmishWonDifficulty, // won a skirmish; quest.param = required difficulty (0/1/2), -1 = any
+    SkirmishWonRandomFaction, // won a skirmish where YOUR faction was randomized at setup
 };
 
 enum class QuestRewardKind : uint8_t { Gold, Gems, WoodenChest, IronChest, Key };
@@ -51,4 +59,4 @@ namespace QuestRewards
 }
 
 // Builds the human-readable text for a freshly generated quest.
-std::string questText(QuestEvent e, int target, bool weekly);
+std::string questText(QuestEvent e, int target, bool weekly, int param = -1);

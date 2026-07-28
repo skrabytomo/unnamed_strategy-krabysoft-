@@ -364,7 +364,8 @@ void ConquestMode::refreshQuests()
         std::vector<QuestEvent> pool = {
             QuestEvent::BattleWon, QuestEvent::NodeCleared,
             QuestEvent::SideNodeCleared, QuestEvent::ChestOpened,
-            QuestEvent::MultiFactionWin
+            QuestEvent::MultiFactionWin, QuestEvent::SkirmishPlayed,
+            QuestEvent::SkirmishWonRandomFaction
         };
         // 3 distinct daily quests
         std::vector<QuestEvent> chosen;
@@ -381,9 +382,11 @@ void ConquestMode::refreshQuests()
             case QuestEvent::SideNodeCleared: target = 1 + (rng() % 2); break;
             case QuestEvent::ChestOpened:     target = 2 + (rng() % 2); break;
             case QuestEvent::MultiFactionWin: target = 1; break;
+            case QuestEvent::SkirmishPlayed:  target = 3; break;   // "play 3 games as any race"
+            case QuestEvent::SkirmishWonRandomFaction: target = 1; break;
             default: break;
             }
-            m_db.questInsert(false, (int)e, 0, target, exp);
+            m_db.questInsert(false, (int)e, -1, target, exp);
         }
     }
 
@@ -391,18 +394,38 @@ void ConquestMode::refreshQuests()
     if (!haveWeekly || now >= weeklyExpiry) {
         m_db.questClear(true);
         long long exp = now + 7 * 24 * 3600;   // 7 days
-        std::vector<QuestEvent> pool = {
-            QuestEvent::NodeCleared, QuestEvent::ArenaWon, QuestEvent::ChestOpened
+        // (event, param) pairs — param=-1 means "any"/not applicable. The
+        // three SkirmishWonDifficulty entries are the "play against each
+        // computer difficulty" goal: one shows up most weeks, rotating you
+        // through Easy/Normal/Hard over time rather than demanding all 3 at
+        // once (which would make the weekly set entirely skirmish-only).
+        struct Pair { QuestEvent e; int param; };
+        std::vector<Pair> pool = {
+            {QuestEvent::NodeCleared, -1},
+            {QuestEvent::ArenaWon,    -1},
+            {QuestEvent::ChestOpened, -1},
+            {QuestEvent::SkirmishWonDifficulty, 0},   // Easy
+            {QuestEvent::SkirmishWonDifficulty, 1},   // Normal
+            {QuestEvent::SkirmishWonDifficulty, 2},   // Hard
         };
-        for (auto e : pool) {
+        // 3 distinct weekly slots (dedup by event+param pair).
+        std::vector<Pair> chosen;
+        while (chosen.size() < 3) {
+            Pair p = pool[rng() % pool.size()];
+            bool dup = false;
+            for (auto& c : chosen) if (c.e == p.e && c.param == p.param) dup = true;
+            if (!dup) chosen.push_back(p);
+        }
+        for (auto& p : chosen) {
             int target = 10;
-            switch (e) {
-            case QuestEvent::NodeCleared: target = 10; break;
-            case QuestEvent::ArenaWon:    target = 5;  break;
-            case QuestEvent::ChestOpened: target = 4;  break;
+            switch (p.e) {
+            case QuestEvent::NodeCleared:            target = 10; break;
+            case QuestEvent::ArenaWon:                target = 5;  break;
+            case QuestEvent::ChestOpened:              target = 4;  break;
+            case QuestEvent::SkirmishWonDifficulty:   target = p.param == 2 ? 1 : p.param == 1 ? 2 : 3; break;
             default: break;
             }
-            m_db.questInsert(true, (int)e, 0, target, exp);
+            m_db.questInsert(true, (int)p.e, p.param, target, exp);
         }
     }
 }
@@ -420,17 +443,23 @@ std::vector<Quest> ConquestMode::quests() const
         q.target   = r.target;
         q.expiry   = r.expiry;
         q.claimed  = r.claimed;
-        q.text     = questText(q.event, q.target, q.weekly);
+        q.text     = questText(q.event, q.target, q.weekly, q.param);
         out.push_back(q);
     }
     return out;
 }
 
-void ConquestMode::reportEvent(QuestEvent e, int count)
+void ConquestMode::reportEvent(QuestEvent e, int count, int matchParam)
 {
     for (auto& r : m_db.questsAll()) {
         if (r.claimed) continue;
         if ((QuestEvent)r.event != e) continue;
+        // Param gating: a quest's own param of -1 means "any" (matches every
+        // report). Otherwise the report's matchParam must equal the quest's
+        // stored param (e.g. quest wants difficulty==2/Hard, report must say
+        // matchParam==2). matchParam==-1 from the caller means "unspecified"
+        // and matches quests with param==-1 only.
+        if (r.param != -1 && r.param != matchParam) continue;
         int np = std::min(r.target, r.progress + count);
         if (np != r.progress) m_db.questSetProgress(r.id, np);
     }

@@ -4976,8 +4976,16 @@ void Game::doEndTurnPost(bool lastPlayerEndedTurn)
         // Auto-save at week start if enabled
         if (m_settingsAutoSave) saveGame();
     }
-// Watch AI: passive victory/defeat check (needed when last enemy town captured without combat)
-if (m_watchingAI && !m_showVictory && !m_showDefeat) {
+// Passive victory/defeat check: originally Watch-only ("needed when last
+// enemy town captured without combat"), widened to plain single-player too —
+// a normal single-player skirmish had NO automatic win/loss detection at all,
+// only the opportunistic hotseat-elimination path when turns happened to
+// advance past a dead player. This is also the hook for reporting
+// skirmish-sourced Conquest quest progress: Conquest is the persistent
+// out-of-game progression layer, and regular skirmish games are the actual
+// play that should feed it (rather than requiring Conquest's own node map).
+bool isPlainSingleplayer = (m_numHumanPlayers == 1 && !m_hotSeatMode && !m_watchingAI);
+if ((m_watchingAI || isPlainSingleplayer) && !m_showVictory && !m_showDefeat) {
     bool noEnemyHeroes = m_enemyHeroes.empty();
     bool noEnemyTowns  = true;
     for (const auto& t : m_towns)
@@ -4991,6 +4999,18 @@ if (m_watchingAI && !m_showVictory && !m_showDefeat) {
         for (const auto& t : m_towns) if (t.ownerId == 1) { anyTown = true; break; }
         bool anyArmy = !m_heroes.empty() && !m_heroes[m_activeHeroIdx].army.empty();
         if (!anyTown && !anyArmy) { m_showDefeat = true; m_finalDefeat = true; }
+    }
+    // Report skirmish quest progress exactly once per game, only for a real
+    // (non-Watch) skirmish the human actually played.
+    if (isPlainSingleplayer && (m_showVictory || m_showDefeat) && !m_skirmishQuestsReported) {
+        m_skirmishQuestsReported = true;
+        if (!m_conquest.active()) m_conquest.init(metaDbPath());
+        m_conquest.reportEvent(QuestEvent::SkirmishPlayed);
+        if (m_showVictory) {
+            m_conquest.reportEvent(QuestEvent::SkirmishWonDifficulty, 1, m_newGameDifficulty);
+            if (m_thisGameFactionWasRandom)
+                m_conquest.reportEvent(QuestEvent::SkirmishWonRandomFaction);
+        }
     }
 }
 

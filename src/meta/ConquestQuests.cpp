@@ -1,7 +1,7 @@
 #include "ConquestQuests.h"
 #include <cstdio>
 
-std::string questText(QuestEvent e, int target, bool weekly)
+std::string questText(QuestEvent e, int target, bool weekly, int param)
 {
     char buf[128];
     switch (e) {
@@ -23,6 +23,20 @@ std::string questText(QuestEvent e, int target, bool weekly)
     case QuestEvent::MultiFactionWin:
         std::snprintf(buf, sizeof(buf), "Win %d %s with 3+ factions in your team",
                       target, target == 1 ? "battle" : "battles");
+        break;
+    case QuestEvent::SkirmishPlayed:
+        std::snprintf(buf, sizeof(buf), "Play %d skirmish %s (any faction)",
+                      target, target == 1 ? "game" : "games");
+        break;
+    case QuestEvent::SkirmishWonDifficulty: {
+        const char* diffName = param == 2 ? "Hard" : param == 1 ? "Normal" : param == 0 ? "Easy" : "any";
+        std::snprintf(buf, sizeof(buf), "Win %d skirmish %s on %s difficulty",
+                      target, target == 1 ? "game" : "games", diffName);
+        break;
+    }
+    case QuestEvent::SkirmishWonRandomFaction:
+        std::snprintf(buf, sizeof(buf), "Win %d skirmish %s with a randomized faction",
+                      target, target == 1 ? "game" : "games");
         break;
     default:
         std::snprintf(buf, sizeof(buf), "Objective");

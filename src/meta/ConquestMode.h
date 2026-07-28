@@ -98,7 +98,7 @@ public:
     void refreshQuests();
     std::vector<class Quest> quests() const;
     // Gameplay hook: bump matching quests. `count` is how much to add.
-    void reportEvent(QuestEvent e, int count = 1);
+    void reportEvent(QuestEvent e, int count = 1, int matchParam = -1);
     // Claim a completed, unclaimed quest → applies reward. Returns reward desc.
     std::string claimQuest(int questId, const class BuildingRegistry& reg);
 
