@@ -179,6 +179,21 @@ void Game::renderConquest()
     if (ImGui::IsItemClicked()) m_conquestShowGemShop = !m_conquestShowGemShop;
     ImGui::SameLine(830);
     ImGui::TextDisabled("(click gems to shop)");
+    ImGui::SameLine(950);
+    {
+        // Infinite Conquest Level — separate meta-track from the hero's own
+        // level above. Feeds keys (1 per level-up) and scales chest drops.
+        int cLvl = m_conquest.conquestLevel();
+        int cXp  = m_conquest.conquestXp();
+        int cNeed = ConquestMode::conquestXpForNextLevel(cLvl);
+        char cBuf[48]; std::snprintf(cBuf, sizeof(cBuf), "%d / %d", cXp, cNeed);
+        ImGui::TextColored({0.75f, 0.55f, 0.95f, 1.f}, "Conquest Lv.%d", cLvl);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Fed by battles + quests. Each level grants 1 key "
+                               "(random faction) and increases chest drop sizes.");
+        ImGui::SameLine();
+        ImGui::ProgressBar((float)cXp / (float)std::max(1, cNeed), ImVec2(140, 18), cBuf);
+    }
     ImGui::SameLine(io.DisplaySize.x - 190);
     ImGui::TextDisabled("Week map #%d  [Esc: menu]", m_conquest.week() % 100);
     ImGui::End();
@@ -379,9 +394,14 @@ void Game::renderConquest()
             int freeCount = count - reservedOf(defId);
             conquestUnitIcon(defId, 28.f);
             ImGui::SameLine();
-            char row[96];
-            std::snprintf(row, sizeof(row), "%s (T%d)  x%d free##p%d",
-                          d->name.c_str(), d->tier, freeCount, defId);
+            int uLvl = m_conquest.unitLevel(defId);
+            char row[112];
+            if (uLvl > 0)
+                std::snprintf(row, sizeof(row), "%s (T%d) Lv.%d  x%d free##p%d",
+                              d->name.c_str(), d->tier, uLvl, freeCount, defId);
+            else
+                std::snprintf(row, sizeof(row), "%s (T%d)  x%d free##p%d",
+                              d->name.c_str(), d->tier, freeCount, defId);
             bool canAdd = freeCount > 0 && (int)team.size() < 6;
             if (!canAdd) ImGui::BeginDisabled();
             if (ImGui::Button(row, ImVec2(-1, 28))) {
@@ -393,6 +413,13 @@ void Game::renderConquest()
                 m_conquest.setTeam(team);
             }
             if (!canAdd) ImGui::EndDisabled();
+            if (ImGui::IsItemHovered() && uLvl < ConquestMode::MAX_UNIT_LEVEL) {
+                int xpCur  = m_conquest.unitXp(defId);
+                int xpNext = ConquestMode::unitXpForLevel(uLvl + 1);
+                ImGui::SetTooltip("Level %d — %d / %d XP to next level\n"
+                                   "(XP scales with how often you deploy this unit)",
+                                   uLvl, xpCur, xpNext);
+            }
         }
         ImGui::EndChild();
 
@@ -407,7 +434,11 @@ void Game::renderConquest()
             ImGui::PushID(i);
             conquestUnitIcon(team[i].first, 26.f);
             ImGui::SameLine();
-            ImGui::Text("%d. %s (T%d)", i + 1, d->name.c_str(), d->tier);
+            int tLvl = m_conquest.unitLevel(team[i].first);
+            if (tLvl > 0)
+                ImGui::Text("%d. %s (T%d) Lv.%d", i + 1, d->name.c_str(), d->tier, tLvl);
+            else
+                ImGui::Text("%d. %s (T%d)", i + 1, d->name.c_str(), d->tier);
             ImGui::SameLine(240);
             int c = team[i].second;
             ImGui::SetNextItemWidth(80);
@@ -729,8 +760,21 @@ void Game::startConquestBattle(int nodeIndex)
             const UnitDef* d = m_registry.getUnitDef(variantId);
             if (!d) d = m_registry.getUnitDef(defId);
             if (!d) continue;
-            playerUnits.push_back(ArmyBuilder::makeCombatUnit(*d, count, slot++));
+            CombatUnit cu = ArmyBuilder::makeCombatUnit(*d, count, slot++);
+            // Per-unit level bonus ("level up your favorites") — +3%/level to
+            // attack and HP, capped at level 20 (+60%). Conquest-only: kept out
+            // of the shared ArmyBuilder since regular skirmish units don't have
+            // a persistent level.
+            int lvl = m_conquest.unitLevel(defId);
+            if (lvl > 0) {
+                int pct = lvl * ConquestMode::UNIT_STAT_PCT_PER_LVL;
+                cu.attack = cu.attack + (cu.attack * pct) / 100;
+                cu.maxHp  = cu.maxHp  + (cu.maxHp  * pct) / 100;
+                cu.hp     = cu.maxHp;
+            }
+            playerUnits.push_back(cu);
             m_conquestDeployed.emplace_back(defId, count);   // track by BASE id
+            m_conquest.grantUnitUsageXp(defId, count);       // "level up your favorites"
         }
     }
     if (playerUnits.empty())   // no team (or team invalid) → generated fallback

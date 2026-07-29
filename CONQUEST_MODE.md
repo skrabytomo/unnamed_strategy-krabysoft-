@@ -59,6 +59,29 @@ Path A or Path B for that tier; all owned/future units of that tier become that
 variant. T6 has no paths (already ultimate). Respec costs gems.
 Key cost per tier: T1=1, T2=2, T3=3, T4=5, T5=8 → 19/faction, 171 total.
 
+## 5b. Per-unit leveling (2026-07) — "level up your favorites"
+
+Every unit TYPE in your collection tracks its own XP/level, separate from the
+hero. **XP scales with usage**: deploying N units of a type into a Conquest
+battle grants that type N XP (win or lose — using it is what counts, not
+winning with it). Capped at level 20, +3%/level to attack and HP (max +60% at
+20). Applied at deploy time in `Game_Conquest.cpp` (kept out of the shared
+`ArmyBuilder` since regular skirmish units don't persist a level). Level and
+XP-to-next shown in the Collection pool (with a tooltip) and the Battle Team
+list.
+
+## 5c. Infinite Conquest Level (2026-07) — the never-capped meta-track
+
+Separate from both the hero's own level and per-unit levels. Fed by **battles
+won** (`grantVictoryRewards`, 10×nodeTier XP) **and quest claims**
+(`claimQuest`, 15 daily / 40 weekly XP) combined — genuinely uncapped, no top
+level. Every level-up grants **1 key to a random faction**, giving unlocking
+every unit-upgrade path a real, ever-growing income source instead of being
+gated purely by chest-opening luck. Higher Conquest Level also scales chest
+drop *sizes* (+4%/level, capped +150%) — a committed player's chests get
+meaningfully bigger over time, not just a cosmetic level number. Shown in the
+Conquest top bar next to gold/gems, with a tooltip.
+
 ## 6. Arena — NO CASUALTIES
 
 Arena is exhibition: full unit restore after every fight, win or lose.
@@ -83,8 +106,9 @@ units there would kill the mode). Real attrition exists only on the map.
 | 3 | Quests + gems | DONE |
 | 4 | Keys + path-upgrade screen | DONE |
 | 5 | Arena + weekly ghost ladder | DONE |
+| 6 | Per-unit leveling (usage XP) + infinite Conquest Level (keys/chest scaling) | DONE |
 
-All five phases implemented. Possible future polish: town gold-upgrade screen
+All six phases implemented. Possible future polish: town gold-upgrade screen
 (dwelling drip / walls / mage guild), leaderboard cosmetics, real ghost-army
 snapshots of other players (currently generated power-matched opponents).
 
@@ -93,8 +117,11 @@ snapshots of other players (currently generated power-matched opponents).
 ```
 conquest_hero(id, name, faction, classId, level, xp, attack, defense,
               skillsBlob, spellsBlob)
-conquest_collection(defId INTEGER PRIMARY KEY, count INTEGER, pathChoice INTEGER)
+conquest_collection(defId INTEGER PRIMARY KEY, count INTEGER, pathChoice INTEGER,
+                     xp INTEGER, level INTEGER)   -- xp/level added 2026-07 (§5b)
 conquest_currencies(gold, gems)          -- single row
+conquest_state(key TEXT PRIMARY KEY, value INTEGER)   -- generic; also stores
+                                          -- "conquest_level"/"conquest_xp" (§5c)
 conquest_keys(faction INTEGER PRIMARY KEY, count INTEGER)
 conquest_quests(id, type, param, progress, target, expiry, claimed)
 conquest_arena(week, points, entriesToday, lastEntryDay)

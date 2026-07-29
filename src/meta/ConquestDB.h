@@ -70,6 +70,14 @@ public:
     int  collectionCount(int defId) const;
     void collectionAdd(int defId, int delta);                // clamped at 0
 
+    // ── Per-unit-type leveling ("use your favorite Paladins") ─────────────────
+    // Dumb storage only — the XP curve / level-up logic lives in ConquestMode.
+    // XP scales with USAGE: every time a stack of this unit type is deployed
+    // into a Conquest battle, it gains XP proportional to how many were sent.
+    int  unitXp(int defId) const;
+    int  unitLevel(int defId) const;
+    void unitSetXpLevel(int defId, int xp, int level);   // single upsert
+
     // ── Team (Phase 2): up to 6 slots of (defId, count) ───────────────────────
     std::vector<std::pair<int,int>> teamGet() const;
     void teamSet(const std::vector<std::pair<int,int>>& team);

@@ -128,6 +128,32 @@ public:
     bool chooseUnitPath(int faction, int tier, int choice);
     // Change an existing choice for gems.
     bool respecUnitPath(int faction, int tier, int newChoice);
+
+    // ── Per-unit leveling ("level up the troops you like best") ──────────────
+    // XP scales with USAGE: deploying N units of a type into a Conquest battle
+    // grants that unit type N xp (win or lose — using it is what counts).
+    // Capped at MAX_UNIT_LEVEL; +ATTACK/HP_PCT_PER_LEVEL% combat stats per
+    // level, applied at deploy time in ArmyBuilder.
+    static constexpr int MAX_UNIT_LEVEL        = 20;
+    static constexpr int UNIT_STAT_PCT_PER_LVL = 3;   // +3%/level, max +60% at 20
+    int  unitLevel(int defId) const { return m_db.unitLevel(defId); }
+    int  unitXp(int defId)    const { return m_db.unitXp(defId); }
+    static int unitXpForLevel(int level);   // cumulative XP needed to REACH `level`
+    // Called once per deployed stack at battle start (in Game_Conquest.cpp).
+    void grantUnitUsageXp(int defId, int count);
+
+    // ── Infinite Conquest Level (separate from hero level & unit level) ───────
+    // A never-capped meta-progression track fed by BOTH battles (same taps as
+    // quest reportEvent) and quest claims combined. Every level-up grants 1 key
+    // to a random faction — a guaranteed, ever-growing key income so "unlock
+    // every unit upgrade" is a real long-term goal instead of pure chest RNG.
+    // Higher Conquest Level also scales chest drop sizes (see openChest()).
+    int  conquestLevel() const { return m_db.stateInt("conquest_level", 0); }
+    int  conquestXp()    const { return m_db.stateInt("conquest_xp", 0); }
+    static int conquestXpForNextLevel(int level);   // XP needed to go level->level+1
+    // Adds XP to the Conquest Level track; handles (possibly multiple) level-ups
+    // and grants keys. Call from both battle-outcome and quest-claim code.
+    void grantConquestXp(int amount);
     // Resolve a base unit's defId to the player's chosen variant defId.
     // If no choice made (or lookup fails) returns the input defId unchanged.
     int  resolveVariant(int baseDefId, const class BuildingRegistry& reg) const;

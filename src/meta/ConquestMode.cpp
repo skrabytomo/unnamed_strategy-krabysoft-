@@ -85,6 +85,10 @@ int ConquestMode::grantVictoryRewards(int nodeIndex)
     if (n.type == ConquestNodeType::Boss)     goldGain += 400;
     m_db.addGold(goldGain);
 
+    // Conquest Level XP (infinite track) — battles are one of its two feeds,
+    // the other being quest claims (see claimQuest()).
+    grantConquestXp(10 * nodeTier);
+
     // Chests (Phase 2): side treasures and elites drop Wooden, bosses Golden
     if (n.type == ConquestNodeType::Treasure) grantChest(ChestType::Wooden);
     if (n.type == ConquestNodeType::Elite)    grantChest(ChestType::Wooden);
@@ -300,7 +304,13 @@ ConquestMode::ChestResult ConquestMode::openChest(ChestType t, const BuildingReg
         const UnitDef* u = reg.getUnitDef(f, tier, UpgradePath::None);
         if (!u) continue;
         // Count scales inversely with tier
-        int count = std::max(1, ri(1, 7 - tier));
+        int baseCount = std::max(1, ri(1, 7 - tier));
+        // Scale with Conquest Level: +4%/level, capped at +150% (level ~37+).
+        // Makes committed long-term play pay off with real drop-size growth,
+        // not just cosmetic level numbers. Integer math (x100 fixed-point)
+        // avoids pulling in <cmath> for a single rounding call.
+        int levelMulPct = std::min(250, 100 + conquestLevel() * 4);   // 100 = 1.0x
+        int count = std::max(baseCount, (baseCount * levelMulPct + 50) / 100);
         m_db.collectionAdd(u->id, count);
         res.units.push_back({u->id, count, u->name, tier, f});
     }
@@ -487,6 +497,9 @@ std::string ConquestMode::claimQuest(int questId, const BuildingRegistry& reg)
         }
         m_db.questSetClaimed(r.id, true);
         (void)reg;
+        // Conquest Level XP (infinite track) — quests are the second feed,
+        // alongside battle victories (see grantVictoryRewards()).
+        grantConquestXp(q.weekly ? 40 : 15);
         return QuestRewards::describe(rw);
     }
     return "";
@@ -568,6 +581,56 @@ bool ConquestMode::respecUnitPath(int faction, int tier, int newChoice)
     m_db.addGems(-respecGemCost());
     m_db.setPathChoice(faction, tier, newChoice);
     return true;
+}
+
+// ── Per-unit leveling ─────────────────────────────────────────────────────────
+int ConquestMode::unitXpForLevel(int level)
+{
+    // Triangular curve: level 1 needs 50, level 2 needs 150 (cum.), level 3
+    // needs 300 (cum.), etc. — mild growth since this is capped at 20, not
+    // meant to be a huge grind, just reward using a unit type repeatedly.
+    if (level <= 0) return 0;
+    return 50 * level * (level + 1) / 2;
+}
+
+void ConquestMode::grantUnitUsageXp(int defId, int count)
+{
+    if (count <= 0) return;
+    int curLevel = m_db.unitLevel(defId);
+    if (curLevel >= MAX_UNIT_LEVEL) return;   // already maxed, no more XP needed
+    int xp = m_db.unitXp(defId) + count;
+    int level = curLevel;
+    while (level < MAX_UNIT_LEVEL && xp >= unitXpForLevel(level + 1)) level++;
+    m_db.unitSetXpLevel(defId, xp, level);
+}
+
+// ── Infinite Conquest Level ───────────────────────────────────────────────────
+int ConquestMode::conquestXpForNextLevel(int level)
+{
+    // Linear-ish, genuinely uncapped growth: level 0->1 needs 100, 1->2 needs
+    // 150, 2->3 needs 200, etc. Deliberately gentler than the unit curve since
+    // this is the "always something to work toward" track.
+    return 100 + level * 50;
+}
+
+void ConquestMode::grantConquestXp(int amount)
+{
+    if (amount <= 0) return;
+    int level = conquestLevel();
+    int xp    = conquestXp() + amount;
+    int keysGranted = 0;
+    while (xp >= conquestXpForNextLevel(level)) {
+        xp -= conquestXpForNextLevel(level);
+        level++;
+        keysGranted++;   // 1 key per level, granted below (loop handles multi-level jumps)
+    }
+    m_db.setStateInt("conquest_level", level);
+    m_db.setStateInt("conquest_xp", xp);
+    if (keysGranted > 0) {
+        std::random_device rd; std::mt19937 rng(rd());
+        for (int i = 0; i < keysGranted; ++i)
+            m_db.addKeys(static_cast<int>(rng() % 9), 1);
+    }
 }
 
 int ConquestMode::resolveVariant(int baseDefId, const BuildingRegistry& reg) const

@@ -51,7 +51,7 @@ bool ConquestDB::createSchema()
 {
     // All tables (incl. later-phase ones) created up front — cheap, avoids
     // migrations mid-development. Only Phase-1 accessors exist so far.
-    return execSQL(R"SQL(
+    bool ok = execSQL(R"SQL(
         CREATE TABLE IF NOT EXISTS conquest_hero (
             id INTEGER PRIMARY KEY CHECK (id = 1),
             name TEXT, faction INTEGER, classId INTEGER,
@@ -71,7 +71,7 @@ bool ConquestDB::createSchema()
         );
         CREATE TABLE IF NOT EXISTS conquest_collection (
             defId INTEGER PRIMARY KEY, count INTEGER DEFAULT 0,
-            pathChoice INTEGER DEFAULT 0
+            pathChoice INTEGER DEFAULT 0, xp INTEGER DEFAULT 0, level INTEGER DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS conquest_keys (
             faction INTEGER PRIMARY KEY, count INTEGER DEFAULT 0
@@ -86,6 +86,13 @@ bool ConquestDB::createSchema()
             entriesToday INTEGER DEFAULT 0, lastEntryDay INTEGER DEFAULT 0
         );
     )SQL");
+    // Migration for pre-existing databases: CREATE TABLE IF NOT EXISTS above
+    // won't retroactively add columns to a table that already exists on disk.
+    // These fail harmlessly (execSQL logs + returns false, doesn't abort) if
+    // the column is already present.
+    execSQL("ALTER TABLE conquest_collection ADD COLUMN xp INTEGER DEFAULT 0;");
+    execSQL("ALTER TABLE conquest_collection ADD COLUMN level INTEGER DEFAULT 0;");
+    return ok;
 }
 
 // ── Hero ─────────────────────────────────────────────────────────────────────
@@ -304,6 +311,56 @@ void ConquestDB::collectionAdd(int defId, int delta)
         sqlite3_bind_int(st, 1, defId);
         sqlite3_bind_int(st, 2, delta);
         sqlite3_bind_int(st, 3, delta);
+        sqlite3_step(st);
+    }
+    sqlite3_finalize(st);
+}
+
+int ConquestDB::unitXp(int defId) const
+{
+    if (!m_db) return 0;
+    sqlite3_stmt* st = nullptr;
+    int out = 0;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT xp FROM conquest_collection WHERE defId = ?;", -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(st, 1, defId);
+        if (sqlite3_step(st) == SQLITE_ROW) out = sqlite3_column_int(st, 0);
+    }
+    sqlite3_finalize(st);
+    return out;
+}
+
+int ConquestDB::unitLevel(int defId) const
+{
+    if (!m_db) return 0;
+    sqlite3_stmt* st = nullptr;
+    int out = 0;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT level FROM conquest_collection WHERE defId = ?;", -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(st, 1, defId);
+        if (sqlite3_step(st) == SQLITE_ROW) out = sqlite3_column_int(st, 0);
+    }
+    sqlite3_finalize(st);
+    return out;
+}
+
+void ConquestDB::unitSetXpLevel(int defId, int xp, int level)
+{
+    if (!m_db) return;
+    sqlite3_stmt* st = nullptr;
+    // The row may not exist yet if a unit gains usage-XP before ever being
+    // added to the collection via collectionAdd (shouldn't normally happen —
+    // you can only deploy owned units — but INSERT OR IGNORE + UPDATE is safe
+    // either way and avoids a UNIQUE-constraint failure).
+    if (sqlite3_prepare_v2(m_db,
+        "INSERT INTO conquest_collection (defId, xp, level) VALUES (?, ?, ?)"
+        " ON CONFLICT(defId) DO UPDATE SET xp = ?, level = ?;",
+        -1, &st, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(st, 1, defId);
+        sqlite3_bind_int(st, 2, xp);
+        sqlite3_bind_int(st, 3, level);
+        sqlite3_bind_int(st, 4, xp);
+        sqlite3_bind_int(st, 5, level);
         sqlite3_step(st);
     }
     sqlite3_finalize(st);
