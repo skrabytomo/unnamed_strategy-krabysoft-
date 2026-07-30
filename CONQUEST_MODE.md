@@ -82,6 +82,23 @@ drop *sizes* (+4%/level, capped +150%) — a committed player's chests get
 meaningfully bigger over time, not just a cosmetic level number. Shown in the
 Conquest top bar next to gold/gems, with a tooltip.
 
+## 5d. Town (2026-07) — the persistent hideout town, finally built
+
+The "Town" row from the original mode-structure table (line 17) was designed
+from day one but never implemented until now. Three gold-upgradable tracks,
+each capped at level 10, accessed via the "Town" button in Conquest's bottom
+bar:
+
+| Track | Effect |
+|---|---|
+| **Dwellings** | Passive gold (40/level/day, collected on Conquest entry, capped at 7 days so idle time doesn't stack forever) **+** a free weekly chest (tier jumps at milestones: Wooden→Iron at lvl 3, →Golden at lvl 9, →Grand at lvl 10) **+** extra weekly quest slots (4 at lvl 5, 5 at lvl 10 — base is 3). |
+| **Walls** | 1 perk point per level (10 max), spent on 6 permanent perks (5 ranks each, cost = rank in points): Unit Attack/HP/Defense (+4%/rank, applies to ALL your Conquest units, stacks with per-unit leveling) and Player Gold/XP/Chest-Luck (+5%/+5%/+3% per rank). Points never refunded. |
+| **Mage Guild** | +8% hero spell power per level (max +80% at level 10), applied as a combat-stat boost to your hero in both map battles and Arena — a proxy until the game has a dedicated casting-power stat. |
+
+Upgrade cost ramps: `500 + level² × 60 + level × 240` gold (500 → 4160 at
+level 9→10). This is the long-term gold sink — previously gold only fed the
+cheap recruit shop (§ above) and the gold→gems exchange.
+
 ## 6. Arena — NO CASUALTIES
 
 Arena is exhibition: full unit restore after every fight, win or lose.
@@ -107,10 +124,11 @@ units there would kill the mode). Real attrition exists only on the map.
 | 4 | Keys + path-upgrade screen | DONE |
 | 5 | Arena + weekly ghost ladder | DONE |
 | 6 | Per-unit leveling (usage XP) + infinite Conquest Level (keys/chest scaling) | DONE |
+| 7 | Town: Dwellings (passive gold/chest/quest slots), Walls (perks), Mage Guild (spell power) | DONE |
 
-All six phases implemented. Possible future polish: town gold-upgrade screen
-(dwelling drip / walls / mage guild), leaderboard cosmetics, real ghost-army
-snapshots of other players (currently generated power-matched opponents).
+All seven phases implemented. Possible future polish: leaderboard cosmetics,
+real ghost-army snapshots of other players (currently generated power-matched
+opponents), deeper Mage Guild integration with the shared spell/skill system.
 
 ## DB schema (added to the existing hideout sqlite file)
 
@@ -121,7 +139,11 @@ conquest_collection(defId INTEGER PRIMARY KEY, count INTEGER, pathChoice INTEGER
                      xp INTEGER, level INTEGER)   -- xp/level added 2026-07 (§5b)
 conquest_currencies(gold, gems)          -- single row
 conquest_state(key TEXT PRIMARY KEY, value INTEGER)   -- generic; also stores
-                                          -- "conquest_level"/"conquest_xp" (§5c)
+                                          -- "conquest_level"/"conquest_xp" (§5c),
+                                          -- "town_dwellings"/"town_walls"/
+                                          -- "town_mageguild", "perk_*" (6 keys),
+                                          -- "dwelling_gold_last_collect",
+                                          -- "dwelling_chest_week" (§5d)
 conquest_keys(faction INTEGER PRIMARY KEY, count INTEGER)
 conquest_quests(id, type, param, progress, target, expiry, claimed)
 conquest_arena(week, points, entriesToday, lastEntryDay)

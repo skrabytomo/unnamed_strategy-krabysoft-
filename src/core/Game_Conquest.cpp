@@ -312,6 +312,9 @@ void Game::renderConquest()
         ImGui::SameLine(0, 12);
         if (ImGui::Button("Recruit", ImVec2(90, 40)))
             m_conquestShowRecruit = !m_conquestShowRecruit;
+        ImGui::SameLine(0, 12);
+        if (ImGui::Button("Town", ImVec2(90, 40)))
+            m_conquestShowTown = !m_conquestShowTown;
         ImGui::SameLine(0, 20);
 
         static const char* kChestNames[] = {"Wooden", "Iron", "Golden", "Grand"};
@@ -726,6 +729,91 @@ void Game::renderConquest()
         ImGui::End();
     }
 
+    // ── Town (2026-07): Dwellings / Walls / Mage Guild ─────────────────────────
+    if (m_conquestShowTown) {
+        ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
+                                ImGuiCond_Always, {0.5f, 0.5f});
+        ImGui::SetNextWindowSize({520, 0}, ImGuiCond_Always);
+        ImGui::Begin("Town", &m_conquestShowTown,
+                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+        ImGui::Text("Gold: %d", m_conquest.gold());
+        ImGui::TextDisabled("Permanent, gold-upgradable town — grows your whole account.");
+        ImGui::Separator();
+
+        // One-time "gold while away" toast right after entering Conquest.
+        if (m_conquest.lastDwellingGoldCollected() > 0) {
+            ImGui::TextColored({0.9f, 0.8f, 0.3f, 1.f}, "+%d gold collected from Dwellings while away",
+                                m_conquest.lastDwellingGoldCollected());
+        }
+
+        static const char* kTrackNames[] = { "Dwellings", "Walls", "Mage Guild" };
+        static const char* kTrackDesc[] = {
+            "Passive gold income + a free weekly chest + extra weekly quest slots.",
+            "1 perk point per level — spend below on permanent unit/player perks.",
+            "+8% hero spell power per level (max +80% at level 10)."
+        };
+        for (int ti = 0; ti < 3; ++ti) {
+            auto track = static_cast<ConquestMode::TownTrack>(ti);
+            int lvl  = m_conquest.townLevel(track);
+            int cost = m_conquest.townUpgradeCost(track);
+            ImGui::PushID(ti);
+            ImGui::Text("%s — Level %d/%d", kTrackNames[ti], lvl, ConquestMode::MAX_TOWN_LEVEL);
+            ImGui::TextWrapped("%s", kTrackDesc[ti]);
+            if (cost < 0) {
+                ImGui::TextDisabled("Maxed.");
+            } else {
+                bool canAfford = m_conquest.gold() >= cost;
+                if (!canAfford) ImGui::BeginDisabled();
+                char lbl[48]; std::snprintf(lbl, sizeof(lbl), "Upgrade — %d gold", cost);
+                if (ImGui::Button(lbl, ImVec2(-1, 28))) m_conquest.upgradeTown(track);
+                if (!canAfford) ImGui::EndDisabled();
+            }
+            ImGui::Spacing();
+            ImGui::PopID();
+        }
+
+        ImGui::Separator();
+        if (m_conquest.townLevel(ConquestMode::TownTrack::Dwellings) > 0) {
+            bool avail = m_conquest.dwellingWeeklyChestAvailable();
+            static const char* kChestT[] = {"Wooden", "Iron", "Golden", "Grand"};
+            int tierIdx = (int)m_conquest.dwellingWeeklyChestTier();
+            char clbl[64];
+            std::snprintf(clbl, sizeof(clbl), "Claim free weekly %s chest", kChestT[tierIdx]);
+            if (!avail) ImGui::BeginDisabled();
+            if (ImGui::Button(clbl, ImVec2(-1, 30)))
+                m_conquest.claimDwellingWeeklyChest(m_registry);
+            if (!avail) ImGui::EndDisabled();
+            if (!avail) ImGui::TextDisabled("Already claimed this week.");
+        }
+
+        ImGui::Separator();
+        ImGui::Text("Perk Points: %d / %d available",
+                    m_conquest.perkPointsAvailable(), m_conquest.perkPointsTotal());
+        static const char* kPerkNames[] = {
+            "Unit Attack (+4%/rank)", "Unit HP (+4%/rank)", "Unit Defense (+4%/rank)",
+            "Player Gold (+5%/rank)", "Player XP (+5%/rank)", "Chest Luck (+3%/rank)"
+        };
+        for (int pi = 0; pi < 6; ++pi) {
+            auto perk = static_cast<ConquestMode::Perk>(pi);
+            int rank = m_conquest.perkRank(perk);
+            ImGui::PushID(100 + pi);
+            ImGui::Text("%s — Rank %d/%d", kPerkNames[pi], rank, ConquestMode::MAX_PERK_RANK);
+            ImGui::SameLine(300);
+            if (rank >= ConquestMode::MAX_PERK_RANK) {
+                ImGui::TextDisabled("Maxed");
+            } else {
+                int nextCost = m_conquest.perkCostForRank(rank + 1);
+                bool canBuy = m_conquest.perkPointsAvailable() >= nextCost;
+                if (!canBuy) ImGui::BeginDisabled();
+                char plbl[32]; std::snprintf(plbl, sizeof(plbl), "+1 (%d pt)", nextCost);
+                if (ImGui::SmallButton(plbl)) m_conquest.buyPerk(perk);
+                if (!canBuy) ImGui::EndDisabled();
+            }
+            ImGui::PopID();
+        }
+        ImGui::End();
+    }
+
     endImGuiFrame();
 }
 
@@ -743,6 +831,10 @@ void Game::startConquestBattle(int nodeIndex)
     playerHero.classId = ch.classId;
     playerHero.attack  = ch.attack + (ch.level - 1) / 2;
     playerHero.defense = ch.defense + (ch.level - 1) / 2;
+    // Mage Guild perk: +8%/level spell power, applied as a hero attack boost
+    // (proxy — Conquest hero has no dedicated casting-power stat yet).
+    int mgPct = m_conquest.mageGuildSpellPowerPct();
+    if (mgPct > 0) playerHero.attack += (playerHero.attack * mgPct) / 100;
 
     std::vector<CombatUnit> playerUnits;
     m_conquestDeployed.clear();
@@ -766,12 +858,16 @@ void Game::startConquestBattle(int nodeIndex)
             // of the shared ArmyBuilder since regular skirmish units don't have
             // a persistent level.
             int lvl = m_conquest.unitLevel(defId);
+            int atkPct = m_conquest.perkUnitAttackPct();   // Walls perk tree — global
+            int hpPct  = m_conquest.perkUnitHpPct();       // to ALL units, stacks with
+            int defPct = m_conquest.perkUnitDefensePct();  // the per-unit level bonus.
             if (lvl > 0) {
                 int pct = lvl * ConquestMode::UNIT_STAT_PCT_PER_LVL;
-                cu.attack = cu.attack + (cu.attack * pct) / 100;
-                cu.maxHp  = cu.maxHp  + (cu.maxHp  * pct) / 100;
-                cu.hp     = cu.maxHp;
+                atkPct += pct; hpPct += pct;
             }
+            if (atkPct > 0) cu.attack  = cu.attack  + (cu.attack  * atkPct) / 100;
+            if (hpPct  > 0) { cu.maxHp = cu.maxHp + (cu.maxHp * hpPct) / 100; cu.hp = cu.maxHp; }
+            if (defPct > 0) cu.defense = cu.defense + (cu.defense * defPct) / 100;
             playerUnits.push_back(cu);
             m_conquestDeployed.emplace_back(defId, count);   // track by BASE id
             m_conquest.grantUnitUsageXp(defId, count);       // "level up your favorites"
@@ -807,6 +903,10 @@ void Game::startArenaBattle()
     playerHero.classId = ch.classId;
     playerHero.attack  = ch.attack + (ch.level - 1) / 2;
     playerHero.defense = ch.defense + (ch.level - 1) / 2;
+    // Mage Guild perk: +8%/level spell power, applied as a hero attack boost
+    // (proxy — Conquest hero has no dedicated casting-power stat yet).
+    int mgPct = m_conquest.mageGuildSpellPowerPct();
+    if (mgPct > 0) playerHero.attack += (playerHero.attack * mgPct) / 100;
 
     std::vector<CombatUnit> playerUnits;
     auto team = m_conquest.team();

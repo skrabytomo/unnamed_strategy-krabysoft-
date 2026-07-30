@@ -57,6 +57,10 @@ public:
 
     // ── Map ──────────────────────────────────────────────────────────────────
     int  week() const { return m_week; }
+    // Gold collected from Dwellings passive income on THIS session's init()
+    // call — read once by the UI to show a "+N gold while away" toast, then
+    // it's just informational (not re-collected on re-read).
+    int  lastDwellingGoldCollected() const { return m_lastDwellingGoldCollected; }
     const std::vector<ConquestNode>& nodes() const { return m_nodes; }
     // Marks node cleared, unlocks its successors, persists state.
     void clearNode(int index);
@@ -154,6 +158,60 @@ public:
     // Adds XP to the Conquest Level track; handles (possibly multiple) level-ups
     // and grants keys. Call from both battle-outcome and quest-claim code.
     void grantConquestXp(int amount);
+
+    // ── Town (2026-07) — the persistent hideout town from the original design
+    // doc that never got built. Three gold-upgradable tracks, each capped at
+    // MAX_TOWN_LEVEL. Levels stored via the generic conquest_state key-value
+    // store (no schema migration needed).
+    enum class TownTrack : uint8_t { Dwellings, Walls, MageGuild };
+    static constexpr int MAX_TOWN_LEVEL = 10;
+    int  townLevel(TownTrack t) const;
+    int  townUpgradeCost(TownTrack t) const;   // cost to go from current->current+1
+    bool upgradeTown(TownTrack t);             // spends gold, +1 level
+
+    // Dwellings: passive gold (collected on Conquest entry, capped at 7 days'
+    // worth so leaving the game open/idle doesn't let it accrue forever) +
+    // a free weekly chest (tier scales with level, big jumps at milestones)
+    // + extra weekly quest slots at high levels.
+    static constexpr int DWELLING_GOLD_PER_LEVEL_PER_DAY = 40;
+    // Called once per Conquest session entry; returns gold actually collected
+    // (0 if nothing pending) so the UI can show a "+N gold while away" toast.
+    int  collectDwellingGold();
+    // Which chest tier the weekly free chest grants at the current Dwellings
+    // level (milestone jumps at 3/6/9/10, not a smooth ramp).
+    ChestType dwellingWeeklyChestTier() const;
+    bool claimDwellingWeeklyChest(const class BuildingRegistry& reg);
+    bool dwellingWeeklyChestAvailable() const;
+    // Extra weekly quest slots: level>=5 -> 4 slots, level>=10 -> 5 slots
+    // (base is 3). Read by refreshQuests().
+    int  weeklyQuestSlotCount() const;
+
+    // Walls: 1 perk point per level (10 max), spent on permanent perks split
+    // into a Unit line (buffs your army) and a Player line (buffs you/economy).
+    // Points are never refunded — a simple accumulator, not a respec system.
+    enum class Perk : uint8_t {
+        UnitAttack, UnitHp, UnitDefense,      // unit line
+        PlayerGold, PlayerXp, PlayerLuck,     // player line
+    };
+    static constexpr int MAX_PERK_RANK = 5;
+    int  perkPointsTotal() const { return townLevel(TownTrack::Walls); }
+    int  perkPointsSpent() const;
+    int  perkPointsAvailable() const { return perkPointsTotal() - perkPointsSpent(); }
+    int  perkRank(Perk p) const;
+    int  perkCostForRank(int rank) const;    // cost to buy the NEXT rank (1..5)
+    bool buyPerk(Perk p);
+    // Aggregate bonus percentages, read at combat/economy time.
+    int  perkUnitAttackPct() const  { return perkRank(Perk::UnitAttack)  * 4; }  // +4%/rank
+    int  perkUnitHpPct() const      { return perkRank(Perk::UnitHp)      * 4; }
+    int  perkUnitDefensePct() const { return perkRank(Perk::UnitDefense) * 4; }
+    int  perkPlayerGoldPct() const  { return perkRank(Perk::PlayerGold)  * 5; }  // +5%/rank
+    int  perkPlayerXpPct() const    { return perkRank(Perk::PlayerXp)    * 5; }
+    int  perkPlayerLuckPct() const  { return perkRank(Perk::PlayerLuck)  * 3; }  // +3%/rank chest-count luck
+
+    // Mage Guild: flat spell-power bonus applied to the hero's casting stat in
+    // Conquest combat (kept simple — doesn't touch the shared skill/spell pick
+    // system used elsewhere). +8%/level, max +80% at level 10.
+    int  mageGuildSpellPowerPct() const { return townLevel(TownTrack::MageGuild) * 8; }
     // Resolve a base unit's defId to the player's chosen variant defId.
     // If no choice made (or lookup fails) returns the input defId unchanged.
     int  resolveVariant(int baseDefId, const class BuildingRegistry& reg) const;
@@ -198,4 +256,5 @@ private:
     int   m_week   = 0;
     bool  m_active = false;
     int   m_arenaStreak = 0;   // consecutive arena wins (session, feeds chest reward)
+    int   m_lastDwellingGoldCollected = 0;
 };

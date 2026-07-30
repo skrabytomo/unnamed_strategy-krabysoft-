@@ -661,6 +661,8 @@ private:
     // Phase 2 revised: cheap recruit shop
     bool         m_conquestShowRecruit    = false;
     int          m_conquestRecruitFaction = 0;
+    // Town screen (2026-07): Dwellings/Walls/Mage Guild upgrades + perks
+    bool         m_conquestShowTown = false;
 
     // ── Level-up flow ──────────────────────────────────────────────────────────
     HeroClassRegistry          m_classRegistry;

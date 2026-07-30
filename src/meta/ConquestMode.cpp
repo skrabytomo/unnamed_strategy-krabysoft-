@@ -21,6 +21,7 @@ bool ConquestMode::init(const std::string& dbPath)
         restoreNodeState(saved);
 
     m_active = true;
+    m_lastDwellingGoldCollected = collectDwellingGold();   // passive Town income while away, capped at 7 days
     return true;
 }
 
@@ -71,6 +72,7 @@ int ConquestMode::grantVictoryRewards(int nodeIndex)
     int streak = m_db.winStreak();
     float mult = 1.0f + 0.1f * static_cast<float>(streak);
     int xpGain = static_cast<int>(50.0f * nodeTier * mult);
+    xpGain += (xpGain * perkPlayerXpPct()) / 100;   // Walls perk: PlayerXp line
 
     int before = currentLevel();
     m_hero.xp += xpGain;
@@ -83,6 +85,7 @@ int ConquestMode::grantVictoryRewards(int nodeIndex)
     int goldGain = 100 * nodeTier;
     if (n.type == ConquestNodeType::Treasure) goldGain += 250;
     if (n.type == ConquestNodeType::Boss)     goldGain += 400;
+    goldGain += (goldGain * perkPlayerGoldPct()) / 100;   // Walls perk: PlayerGold line
     m_db.addGold(goldGain);
 
     // Conquest Level XP (infinite track) — battles are one of its two feeds,
@@ -305,11 +308,11 @@ ConquestMode::ChestResult ConquestMode::openChest(ChestType t, const BuildingReg
         if (!u) continue;
         // Count scales inversely with tier
         int baseCount = std::max(1, ri(1, 7 - tier));
-        // Scale with Conquest Level: +4%/level, capped at +150% (level ~37+).
-        // Makes committed long-term play pay off with real drop-size growth,
-        // not just cosmetic level numbers. Integer math (x100 fixed-point)
-        // avoids pulling in <cmath> for a single rounding call.
+        // Scale with Conquest Level (+4%/level, capped +150%) AND the Walls
+        // PlayerLuck perk (+3%/rank, up to +15% at rank 5) — both stack.
+        // Integer math (x100 fixed-point) avoids pulling in <cmath>.
         int levelMulPct = std::min(250, 100 + conquestLevel() * 4);   // 100 = 1.0x
+        levelMulPct += perkPlayerLuckPct();
         int count = std::max(baseCount, (baseCount * levelMulPct + 50) / 100);
         m_db.collectionAdd(u->id, count);
         res.units.push_back({u->id, count, u->name, tier, f});
@@ -418,9 +421,11 @@ void ConquestMode::refreshQuests()
             {QuestEvent::SkirmishWonDifficulty, 1},   // Normal
             {QuestEvent::SkirmishWonDifficulty, 2},   // Hard
         };
-        // 3 distinct weekly slots (dedup by event+param pair).
+        // Weekly slots: 3 base, more from Dwellings upgrades (weeklyQuestSlotCount()).
+        // Capped at pool.size() so the dedup loop below can't infinite-loop.
+        int slotCount = std::min((int)pool.size(), weeklyQuestSlotCount());
         std::vector<Pair> chosen;
-        while (chosen.size() < 3) {
+        while ((int)chosen.size() < slotCount) {
             Pair p = pool[rng() % pool.size()];
             bool dup = false;
             for (auto& c : chosen) if (c.e == p.e && c.param == p.param) dup = true;
@@ -631,6 +636,141 @@ void ConquestMode::grantConquestXp(int amount)
         for (int i = 0; i < keysGranted; ++i)
             m_db.addKeys(static_cast<int>(rng() % 9), 1);
     }
+}
+
+// ── Town ──────────────────────────────────────────────────────────────────────
+// The persistent hideout town from the original design doc — three
+// gold-upgradable tracks (Dwellings/Walls/Mage Guild) that never made it past
+// the design table until now. Levels/points live in the generic conquest_state
+// key-value store; no schema migration needed.
+
+static const char* townStateKey(ConquestMode::TownTrack t)
+{
+    switch (t) {
+    case ConquestMode::TownTrack::Dwellings: return "town_dwellings";
+    case ConquestMode::TownTrack::Walls:     return "town_walls";
+    case ConquestMode::TownTrack::MageGuild: return "town_mageguild";
+    }
+    return "town_unknown";
+}
+
+int ConquestMode::townLevel(TownTrack t) const
+{
+    return m_db.stateInt(townStateKey(t), 0);
+}
+
+int ConquestMode::townUpgradeCost(TownTrack t) const
+{
+    int lvl = townLevel(t);
+    if (lvl >= MAX_TOWN_LEVEL) return -1;   // maxed, not purchasable
+    // Gentle exponential-ish ramp: 500, 800, 1200, 1700, ... — gold is
+    // otherwise thin on sinks (recruit shop + gem exchange only), so this is
+    // the long-term gold sink.
+    return 500 + lvl * lvl * 60 + lvl * 240;
+}
+
+bool ConquestMode::upgradeTown(TownTrack t)
+{
+    int cost = townUpgradeCost(t);
+    if (cost < 0 || m_db.gold() < cost) return false;
+    m_db.addGold(-cost);
+    m_db.setStateInt(townStateKey(t), townLevel(t) + 1);
+    return true;
+}
+
+// ── Dwellings ─────────────────────────────────────────────────────────────────
+int ConquestMode::collectDwellingGold()
+{
+    int lvl = townLevel(TownTrack::Dwellings);
+    if (lvl <= 0) return 0;
+    long long now  = static_cast<long long>(std::time(nullptr));
+    long long last = m_db.stateInt("dwelling_gold_last_collect", 0);
+    if (last == 0) { m_db.setStateInt("dwelling_gold_last_collect", (int)now); return 0; }
+    long long elapsedDays = (now - last) / (24 * 3600);
+    if (elapsedDays <= 0) return 0;
+    elapsedDays = std::min<long long>(elapsedDays, 7);   // cap: no infinite AFK stacking
+    int gained = static_cast<int>(elapsedDays) * lvl * DWELLING_GOLD_PER_LEVEL_PER_DAY;
+    m_db.addGold(gained);
+    m_db.setStateInt("dwelling_gold_last_collect", (int)now);
+    return gained;
+}
+
+ConquestMode::ChestType ConquestMode::dwellingWeeklyChestTier() const
+{
+    int lvl = townLevel(TownTrack::Dwellings);
+    // Milestone jumps, not a smooth ramp — makes hitting 3/6/9/10 feel massive.
+    if (lvl >= 10) return ChestType::Grand;
+    if (lvl >= 9)  return ChestType::Golden;
+    if (lvl >= 3)  return ChestType::Iron;
+    return ChestType::Wooden;
+}
+
+bool ConquestMode::dwellingWeeklyChestAvailable() const
+{
+    if (townLevel(TownTrack::Dwellings) <= 0) return false;
+    return m_db.stateInt("dwelling_chest_week", -1) != m_week;
+}
+
+bool ConquestMode::claimDwellingWeeklyChest(const BuildingRegistry& reg)
+{
+    if (!dwellingWeeklyChestAvailable()) return false;
+    // Free — bypasses the gem cost entirely, straight to the drop roll.
+    ChestResult r = openChest(dwellingWeeklyChestTier(), reg);
+    (void)r;
+    m_db.setStateInt("dwelling_chest_week", m_week);
+    return true;
+}
+
+int ConquestMode::weeklyQuestSlotCount() const
+{
+    int lvl = townLevel(TownTrack::Dwellings);
+    if (lvl >= 10) return 5;
+    if (lvl >= 5)  return 4;
+    return 3;
+}
+
+// ── Walls / Perks ─────────────────────────────────────────────────────────────
+static const char* perkStateKey(ConquestMode::Perk p)
+{
+    switch (p) {
+    case ConquestMode::Perk::UnitAttack:  return "perk_unit_attack";
+    case ConquestMode::Perk::UnitHp:      return "perk_unit_hp";
+    case ConquestMode::Perk::UnitDefense: return "perk_unit_defense";
+    case ConquestMode::Perk::PlayerGold:  return "perk_player_gold";
+    case ConquestMode::Perk::PlayerXp:    return "perk_player_xp";
+    case ConquestMode::Perk::PlayerLuck:  return "perk_player_luck";
+    }
+    return "perk_unknown";
+}
+
+int ConquestMode::perkRank(Perk p) const
+{
+    return m_db.stateInt(perkStateKey(p), 0);
+}
+
+int ConquestMode::perkPointsSpent() const
+{
+    static const Perk all[] = { Perk::UnitAttack, Perk::UnitHp, Perk::UnitDefense,
+                                Perk::PlayerGold, Perk::PlayerXp, Perk::PlayerLuck };
+    int spent = 0;
+    for (Perk p : all) spent += perkRank(p);
+    return spent;
+}
+
+int ConquestMode::perkCostForRank(int rank) const
+{
+    if (rank < 1 || rank > MAX_PERK_RANK) return -1;
+    return rank;   // rank 1 costs 1 point, rank 5 costs 5 points — 15 total per perk
+}
+
+bool ConquestMode::buyPerk(Perk p)
+{
+    int cur = perkRank(p);
+    if (cur >= MAX_PERK_RANK) return false;
+    int cost = perkCostForRank(cur + 1);
+    if (perkPointsAvailable() < cost) return false;
+    m_db.setStateInt(perkStateKey(p), cur + 1);
+    return true;
 }
 
 int ConquestMode::resolveVariant(int baseDefId, const BuildingRegistry& reg) const
