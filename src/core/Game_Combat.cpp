@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <sstream>
 #include <algorithm>
+#include <tuple>
 #include <cmath>
 
 // ── Helper: resolve (faction, tier) for a CombatUnit ─────────────────────────
@@ -225,11 +226,31 @@ void Game::updateCombat(float dt)
 // ── Combat render ─────────────────────────────────────────────────────────────
 void Game::renderCombat()
 {
+    // ImGui frame must start BEFORE m_combatHUD.draw(): it now draws creature
+    // icons via ImGui::GetBackgroundDrawList()->AddImage() for the turn-queue
+    // ("show the creatures, not only text"), which requires an active ImGui
+    // frame. beginImGuiFrame() only touches ImGui's own state (NewFrame calls)
+    // and doesn't interact with the separate m_ui (UIRenderer) frame bracket
+    // below, so moving it earlier is safe.
+    beginImGuiFrame();
+
     m_ui.beginFrame();
-    m_combatHUD.draw(m_ui, m_combat);
+    m_combatHUD.draw(m_ui, m_combat, [this](uint32_t unitId) -> std::tuple<unsigned int,int,bool> {
+        auto it = m_combatAnimators.find(unitId);
+        if (it == m_combatAnimators.end()) return {0, 0, false};
+        const SpriteAnimator& anim = it->second;
+        // Only the common case (kind==0, a normal faction unit) for now —
+        // towers/engines/summons fall back to the colored box, a reasonable
+        // scope for this pass since they're rare in the turn queue.
+        if (anim.kind != 0) return {0, 0, false};
+        if (anim.faction < 0 || anim.faction >= NUM_FACTIONS) return {0, 0, false};
+        if (anim.tier < 1 || anim.tier > NUM_UNIT_TIERS) return {0, 0, false};
+        const Texture& tex = m_unitTex[anim.faction][anim.tier - 1];
+        if (!tex.ok()) return {0, 0, false};
+        return {tex.id(), anim.numCols, anim.mirror};
+    });
     m_ui.endFrame();
 
-    beginImGuiFrame();
     m_ui.flushText(ImGui::GetBackgroundDrawList());
     renderCombatBoard();
     if (m_showSpellPanel) renderSpellPanel();

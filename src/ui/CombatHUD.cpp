@@ -1,6 +1,7 @@
 #include "CombatHUD.h"
 #include <sstream>
 #include <algorithm>
+#include <imgui.h>
 
 bool CombatHUD::init(int sw, int sh)
 {
@@ -51,9 +52,9 @@ void CombatHUD::buildLayout(int sw, int sh)
     m_turnOrderBar = {0, 0, (float)sw, 44.0f};
 }
 
-void CombatHUD::draw(UIRenderer& rdr, const CombatEngine& engine)
+void CombatHUD::draw(UIRenderer& rdr, const CombatEngine& engine, const UnitIconLookup& iconOf)
 {
-    drawTurnOrder(rdr, engine);
+    drawTurnOrder(rdr, engine, iconOf);
     drawHeroInfo(rdr, engine);
 
     // Bottom HUD background
@@ -266,7 +267,7 @@ void CombatHUD::drawHeroInfo(UIRenderer& rdr, const CombatEngine& engine)
     drawHeroStrip(eh, 23.0f, UIColor::hex(UITheme::BLOOD_RED));
 }
 
-void CombatHUD::drawTurnOrder(UIRenderer& rdr, const CombatEngine& engine)
+void CombatHUD::drawTurnOrder(UIRenderer& rdr, const CombatEngine& engine, const UnitIconLookup& iconOf)
 {
     rdr.drawRect(m_turnOrderBar,
         UIColor::hex(UITheme::BG_PANEL_DARK, 0.92f),
@@ -300,15 +301,40 @@ void CombatHUD::drawTurnOrder(UIRenderer& rdr, const CombatEngine& engine)
 
         rdr.drawRect({x, y, slotW, slotH}, bg, brd, isActive ? 2.0f : 1.0f);
 
-        // Unit name — first 6 chars to fit
-        std::string abbr = u->name.substr(0, 6);
-        rdr.drawText(abbr, x + 2.0f, y + 2.0f,
-                     UIColor::hex(UITheme::TEXT_PRIMARY, isActive ? 1.0f : 0.85f), 9.0f);
+        // Creature icon — was text-only ("Show the creatures not only text").
+        // iconOf() returns the unit's cached idle-frame sprite (faction sheet,
+        // first column) when available; unknown/special units (towers,
+        // engines, summons) fall back to the colored box only.
+        bool hasIcon = false;
+        if (iconOf) {
+            auto [texId, numCols, mirror] = iconOf(u->id);
+            if (texId != 0 && numCols > 0) {
+                hasIcon = true;
+                float iconSz = slotH - 14.0f;   // leave room for the info row
+                float ix = x + (slotW - iconSz) * 0.5f;
+                float iy = y + 1.0f;
+                float u0 = mirror ? 1.0f / numCols : 0.0f;
+                float u1 = mirror ? 0.0f : 1.0f / numCols;
+                ImGui::GetBackgroundDrawList()->AddImage(
+                    (ImTextureID)(uintptr_t)texId,
+                    {ix, iy}, {ix + iconSz, iy + iconSz}, {u0, 0.0f}, {u1, 1.0f});
+            }
+        }
 
-        // Count and speed on second row
+        if (!hasIcon) {
+            // Fallback: no sprite available, keep the name abbreviation so the
+            // slot is still identifiable.
+            std::string abbr = u->name.substr(0, 6);
+            rdr.drawText(abbr, x + 2.0f, y + 2.0f,
+                         UIColor::hex(UITheme::TEXT_PRIMARY, isActive ? 1.0f : 0.85f), 9.0f);
+        }
+
+        // Count and speed caption — below the icon if one was drawn, else the
+        // original second-text-row position.
         char info[20];
         std::snprintf(info, sizeof(info), "x%d S%d", u->count, u->speed);
-        rdr.drawText(info, x + 2.0f, y + 14.0f,
+        float infoY = hasIcon ? (y + (slotH - 14.0f) + 2.0f) : (y + 14.0f);
+        rdr.drawText(info, x + 2.0f, infoY,
                      UIColor::hex(UITheme::TEXT_SECONDARY), 9.0f);
 
         // HP bar across the bottom of the slot

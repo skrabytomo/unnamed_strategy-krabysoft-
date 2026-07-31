@@ -2,6 +2,7 @@
 #include "Widgets.h"
 #include "../combat/CombatEngine.h"
 #include <functional>
+#include <tuple>
 
 class CombatHUD
 {
@@ -9,7 +10,13 @@ public:
     bool init(int screenW, int screenH);
     void resize(int screenW, int screenH);
 
-    void draw(UIRenderer& rdr, const CombatEngine& engine);
+    // Returns {textureId, numCols, isFlipped} for a unit's idle-frame icon, or
+    // {0,0,false} if unavailable (falls back to the colored box). Supplied by
+    // Game_Combat.cpp, which owns the actual textures/animator cache — keeps
+    // CombatHUD decoupled from Game internals.
+    using UnitIconLookup = std::function<std::tuple<unsigned int,int,bool>(uint32_t unitId)>;
+
+    void draw(UIRenderer& rdr, const CombatEngine& engine, const UnitIconLookup& iconOf = nullptr);
 
     bool onMouseMove(float x, float y);
     bool onMouseDown(float x, float y);
@@ -26,7 +33,7 @@ public:
 private:
     void buildLayout(int sw, int sh);
     void drawUnitInfo(UIRenderer& rdr, const CombatUnit* unit, bool isActive);
-    void drawTurnOrder(UIRenderer& rdr, const CombatEngine& engine);
+    void drawTurnOrder(UIRenderer& rdr, const CombatEngine& engine, const UnitIconLookup& iconOf);
     void drawHeroInfo(UIRenderer& rdr, const CombatEngine& engine);
     void drawCombatLog(UIRenderer& rdr, const CombatEngine& engine);
     void drawActionBar(UIRenderer& rdr, const CombatUnit* active);
