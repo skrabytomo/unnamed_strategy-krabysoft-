@@ -538,9 +538,18 @@ void Game::renderCombatBoard()
             hasFortArt = m_moatTex[sf].ok();
             if (hasFortArt) fill = (fill & 0x00FFFFFF) | (70u << 24);
         }
-        // Reachable highlight
-        for (const auto& rh : reach)
-            if (rh == h) { fill = IM_COL32(40, 180, 60, 130); break; }
+        // Reachable highlight. A wall tile can legitimately be IN `reach` when
+        // the active unit is flying (flyers cross intact walls by design —
+        // mirrors HoMM3). Give that case a distinct cyan tint instead of plain
+        // green so it's visually clear this reach requires flight, not a
+        // walkable path through the wall (previously identical highlighting
+        // made this look like a bug — "Move back"/"how did he get there").
+        for (const auto& rh : reach) {
+            if (rh != h) continue;
+            bool crossingWall = tile && tile->type == CombatTileType::Wall && tile->wallHP > 0;
+            fill = crossingWall ? IM_COL32(60, 170, 220, 140) : IM_COL32(40, 180, 60, 130);
+            break;
+        }
 
         // Siege: highlight attackable wall tiles for the active unit
         if (tile && tile->type == CombatTileType::Wall && tile->wallHP > 0
