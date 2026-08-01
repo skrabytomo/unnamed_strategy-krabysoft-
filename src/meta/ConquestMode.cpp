@@ -283,10 +283,10 @@ ConquestMode::ChestResult ConquestMode::openChest(ChestType t, const BuildingReg
 
     int drops = 0, maxTier = 2, factions = 1;
     switch (t) {
-    case ChestType::Wooden: drops = 3; maxTier = 2; factions = 1; break;
-    case ChestType::Iron:   drops = 4; maxTier = 4; factions = 2; break;
-    case ChestType::Golden: drops = 5; maxTier = 5; factions = 2; break;
-    case ChestType::Grand:  drops = 6; maxTier = 6; factions = 3; break;
+    case ChestType::Wooden: drops = 4; maxTier = 2; factions = 1; break;
+    case ChestType::Iron:   drops = 5; maxTier = 4; factions = 2; break;
+    case ChestType::Golden: drops = 6; maxTier = 5; factions = 2; break;
+    case ChestType::Grand:  drops = 8; maxTier = 6; factions = 3; break;
     }
 
     // Pick the faction pool for this chest
@@ -298,6 +298,15 @@ ConquestMode::ChestResult ConquestMode::openChest(ChestType t, const BuildingReg
         if (!dup) pool.push_back(f);
     }
 
+    // Per-drop base count mirrors the town's weekly-growth curve shape
+    // (BuildingRegistry.cpp: T1~14-18, T2~9-10, T3~6-7, T4~5, T5~3, T6~1) —
+    // same halving-ish falloff, so a chest feels proportional to how units
+    // actually grow instead of the old flat 1-to-(7-tier) range that left
+    // players stuck with a handful of units after very few battles.
+    static const int kChestBaseByTier[7] = {0, 15, 10, 7, 5, 3, 1};   // index 1..6
+    // Better chests scale proportionally more, not just via extra drop slots.
+    static const int kChestTierMulPct[4] = {100, 150, 250, 400};      // Wooden..Grand
+
     for (int d = 0; d < drops; ++d) {
         FactionId f = pool[ri(0, (int)pool.size() - 1)];
         // Tier roll weighted low: tier = 1 + min of two rolls
@@ -306,8 +315,9 @@ ConquestMode::ChestResult ConquestMode::openChest(ChestType t, const BuildingReg
         if (tier == 6 && ri(0, 99) >= 30) tier = 5;
         const UnitDef* u = reg.getUnitDef(f, tier, UpgradePath::None);
         if (!u) continue;
-        // Count scales inversely with tier
-        int baseCount = std::max(1, ri(1, 7 - tier));
+        int baseCount = kChestBaseByTier[std::clamp(tier, 1, 6)];
+        baseCount = std::max(1, (baseCount * ri(80, 120)) / 100);          // +/-20% roll
+        baseCount = std::max(1, (baseCount * kChestTierMulPct[(int)t]) / 100);
         // Scale with Conquest Level (+4%/level, capped +150%) AND the Walls
         // PlayerLuck perk (+3%/rank, up to +15% at rank 5) — both stack.
         // Integer math (x100 fixed-point) avoids pulling in <cmath>.

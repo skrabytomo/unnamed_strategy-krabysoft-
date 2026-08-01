@@ -27,12 +27,12 @@ faction keys (Path A/B choice) → push Arena for rank → weekly ladder reset.
 
 ## 3. Chests & collection
 
-| Chest | Source/cost | Contents |
-|---|---|---|
-| Wooden | daily quest | 5-15 units T1-T2, 1 faction |
-| Iron | weekly quest / 50 gems | 10-20 units T1-T4, 2 factions |
-| Golden | arena win streak / 150 gems | 15-30 units T1-T5 + 1 random key |
-| Grand | weekly arena top rank | 30+ units, T6 chance, 3 keys, gems |
+| Chest | Source/cost | Drops | Contents |
+|---|---|---|---|
+| Wooden | daily quest | 4 | T1-T2, 1 faction — ~40-55 units total |
+| Iron | weekly quest / 50 gems | 5 | T1-T4, 2 factions — ~60-90 units total |
+| Golden | arena win streak / 150 gems | 6 | T1-T5, 2 factions + 1 random key — ~110-160 units |
+| Grand | weekly arena top rank | 8 | T1-T6 chance, 3 keys, gems — ~230-320 units |
 
 Units land in a persistent collection pool (defId → count). Team assembly: pick
 any 6 stacks from the pool, cross-faction freely. **Map battles cost real
@@ -44,6 +44,14 @@ income stream (quest rewards only, ~70-120/week), while victory gold
 gems) and Grand (400 gems) chests were a multi-week grind even for a player
 winning constantly. Added a Gold→Gems exchange (25 gold = 1 gem) in the Gem
 Shop, so banked battle winnings convert into real chest-buying power.
+
+**Balance fix #2 (2026-07):** players got stuck after very few battles — a
+Wooden chest gave only ~10-12 units total (3 drops × a flat 1-to-6 range with
+no tier logic). Per-drop count now mirrors the town's own weekly-growth curve
+shape (T1~15 down to T6~1, same halving falloff as `BuildingRegistry.cpp`)
+instead of an arbitrary flat range, plus a chest-tier multiplier (Wooden
+100% → Grand 400%) so better chests scale proportionally, not just via more
+slots. Net: a Wooden chest now gives ~40-55 units instead of ~10-12.
 
 ## 4. Quests
 
