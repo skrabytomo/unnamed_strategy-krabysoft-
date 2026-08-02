@@ -455,8 +455,9 @@ std::vector<ConquestDB::QuestRow> ConquestDB::questsAll() const
         while (sqlite3_step(st) == SQLITE_ROW) {
             QuestRow q;
             q.id       = sqlite3_column_int(st, 0);
-            // conquest_quests.type encodes (weekly<<8 | event)
+            // conquest_quests.type encodes (category<<9 | weekly<<8 | event)
             int packed = sqlite3_column_int(st, 1);
+            q.category = (packed >> 9) & 1;
             q.weekly   = (packed >> 8) & 1;
             q.event    = packed & 0xFF;
             q.param    = sqlite3_column_int(st, 2);
@@ -471,24 +472,28 @@ std::vector<ConquestDB::QuestRow> ConquestDB::questsAll() const
     return out;
 }
 
-void ConquestDB::questClear(bool weekly)
+void ConquestDB::questClear(bool weekly, int category)
 {
     if (!m_db) return;
     sqlite3_stmt* st = nullptr;
-    // Delete rows whose packed weekly-bit matches
+    // Delete rows whose packed weekly-bit AND category-bit match — clears
+    // only ONE of the 4 pools (dailyConquest/weeklyConquest/dailyNewGame/
+    // weeklyNewGame), leaving the other 3 untouched.
     if (sqlite3_prepare_v2(m_db,
-        "DELETE FROM conquest_quests WHERE ((type >> 8) & 1) = ?;", -1, &st, nullptr) == SQLITE_OK) {
+        "DELETE FROM conquest_quests WHERE ((type >> 8) & 1) = ? AND ((type >> 9) & 1) = ?;",
+        -1, &st, nullptr) == SQLITE_OK) {
         sqlite3_bind_int(st, 1, weekly ? 1 : 0);
+        sqlite3_bind_int(st, 2, category);
         sqlite3_step(st);
     }
     sqlite3_finalize(st);
 }
 
-int ConquestDB::questInsert(bool weekly, int event, int param, int target, long long expiry)
+int ConquestDB::questInsert(bool weekly, int category, int event, int param, int target, long long expiry)
 {
     if (!m_db) return -1;
     sqlite3_stmt* st = nullptr;
-    int packed = ((weekly ? 1 : 0) << 8) | (event & 0xFF);
+    int packed = ((category & 1) << 9) | ((weekly ? 1 : 0) << 8) | (event & 0xFF);
     int id = -1;
     if (sqlite3_prepare_v2(m_db,
         "INSERT INTO conquest_quests (type, param, progress, target, expiry, claimed)"

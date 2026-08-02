@@ -368,90 +368,102 @@ void ConquestMode::refreshQuests()
     long long now = nowUnix();
     auto rows = m_db.questsAll();
 
-    bool haveDaily = false, haveWeekly = false;
-    long long dailyExpiry = 0, weeklyExpiry = 0;
+    // Track have/expiry independently for each of the 4 pools:
+    // (weekly, category) -> {have, expiry}
+    bool haveDC = false, haveDN = false, haveWC = false, haveWN = false;
+    long long expDC = 0, expDN = 0, expWC = 0, expWN = 0;
     for (auto& r : rows) {
-        if (r.weekly) { haveWeekly = true; weeklyExpiry = r.expiry; }
-        else          { haveDaily  = true; dailyExpiry  = r.expiry; }
+        bool conquest = (r.category == (int)QuestCategory::Conquest);
+        if (r.weekly && conquest)       { haveWC = true; expWC = r.expiry; }
+        else if (r.weekly && !conquest) { haveWN = true; expWN = r.expiry; }
+        else if (!r.weekly && conquest) { haveDC = true; expDC = r.expiry; }
+        else                            { haveDN = true; expDN = r.expiry; }
     }
 
     std::mt19937 rng((uint32_t)now);
     auto pick = [&](const std::vector<QuestEvent>& pool) {
         return pool[rng() % pool.size()];
     };
+    auto dailyTarget = [&](QuestEvent e) -> int {
+        switch (e) {
+        case QuestEvent::BattleWon:       return 2 + (rng() % 2);
+        case QuestEvent::NodeCleared:     return 3 + (rng() % 3);
+        case QuestEvent::SideNodeCleared: return 1 + (rng() % 2);
+        case QuestEvent::ChestOpened:     return 2 + (rng() % 2);
+        case QuestEvent::MultiFactionWin: return 1;
+        case QuestEvent::SkirmishPlayed:  return 3;   // "play 3 games as any race"
+        case QuestEvent::SkirmishWonRandomFaction: return 1;
+        default: return 2;
+        }
+    };
 
-    // Daily set: regenerate if missing or expired
-    if (!haveDaily || now >= dailyExpiry) {
-        m_db.questClear(false);
+    // ── Daily Conquest (node-map play) ────────────────────────────────────────
+    if (!haveDC || now >= expDC) {
+        m_db.questClear(false, (int)QuestCategory::Conquest);
         long long exp = nextMidnight(now);
         std::vector<QuestEvent> pool = {
             QuestEvent::BattleWon, QuestEvent::NodeCleared,
             QuestEvent::SideNodeCleared, QuestEvent::ChestOpened,
-            QuestEvent::MultiFactionWin, QuestEvent::SkirmishPlayed,
-            QuestEvent::SkirmishWonRandomFaction
+            QuestEvent::MultiFactionWin
         };
-        // 3 distinct daily quests
         std::vector<QuestEvent> chosen;
         while (chosen.size() < 3) {
             QuestEvent e = pick(pool);
             bool dup = false; for (auto c : chosen) if (c == e) dup = true;
             if (!dup) chosen.push_back(e);
         }
-        for (auto e : chosen) {
-            int target = 2;
-            switch (e) {
-            case QuestEvent::BattleWon:       target = 2 + (rng() % 2); break;
-            case QuestEvent::NodeCleared:     target = 3 + (rng() % 3); break;
-            case QuestEvent::SideNodeCleared: target = 1 + (rng() % 2); break;
-            case QuestEvent::ChestOpened:     target = 2 + (rng() % 2); break;
-            case QuestEvent::MultiFactionWin: target = 1; break;
-            case QuestEvent::SkirmishPlayed:  target = 3; break;   // "play 3 games as any race"
-            case QuestEvent::SkirmishWonRandomFaction: target = 1; break;
-            default: break;
-            }
-            m_db.questInsert(false, (int)e, -1, target, exp);
-        }
+        for (auto e : chosen)
+            m_db.questInsert(false, (int)QuestCategory::Conquest, (int)e, -1, dailyTarget(e), exp);
     }
 
-    // Weekly set: regenerate if missing or expired
-    if (!haveWeekly || now >= weeklyExpiry) {
-        m_db.questClear(true);
-        long long exp = now + 7 * 24 * 3600;   // 7 days
-        // (event, param) pairs — param=-1 means "any"/not applicable. The
-        // three SkirmishWonDifficulty entries are the "play against each
-        // computer difficulty" goal: one shows up most weeks, rotating you
-        // through Easy/Normal/Hard over time rather than demanding all 3 at
-        // once (which would make the weekly set entirely skirmish-only).
-        struct Pair { QuestEvent e; int param; };
-        std::vector<Pair> pool = {
-            {QuestEvent::NodeCleared, -1},
-            {QuestEvent::ArenaWon,    -1},
-            {QuestEvent::ChestOpened, -1},
-            {QuestEvent::SkirmishWonDifficulty, 0},   // Easy
-            {QuestEvent::SkirmishWonDifficulty, 1},   // Normal
-            {QuestEvent::SkirmishWonDifficulty, 2},   // Hard
+    // ── Daily New Game (regular skirmish play) ────────────────────────────────
+    if (!haveDN || now >= expDN) {
+        m_db.questClear(false, (int)QuestCategory::NewGame);
+        long long exp = nextMidnight(now);
+        std::vector<QuestEvent> pool = {
+            QuestEvent::SkirmishPlayed, QuestEvent::SkirmishWonRandomFaction
         };
-        // Weekly slots: 3 base, more from Dwellings upgrades (weeklyQuestSlotCount()).
-        // Capped at pool.size() so the dedup loop below can't infinite-loop.
+        // Only 2 distinct events exist for this pool — both fill every day.
+        for (auto e : pool)
+            m_db.questInsert(false, (int)QuestCategory::NewGame, (int)e, -1, dailyTarget(e), exp);
+    }
+
+    // ── Weekly Conquest (node-map play) ───────────────────────────────────────
+    if (!haveWC || now >= expWC) {
+        m_db.questClear(true, (int)QuestCategory::Conquest);
+        long long exp = now + 7 * 24 * 3600;
+        struct Pair { QuestEvent e; int target; };
+        // 5 distinct options so Dwellings' extra weekly slots (4 at lvl5, 5 at
+        // lvl10) actually have somewhere to go instead of being capped at 3.
+        std::vector<Pair> pool = {
+            {QuestEvent::NodeCleared,     10},
+            {QuestEvent::ArenaWon,        5},
+            {QuestEvent::ChestOpened,     4},
+            {QuestEvent::SideNodeCleared, 5},
+            {QuestEvent::MultiFactionWin, 3},
+        };
         int slotCount = std::min((int)pool.size(), weeklyQuestSlotCount());
         std::vector<Pair> chosen;
         while ((int)chosen.size() < slotCount) {
             Pair p = pool[rng() % pool.size()];
-            bool dup = false;
-            for (auto& c : chosen) if (c.e == p.e && c.param == p.param) dup = true;
+            bool dup = false; for (auto& c : chosen) if (c.e == p.e) dup = true;
             if (!dup) chosen.push_back(p);
         }
-        for (auto& p : chosen) {
-            int target = 10;
-            switch (p.e) {
-            case QuestEvent::NodeCleared:            target = 10; break;
-            case QuestEvent::ArenaWon:                target = 5;  break;
-            case QuestEvent::ChestOpened:              target = 4;  break;
-            case QuestEvent::SkirmishWonDifficulty:   target = p.param == 2 ? 1 : p.param == 1 ? 2 : 3; break;
-            default: break;
-            }
-            m_db.questInsert(true, (int)p.e, p.param, target, exp);
-        }
+        for (auto& p : chosen)
+            m_db.questInsert(true, (int)QuestCategory::Conquest, (int)p.e, -1, p.target, exp);
+    }
+
+    // ── Weekly New Game (regular skirmish play) ───────────────────────────────
+    if (!haveWN || now >= expWN) {
+        m_db.questClear(true, (int)QuestCategory::NewGame);
+        long long exp = now + 7 * 24 * 3600;
+        // "Play against each computer difficulty" — rotates through
+        // Easy/Normal/Hard one at a time rather than demanding all 3 at once.
+        // Its own dedicated slot now (not fighting Conquest quests for room).
+        int diff = (int)(rng() % 3);
+        int target = diff == 2 ? 1 : diff == 1 ? 2 : 3;
+        m_db.questInsert(true, (int)QuestCategory::NewGame,
+                          (int)QuestEvent::SkirmishWonDifficulty, diff, target, exp);
     }
 }
 
@@ -462,6 +474,7 @@ std::vector<Quest> ConquestMode::quests() const
         Quest q;
         q.id       = r.id;
         q.weekly   = r.weekly;
+        q.category = (QuestCategory)r.category;
         q.event    = (QuestEvent)r.event;
         q.param    = r.param;
         q.progress = r.progress;
@@ -496,7 +509,7 @@ std::string ConquestMode::claimQuest(int questId, const BuildingRegistry& reg)
         if (r.id != questId) continue;
         if (r.claimed || r.progress < r.target) return "";
         Quest q;
-        q.weekly = r.weekly; q.event = (QuestEvent)r.event;
+        q.weekly = r.weekly; q.category = (QuestCategory)r.category; q.event = (QuestEvent)r.event;
         q.target = r.target;
         QuestReward rw = QuestRewards::forQuest(q);
         switch (rw.kind) {

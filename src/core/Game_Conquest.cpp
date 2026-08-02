@@ -469,7 +469,7 @@ void Game::renderConquest()
     if (m_conquestShowQuests) {
         ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f},
                                 ImGuiCond_Always, {0.5f, 0.5f});
-        ImGui::SetNextWindowSize({520, 440}, ImGuiCond_Always);
+        ImGui::SetNextWindowSize({560, 620}, ImGuiCond_Always);
         ImGui::Begin("Quests", &m_conquestShowQuests,
                      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
@@ -492,14 +492,30 @@ void Game::renderConquest()
             }
             ImGui::PopID();
         };
+        auto drawSection = [&](const char* label, ImVec4 color, bool weekly, QuestCategory cat) {
+            ImGui::TextColored(color, "%s", label);
+            ImGui::Separator();
+            bool any = false;
+            for (auto& q : qs)
+                if (q.weekly == weekly && q.category == cat) { drawQuest(q); any = true; }
+            if (!any) ImGui::TextDisabled("(none active)");
+            ImGui::Spacing();
+        };
 
-        ImGui::TextColored({1.f, 0.85f, 0.3f, 1.f}, "Daily");
-        ImGui::Separator();
-        for (auto& q : qs) if (!q.weekly) drawQuest(q);
+        // Two independent tracks, each with its own daily + weekly quests, so
+        // playing regular skirmish games never crowds out Conquest's own
+        // node-map quests or vice versa.
+        ImGui::TextColored({0.85f, 0.75f, 1.f, 1.f}, "== CONQUEST (node map) ==");
         ImGui::Spacing();
-        ImGui::TextColored({0.6f, 0.8f, 1.f, 1.f}, "Weekly");
-        ImGui::Separator();
-        for (auto& q : qs) if (q.weekly) drawQuest(q);
+        drawSection("Daily",  {1.f, 0.85f, 0.3f, 1.f}, false, QuestCategory::Conquest);
+        drawSection("Weekly", {0.6f, 0.8f,  1.f,  1.f}, true,  QuestCategory::Conquest);
+
+        ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+        ImGui::TextColored({0.5f, 0.95f, 0.6f, 1.f}, "== NEW GAME (regular skirmish) ==");
+        ImGui::Spacing();
+        drawSection("Daily",  {1.f, 0.85f, 0.3f, 1.f}, false, QuestCategory::NewGame);
+        drawSection("Weekly", {0.6f, 0.8f,  1.f,  1.f}, true,  QuestCategory::NewGame);
 
         ImGui::Spacing(); ImGui::Separator();
         ImGui::TextDisabled("Daily resets at midnight; weekly every 7 days.");

@@ -26,6 +26,11 @@ enum class QuestEvent : uint8_t
     SkirmishWonRandomFaction, // won a skirmish where YOUR faction was randomized at setup
 };
 
+// Separates quests into two independent tracks with their own daily/weekly
+// slots, so playing regular skirmish games doesn't crowd out Conquest's own
+// node-map quests or vice versa — each track regenerates on its own schedule.
+enum class QuestCategory : uint8_t { Conquest = 0, NewGame = 1 };
+
 enum class QuestRewardKind : uint8_t { Gold, Gems, WoodenChest, IronChest, Key };
 
 struct QuestReward
@@ -36,9 +41,10 @@ struct QuestReward
 
 struct Quest
 {
-    int         id       = 0;   // db row id
-    bool        weekly   = false;
-    QuestEvent  event    = QuestEvent::BattleWon;
+    int           id       = 0;   // db row id
+    bool          weekly   = false;
+    QuestCategory category = QuestCategory::Conquest;
+    QuestEvent    event    = QuestEvent::BattleWon;
     int         param    = 0;   // event-specific (unused for now)
     int         progress = 0;
     int         target   = 1;

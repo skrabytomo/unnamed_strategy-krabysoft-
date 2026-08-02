@@ -52,21 +52,42 @@ namespace QuestRewards
 QuestReward forQuest(const Quest& q)
 {
     QuestReward r;
+    bool newGame = (q.category == QuestCategory::NewGame);
     if (q.weekly) {
-        // Weekly quests pay bigger: an Iron chest + a key, or a gem stack.
-        switch (q.event) {
-        case QuestEvent::NodeCleared:     r = {QuestRewardKind::IronChest, 1}; break;
-        case QuestEvent::ArenaWon:        r = {QuestRewardKind::Key,       1}; break;
-        case QuestEvent::ChestOpened:     r = {QuestRewardKind::Gems,     50}; break;
-        default:                          r = {QuestRewardKind::Gems,     50}; break;
+        if (newGame) {
+            // Weekly New Game: win on a specific AI difficulty — pays more on
+            // harder difficulties, and always a real chest (not just gems).
+            switch (q.param) {
+            case 2:  r = {QuestRewardKind::IronChest, 1}; break;   // Hard
+            case 1:  r = {QuestRewardKind::WoodenChest, 2}; break; // Normal
+            default: r = {QuestRewardKind::WoodenChest, 1}; break; // Easy
+            }
+        } else {
+            // Weekly Conquest pays bigger: an Iron chest + a key, or a gem stack.
+            switch (q.event) {
+            case QuestEvent::NodeCleared:     r = {QuestRewardKind::IronChest, 1}; break;
+            case QuestEvent::ArenaWon:        r = {QuestRewardKind::Key,       1}; break;
+            case QuestEvent::ChestOpened:     r = {QuestRewardKind::Gems,     50}; break;
+            default:                          r = {QuestRewardKind::Gems,     50}; break;
+            }
         }
     } else {
-        // Daily quests pay a Wooden chest + gems/gold.
-        switch (q.event) {
-        case QuestEvent::BattleWon:       r = {QuestRewardKind::WoodenChest, 1}; break;
-        case QuestEvent::MultiFactionWin: r = {QuestRewardKind::Gems,       20}; break;
-        case QuestEvent::SideNodeCleared: r = {QuestRewardKind::Gold,      300}; break;
-        default:                          r = {QuestRewardKind::Gold,      200}; break;
+        if (newGame) {
+            // Daily New Game: playing/winning regular skirmish games pays a
+            // real chest — this is the "skirmish feeds Conquest" promise.
+            switch (q.event) {
+            case QuestEvent::SkirmishPlayed:          r = {QuestRewardKind::WoodenChest, 1}; break;
+            case QuestEvent::SkirmishWonRandomFaction: r = {QuestRewardKind::Gems,      25}; break;
+            default:                                   r = {QuestRewardKind::Gold,     200}; break;
+            }
+        } else {
+            // Daily Conquest pays a Wooden chest + gems/gold.
+            switch (q.event) {
+            case QuestEvent::BattleWon:       r = {QuestRewardKind::WoodenChest, 1}; break;
+            case QuestEvent::MultiFactionWin: r = {QuestRewardKind::Gems,       20}; break;
+            case QuestEvent::SideNodeCleared: r = {QuestRewardKind::Gold,      300}; break;
+            default:                          r = {QuestRewardKind::Gold,      200}; break;
+            }
         }
     }
     return r;

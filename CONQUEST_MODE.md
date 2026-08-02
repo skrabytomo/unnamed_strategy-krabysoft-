@@ -53,12 +53,21 @@ instead of an arbitrary flat range, plus a chest-tier multiplier (Wooden
 100% → Grand 400%) so better chests scale proportionally, not just via more
 slots. Net: a Wooden chest now gives ~40-55 units instead of ~10-12.
 
-## 4. Quests
+## 4. Quests (2026-07: split into 2 independent tracks)
 
-| Type | Examples | Reward |
+Two separate tracks, each with its own daily AND weekly quests, so playing
+regular skirmish games never crowds out Conquest's own node-map quests (or
+vice versa) — 4 independent pools total, each regenerating on its own
+schedule:
+
+| Track | Daily | Weekly |
 |---|---|---|
-| Daily ×3 (random) | win 2 battles / win with 3+ factions in team / clear a side node | Wooden chest + 10 gems + gold |
-| Weekly ×3 (fixed pool) | clear 10 nodes / 5 arena wins / open 4 chests | Iron chest + 1 key + 50 gems |
+| **Conquest** (node map) | ×3 random from {BattleWon, NodeCleared, SideNodeCleared, ChestOpened, MultiFactionWin} → Wooden chest / gems / gold | ×3-5 (scales with Dwellings level) from {NodeCleared, ArenaWon, ChestOpened, SideNodeCleared, MultiFactionWin} → Iron chest / key / gems |
+| **New Game** (regular skirmish) | ×2, both fill: "play 3 skirmish games (any faction)" + "win with a randomized faction" → Wooden chest / gems | ×1: "win on Easy/Normal/Hard" (rotates difficulty week to week) → Wooden/Iron chest, scaling with difficulty |
+
+Quest panel shows all 4 sections labeled and grouped. Reward table lives in
+`QuestRewards::forQuest()` (`ConquestQuests.cpp`), keyed off `(weekly,
+category, event, param)`.
 
 ## 5. Unit upgrades (keys)
 

@@ -88,12 +88,12 @@ public:
 
     // ── Quests (Phase 3) ──────────────────────────────────────────────────────
     struct QuestRow {
-        int id; bool weekly; int event; int param;
+        int id; bool weekly; int category; int event; int param;
         int progress; int target; long long expiry; bool claimed;
     };
     std::vector<QuestRow> questsAll() const;
-    void  questClear(bool weekly);                       // wipe daily or weekly set
-    int   questInsert(bool weekly, int event, int param, int target, long long expiry);
+    void  questClear(bool weekly, int category);         // wipe one of the 4 pools
+    int   questInsert(bool weekly, int category, int event, int param, int target, long long expiry);
     void  questSetProgress(int id, int progress);
     void  questSetClaimed(int id, bool claimed);
 
