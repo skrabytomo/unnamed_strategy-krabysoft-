@@ -859,6 +859,22 @@ void Game::processEvents()
                 exitCombat(false);
             else if (m_state == GameState::WorldMap || m_state == GameState::Campaign)
                 m_showPauseMenu = !m_showPauseMenu;
+            else if (m_state == GameState::Conquest) {
+                // Handled per-frame in updateConquest() via m_input.keyDown(),
+                // which saves the hero and returns to MainMenu. Do nothing
+                // here — just don't fall through to the quit-the-app branch
+                // below. THAT was the bug: this handler didn't know about
+                // Conquest, so pressing ESC there closed the whole game
+                // before updateConquest's own handler ever got a chance to run.
+            }
+            else if (m_state == GameState::WatchAI || m_state == GameState::Editor) {
+                // Same class of bug: neither state had ANY back-out handling,
+                // so ESC fell through to m_running=false and silently closed
+                // the app. No in-game mode should ever quit the whole game
+                // silently — only the main menu does that (the final else
+                // below), so route back to it instead.
+                m_state = GameState::MainMenu;
+            }
             else
                 m_running = false;
         }
