@@ -181,24 +181,24 @@ bool Game::init(const std::string& title, int width, int height, bool hidden)
     // Headless/hidden runs (e.g. --watch-ai-test) open NO audio device and play
     // no music or SFX — a background test must never hijack the machine's sound.
     if (!hidden && m_audio.init()) {
-        m_audio.loadWav("click",   "assets/sounds/click.wav");
-        m_audio.loadWav("pickup",  "assets/sounds/pickup.wav");
-        m_audio.loadWav("levelup", "assets/sounds/levelup.wav");
-        m_audio.loadWav("hit",     "assets/sounds/hit.wav");
-        m_audio.loadWav("spell",   "assets/sounds/spell.wav");
-        m_audio.loadWav("buy",     "assets/sounds/buy.wav");
-        m_audio.registerMusic("worldmap_music", "assets/sounds/worldmap_music.wav");
+        m_audio.loadWav("click",   "assets/sounds/click.ogg");
+        m_audio.loadWav("pickup",  "assets/sounds/pickup.ogg");
+        m_audio.loadWav("levelup", "assets/sounds/levelup.ogg");
+        m_audio.loadWav("hit",     "assets/sounds/hit.ogg");
+        m_audio.loadWav("spell",   "assets/sounds/spell.ogg");
+        m_audio.loadWav("buy",     "assets/sounds/buy.ogg");
+        m_audio.registerMusic("worldmap_music", "assets/sounds/worldmap_music.ogg");
         m_audio.playMusic("worldmap_music");          // start ASAP, over the bar
         renderLoadingScreen(0.16f, "Loading music");
-        m_audio.registerMusic("combat_music_1", "assets/sounds/combat_music.wav");
-        m_audio.registerMusic("combat_music_2", "assets/sounds/combat_music_2.wav");
-        m_audio.registerMusic("combat_music_3", "assets/sounds/combat_music_3.wav");
-        m_audio.registerMusic("combat_music_4", "assets/sounds/combat_music_4.wav");
-        m_audio.registerMusic("town_music",     "assets/sounds/town_music.wav");
+        m_audio.registerMusic("combat_music_1", "assets/sounds/combat_music.ogg");
+        m_audio.registerMusic("combat_music_2", "assets/sounds/combat_music_2.ogg");
+        m_audio.registerMusic("combat_music_3", "assets/sounds/combat_music_3.ogg");
+        m_audio.registerMusic("combat_music_4", "assets/sounds/combat_music_4.ogg");
+        m_audio.registerMusic("town_music",     "assets/sounds/town_music.ogg");
         for (int fi = 0; fi < 9; ++fi) {
             char key[32], path[64];
             std::snprintf(key,  sizeof(key),  "faction_music_%d", fi);
-            std::snprintf(path, sizeof(path), "assets/sounds/faction_music_%d.wav", fi);
+            std::snprintf(path, sizeof(path), "assets/sounds/faction_music_%d.ogg", fi);
             m_audio.registerMusic(key, path);
         }
     }

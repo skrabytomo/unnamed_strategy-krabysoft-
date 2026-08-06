@@ -1,21 +1,27 @@
+# Build artifacts
 build/
-saves/*.db
-saves/*.db-shm
-saves/*.db-wal
-*.db
-*.db-shm
-*.db-wal
-*.o
-*.a
-*.so
-*.exe
-compile_commands.json
-_gen_src*.png
-unnamed_strategy-krabysoft-/
 dist/
-packaging/Output/
+*.exe
+*.dll
+*.a
+*.o
+*.obj
+
+# Logs
+*.log
 session.log
-diag_*.log
-imgui.ini
-sim_*.txt
-export/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup audio (not shipped)
+raw_audio/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Git internals that shouldn't be committed
+FETCH_HEAD
