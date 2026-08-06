@@ -1,4 +1,4 @@
-[VERSION] Unnamed Strategy v0.1.0  (main @ 0488f35-dirty, built 2026-08-04)
+[VERSION] Unnamed Strategy v0.1.0  (main @ 79de2f9-dirty, built 2026-08-06)
 SpriteBatch initialized (max 4096 sprites)
 ImGui 1.90.8 ready
 Texture loaded: C:\msys64\home\W0043\unnamed_strategy-krabysoft-\build\bin\assets/ui/menu_bg.png (2560x1777)
@@ -45,12 +45,13 @@ Texture loaded: C:\msys64\home\W0043\unnamed_strategy-krabysoft-\build\bin\asset
 Texture loaded: C:\msys64\home\W0043\unnamed_strategy-krabysoft-\build\bin\assets/terrain/mountain_1.png (1024x1024)
 HexMapRenderer: 16/16 terrain types loaded (hex size 13px)
 AudioManager: initialized (sfx=2, mus=3)
-AudioManager: loaded 'click' from assets/sounds/click.wav (9700 bytes)
-AudioManager: loaded 'pickup' from assets/sounds/pickup.wav (88200 bytes)
-AudioManager: loaded 'levelup' from assets/sounds/levelup.wav (167580 bytes)
-AudioManager: loaded 'hit' from assets/sounds/hit.wav (38808 bytes)
-AudioManager: loaded 'spell' from assets/sounds/spell.wav (97020 bytes)
-AudioManager: loaded 'buy' from assets/sounds/buy.wav (52920 bytes)
+AudioManager: failed to load assets/sounds/click.ogg: Could not find RIFF or WAVE identifiers (not a Waveform file)
+AudioManager: failed to load assets/sounds/pickup.ogg: Could not find RIFF or WAVE identifiers (not a Waveform file)
+AudioManager: failed to load assets/sounds/levelup.ogg: Could not find RIFF or WAVE identifiers (not a Waveform file)
+AudioManager: failed to load assets/sounds/hit.ogg: Could not find RIFF or WAVE identifiers (not a Waveform file)
+AudioManager: failed to load assets/sounds/spell.ogg: Could not find RIFF or WAVE identifiers (not a Waveform file)
+AudioManager: failed to load assets/sounds/buy.ogg: Could not find RIFF or WAVE identifiers (not a Waveform file)
+AudioManager: failed to stream assets/sounds/worldmap_music.ogg: Could not find RIFF or WAVE identifiers (not a Waveform file)
 Texture loaded: C:\msys64\home\W0043\unnamed_strategy-krabysoft-\build\bin\assets/icons.png (256x192)
 Texture loaded: C:\msys64\home\W0043\unnamed_strategy-krabysoft-\build\bin\assets/icons_spells.png (320x448)
 Texture loaded: C:\msys64\home\W0043\unnamed_strategy-krabysoft-\build\bin\assets/sprites/faction_0_t1.png (2928x352)
@@ -178,12 +179,12 @@ Texture loaded: C:\msys64\home\W0043\unnamed_strategy-krabysoft-\build\bin\asset
 Texture loaded: C:\msys64\home\W0043\unnamed_strategy-krabysoft-\build\bin\assets/siege/gate_8.png (366x352)
 Texture loaded: C:\msys64\home\W0043\unnamed_strategy-krabysoft-\build\bin\assets/siege/moat_8.png (1024x1024)
 [BALANCE] applied overrides: 162 units, 213 buildings (from assets/data/)
-[SEED] world seed=1515877422
-WorldGen: seed=1515877422 size=0 players=2 zone=yes
-WorldGen: 8455 sea tiles -> 33 flotsam, 12 wrecks, 9 lairs, 7 lighthouses
+[SEED] world seed=1515878026
+WorldGen: seed=1515878026 size=0 players=2 zone=yes
+WorldGen: 8478 sea tiles -> 33 flotsam, 12 wrecks, 9 lairs, 7 lighthouses
 WorldGen: 2 towns, 462 resources, 130 world objects
-AI player 2 personality: Explorer
-Placed faction mine (Faith Stones) at (-33,50) dist=9
+AI player 2 personality: Builder
+Placed faction mine (Faith Stones) at (-11,31) dist=5
 Texture loaded: C:\msys64\home\W0043\unnamed_strategy-krabysoft-\build\bin\assets/portraits/faction_0.png (1024x1024)
 Texture loaded: C:\msys64\home\W0043\unnamed_strategy-krabysoft-\build\bin\assets/portraits/faction_0_1.png (1024x1024)
 Texture loaded: C:\msys64\home\W0043\unnamed_strategy-krabysoft-\build\bin\assets/portraits/faction_0_2.png (1024x1024)
@@ -555,34 +556,337 @@ Texture loaded: C:\msys64\home\W0043\unnamed_strategy-krabysoft-\build\bin\asset
 LuaEngine: Lua Lua 5.5 ready
 [Lua] Scripts loaded — v0.1.0  (day 1)
 Game initialized: 1920x1080
-[SEED] world seed=1515835634
-WorldGen: seed=1515835634 size=0 players=2 zone=yes
-WorldGen: 11356 sea tiles -> 45 flotsam, 16 wrecks, 12 lairs, 9 lighthouses
-WorldGen: 2 towns, 462 resources, 151 world objects
-AI player 2 personality: Explorer
-Placed faction mine (Faith Stones) at (33,-54) dist=10
-Entered town: Sanctuary
+[ConquestDB] SQL error: duplicate column name: xp
+[ConquestDB] SQL error: duplicate column name: level
+[SEED] world seed=1515888610
+WorldGen: seed=1515888610 size=3 players=8 zone=yes
+WorldGen: 99687 sea tiles -> 300 flotsam, 100 wrecks, 70 lairs, 40 lighthouses
+WorldGen: 8 towns, 4158 resources, 608 world objects
+AI player 2 personality: Builder
+AI player 3 personality: Warrior
+AI player 4 personality: Mage
+AI player 5 personality: Warrior
+AI player 6 personality: Warrior
+AI player 7 personality: Explorer
+AI player 8 personality: Mage
+Placed faction mine (Faith Stones) at (48,-114) dist=8
+Watch hero Alara cleared Faith Stones mine guard (week 1)
+P2 Kael Bloodfang committing to march on Forge City (P7) dist 118 [SCOUT: pre-wall window]
+P3 Graft Sovereign committing to march on Forge City (P7) dist 119 [SCOUT: pre-wall window]
+P4 Revenant Warden committing to march on Voidhaven (P6) dist 122 [SCOUT: pre-wall window]
+P5 Vex Nullform committing to march on Sanctuary (P1) dist 135 [SCOUT: pre-wall window]
+P6 Iron Phantom committing to march on Ironhold (P2) dist 122 [SCOUT: pre-wall window]
+P7 Synth-One committing to march on Ironhold (P2) dist 118 [SCOUT: pre-wall window]
+Enemy Synth-One beat mine guard (week 1)
+P8 Shade Marshal committing to march on Sanctuary (P1) dist 109 [SCOUT: pre-wall window]
+  [PERF] turn: total=413.7ms steps=42 cand=35.5ms path=55.4ms | long(400)=7 (fail 0) 55.4ms short(60)=0 0.0ms | reuse-hits=0 slices=6
+Day 2 Week 1 | Gold: 5500
+Enemy Kael Bloodfang beat mine guard (week 1)
+Enemy Revenant Warden beat mine guard (week 1)
+Enemy Revenant Warden beat mine guard (week 1)
+Enemy Iron Phantom beat mine guard (week 1)
+  [PERF] turn: total=257.6ms steps=42 cand=35.2ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=4
+Day 3 Week 1 | Gold: 4700
+  [PERF] turn: total=254.5ms steps=43 cand=36.2ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=4
+Day 4 Week 1 | Gold: 4700
+Enemy Iron Phantom beat mine guard (week 1)
+Enemy Synth-One beat mine guard (week 1)
+  [PERF] turn: total=253.3ms steps=41 cand=34.3ms path=0.0ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=4
+Day 5 Week 1 | Gold: 4700
+AI hero Iron Phantom reached level 2
+Enemy Iron Phantom beat mine guard (week 1)
+  [PERF] turn: total=251.9ms steps=41 cand=34.2ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=4
+Day 6 Week 1 | Gold: 4700
+Enemy Kael Bloodfang beat mine guard (week 1)
+Enemy Vex Nullform beat mine guard (week 1)
+Enemy Vex Nullform beat mine guard (week 1)
+  [PERF] turn: total=252.4ms steps=39 cand=32.8ms path=0.0ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=4
+Day 7 Week 1 | Gold: 4700
+AI hero Kael Bloodfang reached level 2
+Enemy Kael Bloodfang beat mine guard (week 1)
+AI hero Revenant Warden reached level 2
+Enemy Revenant Warden beat mine guard (week 1)
+AI hero Synth-One reached level 2
+Enemy Synth-One beat mine guard (week 1)
+Enemy Shade Marshal beat mine guard (week 1)
+  [PERF] turn: total=257.8ms steps=41 cand=34.4ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=4
+=== WEEK 2 BEGINS ===
+Day 1 Week 2 | Gold: 5700
+AI economy: 7 towns + 18 mines across 7 players -> 55314g 167i combined
+New week 2 - income applied
+Game saved (id 31, "Alara - Week 2")
 Town Sanctuary: built Squire Barracks
-Town Sanctuary: recruited 14 tier-1 units
-Hired hero: Seld (Confessor)
-Entered world map
-Hero found resource cache: 1366 Gold
-P2 Mortis Raider committing to march on Sanctuary (P1) dist 101 [SCOUT: pre-wall window]
-[NAVAL] P2 Mortis Raider walking to dock: 15 steps queued, dock 14 hexes away
-  [PERF] turn: total=68.8ms steps=8 cand=1.1ms path=15.2ms | long(400)=1 (fail 1) 0.0ms short(60)=6 0.1ms | reuse-hits=1 slices=0
-Day 2 Week 1 | Gold: 3656
-Mortis Raider launched a boat at shipyard (-2000g)
-  [PERF] turn: total=69.5ms steps=9 cand=0.9ms path=19.0ms | long(400)=1 (fail 1) 0.0ms short(60)=8 0.2ms | reuse-hits=0 slices=0
-Day 3 Week 1 | Gold: 3656
-Mortis Raider launched a boat at shipyard (-3000g)
-  [PERF] turn: total=72.4ms steps=9 cand=0.9ms path=22.9ms | long(400)=2 (fail 2) 0.0ms short(60)=5 0.1ms | reuse-hits=2 slices=0
-Day 4 Week 1 | Gold: 3656
-[DBG dwelling popup] objId=513 type=2 value=115 faction=0 available=0 collected=0 pos=(13,32)
-  [PERF] turn: total=49.8ms steps=8 cand=0.8ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=4 0.1ms | reuse-hits=4 slices=0
-Day 5 Week 1 | Gold: 3656
-Hero picked up artifact 6
-  [PERF] turn: total=49.5ms steps=8 cand=0.8ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=4 0.1ms | reuse-hits=4 slices=0
-Day 6 Week 1 | Gold: 3676
-  [PERF] turn: total=50.1ms steps=8 cand=0.8ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=4 0.1ms | reuse-hits=4 slices=0
-Day 7 Week 1 | Gold: 3676
-C:/msys64/ucrt64/include/c++/16.1.0/bits/stl_vector.h:1253: constexpr std::vector<_Tp, _Alloc>::reference std::vector<_Tp, _Alloc>::operator[](size_type) [with _Tp = UnitStack; _Alloc = std::allocator<UnitStack>; reference = UnitStack&; size_type = long long unsigned int]: Assertion '__n < this->size()' failed.
+AI Sanctuary built BID=101 (priority)
+Town Sanctuary: built Fort
+AI Sanctuary built BID=1 (priority)
+Town Sanctuary: built Citadel
+AI Sanctuary built BID=24 (priority)
+Town Sanctuary: built Paladin Hall
+AI Sanctuary built BID=104 (priority)
+Town Ironhold: built Cultist Pen
+AI Ironhold built BID=501 (priority)
+Town Ironhold: built Fort
+AI Ironhold built BID=1 (priority)
+Town Ironhold: built Citadel
+AI Ironhold built BID=24 (priority)
+Town Ironhold: built Market
+AI Ironhold built BID=2 (priority)
+AI market: 8 res1 -> 2 res3 for Cultist Pen (A) at Ironhold
+Town Ironhold: built Cultist Pen (A)
+AI Ironhold built BID=511 (priority)
+AI market: 4 res1 -> 1 res3 for Blood Warrior Pits at Ironhold
+Town Ironhold: built Blood Warrior Pits
+AI Ironhold built BID=502 (priority)
+AI market: 4 res4 -> 1 res1 for Blood Warrior Pits (A) at Ironhold
+AI market: 4 res5 -> 1 res3 for Blood Warrior Pits (A) at Ironhold
+AI market: 4 res0 -> 1 res3 for Blood Warrior Pits (A) at Ironhold
+Town Ironhold: built Blood Warrior Pits (A)
+AI Ironhold built BID=513 (priority)
+Town Thornwald: built Crawler Vat
+AI Thornwald built BID=801 (priority)
+Town Thornwald: built Crawler Vat (A)
+AI Thornwald built BID=811 (priority)
+Town Thornwald: built Market
+AI Thornwald built BID=2 (priority)
+Town Thornwald: built Flesh Warrior Bay
+AI Thornwald built BID=802 (priority)
+Town Thornwald: built Flesh Warrior Bay (A)
+AI Thornwald built BID=813 (priority)
+Town Thornwald: built Fort
+AI Thornwald built BID=1 (priority)
+AI market: 4 res1 -> 1 res0 for Citadel at Thornwald
+Town Thornwald: built Brute Works
+AI Thornwald built BID=803 (priority)
+Town Greyspire: built Skeleton Pen
+AI Greyspire built BID=401 (priority)
+Town Greyspire: built Fort
+AI Greyspire built BID=1 (priority)
+Town Greyspire: built Citadel
+AI Greyspire built BID=24 (priority)
+Town Greyspire: built Market
+AI Greyspire built BID=2 (priority)
+AI market: 8 res1 -> 2 res5 for Skeleton Pen (A) at Greyspire
+Town Greyspire: built Skeleton Pen (A)
+AI Greyspire built BID=411 (priority)
+AI market: 8 res1 -> 2 res3 for Necropolis Gate at Greyspire
+Town Greyspire: built Necropolis Gate
+AI Greyspire built BID=407 (priority)
+Town Crimsongate: built Market
+AI Crimsongate built BID=2 (priority)
+Town Crimsongate: built Sprite Hollow
+AI Crimsongate built BID=601 (priority)
+Town Crimsongate: built Sprite Hollow (A)
+AI Crimsongate built BID=611 (priority)
+Town Crimsongate: built Scout Den
+AI Crimsongate built BID=602 (priority)
+AI market: 8 res1 -> 2 res4 for Scout Den (A) at Crimsongate
+Town Crimsongate: built Scout Den (A)
+AI Crimsongate built BID=613 (priority)
+Town Crimsongate: built Fort
+AI Crimsongate built BID=1 (priority)
+Town Crimsongate: built Citadel
+AI Crimsongate built BID=24 (priority)
+Town Voidhaven: built Skeleton Pen
+AI Voidhaven built BID=401 (priority)
+Town Voidhaven: built Necropolis Gate
+AI Voidhaven built BID=407 (priority)
+Town Voidhaven: built Fort
+AI Voidhaven built BID=1 (priority)
+Town Voidhaven: built Citadel
+AI Voidhaven built BID=24 (priority)
+Town Voidhaven: built Armoured Crypt
+AI Voidhaven built BID=402 (priority)
+Town Voidhaven: built Market
+AI Voidhaven built BID=2 (priority)
+AI market: 8 res1 -> 2 res5 for Skeleton Pen (A) at Voidhaven
+Town Voidhaven: built Skeleton Pen (A)
+AI Voidhaven built BID=411 (priority)
+Town Forge City: built Initiate Chamber
+AI Forge City built BID=901 (priority)
+Town Forge City: built Initiate Chamber (A)
+AI Forge City built BID=911 (priority)
+Town Forge City: built Market
+AI Forge City built BID=2 (priority)
+Town Forge City: built Soldier Lab
+AI Forge City built BID=902 (priority)
+Town Forge City: built Soldier Lab (A)
+AI Forge City built BID=913 (priority)
+Town Forge City: built Fort
+AI Forge City built BID=1 (priority)
+Town Forge City: built Citadel
+AI Forge City built BID=24 (priority)
+Town The Meld: built Skeleton Pen
+AI The Meld built BID=401 (priority)
+Town The Meld: built Necropolis Gate
+AI The Meld built BID=407 (priority)
+Town The Meld: built Fort
+AI The Meld built BID=1 (priority)
+Town The Meld: built Citadel
+AI The Meld built BID=24 (priority)
+Town The Meld: built Market
+AI The Meld built BID=2 (priority)
+AI market: 8 res1 -> 2 res5 for Skeleton Pen (A) at The Meld
+Town The Meld: built Skeleton Pen (A)
+AI The Meld built BID=411 (priority)
+Game saved (id 31, "Alara - Week 2")
+Enemy Kael Bloodfang beat mine guard (week 2)
+Enemy Graft Sovereign beat mine guard (week 2)
+Enemy Revenant Warden beat mine guard (week 2)
+AI hero Vex Nullform reached level 2
+Enemy Vex Nullform beat mine guard (week 2)
+  [PERF] turn: total=253.2ms steps=39 cand=33.9ms path=0.0ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=4
+Day 2 Week 2 | Gold: 0
+Enemy Kael Bloodfang beat mine guard (week 2)
+  [PERF] turn: total=273.3ms steps=38 cand=33.1ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=4
+Day 3 Week 2 | Gold: 0
+AI hero Shade Marshal reached level 2
+Enemy Shade Marshal beat mine guard (week 2)
+  [PERF] turn: total=305.6ms steps=35 cand=32.4ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=4
+Day 4 Week 2 | Gold: 0
+AI hero Synth-One reached level 3
+Synth-One defeated rival Kael Bloodfang in the field (week 2)
+AI hero Graft Sovereign reached level 2
+Enemy Graft Sovereign beat mine guard (week 2)
+Enemy Revenant Warden beat mine guard (week 2)
+  [PERF] turn: total=214.1ms steps=31 cand=28.2ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=3
+Day 5 Week 2 | Gold: 0
+Enemy Revenant Warden beat mine guard (week 2)
+Enemy Iron Phantom beat mine guard (week 2)
+Enemy Shade Marshal beat mine guard (week 2)
+  [PERF] turn: total=222.1ms steps=31 cand=28.0ms path=0.2ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=3
+Day 6 Week 2 | Gold: 0
+Enemy Shade Marshal beat mine guard (week 2)
+  [PERF] turn: total=217.2ms steps=30 cand=27.8ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=3
+Day 7 Week 2 | Gold: 0
+Enemy Vex Nullform beat mine guard (week 2)
+Enemy Iron Phantom beat mine guard (week 2)
+  [PERF] turn: total=215.7ms steps=30 cand=27.4ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=3
+=== WEEK 3 BEGINS ===
+Day 1 Week 3 | Gold: 1000
+AI economy: 7 towns + 32 mines across 7 players -> 18607g 60i combined
+New week 3 - income applied
+Town Sanctuary: recruited 3 tier-2 units
+AI Sanctuary recruited 3 units into garrison (pool 760g)
+Town Thornwald: recruited 4 tier-3 units
+Town Thornwald: recruited 1 tier-1 units
+AI Thornwald recruited 5 units into garrison (pool 2695g)
+Town Greyspire: recruited 6 tier-1 units
+AI Greyspire recruited 6 units into garrison (pool 1874g)
+Town Crimsongate: recruited 2 tier-2 units
+AI Crimsongate recruited 2 units into garrison (pool 2214g)
+Town Voidhaven: recruited 3 tier-2 units
+AI Voidhaven recruited 3 units into garrison (pool 2698g)
+Town Forge City: recruited 5 tier-2 units
+AI Forge City recruited 5 units into garrison (pool 2101g)
+Game saved (id 31, "Alara - Week 3")
+AI market: 4 res4 -> 1 res0 for Castle at Ironhold
+AI market: 4 res5 -> 1 res0 for Castle at Ironhold
+AI market: 16 res0 -> 4 res1 for Citadel at Thornwald
+Town Thornwald: built Citadel
+AI Thornwald built BID=24 (priority)
+AI market: 4 res1 -> 1 res0 for Castle at Greyspire
+Town Greyspire: built Armoured Crypt
+AI Greyspire built BID=402 (priority)
+AI market: 16 res5 -> 4 res0 for Castle at Crimsongate
+Town Crimsongate: built Shipyard
+AI Crimsongate built Shipyard (coastal, early priority)
+Town Voidhaven: built Town Hall
+AI Voidhaven built BID=11 (priority)
+AI market: 4 res1 -> 1 res0 for Castle at Forge City
+AI market: 4 res2 -> 1 res0 for Castle at Forge City
+AI market: 4 res4 -> 1 res0 for Castle at Forge City
+Town Forge City: built Mirror Warrior Hall
+AI Forge City built BID=903 (priority)
+AI market: 8 res2 -> 2 res0 for Castle at The Meld
+AI market: 4 res4 -> 1 res0 for Castle at The Meld
+Town The Meld: built Armoured Crypt
+AI The Meld built BID=402 (priority)
+Game saved (id 31, "Alara - Week 3")
+Enemy Graft Sovereign beat mine guard (week 3)
+Enemy Revenant Warden beat mine guard (week 3)
+  [PERF] turn: total=221.9ms steps=29 cand=26.8ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=3
+Day 2 Week 3 | Gold: 160
+Enemy Graft Sovereign beat mine guard (week 3)
+Enemy Revenant Warden beat mine guard (week 3)
+  [PERF] turn: total=230.3ms steps=30 cand=28.7ms path=0.1ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=3
+Day 3 Week 3 | Gold: 160
+AI hero Revenant Warden reached level 3
+Enemy Revenant Warden beat mine guard (week 3)
+Enemy Vex Nullform beat mine guard (week 3)
+Enemy Shade Marshal beat mine guard (week 3)
+  [PERF] turn: total=199.3ms steps=30 cand=26.3ms path=0.0ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=3
+Day 4 Week 3 | Gold: 160
+Enemy Vex Nullform beat mine guard (week 3)
+  [PERF] turn: total=193.3ms steps=31 cand=27.1ms path=0.0ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=3
+Day 5 Week 3 | Gold: 160
+  [PERF] turn: total=194.4ms steps=30 cand=26.1ms path=0.0ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=3
+Day 6 Week 3 | Gold: 160
+Enemy Graft Sovereign beat mine guard (week 3)
+Enemy Graft Sovereign beat mine guard (week 3)
+Enemy Revenant Warden beat mine guard (week 3)
+  [PERF] turn: total=194.2ms steps=31 cand=26.9ms path=0.0ms | long(400)=0 (fail 0) 0.0ms short(60)=0 0.0ms | reuse-hits=0 slices=3
+Day 7 Week 3 | Gold: 160
+Enemy Vex Nullform beat mine guard (week 3)
+Enemy Synth-One stormed rival town Ironhold (week 3)
+P7 Synth-One committing to march on Voidhaven (P6) dist 122
+Enemy Shade Marshal beat mine guard (week 3)
+  [PERF] turn: total=253.4ms steps=31 cand=27.0ms path=6.8ms | long(400)=1 (fail 0) 6.7ms short(60)=0 0.0ms | reuse-hits=0 slices=4
+=== WEEK 4 BEGINS ===
+Day 1 Week 4 | Gold: 1160
+AI economy: 7 towns + 45 mines across 7 players -> 27382g 80i combined
+  P1 Warrior  str=3490 heroes=1 towns=1 mines=2 gold=1160
+  P3 Warrior  str=2206 heroes=1 towns=1 mines=7 gold=2480
+  P4 Mage     str=1832 heroes=1 towns=1 mines=10 gold=3927
+  P5 Warrior  str=4240 heroes=1 towns=1 mines=8 gold=3721
+  P6 Warrior  str=2000 heroes=1 towns=1 mines=5 gold=5151
+  P7 Explorer str=2616 heroes=1 towns=2 mines=8 gold=5606
+  P8 Mage     str=1952 heroes=1 towns=1 mines=7 gold=4349
+New week 4 - income applied
+Town Sanctuary: recruited 3 tier-2 units
+AI Sanctuary recruited 3 units into garrison (pool 920g)
+Town Thornwald: recruited 2 tier-3 units
+Town Thornwald: recruited 1 tier-1 units
+AI Thornwald recruited 3 units into garrison (pool 2020g)
+Town Greyspire: recruited 5 tier-2 units
+Town Greyspire: recruited 5 tier-1 units
+AI Greyspire recruited 10 units into garrison (pool 2977g)
+Town Crimsongate: recruited 2 tier-2 units
+AI Crimsongate recruited 2 units into garrison (pool 3441g)
+Town Voidhaven: recruited 3 tier-2 units
+AI Voidhaven recruited 3 units into garrison (pool 4791g)
+Town Forge City: recruited 6 tier-3 units
+AI Forge City recruited 6 units into garrison (pool 4226g)
+Town The Meld: recruited 3 tier-2 units
+AI The Meld recruited 3 units into garrison (pool 3989g)
+Game saved (id 31, "Alara - Week 4")
+Town Sanctuary: built Crusader Chapel
+AI Sanctuary built BID=107 (priority)
+AI market: 8 res1 -> 2 res0 for Castle at Ironhold
+AI market: 4 res2 -> 1 res0 for Castle at Ironhold
+AI market: 8 res4 -> 2 res0 for Castle at Ironhold
+AI market: 4 res5 -> 1 res0 for Castle at Ironhold
+Town Ironhold: built Shipyard
+AI Ironhold built Shipyard (coastal, early priority)
+Town Ironhold: built Town Hall
+AI Ironhold built BID=11 (priority)
+AI market: 4 res2 -> 1 res0 for Castle at Thornwald
+AI market: 8 res4 -> 2 res0 for Castle at Thornwald
+AI market: 4 res5 -> 1 res0 for Castle at Thornwald
+AI market: 12 res1 -> 3 res0 for Castle at Greyspire
+AI market: 4 res2 -> 1 res0 for Castle at Greyspire
+AI market: 4 res4 -> 1 res0 for Castle at Greyspire
+Town Greyspire: built Zombie Gallery
+AI Greyspire built BID=403 (priority)
+Town Greyspire: built Shipyard
+AI Greyspire built Shipyard
+AI market: 4 res2 -> 1 res0 for Castle at Crimsongate
+AI market: 8 res5 -> 2 res0 for Castle at Crimsongate
+Town Crimsongate: built Town Hall
+AI Crimsongate built BID=11 (priority)
+Town Voidhaven: built Shipyard
+AI Voidhaven built Shipyard
+AI market: 8 res2 -> 2 res0 for Castle at The Meld
+AI market: 8 res4 -> 2 res0 for Castle at The Meld
+Town The Meld: built Town Hall
+AI The Meld built BID=11 (priority)
+AI recruited hero at Voidhaven (week 4)
