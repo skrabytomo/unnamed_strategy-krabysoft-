@@ -2270,6 +2270,16 @@ void Game::aiTurnSetup()
 bool Game::aiTakeHeroTurn(int ehi)
 {
     AiTurnState& S = m_aiTurn;
+    auto& eHero = m_enemyHeroes[ehi];
+    if (eHero.eliminated) return true; // lost a field battle earlier this pass — skip, round continues
+    // [DBG crash-hunt] Breadcrumb for the 'vector<UnitStack> operator[] assert'
+    // crash reported after 'Day N Week 1' with zero other log output in
+    // between — extensive static audit of every UnitStack-vector access in
+    // the codebase found nothing unsafe, so this pins down WHICH hero/state
+    // is live when it happens next, instead of guessing blind again.
+    gLog("[DBG turn] ehi=%d P%u %s army=%zu pos=(%d,%d)\n",
+         ehi, eHero.ownerId, eHero.name.c_str(), eHero.army.size(),
+         eHero.pos.q, eHero.pos.r);
     Hero& playerHero        = m_heroes[m_activeHeroIdx];
     const auto& unitDefs    = m_registry.units();
     bool& combatTriggered   = S.combatTriggered;
@@ -2297,8 +2307,6 @@ bool Game::aiTakeHeroTurn(int ehi)
     // NOTE: combat no longer aborts the roster — once one hero enters
     // combat, the rest still take their turn; they just can't start a
     // second fight (the player-tile is blocked and untargeted below).
-    auto& eHero = m_enemyHeroes[ehi];
-    if (eHero.eliminated) return true; // lost a field battle earlier this pass — skip, round continues
 
     // ── Strength-based role (see byStrength above) ────────────────────
     bool isRaider   = (heroRank[ehi] == 0);
