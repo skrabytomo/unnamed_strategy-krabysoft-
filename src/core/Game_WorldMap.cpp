@@ -681,7 +681,7 @@ void Game::watchAiMovePlayerHero()
     }
 
     while (hero.movePool > 0) {
-        struct Cand { HexCoord pos; float score; };
+        struct Cand { HexCoord pos; float score; uint32_t id = 0; };
         std::vector<Cand> cands;
         auto add = [&](HexCoord pos, float val) {
             if (pos == hero.pos) return;
@@ -1133,7 +1133,7 @@ void Game::watchAiMoveSupportHero(Hero& hero, bool isCourier)
     }
 
     // ── Scout role: explore, claim loot/resources/neutral towns, never fight ──
-    struct Cand { HexCoord pos; float score; };
+    struct Cand { HexCoord pos; float score; uint32_t id = 0; };
     std::vector<Cand> cands;
     auto add = [&](HexCoord pos, float val) {
         if (pos == hero.pos || isEnemyTile(pos)) return;
@@ -2607,16 +2607,16 @@ bool Game::aiTakeHeroTurn(int ehi)
         // before optimising — the same doc's fan-out advice was wrong.
         auto tCandStart = std::chrono::steady_clock::now();
         // Score-based candidate selection: value / distance
-        struct Cand { HexCoord pos; float score; };
+        struct Cand { HexCoord pos; float score; uint32_t id = 0; };
         std::vector<Cand> cands;
-        auto add = [&](HexCoord pos, float val) {
+        auto add = [&](HexCoord pos, float val, uint32_t cid = 0) {
             if (pos == eHero.pos) return; // don't target current position
             int d = std::max(1, HexGrid::distance(eHero.pos, pos));
-            cands.push_back({pos, val / d});
+            cands.push_back({pos, val / d, cid});
         };
         // Persona-weighted variants for resource / attack candidates.
-        auto addMine   = [&](HexCoord pos, float val){ add(pos, val * mineMul); };
-        auto addAttack = [&](HexCoord pos, float val){ add(pos, val * attackMul); };
+        auto addMine   = [&](HexCoord pos, float val, uint32_t cid = 0){ add(pos, val * mineMul, cid); };
+        auto addAttack = [&](HexCoord pos, float val, uint32_t cid = 0){ add(pos, val * attackMul, cid); };
 
         if (veryWeak) {
             for (const auto& t : m_towns)
@@ -2724,7 +2724,7 @@ bool Game::aiTakeHeroTurn(int ehi)
                 if (t.ownerId == 0) {
                     // Homeless: an unowned town is a free home — grab
                     // it over anything else on the map.
-                    addAttack(t.pos, townlessDesperate ? 20000.f : 150.f);
+                    addAttack(t.pos, townlessDesperate ? 20000.f : 150.f, t.id);
                 } else if (!isAllied(t.ownerId, eHero.ownerId)) {
                     int rivalTowns = 0;
                     for (const auto& t2 : m_towns)
@@ -2757,7 +2757,7 @@ bool Game::aiTakeHeroTurn(int ehi)
                     // map for the kill. add() divides by dist, so we
                     // pre-multiply by sqrt(dist) to soften it.
                     int d = std::max(1, HexGrid::distance(eHero.pos, t.pos));
-                    addAttack(t.pos, val * std::sqrt((float)d));
+                    addAttack(t.pos, val * std::sqrt((float)d), t.id);
                 }
             }
             // Resources — deny player's key resource and favour own faction's
@@ -2869,7 +2869,7 @@ bool Game::aiTakeHeroTurn(int ehi)
                 if (dominant || dist <= 8 || isRaider) {
                     float huntVal = 300.f + m_turns.week() * 10.f;
                     cands.push_back({targetPos,
-                        huntVal * ghostMult / std::sqrt((float)std::max(1, dist))});
+                        huntVal * ghostMult / std::sqrt((float)std::max(1, dist)), 0});
                 }
             }
         }
@@ -2924,7 +2924,7 @@ bool Game::aiTakeHeroTurn(int ehi)
             }
             bool present = false;
             for (auto& c : cands) if (c.pos == eHero.marchGoal) { c.score = 1e9f; present = true; break; }
-            if (!present) cands.insert(cands.begin(), {eHero.marchGoal, 1e9f});
+            if (!present) cands.insert(cands.begin(), Cand{eHero.marchGoal, 1e9f, 0});
             std::sort(cands.begin(), cands.end(),
                       [](const Cand& a, const Cand& b){ return a.score > b.score; });
         }
@@ -3180,6 +3180,86 @@ bool Game::aiTakeHeroTurn(int ehi)
         }
         g_pathNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
                         std::chrono::steady_clock::now() - tPathStart).count();
+
+        // -- Sticky dock commitment (AI_ROADMAP naval fix) --
+        // Once a hero commits to an overseas target, latch the dock walk
+        // so local targets cannot yo-yo the hero away from the coastline.
+        bool needBoat = false;
+        if (eHero.onBoat) {
+            eHero.hasDockGoal = false;
+            eHero.dockGoalTurns = 0;
+        } else if (eHero.hasDockGoal) {
+            bool targetStillValid = false;
+            for (const auto& t : m_towns) {
+                if (t.id == static_cast<uint32_t>(eHero.dockGoalTargetId) && t.ownerId != eHero.ownerId
+                    && !isAllied(t.ownerId, eHero.ownerId)) {
+                    targetStillValid = true; break;
+                }
+            }
+            if (!targetStillValid || eHero.dockGoalTurns > 20) {
+                eHero.hasDockGoal = false;
+                eHero.dockGoalTurns = 0;
+            } else {
+                needBoat = true;
+            }
+        }
+
+        // Latch dock commitment when best target is overseas
+        if (!eHero.onBoat && !eHero.hasDockGoal && !cands.empty()) {
+            const auto& best = cands[0];
+            bool bestIsOverseas = routeImpossible(false, eHero.pos, best.pos);
+            if (bestIsOverseas) {
+                std::vector<std::pair<int, HexCoord>> candidateDocks;
+                for (auto& obj : m_worldObjects)
+                    if (obj.type == WorldObjectType::Shipyard)
+                        candidateDocks.push_back({HexGrid::distance(eHero.pos, obj.pos), obj.pos});
+                for (const auto& t : m_towns)
+                    if (isAllied(t.ownerId, eHero.ownerId) && t.hasBuilding(BID::TOWN_SHIPYARD))
+                        candidateDocks.push_back({HexGrid::distance(eHero.pos, t.pos), t.pos});
+                std::vector<std::pair<int, HexCoord>> walkableDocks;
+                for (const auto& d : candidateDocks) {
+                    if (d.first == 0) { walkableDocks.push_back(d); continue; }
+                    if (costFn(d.second) >= 99) continue;
+                    if (routeImpossible(false, eHero.pos, d.second)) continue;
+                    walkableDocks.push_back(d);
+                }
+                if (!walkableDocks.empty()) {
+                    std::sort(walkableDocks.begin(), walkableDocks.end(),
+                              [](const auto& a, const auto& b){ return a.first < b.first; });
+                    eHero.hasDockGoal = true;
+                    eHero.dockGoal = walkableDocks.front().second;
+                    eHero.dockGoalTurns = 0;
+                    eHero.dockGoalTargetId = static_cast<int>(best.id);
+                    needBoat = true;
+                    gLog("[NAVAL] %s commits to dock (%d,%d) for overseas target\n",
+                         eHero.name.c_str(), eHero.dockGoal.q, eHero.dockGoal.r);
+                }
+            }
+        }
+
+        // When committed to a dock, force boat consideration and clear
+        // any land path so the boat section takes over.
+        if (needBoat && eHero.hasDockGoal && !eHero.onBoat) {
+            path.clear();
+            bestReachable = false;
+        }
+
+        // Post-launch: restore marchGoal so hero sails to target instead
+        // of drifting. This covers the case where aiTryBoat set onBoat
+        // but the re-score below didn't preserve the overseas target.
+        if (eHero.onBoat && !eHero.hasMarchGoal && eHero.hasDockGoal) {
+            for (const auto& t : m_towns) {
+                if (t.id == static_cast<uint32_t>(eHero.dockGoalTargetId)) {
+                    eHero.hasMarchGoal = true;
+                    eHero.marchGoal = t.pos;
+                    eHero.marchGoalTurns = 0;
+                    gLog("[NAVAL] %s at sea, march latched to overseas target\n",
+                         eHero.name.c_str());
+                    break;
+                }
+            }
+        }
+
         // An enemy town ALWAYS justifies passage, whatever its score.
         // Scores are distance-diluted (add() divides by hex distance), so an
         // overseas capital 50 hexes away scores ~600/sqrt(50) = 85 — under the

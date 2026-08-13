@@ -339,6 +339,7 @@ void HexMapRenderer::render(const HexMap& map, const Camera2D& camera,
             // Render a dark fog hex so the clear color never shows through
             float cx2, cy2;
             m_grid.hexToWorld(coord, cx2, cy2);
+            camera.snapWorldToPixel(cx2, cy2);
             m_shader.setInt("uTerrain", -1);
             m_shader.setInt("uUseTexture", 0);
             drawHex(cx2, cy2, 0.06f, 0.06f, 0.09f, 0.95f, 1.005f);
@@ -347,6 +348,7 @@ void HexMapRenderer::render(const HexMap& map, const Camera2D& camera,
 
         float cx, cy;
         m_grid.hexToWorld(coord, cx, cy);
+        camera.snapWorldToPixel(cx, cy);
 
         int ti = static_cast<int>(tile->terrain);
         float a = (fogDisabled || tile->visible || isWater) ? 1.0f : 0.55f;

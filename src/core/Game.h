@@ -85,6 +85,7 @@ public:
     void setForcedSeed(uint32_t s) { m_forcedSeed = s; m_forcedSeedSet = true; }
 
 private:
+    Texture m_boatTex;
     uint32_t m_forcedSeed    = 0;
     bool     m_forcedSeedSet = false;
     // ── Core loop ──────────────────────────────────────────────────────────────
@@ -649,7 +650,7 @@ private:
     // Cached per-player watch summary (rebuilt once per week, not per frame —
     // the per-frame version looped 8 players × 4158 resources ≈ 2M ops/sec,
     // which pegged low-end CPUs).
-    struct WatchPlayerRow { uint32_t owner; long long str; int heroes, towns, mines, gold; };
+    struct WatchPlayerRow { uint32_t owner; long long str; int heroes, towns, mines, gold, largestArmy = 0; };
     std::vector<WatchPlayerRow> m_watchSummary;
     int          m_watchSummaryWeek = -1;
     // Weeks each owner (1-9) has gone without any town. A hero can't be

@@ -38,9 +38,10 @@ std::vector<HexCoord> Pathfinder::find(
     g_lastExit = Exit::Exhausted;
 
     struct Node {
-        int      f;
+        int      f;        // estimated total cost
+        int      g;        // actual cost from start (tie-breaker)
         HexCoord h;
-        bool operator>(const Node& o) const { return f > o.f; }
+        bool operator>(const Node& o) const { if (f != o.f) return f > o.f; return g > o.g; }
     };
 
     std::priority_queue<Node, std::vector<Node>, std::greater<Node>> open;
@@ -48,7 +49,7 @@ std::vector<HexCoord> Pathfinder::find(
     std::unordered_map<HexCoord, int,      HexCoordHash> gScore;
 
     gScore[start] = 0;
-    open.push({ HexGrid::distance(start, goal), start });
+    open.push(Node{HexGrid::distance(start, goal), 0, start });
 
     int expanded = 0;
     while (!open.empty()) {
@@ -58,7 +59,7 @@ std::vector<HexCoord> Pathfinder::find(
         // was about to conclude anyway — just ~60x sooner.
         if (++expanded > maxNodes) { g_lastExit = Exit::NodeLimit; return {}; }
 
-        auto [f, current] = open.top(); open.pop();
+        auto [f, g, current] = open.top(); open.pop();
 
         if (current == goal) {
             // Reconstruct path
@@ -92,7 +93,7 @@ std::vector<HexCoord> Pathfinder::find(
                 cameFrom[nb] = current;
                 gScore[nb]   = tentG;
                 int h        = HexGrid::distance(nb, goal);
-                open.push({ tentG + h, nb });
+                open.push(Node{tentG + h, tentG, nb });
             }
         }
     }
