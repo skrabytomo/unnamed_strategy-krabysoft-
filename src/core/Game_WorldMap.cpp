@@ -1354,6 +1354,12 @@ void Game::updateWorldMap(float dt)
                     }
                 }
 
+                // Single survivor ends the game immediately (no need to wait for dominance or week 80)
+                if (!gameOver && alive.size() == 1) {
+                    dominantOwner = alive.front();
+                    gameOver = true;
+                }
+
                 // Hard backstop for the spectator harness: if a game hasn't
                 // resolved by week 80 (naval invasion now lets island players be
                 // reached, but a big multi-player XL map can still grind on),
@@ -3189,6 +3195,7 @@ bool Game::aiTakeHeroTurn(int ehi)
             eHero.hasDockGoal = false;
             eHero.dockGoalTurns = 0;
         } else if (eHero.hasDockGoal) {
+            eHero.dockGoalTurns++;
             bool targetStillValid = false;
             for (const auto& t : m_towns) {
                 if (t.id == static_cast<uint32_t>(eHero.dockGoalTargetId) && t.ownerId != eHero.ownerId
@@ -3196,7 +3203,7 @@ bool Game::aiTakeHeroTurn(int ehi)
                     targetStillValid = true; break;
                 }
             }
-            if (!targetStillValid || eHero.dockGoalTurns > 20) {
+            if (!targetStillValid || eHero.dockGoalTurns > 5) {
                 eHero.hasDockGoal = false;
                 eHero.dockGoalTurns = 0;
             } else {
@@ -3320,6 +3327,13 @@ bool Game::aiTakeHeroTurn(int ehi)
                      g_lastBoatDockPos.q, g_lastBoatDockPos.r,
                      g_lastBoatDockDist,
                      g_lastBoatPathExit[0] ? g_lastBoatPathExit : "n/a");
+                // FIX: abort impossible dock commitments so the hero picks land targets again
+                if (g_lastBoatFail == BoatFail::NoPathToDock ||
+                    g_lastBoatFail == BoatFail::NoDock ||
+                    g_lastBoatFail == BoatFail::NoCoast) {
+                    eHero.hasDockGoal = false;
+                    eHero.dockGoalTurns = 0;
+                }
             }
             if (gotBoatPath) {
                 // Success side: is the hero actually CLOSING on the dock, or
@@ -3420,6 +3434,12 @@ bool Game::aiTakeHeroTurn(int ehi)
             gLog("  [IDLE] P%u %s stuck at (%d,%d) wk%d d%d — no reachable objective, %d move left\n",
                  eHero.ownerId, eHero.name.c_str(), eHero.pos.q, eHero.pos.r,
                  m_turns.week(), m_turns.day(), eHero.movePool);
+            // FIX: clear impossible objectives so the hero re-evaluates next turn
+            eHero.hasDockGoal = false;
+            eHero.dockGoalTurns = 0;
+            eHero.hasMarchGoal = false;
+            eHero.marchPath.clear();
+            eHero.marchPathIdx = 0;
             break;
         }
 

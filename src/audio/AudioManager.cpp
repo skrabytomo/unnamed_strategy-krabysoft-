@@ -64,16 +64,58 @@ void AudioManager::convertToDevice(Wav& w, const SDL_AudioSpec& target)
     }
 }
 
+// ── OGG Vorbis support ───────────────────────────────────────────────────────
+#define STB_VORBIS_IMPLEMENTATION
+#include "stb_vorbis.h"
+
+static bool endsWithOgg(const char* path)
+{
+    size_t len = std::strlen(path);
+    if (len < 4) return false;
+    const char* p = path + len - 4;
+    return (p[0] == '.' && p[1] == 'o' && p[2] == 'g' && p[3] == 'g') ||
+           (p[0] == '.' && p[1] == 'O' && p[2] == 'G' && p[3] == 'G');
+}
+
+static bool loadOgg(const char* path, uint8_t*& outBuf, uint32_t& outLen, SDL_AudioSpec& outSpec)
+{
+    int channels = 0, sampleRate = 0;
+    short* output = nullptr;
+    int samples = stb_vorbis_decode_filename(path, &channels, &sampleRate, &output);
+    if (samples <= 0 || !output) {
+        fprintf(stderr, "AudioManager: stb_vorbis failed for %s (err=%d)\n", path, samples);
+        return false;
+    }
+    int totalSamples = samples * channels;
+    uint32_t len = static_cast<uint32_t>(totalSamples * sizeof(short));
+    uint8_t* sdlBuf = static_cast<uint8_t*>(SDL_malloc(len));
+    if (!sdlBuf) { free(output); return false; }
+    std::memcpy(sdlBuf, output, len);
+    free(output);
+    outBuf = sdlBuf;
+    outLen = len;
+    outSpec.freq = sampleRate;
+    outSpec.format = AUDIO_S16SYS;
+    outSpec.channels = static_cast<Uint8>(channels);
+    return true;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 bool AudioManager::loadWav(const char* name, const char* path)
 {
     Wav w;
-    SDL_AudioSpec spec;
-    if (!SDL_LoadWAV(path, &spec, &w.buf, &w.len)) {
-        fprintf(stderr, "AudioManager: failed to load %s: %s\n", path, SDL_GetError());
+    bool ok = false;
+    if (endsWithOgg(path)) {
+        ok = loadOgg(path, w.buf, w.len, w.spec);
+    } else {
+        SDL_AudioSpec spec;
+        ok = (SDL_LoadWAV(path, &spec, &w.buf, &w.len) != nullptr);
+        if (ok) w.spec = spec;
+    }
+    if (!ok) {
+        fprintf(stderr, "AudioManager: failed to load %s\n", path);
         return false;
     }
-    w.spec = spec;
-    // Convert to sfx device spec (for SFX sounds; music uses separate device)
     if (m_sfxDev) convertToDevice(w, m_sfxSpec);
     m_wavs[name] = w;
     gLog("AudioManager: loaded '%s' from %s (%u bytes)\n", name, path, w.len);
@@ -118,14 +160,20 @@ void AudioManager::playMusic(const char* name)
             if (it == m_wavs.end() || !it->second.buf) { m_currentMusic.clear(); return; }
         } else {
             if (m_musicWav.buf) { SDL_FreeWAV(m_musicWav.buf); m_musicWav = Wav{}; }
-            SDL_AudioSpec spec;
-            if (!SDL_LoadWAV(pit->second.c_str(), &spec, &m_musicWav.buf, &m_musicWav.len)) {
-                fprintf(stderr, "AudioManager: failed to stream %s: %s\n",
-                        pit->second.c_str(), SDL_GetError());
+            const char* musicPath = pit->second.c_str();
+            bool ok = false;
+            if (endsWithOgg(musicPath)) {
+                ok = loadOgg(musicPath, m_musicWav.buf, m_musicWav.len, m_musicWav.spec);
+            } else {
+                SDL_AudioSpec spec;
+                ok = (SDL_LoadWAV(musicPath, &spec, &m_musicWav.buf, &m_musicWav.len) != nullptr);
+                if (ok) m_musicWav.spec = spec;
+            }
+            if (!ok) {
+                fprintf(stderr, "AudioManager: failed to stream %s\n", musicPath);
                 m_currentMusic.clear();
                 return;
             }
-            m_musicWav.spec = spec;
             m_loadedMusicName = name;
         }
     }
